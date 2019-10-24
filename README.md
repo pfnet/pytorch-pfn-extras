@@ -28,7 +28,7 @@ Since there is no trainer object in regular Pytorch, you have to create a
 
 An example follows:
 
-```
+```python
 from pytorch_extensions import ExtensionsManager
 from pytorch_extensions import reporter
 import pytorch_extensions.extensions as extensions
