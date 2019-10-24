@@ -1,7 +1,7 @@
 import operator
 import warnings
 
-from pytorch_extensions.reporter import reporter
+from pytorch_extensions import reporter
 from pytorch_extensions import trigger_util
 
 

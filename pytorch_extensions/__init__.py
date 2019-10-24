@@ -1,2 +1,2 @@
-from pytorch_extensions.reporter import *
-from pytorch_extensions.manager import ExtensionsManager
+import pytorch_extensions.reporter as reporter  # NOQA
+from pytorch_extensions.manager import ExtensionsManager  # NOQA

@@ -18,15 +18,6 @@ except AttributeError:
         _get_time = time.time
 
 
-class _ExtensionEntry(object):
-
-    def __init__(self, extension, priority, trigger, call_before_training):
-        self.extension = extension
-        self.trigger = trigger
-        self.priority = priority
-        self.call_before_training = call_before_training
-
-
 class Status(object):
     def __init__(self, epoch, iteration, epoch_size):
         self._epoch = epoch
@@ -43,7 +34,6 @@ class Status(object):
 
     @property
     def epoch_detail(self):
-        # epoch_size = len(self.engine.state.dataloader)
         return self._iteration/self._epoch_size
 
     @property
@@ -51,17 +41,32 @@ class Status(object):
         return self._iteration == 0
 
 
+class _ExtensionEntry(object):
+
+    def __init__(self, extension, priority, trigger, call_before_training):
+        self.extension = extension
+        self.trigger = trigger
+        self.priority = priority
+        self.call_before_training = call_before_training
+
+
 class ExtensionsManager(object):
     """
     Keeps track of the extensions and the current status
     """
-    def __init__(self, max_epochs, extensions, out_dir='result'):
+    def __init__(self, models, max_epochs, extensions, out_dir='result'):
         self.stop_trigger = trigger_module.get_trigger((max_epochs, 'epoch'))
         self.observation = {}
         self.out = out_dir
         if not os.path.exists(self.out):
             os.makedirs(self.out)
         self.reporter = Reporter()
+
+        for name in models:
+            model = models[name]
+            self.reporter.add_observer(name+'/', model)
+            self.reporter.add_observers(
+                name+'/', model.named_parameters())
 
         self.max_epochs = max_epochs
         # Defer!
@@ -195,6 +200,8 @@ class ExtensionsManager(object):
         epoch_size = kwargs.pop('epoch_size')
         if self._start_time is None:
             self._start_time = _get_time()
+            self.start_extensions()
+        self.observation = {}
         with self.reporter.scope(self.observation):
             try:
                 yield
