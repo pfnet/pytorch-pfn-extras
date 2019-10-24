@@ -207,3 +207,40 @@ class ExtensionsManager(object):
                 yield
             finally:
                 self.run_extensions(epoch, iteration, epoch_size)
+
+
+class IgniteExtensionsManager(ExtensionsManager):
+    def __init__(
+            self, engine, models, max_epochs, extensions, out_dir='result'):
+        super().__init__(models, max_epochs, extensions, out_dir)
+        self.engine = engine
+        self.set_ignite_handlers()
+
+    def set_ignite_handlers(self):
+        from ignite.engine import Events
+        # Set a handler that sets the reporter scope on every iteration
+        @self.engine.on(Events.ITERATION_STARTED)
+        def set_reporter_on_iter(engine):
+            self.observation = {}
+            self.cm = self.reporter.scope(self.observation)
+            self.cm.__enter__()
+
+        @self.engine.on(Events.STARTED)
+        def set_training_started(engine):
+            # self._is_before_training = True
+            self._start_time = time.time()
+            self.start_extensions()
+            epoch_size = len(self.engine.state.dataloader)
+            # Make all the next
+            # handlers to be executed after user defined ones
+            @self.engine.on(Events.ITERATION_COMPLETED)
+            def run_extensions_on_iter(engine):
+                self.run_extensions(
+                    self.engine.state.epoch,
+                    self.engine.state.iteration,
+                    epoch_size)
+
+            # This should be the last extension to be run
+            @self.engine.on(Events.ITERATION_COMPLETED)
+            def close_reporter_on_iter(engine):
+                self.cm.__exit__(None, None, None)

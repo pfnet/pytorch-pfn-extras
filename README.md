@@ -60,4 +60,5 @@ for epoch in range(max_epoch):
 
 In the examples folder there is a mnist using all the avaiable extensions.
 
-Support for ignite will be added soon.
+Ignite is supported by using the `IgniteExtensionsManager` with the trainer
+as the first argument.
