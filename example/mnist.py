@@ -118,10 +118,15 @@ def main():
                      extensions.observe_lr(optimizer=optimizer),
                      # extensions.ParameterStatistics(model, prefix='model'),
                      # extensions.VariableStatisticsPlot(model),
-                     extensions.Evaluator(test_loader, model, lambda data, target: test(args, model, device, data, target), progress_bar=True),
-                     extensions.PlotReport(['train/loss', 'val/loss'],
-                                  'epoch', filename='loss.png'),
-                     extensions.PrintReport(['epoch', 'iteration', 'train/loss', 'lr', 'model/fc2.bias/grad/min', 'val/loss'])]
+                     extensions.Evaluator(
+                         test_loader, model,
+                         lambda data, target: test(args, model, device, data, target),
+                         progress_bar=True),
+                     extensions.PlotReport(
+                         ['train/loss', 'val/loss'], 'epoch', filename='loss.png'),
+                     extensions.PrintReport(['epoch', 'iteration',
+                                             'train/loss', 'lr', 'model/fc2.bias/grad/min',
+                                             'val/loss', 'val/acc'])]
     models = {'main': model}
     print(list(zip(*model.named_parameters()))[0])
     manager = pte.ExtensionsManager(models, args.epochs, my_extensions)
