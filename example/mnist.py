@@ -12,6 +12,7 @@ import pytorch_extensions.extensions as extensions
 # Extensions manager object
 manager = None
 
+
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -29,40 +30,41 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
-    
+
+
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
     epoch_size = len(train_loader)
     for batch_idx, (data, target) in enumerate(train_loader):
         current_it = (epoch-1)*epoch_size+batch_idx
         with manager.run_iteration(
-                epoch = epoch-1, iteration=current_it, epoch_size=epoch_size):
+                epoch=epoch-1, iteration=current_it, epoch_size=epoch_size):
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
             loss = F.nll_loss(output, target)
             pte.reporter.report({'train/loss': loss.item()})
-            loss = F.nll_loss(output, target)
             loss.backward()
             optimizer.step()
 
-def test(args, model, device, test_loader):
+
+def test(args, model, device, data, target):
+    """ The extension loops over the iterator in order to
+        drive the evaluator progress bar and reporting
+        averages
+    """
     model.eval()
     test_loss = 0
     correct = 0
-    with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            test_loss += F.nll_loss(output, target, reduction='sum').item() # sum up batch loss
-            pred = output.argmax(dim=1, keepdim=True) # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
+    data, target = data.to(device), target.to(device)
+    output = model(data)
+    # Final result will be average of averages of the same size
+    test_loss += F.nll_loss(output, target, reduction='mean').item()
+    pte.reporter.report({'val/loss': test_loss})
+    pred = output.argmax(dim=1, keepdim=True)
+    correct += pred.eq(target.view_as(pred)).sum().item()
+    pte.reporter.report({'val/acc': correct/len(data)})
 
-    test_loss /= len(test_loader.dataset)
-
-    # print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-    #     test_loss, correct, len(test_loader.dataset),
-    #     100. * correct / len(test_loader.dataset)))
 
 def main():
     # Training settings
@@ -81,9 +83,6 @@ def main():
                         help='disables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
-                        help='how many batches to wait before logging training status')
-    
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
     args = parser.parse_args()
@@ -108,7 +107,6 @@ def main():
                        ])),
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
-
     model = Net().to(device)
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
@@ -118,21 +116,25 @@ def main():
                      extensions.ProgressBar(),
                      extensions.ExponentialShift('lr', 0.9999, optimizer, init=0.2, target=0.1),
                      extensions.observe_lr(optimizer=optimizer),
-                     extensions.ParameterStatistics(model, prefix='model'),
-                     extensions.VariableStatisticsPlot(model),
-                     extensions.PlotReport(['train/loss'],
+                     # extensions.ParameterStatistics(model, prefix='model'),
+                     # extensions.VariableStatisticsPlot(model),
+                     extensions.Evaluator(test_loader, model, lambda data, target: test(args, model, device, data, target), progress_bar=True),
+                     extensions.PlotReport(['train/loss', 'val/loss'],
                                   'epoch', filename='loss.png'),
-                     extensions.PrintReport(['epoch', 'iteration', 'train/loss', 'lr', 'model/fc2.bias/grad/min'])]
-    models = {'main': model} 
+                     extensions.PrintReport(['epoch', 'iteration', 'train/loss', 'lr', 'model/fc2.bias/grad/min', 'val/loss'])]
+    models = {'main': model}
     print(list(zip(*model.named_parameters()))[0])
     manager = pte.ExtensionsManager(models, args.epochs, my_extensions)
 
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
-        test(args, model, device, test_loader)
+        # Test function is called from the evaluator extension
+        # to get access to the reporter and other facilities
+        # test(args, model, device, test_loader)
 
     if (args.save_model):
-        torch.save(model.state_dict(),"mnist_cnn.pt")
-        
+        torch.save(model.state_dict(), "mnist_cnn.pt")
+
+
 if __name__ == '__main__':
     main()
