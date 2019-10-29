@@ -1,5 +1,5 @@
 from pytorch_extensions.extensions.exponential_shift import ExponentialShift  # NOQA
-from pytorch_extensions.extensions.evaluator import Evaluator  # NOQA
+from pytorch_extensions.extensions.evaluator import Evaluator, IgniteEvaluator  # NOQA
 from pytorch_extensions.extensions.log_report import LogReport  # NOQA
 from pytorch_extensions.extensions.print_report import PrintReport  # NOQA
 from pytorch_extensions.extensions.progress_bar import ProgressBar  # NOQA

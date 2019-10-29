@@ -22,7 +22,7 @@ class Status(object):
     def __init__(self, epoch, iteration, epoch_size):
         self._epoch = epoch
         self._iteration = iteration
-        self._epoch_size = epoch_size
+        self._epoch_size = epoch_size-1
 
     @property
     def epoch(self):
@@ -188,7 +188,6 @@ class ExtensionsManager(object):
             raise ValueError('extension %s not found' % name)
 
     def run_extensions(self, epoch, iteration, epoch_size):
-        self.status = Status(epoch, iteration, epoch_size)
         for name, entry in self.extensions:
             if entry.trigger(self):
                 entry.extension(self)
@@ -198,6 +197,7 @@ class ExtensionsManager(object):
         epoch = kwargs.pop('epoch')
         iteration = kwargs.pop('iteration')
         epoch_size = kwargs.pop('epoch_size')
+        self.status = Status(epoch, iteration, epoch_size)
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()

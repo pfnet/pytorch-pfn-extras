@@ -175,16 +175,6 @@ class Evaluator(extension.Extension):
 
         summary = reporter_module.DictSummary()
 
-        class IterationStatus(object):
-            def __init__(self, size):
-                self.current_position = 0
-                self._epoch_detail = 0.0
-                self._size = size
-
-            @property
-            def epoch_detail(self):
-                return self.current_position/self._size
-
         status = IterationStatus(len(iterator))
         if self._progress_bar:
             pbar = _IteratorProgressBar(iterator=status)
@@ -215,6 +205,17 @@ class Evaluator(extension.Extension):
         """
         for iterator in six.itervalues(self._iterators):
             iterator.finalize()
+
+
+class IterationStatus(object):
+    def __init__(self, size):
+        self.current_position = 0
+        self._epoch_detail = 0.0
+        self._size = size
+
+    @property
+    def epoch_detail(self):
+        return self.current_position/self._size
 
 
 class _IteratorProgressBar(util.ProgressBar):
@@ -254,3 +255,45 @@ class _IteratorProgressBar(util.ProgressBar):
                      .format(speed_t,
                              datetime.timedelta(seconds=estimated_time)))
         return lines
+
+
+class IgniteEvaluator(Evaluator):
+    def __init__(self, evaluator, iterator, target, **kwargs):
+        super().__init__(iterator, target, None, **kwargs)
+        self.evaluator = evaluator
+        self.set_evaluator_handlers()
+
+    def set_evaluator_handlers(self):
+        from ignite.engine import Events
+        # Register handlers to retrieve the Average metrics and report them
+        @self.evaluator.on(Events.EPOCH_STARTED)
+        def set_evaluation_started(engine):
+            self.observation = {}
+            self.cm = reporter_module.report_scope(self.observation)
+            self.cm.__enter__()
+
+        if self._progress_bar:
+            @self.evaluator.on(Events.ITERATION_STARTED)
+            def update_progress_bar(engine):
+                self.status.current_position = engine.state.iteration
+                self.pbar.update()
+
+        @self.evaluator.on(Events.EPOCH_COMPLETED)
+        def set_evaluation_completed(engine):
+            metrics = self.evaluator.state.metrics
+            for metric in metrics:
+                reporter_module.report(
+                    {'val/{}'.format(metric): metrics[metric]})
+            self.cm.__exit__(None, None, None)
+            self.summary.add(self.observation)
+
+    def evaluate(self):
+        iterator = self._iterators['main']
+        self.summary = reporter_module.DictSummary()
+        self.status = IterationStatus(len(iterator))
+        if self._progress_bar:
+            self.pbar = _IteratorProgressBar(iterator=self.status)
+        self.evaluator.run(iterator)
+        if self._progress_bar:
+            self.pbar.close()
+        return self.summary.compute_mean()

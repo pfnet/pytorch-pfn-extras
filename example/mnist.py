@@ -38,7 +38,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
         current_it = (epoch-1)*epoch_size+batch_idx
         with manager.run_iteration(
-                epoch=epoch-1, iteration=current_it, epoch_size=epoch_size):
+                epoch=epoch, iteration=current_it, epoch_size=epoch_size):
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
             output = model(data)
@@ -116,8 +116,8 @@ def main():
                      extensions.ProgressBar(),
                      extensions.ExponentialShift('lr', 0.9999, optimizer, init=0.2, target=0.1),
                      extensions.observe_lr(optimizer=optimizer),
-                     # extensions.ParameterStatistics(model, prefix='model'),
-                     # extensions.VariableStatisticsPlot(model),
+                     extensions.ParameterStatistics(model, prefix='model'),
+                     extensions.VariableStatisticsPlot(model),
                      extensions.Evaluator(
                          test_loader, model,
                          lambda data, target: test(args, model, device, data, target),

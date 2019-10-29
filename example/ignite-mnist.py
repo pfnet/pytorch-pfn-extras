@@ -59,8 +59,8 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval):
     optimizer.step()
     trainer = create_supervised_trainer(model, optimizer, F.nll_loss, device=device)
     evaluator = create_supervised_evaluator(model,
-                                            metrics={'accuracy': Accuracy(),
-                                                     'nll': Loss(F.nll_loss)},
+                                            metrics={'acc': Accuracy(),
+                                                     'loss': Loss(F.nll_loss)},
                                             device=device)
 
     # manager.extend(...) also works
@@ -70,9 +70,12 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval):
                      extensions.observe_lr(optimizer=optimizer),
                      extensions.ParameterStatistics(model, prefix='model'),
                      extensions.VariableStatisticsPlot(model),
+                     extensions.IgniteEvaluator(
+                         evaluator, val_loader, model,
+                         progress_bar=True),
                      extensions.PlotReport(['train/loss'],
                                   'epoch', filename='loss.png'),
-                     extensions.PrintReport(['epoch', 'iteration', 'train/loss', 'lr', 'model/fc2.bias/grad/min'])]
+                     extensions.PrintReport(['epoch', 'iteration', 'train/loss', 'lr', 'model/fc2.bias/grad/min','val/loss', 'val/acc'])]
     models = {'main': model} 
     print(list(zip(*model.named_parameters()))[0])
     manager = pte.IgniteExtensionsManager(trainer, models, args.epochs, my_extensions)
@@ -81,14 +84,6 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval):
     @trainer.on(Events.ITERATION_COMPLETED)
     def report_loss(engine):
         pte.reporter.report({'train/loss':engine.state.output})
-
-    @trainer.on(Events.EPOCH_COMPLETED)
-    def log_training_results(engine):
-        # TODO
-        evaluator.run(train_loader)
-        metrics = evaluator.state.metrics
-        avg_accuracy = metrics['accuracy']
-        avg_nll = metrics['nll']
 
     trainer.run(train_loader, max_epochs=epochs)
 
