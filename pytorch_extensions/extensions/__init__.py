@@ -3,6 +3,7 @@ from pytorch_extensions.extensions._snapshot import snapshot  # NOQA
 from pytorch_extensions.extensions.exponential_shift import ExponentialShift  # NOQA
 from pytorch_extensions.extensions.evaluator import Evaluator, IgniteEvaluator  # NOQA
 from pytorch_extensions.extensions.log_report import LogReport  # NOQA
+from pytorch_extensions.extensions.micro_average import MicroAverage  # NOQA
 from pytorch_extensions.extensions.print_report import PrintReport  # NOQA
 from pytorch_extensions.extensions.progress_bar import ProgressBar  # NOQA
 from pytorch_extensions.extensions.parameter_statistics import ParameterStatistics  # NOQA

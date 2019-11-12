@@ -13,6 +13,7 @@ Currently working extensions
 + Evaluator
 + ExponentialShift
 + LogReport
++ MicroAverage
 + PrintReport
 + ProgressBar
 + ParameterStatistics
@@ -120,7 +121,7 @@ It is possible to take snapshots by using the [`snapshot`](https://github.pfidev
 training extension just as in chainer.
 
 Whenever the extension is triggered, it saves the status of the optimizer, model and extensions to the output folder in the same way as chainer.
-To load the snapshot and continue the training call `torch.load` and use the `ExtensionsManager.load_state_dict`[]() to resume the training.
+To load the snapshot and continue the training call `torch.load` and use the `ExtensionsManager.load_state_dict`[example](https://github.pfidev.jp/ecastill/pytorch-extensions/blob/a5d1d356b7a53e793423f334137f8134edca089b/example/mnist.py#L139-L141) to resume the training.
 The snapshots can be used outside the pytorch-extensions module just by accessing the models, or optimizers fields of the loaded state.
 
 # Extensions execution order
