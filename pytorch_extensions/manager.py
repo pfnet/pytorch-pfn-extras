@@ -49,12 +49,32 @@ class _ExtensionEntry(object):
         self.priority = priority
         self.call_before_training = call_before_training
 
+    def state_dict(self):
+        state = {}
+        if hasattr(self.extension, 'state_dict'):
+            state['extension'] = self.extension.state_dict()
+        if hasattr(self.trigger, 'state_dict'):
+            state['trigger'] = self.trigger.state_dict()
+        return state
+
+    def load_state_dict(self, to_load):
+        if 'extension' in to_load:
+            self.extension.load_state_dict(to_load['extension'])
+        if 'trigger' in to_load:
+            self.trigger.load_state_dict(to_load['trigger'])
+
 
 class ExtensionsManager(object):
     """
     Keeps track of the extensions and the current status
     """
-    def __init__(self, models, max_epochs, extensions, out_dir='result'):
+    def __init__(
+            self,
+            models,
+            optimizers,
+            max_epochs,
+            extensions,
+            out_dir='result'):
         self.stop_trigger = trigger_module.get_trigger((max_epochs, 'epoch'))
         self.observation = {}
         self.out = out_dir
@@ -68,7 +88,11 @@ class ExtensionsManager(object):
             self.reporter.add_observers(
                 name+'/', model.named_parameters())
 
+        self._models = models
+        self._optimizers = optimizers
         self.max_epochs = max_epochs
+        self._start_epoch = 0
+        self._start_iteration = 0
         # Defer!
         self._start_time = None
         self._extensions = collections.OrderedDict()
@@ -194,8 +218,8 @@ class ExtensionsManager(object):
 
     @contextlib.contextmanager
     def run_iteration(self, **kwargs):
-        epoch = kwargs.pop('epoch')
-        iteration = kwargs.pop('iteration')
+        epoch = kwargs.pop('epoch') + self._start_epoch
+        iteration = kwargs.pop('iteration') + self._start_iteration
         epoch_size = kwargs.pop('epoch_size')
         self.status = Status(epoch, iteration, epoch_size)
         if self._start_time is None:
@@ -208,11 +232,47 @@ class ExtensionsManager(object):
             finally:
                 self.run_extensions(epoch, iteration, epoch_size)
 
+    def state_dict(self):
+        to_save = {}
+        if self.status is not None:
+            to_save['_start_epoch'] = self.status.epoch
+            to_save['_start_iteration'] = self.status.iteration
+        else:
+            to_save['_start_epoch'] = 0
+            to_save['_start_iteration'] = 0
+        # Save manager status ?
+        to_save['models'] = {name: self._models[name].state_dict()
+                             for name in self._models}
+        to_save['optimizers'] = {name: self._optimizers[name].state_dict()
+                                 for name in self._optimizers}
+        to_save['extensions'] = {name: self._extensions[name].state_dict()
+                                 for name in self._extensions}
+        return to_save
+
+    def load_state_dict(self, to_load):
+        self._start_epoch = to_load['_start_epoch']
+        self._start_iteration = to_load['_start_iteration']
+        for name in self._models:
+            self._models[name].load_state_dict(to_load['models'][name])
+
+        for name in self._optimizers:
+            self._optimizers[name].load_state_dict(to_load['optimizers'][name])
+
+        for name in self._extensions:
+            self._extensions[name].load_state_dict(
+                to_load['extensions'][name])
+
 
 class IgniteExtensionsManager(ExtensionsManager):
     def __init__(
-            self, engine, models, max_epochs, extensions, out_dir='result'):
-        super().__init__(models, max_epochs, extensions, out_dir)
+            self,
+            engine,
+            models,
+            optimizers,
+            max_epochs,
+            extensions,
+            out_dir='result'):
+        super().__init__(models, optimizers, max_epochs, extensions, out_dir)
         self.engine = engine
         self.set_ignite_handlers()
 
@@ -227,7 +287,6 @@ class IgniteExtensionsManager(ExtensionsManager):
 
         @self.engine.on(Events.STARTED)
         def set_training_started(engine):
-            # self._is_before_training = True
             self._start_time = time.time()
             self.start_extensions()
             epoch_size = len(self.engine.state.dataloader)

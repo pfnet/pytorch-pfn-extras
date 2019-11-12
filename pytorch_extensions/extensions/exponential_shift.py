@@ -69,12 +69,19 @@ class ExponentialShift(extension.Extension):
                     value = self._target
         self._update_value(optimizer, value)
 
-    def serialize(self, serializer):
+    def state_dict(self):
+        state = {}
+        state['_t'] = self._t
+        state['_last_value'] = self._last_value
         # self._t = serializer('_t', self._t)
         # self._last_value = serializer('_last_value', self._last_value)
         # if isinstance(self._last_value, numpy.ndarray):
         #     self._last_value = self._last_value.item()
-        pass
+        return state
+
+    def load_state_dict(self, to_load):
+        self._t = to_load['_t']
+        self._last_value = to_load['_last_value']
 
     def _update_value(self, optimizer, value):
         self._optimizer.param_groups[self._param_group][self._attr] = value

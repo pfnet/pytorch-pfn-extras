@@ -1,4 +1,3 @@
-import warnings
 
 
 class ManualScheduleTrigger(object):
@@ -97,39 +96,14 @@ class ManualScheduleTrigger(object):
 
         return fire
 
-    def serialize(self, serializer):
-        try:
-            self._previous_iteration = serializer(
-                'previous_iteration', self._previous_iteration)
-        except KeyError:
-            warnings.warn(
-                'The previous value of iteration is not saved. '
-                'ManualScheduleTrigger guesses it using current iteration. '
-                'If this trigger is not called at every iteration, '
-                'it may not work correctly.')
-            # set a negative value for invalid
-            self._previous_iteration = -1
+    def state_dict(self):
+        state = {}
+        state['_previous_iteration'] = self._previous_iteration
+        state['_previous_epoch_detail'] = self._previous_epoch_detail
+        state['finished'] = self.finished
+        return state
 
-        try:
-            self._previous_epoch_detail = serializer(
-                'previous_epoch_detail', self._previous_epoch_detail)
-        except KeyError:
-            warnings.warn(
-                'The previous value of epoch_detail is not saved. '
-                'ManualScheduleTrigger uses the value of '
-                'trainer.updater.previous_epoch_detail. '
-                'If this trigger is not called at every iteration, '
-                'it may not work correctly.')
-            # set a negative value for invalid
-            self._previous_epoch_detail = -1.
-
-        try:
-            self.finished = serializer('finished', self.finished)
-        except KeyError:
-            warnings.warn(
-                'The flag of finished is not saved. '
-                'ManualScheduleTrigger set the flag to `False` to force '
-                'initialization and reset in next `__call__`.')
-            # set False to force initialization.
-            self.finished = False
-            self._finished_is_tmp = True
+    def load_state_dict(self, to_load):
+        self._previous_iteration = to_load['_previous_iteration']
+        self._previous_epoch_detail = to_load['_previous_epoch_detail']
+        self.finished = to_load['finished']

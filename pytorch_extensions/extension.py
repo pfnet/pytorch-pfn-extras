@@ -117,13 +117,16 @@ class Extension(object):
         """
         pass
 
-    def serialize(self, serializer):
+    def state_dict(self):
         """Serializes the extension state.
 
         It is called when a trainer that owns this extension is serialized. It
         serializes nothing by default.
 
         """
+        pass
+
+    def load_state_dict(self, to_load):
         pass
 
 

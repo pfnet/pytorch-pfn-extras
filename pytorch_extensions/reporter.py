@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import collections
 import contextlib
+import json
 import threading
 import typing as tp  # NOQA
 import warnings
@@ -291,13 +292,18 @@ class Summary(object):
         std = torch.sqrt(var)
         return mean, std
 
-    def serialize(self, serializer):
+    def state_dict(self):
+        state = {}
         try:
-            self._x = serializer('_x', self._x)
-            self._x2 = serializer('_x2', self._x2)
-            self._n = serializer('_n', self._n)
+            state = {'_x': self._x, '_x2': self._x2, '_n': self._n}
         except KeyError:
             warnings.warn('The previous statistics are not saved.')
+        return state
+
+    def load_state_dict(self, to_load):
+        self._x = to_load['_x']
+        self._x2 = to_load['_x2']
+        self._n = to_load['_n']
 
 
 class DictSummary(object):
@@ -368,21 +374,23 @@ class DictSummary(object):
 
         return stats
 
-    def serialize(self, serializer):
-        # if isinstance(serializer, serializer_module.Serializer):
-        #     names = list(self._summaries.keys())
-        #     serializer('_names', json.dumps(names))
-        #     for index, name in enumerate(names):
-        #         self._summaries[name].serialize(
-        #             serializer['_summaries'][str(index)])
-        # else:
-        #     self._summaries.clear()
-        #     try:
-        #         names = json.loads(serializer('_names', ''))
-        #     except KeyError:
-        #         warnings.warn('The names of statistics are not saved.')
-        #         return
-        #     for index, name in enumerate(names):
-        #         self._summaries[name].serialize(
-        #             serializer['_summaries'][str(index)])
-        pass
+    def state_dict(self):
+        state = {}
+        names = list(self._summaries.keys())
+        state['names'] = json.dumps(names)
+        state['_summaries'] = {}
+        sums = state['_summaries']
+        for index, name in enumerate(names):
+            sums[str(index)] = self._summaries[index].state_dict()
+        return state
+
+    def load_state_dict(self, to_load):
+        self._summaries.clear()
+        try:
+            names = json.loads(to_load['names'])
+        except KeyError:
+            warnings.warn('The names of statistics are not saved.')
+            return
+        sums = to_load['_summaries']
+        for index, name in enumerate(names):
+            self._summaries[name].load_state_dict(sums[str(index)])

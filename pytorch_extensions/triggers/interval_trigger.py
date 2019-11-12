@@ -1,4 +1,3 @@
-import warnings
 
 
 class IntervalTrigger(object):
@@ -84,31 +83,15 @@ class IntervalTrigger(object):
 
         return fire
 
-    def serialize(self, serializer):
-        try:
-            self._previous_iteration = serializer(
-                'previous_iteration', self._previous_iteration)
-        except KeyError:
-            warnings.warn(
-                'The previous value of iteration is not saved. '
-                'IntervalTrigger guesses it using current iteration. '
-                'If this trigger is not called at every iteration, '
-                'it may not work correctly.')
-            # set a negative value for invalid
-            self._previous_iteration = -1
+    def state_dict(self):
+        state = {}
+        state['_previous_iteration'] = self._previous_iteration
+        state['_previous_epoch_detail'] = self._previous_epoch_detail
+        return state
 
-        try:
-            self._previous_epoch_detail = serializer(
-                'previous_epoch_detail', self._previous_epoch_detail)
-        except KeyError:
-            warnings.warn(
-                'The previous value of epoch_detail is not saved. '
-                'IntervalTrigger uses the value of '
-                'trainer.updater.previous_epoch_detail. '
-                'If this trigger is not called at every iteration, '
-                'it may not work correctly.')
-            # set a negative value for invalid
-            self._previous_epoch_detail = -1.
+    def load_state_dict(self, to_load):
+        self._previous_iteration = to_load['_previous_iteration']
+        self._previous_epoch_detail = to_load['_previous_epoch_detail']
 
     def get_training_length(self):
         return (self.period, self.unit)

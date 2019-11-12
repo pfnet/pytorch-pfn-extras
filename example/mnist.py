@@ -85,6 +85,8 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
+    parser.add_argument('--snapshot', type=str, default=None,
+                        help='path to snapshot file')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -112,6 +114,7 @@ def main():
 
     global manager
     # manager.extend(...) also works
+    writer = extensions.snapshot_writers.SimpleWriter()
     my_extensions = [extensions.LogReport(),
                      extensions.ProgressBar(),
                      extensions.ExponentialShift('lr', 0.9999, optimizer, init=0.2, target=0.1),
@@ -126,11 +129,15 @@ def main():
                          ['train/loss', 'val/loss'], 'epoch', filename='loss.png'),
                      extensions.PrintReport(['epoch', 'iteration',
                                              'train/loss', 'lr', 'model/fc2.bias/grad/min',
-                                             'val/loss', 'val/acc'])]
+                                             'val/loss', 'val/acc']),
+                     extensions.snapshot(writer=writer)]
     models = {'main': model}
+    optimizers = {'main': optimizer}
     print(list(zip(*model.named_parameters()))[0])
-    manager = pte.ExtensionsManager(models, args.epochs, my_extensions)
-
+    manager = pte.ExtensionsManager(models, optimizers, args.epochs, my_extensions)
+    # Lets load the snapshot
+    state = torch.load('result/snapshot_iter_1874')
+    manager.load_state_dict(state)
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
         # Test function is called from the evaluator extension

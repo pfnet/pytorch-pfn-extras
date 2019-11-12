@@ -1,4 +1,5 @@
 from os import path
+import json
 import warnings
 
 import numpy
@@ -187,15 +188,13 @@ filename='plot.png', marker='x', grid=True)
             plt.close()
             self._init_summary()
 
-    def serialize(self, serializer):
-        # if isinstance(serializer, serializer_module.Serializer):
-        #     serializer('_plot_{}'.format(self._file_name),
-        #                json.dumps(self._data))
+    def state_dict(self):
+        state = {'_plot_{}'.format(self._file_name): json.dumps(self._data)}
+        return state
 
-        # else:
-        #     self._data = json.loads(
-        #         serializer('_plot_{}'.format(self._file_name), ''))
-        pass
+    def load_state_dict(self, to_load):
+        key = '_plot_{}'.format(self._file_name)
+        self._data = json.loads(to_load[key])
 
     def _init_summary(self):
         self._summary = reporter.DictSummary()

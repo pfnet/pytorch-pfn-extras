@@ -121,24 +121,23 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log')
         """The current list of observation dictionaries."""
         return self._log
 
-    def serialize(self, serializer):
-        # if hasattr(self._trigger, 'serialize'):
-        #     self._trigger.serialize(serializer['_trigger'])
+    def state_dict(self):
+        state = {}
+        if hasattr(self._trigger, 'state_dict'):
+            state['_trigger'] = self._trigger.state_dict()
 
-        # try:
-        #     self._summary.serialize(serializer['_summary'])
-        # except KeyError:
-        #     warnings.warn('The statistics are not saved.')
+        try:
+            state['_summary'] = self._summary.state_dict()
+        except KeyError:
+            pass
+        state['_log'] = json.dumps(self._log)
+        return state
 
-        # # Note that this serialization may lose some information of small
-        # # numerical differences.
-        # if isinstance(serializer, serializer_module.Serializer):
-        #     log = json.dumps(self._log)
-        #     serializer('_log', log)
-        # else:
-        #     log = serializer('_log', '')
-        #     self._log = json.loads(log)
-        pass
+    def load_state_dict(self, to_load):
+        if hasattr(self._trigger, 'load_state_dict'):
+            self._trigger.load_state_dict(to_load['_trigger'])
+        self._summary.load_state_dict(to_load['_summary'])
+        self._log = json.loads(to_load['_log'])
 
     def _init_summary(self):
         self._summary = reporter.DictSummary()

@@ -15,15 +15,15 @@ class Evaluator(extension.Extension):
     Trainer extension to evaluate models on a validation set.
 
     This extension evaluates the current models by a given evaluation function.
-    It creates a :class:`~chainer.Reporter` object to store values observed in
+    It creates a :class:`~Reporter` object to store values observed in
     the evaluation function on each iteration. The report for all iterations
-    are aggregated to :class:`~chainer.DictSummary`. The collected mean values
-    are further reported to the reporter object of the trainer, where the name
+    are aggregated to :class:`~DictSummary`. The collected mean values
+    are further reported to the reporter object of the manager, where the name
     of each observation is prefixed by the evaluator name. See
-    :class:`~chainer.Reporter` for details in naming rules of the reports.
+    :class:`~Reporter` for details in naming rules of the reports.
 
     Evaluator has a structure to customize similar to that of
-    :class:`~chainer.training.updaters.StandardUpdater`.
+    :class:`~StandardUpdater`.
     The main differences are:
 
     - There are no optimizers in an evaluator. Instead, it holds links
@@ -40,7 +40,6 @@ class Evaluator(extension.Extension):
     create and handle a reporter object manually. Users also have to copy the
     iterators before using them, in order to reuse them at the next time of
     evaluation. In both cases, the functions are called in testing mode
-    (i.e., ``chainer.config.train`` is set to ``False``).
 
     This extension is called at the end of each epoch by default.
 
@@ -54,7 +53,7 @@ class Evaluator(extension.Extension):
             link to evaluate as a callable is used by default.
         progress_bar: Boolean flag to show a progress bar while training,
             which is similar to
-            :class:`~chainer.training.extensions.ProgressBar`.
+            :class:`~extensions.ProgressBar`.
             (default: ``False``)
 
     .. warning::
@@ -106,17 +105,17 @@ class Evaluator(extension.Extension):
         """Returns a dictionary of all target links."""
         return dict(self._targets)
 
-    def __call__(self, trainer=None):
+    def __call__(self, manager=None):
         """Executes the evaluator extension.
 
         Unlike usual extensions, this extension can be executed without passing
-        a trainer object. This extension reports the performance on validation
-        dataset using the :func:`~chainer.report` function. Thus, users can use
-        this extension independently from any trainer by manually configuring
-        a :class:`~chainer.Reporter` object.
+        a manager object. This extension reports the performance on validation
+        dataset using the :func:`~reporter_module.report` function.
+        Thus, users can use this extension independently from any manager
+        by manually configuring a :class:`~Reporter` object.
 
         Args:
-            trainer (~chainer.training.Trainer): Trainer object that invokes
+            manager (~ExtensionsManager): Trainer object that invokes
                 this extension. It can be omitted in case of calling this
                 extension manually.
 
@@ -147,27 +146,14 @@ class Evaluator(extension.Extension):
         """Evaluates the model and returns a result dictionary.
 
         This method runs the evaluation loop over the validation dataset. It
-        accumulates the reported values to :class:`~chainer.DictSummary` and
+        accumulates the reported values to :class:`~DictSummary` and
         returns a dictionary whose values are means computed by the summary.
-
-        Note that this function assumes that the main iterator raises
-        ``StopIteration`` or code in the evaluation loop raises an exception.
-        So, if this assumption is not held, the function could be caught in
-        an infinite loop.
 
         Users can override this method to customize the evaluation routine.
 
-        .. note::
-
-            This method encloses :attr:`eval_func` calls with
-            :func:`function.no_backprop_mode` context, so all calculations
-            using :class:`~chainer.FunctionNode`\\s inside
-            :attr:`eval_func` do not make computational graphs. It is for
-            reducing the memory consumption.
-
         Returns:
             dict: Result dictionary. This dictionary is further reported via
-            :func:`~chainer.report` without specifying any observer.
+            :func:`~pytorch_extensions.report` without specifying any observer.
 
         """
         iterator = self._iterators['main']

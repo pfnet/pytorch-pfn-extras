@@ -1,4 +1,3 @@
-import warnings
 
 
 class OnceTrigger(object):
@@ -34,13 +33,9 @@ class OnceTrigger(object):
         self._flag_first = False
         return fire
 
-    def serialize(self, serializer):
-        try:
-            self._flag_first = serializer('_flag_first', self._flag_first)
-        except KeyError:
-            warnings.warn(
-                'The flag is not saved.'
-                'OnceTrigger guess it is not first when resumed. '
-                'If this trigger is resumed before first called, '
-                'it may not work correctly.')
-            self._flag_first = False
+    def state_dict(self):
+        state = {'_flag_first': self._flag_first}
+        return state
+
+    def load_state_dict(self, to_load):
+        self._flag_first = to_load['_flag_first']
