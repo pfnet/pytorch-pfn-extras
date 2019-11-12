@@ -64,12 +64,14 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval):
                                             device=device)
 
     # manager.extend(...) also works
+    writer = extensions.snapshot_writers.SimpleWriter()
     my_extensions = [extensions.LogReport(),
                      extensions.ProgressBar(),
                      extensions.ExponentialShift('lr', 0.9999, optimizer, init=0.2, target=0.1),
                      extensions.observe_lr(optimizer=optimizer),
                      extensions.ParameterStatistics(model, prefix='model'),
                      extensions.VariableStatisticsPlot(model),
+                     extensions.snapshot(writer=writer),
                      extensions.IgniteEvaluator(
                          evaluator, val_loader, model,
                          progress_bar=True),
@@ -77,9 +79,15 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval):
                                   'epoch', filename='loss.png'),
                      extensions.PrintReport(['epoch', 'iteration', 'train/loss', 'lr', 'model/fc2.bias/grad/min','val/loss', 'val/acc'])]
     models = {'main': model} 
+    optimizers = {'main': optimizer} 
     print(list(zip(*model.named_parameters()))[0])
-    manager = pte.IgniteExtensionsManager(trainer, models, args.epochs, my_extensions)
+    manager = pte.IgniteExtensionsManager(trainer, models, optimizers, args.epochs, my_extensions)
 
+    # Lets load the snapshot
+    if args.snapshot is not None:
+        state = torch.load(args.snapshot)
+        print(state['state'])
+        manager.load_state_dict(state)
 
     @trainer.on(Events.ITERATION_COMPLETED)
     def report_loss(engine):
@@ -102,6 +110,8 @@ if __name__ == "__main__":
                         help='SGD momentum (default: 0.5)')
     parser.add_argument('--log_interval', type=int, default=10,
                         help='how many batches to wait before logging training status')
+    parser.add_argument('--snapshot', type=str, default=None,
+                        help='path to snapshot file')
 
     args = parser.parse_args()
 

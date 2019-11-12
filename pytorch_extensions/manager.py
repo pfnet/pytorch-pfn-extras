@@ -250,8 +250,8 @@ class ExtensionsManager(object):
         return to_save
 
     def load_state_dict(self, to_load):
-        self._start_epoch = to_load['_start_epoch']
-        self._start_iteration = to_load['_start_iteration']
+        self._start_epoch = to_load['state']['epoch']
+        self._start_iteration = to_load['state']['iteration']
         for name in self._models:
             self._models[name].load_state_dict(to_load['models'][name])
 
@@ -287,13 +287,21 @@ class IgniteExtensionsManager(ExtensionsManager):
 
         @self.engine.on(Events.STARTED)
         def set_training_started(engine):
+            self.engine.state.iteration = self._start_epoch
+            self.engine.state.iteration = self._start_iteration
             self._start_time = time.time()
-            self.start_extensions()
             epoch_size = len(self.engine.state.dataloader)
+            self.status = Status(self.engine.state.epoch,
+                                 self.engine.state.iteration,
+                                 epoch_size)
+            self.start_extensions()
             # Make all the next
             # handlers to be executed after user defined ones
             @self.engine.on(Events.ITERATION_COMPLETED)
             def run_extensions_on_iter(engine):
+                self.status = Status(self.engine.state.epoch,
+                                     self.engine.state.iteration,
+                                     epoch_size)
                 self.run_extensions(
                     self.engine.state.epoch,
                     self.engine.state.iteration,
@@ -303,3 +311,9 @@ class IgniteExtensionsManager(ExtensionsManager):
             @self.engine.on(Events.ITERATION_COMPLETED)
             def close_reporter_on_iter(engine):
                 self.cm.__exit__(None, None, None)
+
+    def state_dict(self):
+        to_save = super().state_dict()
+        to_save['state'] = {'iteration': self.engine.state.iteration,
+                            'epoch': self.engine.state.epoch}
+        return to_save

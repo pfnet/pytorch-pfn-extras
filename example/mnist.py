@@ -136,8 +136,9 @@ def main():
     print(list(zip(*model.named_parameters()))[0])
     manager = pte.ExtensionsManager(models, optimizers, args.epochs, my_extensions)
     # Lets load the snapshot
-    state = torch.load('result/snapshot_iter_1874')
-    manager.load_state_dict(state)
+    if args.snapshot is not None:
+        state = torch.load(args.snapshot)
+        manager.load_state_dict(state)
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
         # Test function is called from the evaluator extension
