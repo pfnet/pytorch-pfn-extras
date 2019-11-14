@@ -289,7 +289,7 @@ class IgniteExtensionsManager(ExtensionsManager):
         def set_training_started(engine):
             self.engine.state.iteration = self._start_epoch
             self.engine.state.iteration = self._start_iteration
-            self._start_time = time.time()
+            self._start_time = _get_time()
             epoch_size = len(self.engine.state.dataloader)
             self.status = Status(self.engine.state.epoch,
                                  self.engine.state.iteration,
