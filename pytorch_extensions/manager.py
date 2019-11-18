@@ -84,9 +84,9 @@ class ExtensionsManager(object):
 
         for name in models:
             model = models[name]
-            self.reporter.add_observer(name+'/', model)
+            self.reporter.add_observer(name, model)
             self.reporter.add_observers(
-                name+'/', model.named_parameters())
+                name, model.named_parameters())
 
         self._models = models
         self._optimizers = optimizers
