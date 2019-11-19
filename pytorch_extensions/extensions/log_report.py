@@ -141,3 +141,8 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log')
 
     def _init_summary(self):
         self._summary = reporter.DictSummary()
+
+    def to_dataframe(self):
+        # Need to install pandas to use this method.
+        import pandas
+        return pandas.DataFrame(self._log)
