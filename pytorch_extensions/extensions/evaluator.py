@@ -133,7 +133,7 @@ class Evaluator(extension.Extension):
         for name, target in six.iteritems(self._targets):
             reporter.add_observer(prefix + name, target)
             reporter.add_observers(prefix + name,
-                                   target.named_parameters())
+                                   target.named_modules())
 
         with reporter:
             with torch.no_grad():
