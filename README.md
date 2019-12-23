@@ -25,23 +25,24 @@ Currently working extensions
 
 # How to use with `Trainer`
 
-[Example](https://github.pfidev.jp/ecastill/pytorch-extensions/blob/master/example/trainer-mnist.py#L87-L111)
+[Example](https://github.pfidev.jp/ecastill/pytorch-extensions/blob/master/example/trainer-mnist.py#L86-L115)
 
 ```python
 model = Net().to(device)
 optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 # Set up a trainer
-optimizer.target = model
 # Updater needs to know the device to move the data to it.
 # already knows
 updater = pte.updaters.StandardUpdater(
-    train_loader, optimizer, device=device)
+    train_loader, model, optimizer, device=device)
 trainer = pte.Trainer(updater, (args.epochs, 'epoch'), extensions=my_extensions)
 trainer.run()
 ```
 One of the differences with Chainer is the need to transfer the model to the device before creating the
 `optimizer`. In PyTorch, the `Optimizer` class needs to have the associated model parameters in the device
 memory at creation time. This prevents the `trainer` and `updater` to move the model to the corresponding device.
+The `Updater` here also needs to have direct access to the models for the snapshots and other features to nicely
+interop. with pytorch.
 
 The default convert function has been changed to do device transferences only, since PyTorch `DataLoader` class
 already returns the data in the desired format.

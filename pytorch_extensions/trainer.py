@@ -161,10 +161,9 @@ class Trainer(object):
             extensions = []
 
         reporter = reporter_module.Reporter()
-        for name, optimizer in six.iteritems(updater.get_all_optimizers()):
-            reporter.add_observer(name, optimizer.target)
-            reporter.add_observers(
-                name, optimizer.target.named_modules())
+        for name, model in six.iteritems(updater.get_all_models()):
+            reporter.add_observer(name, model)
+            reporter.add_observers(name, model.named_modules())
         self.reporter = reporter
 
         self._done = False
@@ -389,21 +388,19 @@ class Trainer(object):
         self._final_elapsed_time = self.elapsed_time
         self._done = True
 
-    def serialize(self, serializer):
-        self.updater.serialize(serializer['updater'])
-        if hasattr(self.stop_trigger, 'serialize'):
-            self.stop_trigger.serialize(serializer['stop_trigger'])
+    def state_dict(self):
+        to_save = {}
+        to_save['updater'] = self.updater.state_dict()
+        to_save['stop_trigger'] = self.stop_trigger.state_dict()
+        to_save['extensions'] = {name: self._extensions[name].state_dict()
+                                 for name in self._extensions}
+        to_save['_snapshot_elapsed_time'] = self.elapsed_time
+        return to_save
 
-        s = serializer['extensions']
-        t = serializer['extension_triggers']
-        for name, entry in six.iteritems(self._extensions):
-            if hasattr(entry.extension, 'serialize'):
-                entry.extension.serialize(s[name])
-            if hasattr(entry.trigger, 'serialize'):
-                entry.trigger.serialize(t[name])
-
-        if isinstance(serializer, serializer_module.Serializer):
-            serializer('_snapshot_elapsed_time', self.elapsed_time)
-        else:
-            self._snapshot_elapsed_time = serializer(
-                '_snapshot_elapsed_time', 0.0)
+    def load_state_dict(self, to_load):
+        self.updater.load_state_dict(to_load['updater'])
+        self.stop_trigger.load_state_dict(to_load['stop_trigger'])
+        self._snapshot_elapsed_timed = 0.0
+        for name in self._extensions:
+            self._extensions[name].load_state_dict(
+                to_load['extensions'][name])

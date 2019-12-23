@@ -85,12 +85,12 @@ class PrintReport(extension.Extension):
         self._templates = templates
         self._all_entries = []
 
-    def get_log_report(self, manager):
+    def get_log_report(self, trainer):
         log_report = self._log_report
         if isinstance(log_report, str):
-            log_report = manager.get_extension(log_report)
+            log_report = trainer.get_extension(log_report)
         elif isinstance(log_report, log_report_module.LogReport):
-            log_report(manager)  # update the log report
+            log_report(trainer)  # update the log report
         else:
             raise TypeError('log report has a wrong type %s' %
                             type(log_report))
@@ -119,8 +119,8 @@ class PrintReport(extension.Extension):
             self._header = header  # printed at the first call
             self._templates = templates
 
-    def __call__(self, manager):
-        log_report = self.get_log_report(manager)
+    def __call__(self, trainer):
+        log_report = self.get_log_report(trainer)
         log = log_report.log
 
         if self._infer_entries:

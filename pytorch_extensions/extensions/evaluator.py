@@ -19,7 +19,7 @@ class Evaluator(extension.Extension):
     It creates a :class:`~Reporter` object to store values observed in
     the evaluation function on each iteration. The report for all iterations
     are aggregated to :class:`~DictSummary`. The collected mean values
-    are further reported to the reporter object of the manager, where the name
+    are further reported to the reporter object of the trainer, where the name
     of each observation is prefixed by the evaluator name. See
     :class:`~Reporter` for details in naming rules of the reports.
 
@@ -108,17 +108,17 @@ class Evaluator(extension.Extension):
         """Returns a dictionary of all target links."""
         return dict(self._targets)
 
-    def __call__(self, manager=None):
+    def __call__(self, trainer=None):
         """Executes the evaluator extension.
 
         Unlike usual extensions, this extension can be executed without passing
-        a manager object. This extension reports the performance on validation
+        a trainer object. This extension reports the performance on validation
         dataset using the :func:`~reporter_module.report` function.
-        Thus, users can use this extension independently from any manager
+        Thus, users can use this extension independently from any trainer
         by manually configuring a :class:`~Reporter` object.
 
         Args:
-            manager (~ExtensionsManager): Trainer object that invokes
+            trainer (~ExtensionsManager): Trainer object that invokes
                 this extension. It can be omitted in case of calling this
                 extension manually.
 

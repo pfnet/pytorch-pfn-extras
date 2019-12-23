@@ -97,7 +97,7 @@ def snapshot_object(target, filename, savefun=None, **kwargs):
 *, condition=None, writer=None, snapshot_on_error=False, \
 num_retain=-1, autoload=False)
 
-    Returns a manager extension to take snapshots of a given object.
+    Returns a trainer extension to take snapshots of a given object.
 
     This extension serializes the given object and saves it to the output
     directory.
@@ -105,7 +105,7 @@ num_retain=-1, autoload=False)
     This extension is called once per epoch by default. To take a
     snapshot at a different interval, a trigger object specifying the
     required interval can be passed along with this extension
-    to the `extend()` method of the manager.
+    to the `extend()` method of the trainer.
 
     The default priority is -100, which is lower than that of most
     built-in extensions.
@@ -113,7 +113,7 @@ num_retain=-1, autoload=False)
     Args:
         target: Object to serialize.
         filename (str): Name of the file into which the object is serialized.
-            It can be a format string, where the manager object is passed to
+            It can be a format string, where the trainer object is passed to
             the :meth:`str.format` method. For example,
             ``'snapshot_{.updater.iteration}'`` is converted to
             ``'snapshot_10000'`` at the 10,000th iteration.
@@ -132,7 +132,7 @@ num_retain=-1, autoload=False)
             :class:`~chainer.training.extensions.snapshot_writers.SimpleWriter`
             object instantiated with specified ``savefun`` argument will be
             used.
-        snapshot_on_error (bool): Whether to take a snapshot in case manager
+        snapshot_on_error (bool): Whether to take a snapshot in case trainer
             loop has been failed.
         num_retain (int): Number of snapshot files to retain
             through the cleanup. Must be a positive integer for any cleanup to
@@ -160,16 +160,16 @@ def snapshot(savefun=None,
 *, target=None, condition=None, writer=None, snapshot_on_error=False, \
 num_retain=-1, autoload=False)
 
-    Returns a manager extension to take snapshots of the manager.
+    Returns a trainer extension to take snapshots of the trainer.
 
-    This extension serializes the manager object and saves it to the output
+    This extension serializes the trainer object and saves it to the output
     directory. It is used to support resuming the training loop from the saved
     state.
 
     This extension is called once per epoch by default. To take a
     snapshot at a different interval, a trigger object specifying the
     required interval can be passed along with this extension
-    to the `extend()` method of the manager.
+    to the `extend()` method of the trainer.
 
     The default priority is -100, which is lower than that of most
     built-in extensions.
@@ -181,15 +181,15 @@ num_retain=-1, autoload=False)
        output directory.
 
     Args:
-        savefun: Function to save the manager. It takes two arguments: the
-            output file path and the manager object.
+        savefun: Function to save the trainer. It takes two arguments: the
+            output file path and the trainer object.
             It is :meth:`chainer.serializers.save_npz` by default.
             If ``writer`` is specified, this argument must be ``None``.
-        filename (str): Name of the file into which the manager is serialized.
-            It can be a format string, where the manager object is passed to
+        filename (str): Name of the file into which the trainer is serialized.
+            It can be a format string, where the trainer object is passed to
             the :meth:`str.format` method.
         target: Object to serialize. If it is not specified, it will
-            be the manager object.
+            be the trainer object.
         condition: Condition object. It must be a callable object that returns
             boolean without any arguments. If it returns ``True``, the snapshot
             will be done.
@@ -203,7 +203,7 @@ num_retain=-1, autoload=False)
             :class:`~chainer.training.extensions.snapshot_writers.SimpleWriter`
             object instantiated with specified ``savefun`` argument will be
             used.
-        snapshot_on_error (bool): Whether to take a snapshot in case manager
+        snapshot_on_error (bool): Whether to take a snapshot in case trainer
             loop has been failed.
         num_retain (int): Number of snapshot files to retain
             through the cleanup. Must be a positive integer for any cleanup to
@@ -229,7 +229,7 @@ num_retain=-1, autoload=False)
        optimizer = optimizers.SGD().setup(Model())
        updater = training.updaters.StandardUpdater(
            train_iter, optimizer, device=0)
-       manager = training.Trainer(updater)
+       trainer = training.Trainer(updater)
 
     .. admonition:: Using asynchronous writers
 
@@ -238,7 +238,7 @@ num_retain=-1, autoload=False)
 
         >>> from chainer.training import extensions
         >>> writer = extensions.snapshot_writers.ProcessWriter()
-        >>> manager.extend(extensions.snapshot(writer=writer), \
+        >>> trainer.extend(extensions.snapshot(writer=writer), \
 trigger=(1, 'epoch'))
 
         To change the format, such as npz or hdf5, you can pass a saving
@@ -248,7 +248,7 @@ trigger=(1, 'epoch'))
         >>> from chainer import serializers
         >>> writer = extensions.snapshot_writers.ProcessWriter(
         ...     savefun=serializers.save_npz)
-        >>> manager.extend(extensions.snapshot(writer=writer), \
+        >>> trainer.extend(extensions.snapshot(writer=writer), \
 trigger=(1, 'epoch'))
 
     This is the list of built-in snapshot writers.
@@ -301,7 +301,7 @@ class _Snapshot(extension.Extension):
     This extension is called once per epoch by default. To take a
     snapshot at a different interval, a trigger object specifying the
     required interval can be passed along with this extension
-    to the `extend()` method of the manager.
+    to the `extend()` method of the trainer.
 
     The default priority is -100, which is lower than that of most
     built-in extensions.
@@ -325,15 +325,15 @@ class _Snapshot(extension.Extension):
         self.num_retain = num_retain
         self.autoload = autoload
 
-    def initialize(self, manager):
-        target = manager if self._target is None else self._target
-        outdir = manager.out
+    def initialize(self, trainer):
+        target = trainer if self._target is None else self._target
+        outdir = trainer.out
         if self.autoload:
             # If ``autoload`` is on, this code scans the ``outdir``
             # for potential snapshot files by matching the file names
             # from ``filename`` format, picks up the latest one in
             # terms of mtime, and tries to load it it the target or
-            # manager.
+            # trainer.
             filename = _find_latest_snapshot(self.filename, outdir)
             if filename is None:
                 print('No snapshot file that matches {} was found'
@@ -365,25 +365,25 @@ class _Snapshot(extension.Extension):
 
             self.writer._add_cleanup_hook(_cleanup)
 
-    def on_error(self, manager, exc, tb):
-        super(_Snapshot, self).on_error(manager, exc, tb)
+    def on_error(self, trainer, exc, tb):
+        super(_Snapshot, self).on_error(trainer, exc, tb)
         if self._snapshot_on_error:
-            self._make_snapshot(manager)
+            self._make_snapshot(trainer)
 
-    def __call__(self, manager):
+    def __call__(self, trainer):
         if self.condition():
-            self._make_snapshot(manager)
+            self._make_snapshot(trainer)
 
-    def _make_snapshot(self, manager):
-        target = manager if self._target is None else self._target
+    def _make_snapshot(self, trainer):
+        target = trainer if self._target is None else self._target
         # We need to get a dictionary with the sate here
         serialized_target = target.state_dict()
         filename = self.filename
         if callable(filename):
-            filename = filename(manager)
+            filename = filename(trainer)
         else:
-            filename = filename.format(manager)
-        outdir = manager.out
+            filename = filename.format(trainer)
+        outdir = trainer.out
         self.writer(filename, outdir, serialized_target)
 
     def finalize(self):

@@ -105,7 +105,7 @@ class ParameterStatistics(extension.Extension):
         self._summary = reporter.DictSummary()
         self._skip_nan_params = skip_nan_params
 
-    def __call__(self, manager):
+    def __call__(self, trainer):
         """Execute the statistics extension.
 
         Collect statistics for the current state of parameters.
@@ -152,7 +152,7 @@ class ParameterStatistics(extension.Extension):
 
         self._summary.add(statistics)
 
-        if self._trigger(manager):
+        if self._trigger(trainer):
             reporter.report(self._summary.compute_mean())
             self._summary = reporter.DictSummary()  # Clear summary
 

@@ -52,7 +52,7 @@ class ExponentialShift(extension.Extension):
         else:
             self._update_value(optimizer, self._init)
 
-    def __call__(self, manager):
+    def __call__(self, trainer):
         self._t += 1
 
         optimizer = self._optimizer

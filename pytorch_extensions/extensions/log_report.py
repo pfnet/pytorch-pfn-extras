@@ -73,11 +73,11 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log')
 
         self._init_summary()
 
-    def __call__(self, manager):
+    def __call__(self, trainer):
         # accumulate the observations
         keys = self._keys
-        observation = manager.observation
-        updater = manager.updater
+        observation = trainer.observation
+        updater = trainer.updater
         summary = self._summary
 
         if keys is None:
@@ -85,7 +85,7 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log')
         else:
             summary.add({k: observation[k] for k in keys if k in observation})
 
-        if manager.is_before_training or self._trigger(manager):
+        if trainer.is_before_training or self._trigger(trainer):
             # output the result
             stats = self._summary.compute_mean()
             stats_cpu = {}
@@ -94,7 +94,7 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log')
 
             stats_cpu['epoch'] = updater.epoch
             stats_cpu['iteration'] = updater.iteration
-            stats_cpu['elapsed_time'] = manager.elapsed_time
+            stats_cpu['elapsed_time'] = trainer.elapsed_time
 
             if self._postprocess is not None:
                 self._postprocess(stats_cpu)
@@ -104,13 +104,13 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log')
             # write to the log file
             if self._log_name is not None:
                 log_name = self._log_name.format(**stats_cpu)
-                out = manager.out
+                out = trainer.out
                 with file_utils.tempdir(prefix=log_name, dir=out) as tempd:
                     path = os.path.join(tempd, 'log.json')
                     with open(path, 'w') as f:
                         json.dump(self._log, f, indent=4)
 
-                    new_path = os.path.join(manager.out, log_name)
+                    new_path = os.path.join(trainer.out, log_name)
                     shutil.move(path, new_path)
 
             # reset the summary for the next output

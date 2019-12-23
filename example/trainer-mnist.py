@@ -9,9 +9,6 @@ from torchvision import datasets, transforms
 import pytorch_extensions as pte
 import pytorch_extensions.extensions as extensions
 
-# Extensions manager object
-manager = None
-
 
 class Net(nn.Module):
     def __init__(self):
@@ -61,6 +58,8 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
+    parser.add_argument('--snapshot', type=str, default=None,
+                        help='path to snapshot file')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -87,19 +86,19 @@ def main():
     model = Net().to(device)
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
-    # Set up a trainer
-    optimizer.target = model
     # Updater needs to know the device to move the data to it.
     updater = pte.updaters.StandardUpdater(
-        train_loader, optimizer, device=device)
+        train_loader, model, optimizer, device=device)
 
-    # manager.extend(...) also works
+    writer = extensions.snapshot_writers.SimpleWriter()
+    # trainer.extend(...) also works
     my_extensions = [extensions.LogReport(),
                      extensions.ProgressBar(),
                      extensions.ExponentialShift('lr', 0.9999, optimizer, init=0.2, target=0.1),
                      extensions.observe_lr(optimizer=optimizer),
                      extensions.ParameterStatistics(model, prefix='model'),
                      extensions.VariableStatisticsPlot(model),
+                     extensions.snapshot(writer=writer),
                      extensions.Evaluator(test_loader, model, progress_bar=True, device=device),
                      extensions.PlotReport(
                          ['main/loss', 'validation/main/loss'], 'epoch', filename='loss.png'),
@@ -107,6 +106,12 @@ def main():
                                              'main/loss', 'lr', 'model/fc2.bias/grad/min',
                                              'validation/main/loss', 'validation/main/acc'])]
     trainer = pte.Trainer(updater, (args.epochs, 'epoch'), extensions=my_extensions)
+
+    # Lets load the snapshot
+    if args.snapshot is not None:
+        state = torch.load(args.snapshot)
+        trainer.load_state_dict(state)
+
     trainer.run()
 
     if (args.save_model):

@@ -80,7 +80,6 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval):
                      extensions.PrintReport(['epoch', 'iteration', 'train/loss', 'lr', 'model/fc2.bias/grad/min','val/loss', 'val/acc'])]
     models = {'main': model} 
     optimizers = {'main': optimizer} 
-    print(list(zip(*model.named_parameters()))[0])
     manager = pte.IgniteExtensionsManager(trainer, models, optimizers, args.epochs, my_extensions)
 
     # Lets load the snapshot

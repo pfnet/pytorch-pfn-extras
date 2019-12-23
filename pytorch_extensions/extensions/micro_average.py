@@ -71,8 +71,8 @@ class MicroAverage(extension.Extension):
         self._numerator = 0
         self._denominator = 0
 
-    def __call__(self, manager):
-        observation = manager.observation
+    def __call__(self, trainer):
+        observation = trainer.observation
         if not (self._numerator_key in observation and
                 self._denominator_key in observation):
             return
@@ -80,7 +80,7 @@ class MicroAverage(extension.Extension):
         self._numerator += observation[self._numerator_key]
         self._denominator += observation[self._denominator_key]
 
-        if self._trigger(manager):
+        if self._trigger(trainer):
             result = float(self._numerator) / self._denominator
             self._numerator = 0
             self._denominator = 0

@@ -36,7 +36,7 @@ class ManualScheduleTrigger(object):
         self._previous_iteration = 0
         self._previous_epoch_detail = 0.
 
-    def __call__(self, manager):
+    def __call__(self, trainer):
         """Decides whether the extension should be called on this iteration.
 
         Args:
@@ -49,7 +49,7 @@ class ManualScheduleTrigger(object):
             iteration.
 
         """
-        updater = manager.updater
+        updater = trainer.updater
         if self.unit == 'epoch':
             epoch_detail = updater.epoch_detail
             previous_epoch_detail = self._previous_epoch_detail

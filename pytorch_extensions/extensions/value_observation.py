@@ -18,8 +18,8 @@ def observe_value(observation_key, target_func):
     """
     @extension.make_extension(
         trigger=(1, 'epoch'), priority=extension.PRIORITY_WRITER)
-    def _observe_value(manager):
-        manager.observation[observation_key] = target_func(manager)
+    def _observe_value(trainer):
+        trainer.observation[observation_key] = target_func(trainer)
     return _observe_value
 
 
@@ -42,4 +42,4 @@ def observe_lr(optimizer, param_group=0, observation_key='lr'):
     """
     return observe_value(
         observation_key,
-        lambda manager: optimizer.param_groups[param_group]['lr'])
+        lambda trainer: optimizer.param_groups[param_group]['lr'])

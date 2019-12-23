@@ -249,7 +249,7 @@ grid=True)
         _check_available()
         return _available
 
-    def __call__(self, manager):
+    def __call__(self, trainer):
         if self.available():
             # Dynamically import pyplot to call matplotlib.use()
             # after importing chainer.training.extensions
@@ -276,10 +276,10 @@ grid=True)
                     stat_list.append(numpy.atleast_1d(stat_dict['percentile']))
                 stats[i] = numpy.concatenate(stat_list, axis=0)
 
-        self._samples.add(stats, idx=manager.updater.iteration)
+        self._samples.add(stats, idx=trainer.updater.iteration)
 
-        if self._trigger(manager):
-            file_path = os.path.join(manager.out, self._filename)
+        if self._trigger(trainer):
+            file_path = os.path.join(trainer.out, self._filename)
             self.save_plot_using_module(file_path, plt)
 
     def save_plot_using_module(self, file_path, plt):

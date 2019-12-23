@@ -5,10 +5,6 @@ from pytorch_extensions import _updater
 import pytorch_extensions.convert as convert
 
 
-def call_convert():
-    pass
-
-
 class StandardUpdater(_updater.Updater):
 
     """StandardUpdater(\
@@ -75,7 +71,8 @@ loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
 
     """
 
-    def __init__(self, iterator, optimizer, converter=convert.transfer_data,
+    def __init__(self, iterator, models, optimizers,
+                 converter=convert.transfer_data,
                  device=None, loss_func=None, loss_scale=None,
                  auto_new_epoch=True, **kwargs):
 
@@ -98,15 +95,13 @@ loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
 
         self._iterators = iterator
 
-        if not isinstance(optimizer, dict):
-            optimizer = {'main': optimizer}
-        self._optimizers = optimizer
+        if not isinstance(optimizers, dict):
+            optimizers = {'main': optimizers}
+        self._optimizers = optimizers
 
-        # Transfer the model
-        # if device is not None:
-        #     for optimizer in six.itervalues(self._optimizers):
-        #         optimizer.target.to(device)
-
+        if not isinstance(models, dict):
+            models = {'main': models}
+        self._models = models
         self.converter = converter
         self.loss_func = loss_func
         self.iteration = 0
@@ -172,6 +167,15 @@ loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
         """
         return dict(self._optimizers)
 
+    def get_all_models(self):
+        """Gets a dictionary of all models for this updater.
+
+        Returns:
+            dict: Dictionary that maps names to models.
+
+        """
+        return dict(self._models)
+
     def get_iterator(self, name):
         """Gets the dataset iterator of given name.
 
@@ -209,7 +213,7 @@ loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
         in_arrays = convert._call_converter(
             self.converter, batch, self.input_device)
         optimizer = self._optimizers['main']
-        loss_func = self.loss_func or optimizer.target
+        loss_func = self.loss_func or self._models['main']
         optimizer.zero_grad()
         # Loss should be reported in the model itself
         loss = loss_func(*in_arrays)
@@ -227,3 +231,21 @@ loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
             optimizer.target.serialize(serializer['model:' + name])
 
         self.iteration = serializer('iteration', self.iteration)
+
+    def state_dict(self):
+        to_save = {}
+        # Save manager status ?
+        to_save['models'] = {name: self._models[name].state_dict()
+                             for name in self._models}
+        to_save['optimizers'] = {name: self._optimizers[name].state_dict()
+                                 for name in self._optimizers}
+        to_save['iteration'] = self.iteration
+        return to_save
+
+    def load_state_dict(self, to_load):
+        self.iteration = to_load['iteration']
+        for name in self._models:
+            self._models[name].load_state_dict(to_load['models'][name])
+
+        for name in self._optimizers:
+            self._optimizers[name].load_state_dict(to_load['optimizers'][name])

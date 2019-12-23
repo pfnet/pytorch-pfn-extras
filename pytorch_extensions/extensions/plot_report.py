@@ -130,7 +130,7 @@ filename='plot.png', marker='x', grid=True)
         _check_available()
         return _available
 
-    def __call__(self, manager):
+    def __call__(self, trainer):
         if self.available():
             # Dynamically import pyplot to call matplotlib.use()
             # after importing chainer.training.extensions
@@ -139,7 +139,7 @@ filename='plot.png', marker='x', grid=True)
             return
 
         keys = self._y_keys
-        observation = manager.observation
+        observation = trainer.observation
         summary = self._summary
 
         if keys is None:
@@ -147,13 +147,13 @@ filename='plot.png', marker='x', grid=True)
         else:
             summary.add({k: observation[k] for k in keys if k in observation})
 
-        if manager.is_before_training or self._trigger(manager):
+        if trainer.is_before_training or self._trigger(trainer):
             stats = self._summary.compute_mean()
             stats_cpu = {}
             for name, value in six.iteritems(stats):
                 stats_cpu[name] = float(value)  # copy to CPU
 
-            updater = manager.updater
+            updater = trainer.updater
             stats_cpu['epoch'] = updater.epoch
             stats_cpu['iteration'] = updater.iteration
             x = stats_cpu[self._x_key]
@@ -182,7 +182,7 @@ filename='plot.png', marker='x', grid=True)
                     self._postprocess(f, a, summary)
                 leg = a.legend(
                     bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-                f.savefig(path.join(manager.out, self._file_name),
+                f.savefig(path.join(trainer.out, self._file_name),
                           bbox_extra_artists=(leg,), bbox_inches='tight')
 
             plt.close()
