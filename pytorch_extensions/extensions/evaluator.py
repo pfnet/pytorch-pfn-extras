@@ -3,6 +3,7 @@ import datetime
 import six
 
 import torch
+import pytorch_extensions.convert as convert
 from pytorch_extensions import reporter as reporter_module
 from pytorch_extensions import extension
 from pytorch_extensions.extensions import util
@@ -74,7 +75,8 @@ class Evaluator(extension.Extension):
 
     name = None
 
-    def __init__(self, iterator, target, eval_func=None, **kwargs):
+    def __init__(self, iterator, target, converter=convert.transfer_data,
+                 device=None, eval_hook=None, eval_func=None, **kwargs):
         progress_bar = kwargs.get('progress_bar', False)
 
         if isinstance(iterator, torch.utils.data.DataLoader):
@@ -82,11 +84,12 @@ class Evaluator(extension.Extension):
         self._iterators = iterator
 
         if isinstance(target, torch.nn.Module):
-            target = {'main': target}
-        self._targets = target
+            self._targets = {'main': target}
 
+        self.converter = converter
+        self.device = device
+        self.eval_hook = eval_hook
         self.eval_func = eval_func
-
         self._progress_bar = progress_bar
 
     def get_iterator(self, name):
@@ -159,19 +162,22 @@ class Evaluator(extension.Extension):
         iterator = self._iterators['main']
         eval_func = self.eval_func or self._targets['main']
 
+        if self.eval_hook:
+            self.eval_hook(self)
+
         summary = reporter_module.DictSummary()
 
-        status = IterationStatus(len(iterator))
+        updater = IterationStatus(len(iterator))
         if self._progress_bar:
-            pbar = _IteratorProgressBar(iterator=status)
+            pbar = _IteratorProgressBar(iterator=updater)
 
         for idx, batch in enumerate(iterator):
-            status.current_position = idx
-            data, target = batch
+            updater.current_position = idx
+            in_arrays = convert._call_converter(
+                    self.converter, batch, self.device)
             observation = {}
             with reporter_module.report_scope(observation):
-                eval_func(data, target)
-
+                eval_func(*in_arrays)
             summary.add(observation)
 
             if self._progress_bar:
@@ -189,8 +195,9 @@ class Evaluator(extension.Extension):
         It is called at the end of training loops.
 
         """
-        for iterator in six.itervalues(self._iterators):
-            iterator.finalize()
+        # for iterator in six.itervalues(self._iterators):
+        #     iterator.finalize()
+        pass
 
 
 class IterationStatus(object):
@@ -261,7 +268,7 @@ class IgniteEvaluator(Evaluator):
         if self._progress_bar:
             @self.evaluator.on(Events.ITERATION_STARTED)
             def update_progress_bar(engine):
-                self.status.current_position = engine.state.iteration
+                self.updater.current_position = engine.state.iteration
                 self.pbar.update()
 
         @self.evaluator.on(Events.EPOCH_COMPLETED)
@@ -276,9 +283,9 @@ class IgniteEvaluator(Evaluator):
     def evaluate(self):
         iterator = self._iterators['main']
         self.summary = reporter_module.DictSummary()
-        self.status = IterationStatus(len(iterator))
+        self.updater = IterationStatus(len(iterator))
         if self._progress_bar:
-            self.pbar = _IteratorProgressBar(iterator=self.status)
+            self.pbar = _IteratorProgressBar(iterator=self.updater)
         self.evaluator.run(iterator)
         if self._progress_bar:
             self.pbar.close()

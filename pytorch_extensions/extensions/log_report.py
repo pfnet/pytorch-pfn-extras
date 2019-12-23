@@ -77,7 +77,7 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log')
         # accumulate the observations
         keys = self._keys
         observation = manager.observation
-        status = manager.status
+        updater = manager.updater
         summary = self._summary
 
         if keys is None:
@@ -85,15 +85,15 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log')
         else:
             summary.add({k: observation[k] for k in keys if k in observation})
 
-        if status.is_before_training or self._trigger(manager):
+        if manager.is_before_training or self._trigger(manager):
             # output the result
             stats = self._summary.compute_mean()
             stats_cpu = {}
             for name, value in six.iteritems(stats):
                 stats_cpu[name] = float(value)  # copy to CPU
 
-            stats_cpu['epoch'] = status.epoch
-            stats_cpu['iteration'] = status.iteration
+            stats_cpu['epoch'] = updater.epoch
+            stats_cpu['iteration'] = updater.iteration
             stats_cpu['elapsed_time'] = manager.elapsed_time
 
             if self._postprocess is not None:

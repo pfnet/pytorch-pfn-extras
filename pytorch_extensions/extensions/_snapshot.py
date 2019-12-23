@@ -155,8 +155,8 @@ num_retain=-1, autoload=False)
 
 
 def snapshot(savefun=None,
-             filename='snapshot_iter_{.status.iteration}', **kwargs):
-    """snapshot(savefun=None, filename='snapshot_iter_{.status.iteration}', \
+             filename='snapshot_iter_{.updater.iteration}', **kwargs):
+    """snapshot(savefun=None, filename='snapshot_iter_{.updater.iteration}', \
 *, target=None, condition=None, writer=None, snapshot_on_error=False, \
 num_retain=-1, autoload=False)
 
@@ -311,7 +311,7 @@ class _Snapshot(extension.Extension):
 
     def __init__(
             self, target=None, condition=None, writer=None,
-            filename='snapshot_iter_{.status.iteration}',
+            filename='snapshot_iter_{.updater.iteration}',
             snapshot_on_error=False, num_retain=-1, autoload=False):
         if condition is None:
             condition = _always_true

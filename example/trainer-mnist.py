@@ -16,54 +16,30 @@ manager = None
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 20, 5, 1)
-        self.conv2 = nn.Conv2d(20, 50, 5, 1)
-        self.fc1 = nn.Linear(4*4*50, 500)
-        self.fc2 = nn.Linear(500, 10)
+        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+        self.conv2_drop = nn.Dropout2d(p=0.1)
+        self.fc1 = nn.Linear(320, 50)
+        self.fc2 = nn.Linear(50, 10)
 
-    def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.max_pool2d(x, 2, 2)
-        x = F.relu(self.conv2(x))
-        x = F.max_pool2d(x, 2, 2)
-        x = x.view(-1, 4*4*50)
+    def forward(self, x, t):
+        x = F.relu(F.max_pool2d(self.conv1(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = x.view(-1, 320)
         x = F.relu(self.fc1(x))
+        x = F.dropout(x, training=self.training, p=0.1)
         x = self.fc2(x)
-        return F.log_softmax(x, dim=1)
+        # pred_y = F.log_softmax(x, dim=-1)
+        loss = F.cross_entropy(x, t)
+        # if self.training:
+        pte.reporter.report({
+            'loss': loss.item(), 'acc': calc_accuracy(x, t)
+        }, self)
+        return loss
 
-
-def train(args, model, device, train_loader, optimizer, epoch):
-    model.train()
-    epoch_size = len(train_loader)
-    for batch_idx, (data, target) in enumerate(train_loader):
-        current_it = (epoch-1)*epoch_size+batch_idx
-        with manager.run_iteration(
-                epoch=epoch, iteration=current_it, epoch_size=epoch_size):
-            data, target = data.to(device), target.to(device)
-            optimizer.zero_grad()
-            output = model(data)
-            loss = F.nll_loss(output, target)
-            pte.reporter.report({'train/loss': loss.item()})
-            loss.backward()
-            optimizer.step()
-
-
-def test(args, model, device, data, target):
-    """ The extension loops over the iterator in order to
-        drive the evaluator progress bar and reporting
-        averages
-    """
-    model.eval()
-    test_loss = 0
-    correct = 0
-    data, target = data.cuda(), target.cuda()
-    output = model(data)
-    # Final result will be average of averages of the same size
-    test_loss += F.nll_loss(output, target, reduction='mean').item()
-    pte.reporter.report({'val/loss': test_loss})
-    pred = output.argmax(dim=1, keepdim=True)
-    correct += pred.eq(target.view_as(pred)).sum().item()
-    pte.reporter.report({'val/acc': correct/len(data)})
+def calc_accuracy(y, t):
+    acc = float((torch.argmax(y, dim=1) == t).sum()) / t.nelement()
+    return acc
 
 
 def main():
@@ -85,14 +61,13 @@ def main():
                         help='random seed (default: 1)')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
-    parser.add_argument('--snapshot', type=str, default=None,
-                        help='path to snapshot file')
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
     torch.manual_seed(args.seed)
 
-    device = torch.device("cuda" if use_cuda else "cpu")
+    # device = torch.device("cuda" if use_cuda else "cpu")
+    device = torch.device("cuda")
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     train_loader = torch.utils.data.DataLoader(
@@ -112,37 +87,27 @@ def main():
     model = Net().to(device)
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
-    global manager
+    # Set up a trainer
+    optimizer.target = model
+    # Updater needs to know the device to move the data to it.
+    updater = pte.updaters.StandardUpdater(
+        train_loader, optimizer, device=device)
+
     # manager.extend(...) also works
-    writer = extensions.snapshot_writers.SimpleWriter()
     my_extensions = [extensions.LogReport(),
                      extensions.ProgressBar(),
                      extensions.ExponentialShift('lr', 0.9999, optimizer, init=0.2, target=0.1),
                      extensions.observe_lr(optimizer=optimizer),
                      extensions.ParameterStatistics(model, prefix='model'),
                      extensions.VariableStatisticsPlot(model),
-                     extensions.Evaluator(
-                         test_loader, model,
-                         eval_func=lambda data, target: test(args, model, device, data, target),
-                         progress_bar=True),
+                     extensions.Evaluator(test_loader, model, progress_bar=True, device=device),
                      extensions.PlotReport(
-                         ['train/loss', 'val/loss'], 'epoch', filename='loss.png'),
+                         ['main/loss', 'validation/main/loss'], 'epoch', filename='loss.png'),
                      extensions.PrintReport(['epoch', 'iteration',
-                                             'train/loss', 'lr', 'model/fc2.bias/grad/min',
-                                             'val/loss', 'val/acc']),
-                     extensions.snapshot(writer=writer)]
-    models = {'main': model}
-    optimizers = {'main': optimizer}
-    manager = pte.ExtensionsManager(models, optimizers, args.epochs, my_extensions)
-    # Lets load the snapshot
-    if args.snapshot is not None:
-        state = torch.load(args.snapshot)
-        manager.load_state_dict(state)
-    for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_loader, optimizer, epoch)
-        # Test function is called from the evaluator extension
-        # to get access to the reporter and other facilities
-        # test(args, model, device, test_loader)
+                                             'main/loss', 'lr', 'model/fc2.bias/grad/min',
+                                             'validation/main/loss', 'validation/main/acc'])]
+    trainer = pte.Trainer(updater, (args.epochs, 'epoch'), extensions=my_extensions)
+    trainer.run()
 
     if (args.save_model):
         torch.save(model.state_dict(), "mnist_cnn.pt")

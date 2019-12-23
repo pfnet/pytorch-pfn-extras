@@ -276,7 +276,7 @@ grid=True)
                     stat_list.append(numpy.atleast_1d(stat_dict['percentile']))
                 stats[i] = numpy.concatenate(stat_list, axis=0)
 
-        self._samples.add(stats, idx=manager.status.iteration)
+        self._samples.add(stats, idx=manager.updater.iteration)
 
         if self._trigger(manager):
             file_path = os.path.join(manager.out, self._filename)

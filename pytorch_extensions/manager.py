@@ -6,6 +6,7 @@ import time
 from pytorch_extensions import extension as extension_module
 from pytorch_extensions import trigger as trigger_module
 from pytorch_extensions.reporter import Reporter
+from pytorch_extensions.trainer import _ExtensionEntry
 
 
 # Select the best-resolution timer function
@@ -18,7 +19,7 @@ except AttributeError:
         _get_time = time.time
 
 
-class Status(object):
+class FoolUpdater(object):
     def __init__(self, epoch, iteration, epoch_size):
         self._epoch = epoch
         self._iteration = iteration
@@ -35,33 +36,6 @@ class Status(object):
     @property
     def epoch_detail(self):
         return self._iteration/self._epoch_size
-
-    @property
-    def is_before_training(self):
-        return self._iteration == 0
-
-
-class _ExtensionEntry(object):
-
-    def __init__(self, extension, priority, trigger, call_before_training):
-        self.extension = extension
-        self.trigger = trigger
-        self.priority = priority
-        self.call_before_training = call_before_training
-
-    def state_dict(self):
-        state = {}
-        if hasattr(self.extension, 'state_dict'):
-            state['extension'] = self.extension.state_dict()
-        if hasattr(self.trigger, 'state_dict'):
-            state['trigger'] = self.trigger.state_dict()
-        return state
-
-    def load_state_dict(self, to_load):
-        if 'extension' in to_load:
-            self.extension.load_state_dict(to_load['extension'])
-        if 'trigger' in to_load:
-            self.trigger.load_state_dict(to_load['trigger'])
 
 
 class ExtensionsManager(object):
@@ -102,6 +76,10 @@ class ExtensionsManager(object):
     @property
     def elapsed_time(self):
         return _get_time()-self._start_time
+
+    @property
+    def is_before_training(self):
+        return self.updater.iteration == 0
 
     def start_extensions(self):
         exts = self._extensions
@@ -221,7 +199,8 @@ class ExtensionsManager(object):
         epoch = kwargs.pop('epoch') + self._start_epoch
         iteration = kwargs.pop('iteration') + self._start_iteration
         epoch_size = kwargs.pop('epoch_size')
-        self.status = Status(epoch, iteration, epoch_size)
+        # To fool the extensions to believe there is an updater
+        self.updater = FoolUpdater(epoch, iteration, epoch_size)
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
@@ -234,9 +213,9 @@ class ExtensionsManager(object):
 
     def state_dict(self):
         to_save = {}
-        if self.status is not None:
-            to_save['_start_epoch'] = self.status.epoch
-            to_save['_start_iteration'] = self.status.iteration
+        if self.updater is not None:
+            to_save['_start_epoch'] = self.updater.epoch
+            to_save['_start_iteration'] = self.updater.iteration
         else:
             to_save['_start_epoch'] = 0
             to_save['_start_iteration'] = 0
@@ -291,17 +270,17 @@ class IgniteExtensionsManager(ExtensionsManager):
             self.engine.state.iteration = self._start_iteration
             self._start_time = _get_time()
             epoch_size = len(self.engine.state.dataloader)
-            self.status = Status(self.engine.state.epoch,
-                                 self.engine.state.iteration,
-                                 epoch_size)
+            self.updater = FoolUpdater(self.engine.state.epoch,
+                                       self.engine.state.iteration,
+                                       epoch_size)
             self.start_extensions()
             # Make all the next
             # handlers to be executed after user defined ones
             @self.engine.on(Events.ITERATION_COMPLETED)
             def run_extensions_on_iter(engine):
-                self.status = Status(self.engine.state.epoch,
-                                     self.engine.state.iteration,
-                                     epoch_size)
+                self.updater = FoolUpdater(self.engine.state.epoch,
+                                           self.engine.state.iteration,
+                                           epoch_size)
                 self.run_extensions(
                     self.engine.state.epoch,
                     self.engine.state.iteration,

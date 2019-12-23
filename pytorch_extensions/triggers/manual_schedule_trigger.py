@@ -49,15 +49,15 @@ class ManualScheduleTrigger(object):
             iteration.
 
         """
-        status = manager.status
+        updater = manager.updater
         if self.unit == 'epoch':
-            epoch_detail = status.epoch_detail
+            epoch_detail = updater.epoch_detail
             previous_epoch_detail = self._previous_epoch_detail
 
             # if previous_epoch_detail is invalid value,
             # use the value of updater.
             if previous_epoch_detail < 0:
-                previous_epoch_detail = status.previous_epoch_detail
+                previous_epoch_detail = updater.previous_epoch_detail
 
             fire = any(
                 previous_epoch_detail < p <= epoch_detail
@@ -70,7 +70,7 @@ class ManualScheduleTrigger(object):
             if fire and epoch_detail >= max(self.points):
                 self.finished = True
         else:
-            iteration = status.iteration
+            iteration = updater.iteration
             previous_iteration = self._previous_iteration
 
             # if previous_iteration is invalid value,
@@ -90,9 +90,9 @@ class ManualScheduleTrigger(object):
                 self.finished = True
 
         # save current values
-        self._previous_iteration = status.iteration
-        if hasattr(status, 'epoch_detail'):
-            self._previous_epoch_detail = status.epoch_detail
+        self._previous_iteration = updater.iteration
+        if hasattr(updater, 'epoch_detail'):
+            self._previous_epoch_detail = updater.epoch_detail
 
         return fire
 

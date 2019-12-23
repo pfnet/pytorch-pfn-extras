@@ -8,7 +8,7 @@ from pytorch_extensions.extensions import util
 
 class ProgressBar(extension.Extension):
 
-    """Trainer extension to print a progress bar and recent training status.
+    """Trainer extension to print a progress bar and recent training updater.
 
     This extension prints a progress bar at every call. It watches the current
     iteration and epoch to print the bar.
@@ -29,7 +29,7 @@ class ProgressBar(extension.Extension):
     def __init__(self, training_length=None, update_interval=100,
                  bar_length=50, out=sys.stdout):
         self._training_length = training_length
-        self._status_template = None
+        self._updater_template = None
         self._update_interval = update_interval
         self._bar_length = bar_length
         self._out = out
@@ -39,7 +39,7 @@ class ProgressBar(extension.Extension):
     def __call__(self, manager):
         self._pbar.manager = manager
 
-        iteration = manager.status.iteration
+        iteration = manager.updater.iteration
         # print the progress bar
         if iteration % self._update_interval == 0:
             self._pbar.update()
@@ -52,13 +52,13 @@ class _TrainerProgressBar(util.ProgressBar):
 
     manager = None
     training_length = None
-    status_template = None
+    updater_template = None
 
     def get_lines(self):
         lines = []
 
-        iteration = self.manager.status.iteration
-        epoch = self.manager.status.epoch_detail
+        iteration = self.manager.updater.iteration
+        epoch = self.manager.updater.epoch_detail
 
         if self.training_length is None:
             t = self.manager.stop_trigger
@@ -81,12 +81,12 @@ class _TrainerProgressBar(util.ProgressBar):
         lines.append('this epoch [{}{}] {:6.2%}\n'.format(
             marks, '.' * (bar_length - len(marks)), epoch_rate))
 
-        if self.status_template is None:
-            self.status_template = (
+        if self.updater_template is None:
+            self.updater_template = (
                 '{0.iteration:10} iter, {0.epoch} epoch / %s %ss\n' %
                 self.training_length)
-        status = self.status_template.format(self.manager.status)
-        lines.append(status)
+        updater = self.updater_template.format(self.manager.updater)
+        lines.append(updater)
 
         speed_t, speed_e = self.update_speed(iteration, epoch)
         if unit == 'iteration':

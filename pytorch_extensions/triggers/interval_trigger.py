@@ -49,15 +49,15 @@ class IntervalTrigger(object):
             iteration.
 
         """
-        status = manager.status
+        updater = manager.updater
         if self.unit == 'epoch':
-            epoch_detail = status.epoch_detail
+            epoch_detail = updater.epoch_detail
             previous_epoch_detail = self._previous_epoch_detail
 
             # if previous_epoch_detail is invalid value,
             # use the value of updater.
             if previous_epoch_detail < 0:
-                previous_epoch_detail = status.previous_epoch_detail
+                previous_epoch_detail = updater.previous_epoch_detail
 
             # count is kept for backward compatibility
             self.count = epoch_detail // self.period
@@ -65,7 +65,7 @@ class IntervalTrigger(object):
             fire = previous_epoch_detail // self.period != \
                 epoch_detail // self.period
         else:
-            iteration = status.iteration
+            iteration = updater.iteration
             previous_iteration = self._previous_iteration
 
             # if previous_iteration is invalid value,
@@ -77,9 +77,9 @@ class IntervalTrigger(object):
                 iteration // self.period
 
         # save current values
-        self._previous_iteration = status.iteration
-        if hasattr(status, 'epoch_detail'):
-            self._previous_epoch_detail = status.epoch_detail
+        self._previous_iteration = updater.iteration
+        if hasattr(updater, 'epoch_detail'):
+            self._previous_epoch_detail = updater.epoch_detail
 
         return fire
 

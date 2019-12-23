@@ -147,15 +147,15 @@ filename='plot.png', marker='x', grid=True)
         else:
             summary.add({k: observation[k] for k in keys if k in observation})
 
-        if manager.status.is_before_training or self._trigger(manager):
+        if manager.is_before_training or self._trigger(manager):
             stats = self._summary.compute_mean()
             stats_cpu = {}
             for name, value in six.iteritems(stats):
                 stats_cpu[name] = float(value)  # copy to CPU
 
-            status = manager.status
-            stats_cpu['epoch'] = status.epoch
-            stats_cpu['iteration'] = status.iteration
+            updater = manager.updater
+            stats_cpu['epoch'] = updater.epoch
+            stats_cpu['iteration'] = updater.iteration
             x = stats_cpu[self._x_key]
             data = self._data
 

@@ -6,7 +6,7 @@ No chainer or chainer-pytorch-interop required.
 
 # What is supported
 
-Chainer extensions engine with reporter and triggers is fully supported
+Chainer training engine with extensions reporter and triggers is fully supported
 
 Currently working extensions
 
@@ -23,7 +23,32 @@ Currently working extensions
 + snapshot
 + VariableStatisticsPlot
 
-# How to use
+# How to use with `Trainer`
+
+[Example](https://github.pfidev.jp/ecastill/pytorch-extensions/blob/master/example/trainer-mnist.py#L87-L111)
+
+```python
+model = Net().to(device)
+optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+# Set up a trainer
+optimizer.target = model
+# Updater needs to know the device to move the data to it.
+# already knows
+updater = pte.updaters.StandardUpdater(
+    train_loader, optimizer, device=device)
+trainer = pte.Trainer(updater, (args.epochs, 'epoch'), extensions=my_extensions)
+trainer.run()
+```
+One of the differences with Chainer is the need to transfer the model to the device before creating the
+`optimizer`. In PyTorch, the `Optimizer` class needs to have the associated model parameters in the device
+memory at creation time. This prevents the `trainer` and `updater` to move the model to the corresponding device.
+
+The default convert function has been changed to do device transferences only, since PyTorch `DataLoader` class
+already returns the data in the desired format.
+
+Support for snapshots is on-going.
+
+# How to use without `Trainer`
 
 Since there is no trainer object in regular Pytorch, you have to create a
 `ExtensionsManager` object and then wrap the iteration of your training loop inside the
