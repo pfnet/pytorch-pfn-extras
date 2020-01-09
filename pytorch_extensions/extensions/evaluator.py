@@ -170,7 +170,7 @@ class Evaluator(extension.Extension):
         updater = IterationStatus(len(iterator))
         if self._progress_bar:
             pbar = _IteratorProgressBar(iterator=updater)
-
+        self._targets['main'].eval()
         for idx, batch in enumerate(iterator):
             updater.current_position = idx
             in_arrays = convert._call_converter(

@@ -208,6 +208,7 @@ loss_func=None, loss_scale=None, auto_new_epoch=True, *, input_device=None)
         except StopIteration:
             self.iterator = iter(self._iterators['main'])
             batch = self.iterator.next()
+        self._models['main'].train()
         # This is the function moving the actual data
         # Create a local one for this
         in_arrays = convert._call_converter(
