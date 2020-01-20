@@ -1,10 +1,10 @@
 import json
 import os
 import shutil
+import tempfile
 
 import six
 
-from pytorch_extensions import file_utils
 from pytorch_extensions import reporter
 from pytorch_extensions.training import extension
 from pytorch_extensions.training import trigger as trigger_module
@@ -105,7 +105,8 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log')
             if self._log_name is not None:
                 log_name = self._log_name.format(**stats_cpu)
                 out = trainer.out
-                with file_utils.tempdir(prefix=log_name, dir=out) as tempd:
+                with tempfile.TemporaryDirectory(
+                        prefix=log_name, dir=out) as tempd:
                     path = os.path.join(tempd, 'log.json')
                     with open(path, 'w') as f:
                         json.dump(self._log, f, indent=4)

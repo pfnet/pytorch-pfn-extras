@@ -1,12 +1,12 @@
 import multiprocessing
 import os
 import shutil
+import tempfile
 import threading
 
 from six.moves import queue
 
 import torch
-from pytorch_extensions import file_utils
 
 
 class Writer(object):
@@ -56,7 +56,7 @@ class Writer(object):
 
     def save(self, filename, outdir, target, savefun, **kwds):
         prefix = 'tmp' + filename
-        with file_utils.tempdir(prefix=prefix, dir=outdir) as tmpdir:
+        with tempfile.TemporaryDirectory(prefix=prefix, dir=outdir) as tmpdir:
             tmppath = os.path.join(tmpdir, filename)
             savefun(target, tmppath)
             shutil.move(tmppath, os.path.join(outdir, filename))
