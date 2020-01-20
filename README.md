@@ -1,14 +1,11 @@
 # pytorch-extensions
 
-Native port to pytorch of Chainer extensions.
+This library contains supplementary modules for PyTorch:
 
-No chainer or chainer-pytorch-interop required.
+* Extensions and Reporter to enrich your training loop
+* ...
 
-# What is supported
-
-Chainer training engine with extensions reporter and triggers is fully supported
-
-Currently working extensions
+## Extensions
 
 + Evaluator
 + ExponentialShift
@@ -23,37 +20,10 @@ Currently working extensions
 + snapshot
 + VariableStatisticsPlot
 
-# How to use with `Trainer`
+### How to use
 
-[Example](https://github.pfidev.jp/ecastill/pytorch-extensions/blob/master/example/trainer-mnist.py#L86-L115)
-
-```python
-model = Net().to(device)
-optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
-# Set up a trainer
-# Updater needs to know the device to move the data to it.
-# already knows
-updater = pte.updaters.StandardUpdater(
-    train_loader, model, optimizer, device=device)
-trainer = pte.Trainer(updater, (args.epochs, 'epoch'), extensions=my_extensions)
-trainer.run()
-```
-One of the differences with Chainer is the need to transfer the model to the device before creating the
-`optimizer`. In PyTorch, the `Optimizer` class needs to have the associated model parameters in the device
-memory at creation time. This prevents the `trainer` and `updater` to move the model to the corresponding device.
-The `Updater` here also needs to have direct access to the models for the snapshots and other features to nicely
-interop. with pytorch.
-
-The default convert function has been changed to do device transferences only, since PyTorch `DataLoader` class
-already returns the data in the desired format.
-
-Support for snapshots is on-going.
-
-# How to use without `Trainer`
-
-Since there is no trainer object in regular Pytorch, you have to create a
-`ExtensionsManager` object and then wrap the iteration of your training loop inside the
-`manager.run_iteration()` context manager.
+Create an `ExtensionsManager` object and then wrap the iteration of your
+training loop inside the `manager.run_iteration()` context manager.
 
 An example follows:
 
@@ -89,7 +59,7 @@ for epoch in range(max_epoch):
 
 In the examples folder there is a mnist using all the avaiable extensions.
 
-## Ignite
+### Usage with Ignite
 
 Ignite is supported by using the `IgniteExtensionsManager` with the trainer
 as the first argument.
@@ -105,9 +75,9 @@ def report_loss(engine):
 ```
 
 
-# Using Evaluators
+### Using Evaluators
 
-## Regular PyTorch
+#### Regular PyTorch
 
 In order to report the results of the evaluation so they can be
 accessed by other extensions, an `Evaluation` extension
@@ -132,7 +102,8 @@ def test(args, model, device, data, target):
     correct += pred.eq(target.view_as(pred)).sum().item()
     pte.reporter.report({'val/acc': correct/len(data)})
 ```
-## Ignite
+
+#### Ignite
 
 Just use the `IgniteEvaluator` extension with the ignite created evaluator as
 the first parameter and you are ready to go. [Example](https://github.pfidev.jp/ecastill/pytorch-extensions/blob/master/example/ignite-mnist.py#L73-L75)
@@ -141,7 +112,7 @@ The metrics defined when creating the evaluator with `create_supervised_evaluato
  create_supervised_evaluator(model, metrics={'acc': Accuracy(), 'loss': Loss(F.nll_loss)}, device)
 ```
 
-# Snapshots
+### Snapshots
 
 It is possible to take snapshots by using the [`snapshot`](https://github.pfidev.jp/ecastill/pytorch-extensions/blob/1aa0fa47ad972d1514b034fdb05afcb3e7eef538/example/mnist.py#L133)
 training extension just as in chainer.
@@ -150,7 +121,7 @@ Whenever the extension is triggered, it saves the status of the optimizer, model
 To load the snapshot and continue the training call `torch.load` and use the `ExtensionsManager.load_state_dict`[example](https://github.pfidev.jp/ecastill/pytorch-extensions/blob/a5d1d356b7a53e793423f334137f8134edca089b/example/mnist.py#L139-L141) to resume the training.
 The snapshots can be used outside the pytorch-extensions module just by accessing the models, or optimizers fields of the loaded state.
 
-# Extensions execution order
+### Extensions execution order
 
 The supported extensions honours the chainer priorities for execution.
 However, when using Ignite. Chainer extensions are executed after any user-defined ignite events.
