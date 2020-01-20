@@ -7,7 +7,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 
 import pytorch_extensions as pte
-import pytorch_extensions.extensions as extensions
+import pytorch_extensions.training.extensions as extensions
 
 # Extensions manager object
 manager = None
@@ -133,7 +133,7 @@ def main():
                      extensions.snapshot(writer=writer)]
     models = {'main': model}
     optimizers = {'main': optimizer}
-    manager = pte.ExtensionsManager(models, optimizers, args.epochs, my_extensions)
+    manager = pte.training.ExtensionsManager(models, optimizers, args.epochs, my_extensions)
     # Lets load the snapshot
     if args.snapshot is not None:
         state = torch.load(args.snapshot)
