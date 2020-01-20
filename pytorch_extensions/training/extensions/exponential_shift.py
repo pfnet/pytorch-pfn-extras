@@ -1,6 +1,6 @@
 from __future__ import division
 
-from pytorch_extensions import extension
+from pytorch_extensions.training import extension
 
 
 class ExponentialShift(extension.Extension):

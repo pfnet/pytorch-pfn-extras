@@ -1,4 +1,4 @@
-from pytorch_extensions import extension
+from pytorch_extensions.training import extension
 
 
 def observe_value(observation_key, target_func):

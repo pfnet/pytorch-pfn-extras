@@ -3,8 +3,8 @@ import os
 import torch
 
 from pytorch_extensions import argument
-from pytorch_extensions import extension
-from pytorch_extensions.extensions import snapshot_writers
+from pytorch_extensions.training import extension
+from pytorch_extensions.training.extensions import snapshot_writers
 
 
 def _find_snapshot_files(fmt, path):

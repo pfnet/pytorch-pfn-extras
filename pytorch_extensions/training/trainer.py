@@ -6,8 +6,8 @@ import traceback
 
 import six
 
-from pytorch_extensions import extension as extension_module
-from pytorch_extensions import trigger as trigger_module
+from pytorch_extensions.training import extension as extension_module
+from pytorch_extensions.training import trigger as trigger_module
 from pytorch_extensions import reporter as reporter_module
 
 
