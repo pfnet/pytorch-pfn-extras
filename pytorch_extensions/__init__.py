@@ -1,2 +1,2 @@
-import pytorch_extensions.reporter as reporter  # NOQA
-import pytorch_extensions.training as training  # NOQA
+from pytorch_extensions import reporter  # NOQA
+from pytorch_extensions import training  # NOQA
