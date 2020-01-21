@@ -1,4 +1,4 @@
-from pytorch_extensions.triggers import interval_trigger
+from pytorch_extensions.training.triggers import interval_trigger
 
 
 def get_trigger(trigger):

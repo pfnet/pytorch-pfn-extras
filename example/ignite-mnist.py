@@ -13,7 +13,7 @@ from ignite.engine import Events, create_supervised_trainer, create_supervised_e
 from ignite.metrics import Accuracy, Loss
 
 import pytorch_extensions as pte
-import pytorch_extensions.extensions as extensions
+import pytorch_extensions.training.extensions as extensions
 
 from tqdm import tqdm
 
@@ -80,7 +80,7 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval):
                      extensions.PrintReport(['epoch', 'iteration', 'train/loss', 'lr', 'model/fc2.bias/grad/min','val/loss', 'val/acc'])]
     models = {'main': model} 
     optimizers = {'main': optimizer} 
-    manager = pte.IgniteExtensionsManager(trainer, models, optimizers, args.epochs, my_extensions)
+    manager = pte.training.IgniteExtensionsManager(trainer, models, optimizers, args.epochs, my_extensions)
 
     # Lets load the snapshot
     if args.snapshot is not None:

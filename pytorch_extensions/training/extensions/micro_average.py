@@ -1,6 +1,6 @@
 from pytorch_extensions import reporter
-from pytorch_extensions import extension
-from pytorch_extensions import trigger_util
+from pytorch_extensions.training import extension
+from pytorch_extensions.training import trigger_util
 
 
 class MicroAverage(extension.Extension):

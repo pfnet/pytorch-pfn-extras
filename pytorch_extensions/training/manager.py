@@ -3,10 +3,10 @@ import contextlib
 import os
 import time
 
-from pytorch_extensions import extension as extension_module
-from pytorch_extensions import trigger as trigger_module
+from pytorch_extensions.training import extension as extension_module
+from pytorch_extensions.training import trigger as trigger_module
 from pytorch_extensions.reporter import Reporter
-from pytorch_extensions.trainer import _ExtensionEntry
+from pytorch_extensions.training.trainer import _ExtensionEntry
 
 
 # Select the best-resolution timer function

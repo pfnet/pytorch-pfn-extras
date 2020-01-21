@@ -2,7 +2,7 @@ import operator
 import warnings
 
 from pytorch_extensions import reporter
-from pytorch_extensions import trigger_util
+from pytorch_extensions.training import trigger_util
 
 
 class EarlyStoppingTrigger(object):

@@ -2,9 +2,9 @@ import os
 import sys
 from copy import deepcopy
 
-from pytorch_extensions import extension
-from pytorch_extensions.extensions import log_report as log_report_module
-from pytorch_extensions.extensions import util
+from pytorch_extensions.training import extension
+from pytorch_extensions.training.extensions import log_report as log_report_module
+from pytorch_extensions.training.extensions import util
 
 
 def create_header_and_templates(entries):

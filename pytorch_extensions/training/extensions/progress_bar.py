@@ -2,8 +2,8 @@ from __future__ import division
 import datetime
 import sys
 
-from pytorch_extensions import extension
-from pytorch_extensions.extensions import util
+from pytorch_extensions.training import extension
+from pytorch_extensions.training.extensions import util
 
 
 class ProgressBar(extension.Extension):

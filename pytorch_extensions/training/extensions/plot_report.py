@@ -5,9 +5,9 @@ import warnings
 import numpy
 import six
 
-from pytorch_extensions import extension
 from pytorch_extensions import reporter
-from pytorch_extensions import trigger as trigger_module
+from pytorch_extensions.training import extension
+from pytorch_extensions.training import trigger as trigger_module
 
 _available = None
 
