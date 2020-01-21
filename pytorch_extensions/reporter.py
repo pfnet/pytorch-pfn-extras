@@ -291,7 +291,10 @@ class Summary(object):
         x, n = self._x, self._n
         mean = x / n
         var = self._x2 / n - mean * mean
-        std = torch.sqrt(var)
+        if isinstance(var, torch.Tensor):
+            std = torch.sqrt(var)
+        else:
+            std = numpy.sqrt(var)
         return mean, std
 
     def state_dict(self):
