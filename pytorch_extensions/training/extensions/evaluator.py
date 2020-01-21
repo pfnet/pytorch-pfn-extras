@@ -3,8 +3,8 @@ import datetime
 import six
 
 import torch
-import pytorch_extensions.training.convert as convert
 from pytorch_extensions import reporter as reporter_module
+from pytorch_extensions.training import convert
 from pytorch_extensions.training import extension
 from pytorch_extensions.training.extensions import util
 
