@@ -195,12 +195,17 @@ class ExtensionsManager(object):
                 entry.extension(self)
 
     @contextlib.contextmanager
-    def run_iteration(self, **kwargs):
-        epoch = kwargs.pop('epoch') + self._start_epoch
-        iteration = kwargs.pop('iteration') + self._start_iteration
-        epoch_size = kwargs.pop('epoch_size')
+    def run_iteration(self, *, epoch, iteration, epoch_size):
+        if epoch <= 0:
+            raise ValueError('epoch must be >= 1 ({} given)'.format(epoch))
+        if epoch_size < 1:
+            raise ValueError('epoch_size must be >= 1 ({} given)'.format(epoch_size))
+        if not (0 <= iteration < epoch_size):
+            raise ValueError('iteration must be >= 0 and < epoch_size(={}) ({} given)'.format(epoch_size, iteration))
+        epoch_ = epoch + self._start_epoch
+        iteration_ = iteration + self._start_iteration
         # To fool the extensions to believe there is an updater
-        self.updater = FoolUpdater(epoch, iteration, epoch_size)
+        self.updater = FoolUpdater(epoch_, iteration_, epoch_size)
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
@@ -209,7 +214,7 @@ class ExtensionsManager(object):
             try:
                 yield
             finally:
-                self.run_extensions(epoch, iteration, epoch_size)
+                self.run_extensions(epoch_, iteration_, epoch_size)
 
     def state_dict(self):
         to_save = {}
