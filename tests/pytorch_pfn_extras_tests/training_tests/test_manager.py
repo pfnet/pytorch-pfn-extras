@@ -276,3 +276,45 @@ def test_extensions_manager_with_plain_model_and_optimizer():
         'optimizers': {'main': optimizer_state_dict},
         'extensions': {}
     }
+
+
+class Wrapper(torch.nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self._wrapper_module = model
+        self.accessed = False
+
+    def wrapper_module(self):
+        self.accessed = True
+        return self._wrapper_module
+
+
+def test_model_transformations():
+    model_state_dict = object()
+    optimizer_state_dict = object()
+    max_epochs = 5
+    iters_per_epoch = 4
+    model = Wrapper(_StateDictModel(state_dict=model_state_dict))
+    manager = training.ExtensionsManager(
+        model,
+        _StateDictObj(state_dict=optimizer_state_dict),
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+    )
+
+    state_dict = manager.state_dict(
+        transform_models=lambda n, x: x.wrapper_module())
+    assert model.accessed
+    print(state_dict)
+
+    new_model = _StateDictModel(state_dict_to_be_loaded=model_state_dict)
+    new_optimizer = _StateDictObj(state_dict_to_be_loaded=optimizer_state_dict)
+    new_manager = training.ExtensionsManager(
+        new_model,
+        new_optimizer,
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+    )
+    new_manager.load_state_dict(
+        state_dict, transform_models=lambda n, x: Wrapper(x))
+    assert isinstance(new_manager._models['main'], Wrapper)

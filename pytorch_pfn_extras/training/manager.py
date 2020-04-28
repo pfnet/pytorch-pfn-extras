@@ -281,28 +281,48 @@ class _BaseExtensionsManager:
             except AttributeError:
                 pass
 
-    def state_dict(self):
+    def state_dict(self, *, transform_models=lambda n, x: x):
+        """
+        transform_models is a function that apply a transformation
+        to a model.
+
+        When using a `torch.nn.DataParallel` model, if we want
+        to save only yhe `.module` object, state_dict can be
+        called as follows
+        state_dict(transform_models=lambda n, x: x.module)
+        """
         to_save = {}
         if self.updater is not None:
             to_save['_start_iteration'] = self.updater.iteration
         else:
             to_save['_start_iteration'] = 0
         # Save manager status ?
-        to_save['models'] = {name: self._models[name].state_dict()
-                             for name in self._models}
+        to_save['models'] = {
+            name: transform_models(name, self._models[name]).state_dict()
+            for name in self._models}
         to_save['optimizers'] = {name: self._optimizers[name].state_dict()
                                  for name in self._optimizers}
         to_save['extensions'] = {name: self._extensions[name].state_dict()
                                  for name in self._extensions}
         return to_save
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load, *, transform_models=lambda n, x: x):
+        """
+        transform_models is a function that apply a transformation
+        to a model.
+
+        When using a `torch.nn.DataParallel` model, if we want
+        to load a model with the `torch.nn.DataParallel` applied
+        load_state_dict(
+            state, transform_models=lambda n, x: torch.nn.DataParallel(x))
+        """
         self._start_iteration = to_load['_start_iteration']
         if self.updater is not None:
             self.updater.iteration = self._start_iteration
         for name in self._models:
             # TODO(ecastill) map_loc when loading the model and DDP check
             self._models[name].load_state_dict(to_load['models'][name])
+            self._models[name] = transform_models(name, self._models[name])
 
         for name in self._optimizers:
             self._optimizers[name].load_state_dict(to_load['optimizers'][name])
