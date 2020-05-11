@@ -42,7 +42,10 @@ class ExtendedSequential(torch.nn.Sequential):
 
         Args:
             n_repeat (int): Number of times to repeat.
-            mode (str): It should be either ``copy``, or ``share``.
+            mode (str): It should be either ``init``, ``copy``, or ``share``.
+                ``init`` means parameters of each repeated element in the
+                returned :class:`~torch.nn.Sequential` will be re-initialized,
+                so that all elements have different initial parameters.
                 ``copy`` means that the parameters will not be re-initialized
                 but object itself will be deep-copied, so that all elements
                 have same initial parameters but can be changed independently.
@@ -50,14 +53,13 @@ class ExtendedSequential(torch.nn.Sequential):
                 :class:`~torch.nn.Sequential` object are same object because
                 they are shallow-copied, so that all parameters of elements
                 are shared with each other.
-                ``init`` is not supported yet.
         """
         if n_repeat <= 0:
             return ExtendedSequential()
 
         if mode not in ['copy', 'share', 'init']:
             raise ValueError(
-                'The \'mode\' argument should be either ,'
+                'The \'mode\' argument should be either \'init\','
                 '\'copy\', or \'share\'. But {} was given.'.format(mode))
 
         model_list = []
