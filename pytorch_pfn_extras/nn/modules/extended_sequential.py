@@ -1,5 +1,20 @@
 import torch
 import copy
+from collections.abc import Iterable
+
+
+def _reset_parameters(model):
+    if isinstance(model, torch.nn.Sequential) or \
+       isinstance(model, torch.nn.ModuleList):
+        for submodel in model:
+            _reset_parameters(submodel)
+    elif isinstance(model, torch.nn.ModuleDict):
+        for submodel in model.values():
+            _reset_parameters(submodel)
+    else:
+        if isinstance(model, torch.nn.Module):
+            model.reset_parameters()
+    return model
 
 
 class ExtendedSequential(torch.nn.Sequential):
@@ -7,13 +22,15 @@ class ExtendedSequential(torch.nn.Sequential):
 
     """
     def _copy_model(self, mode):
-        if mode == 'copy':
+        if mode == 'init':
+            return _reset_parameters(copy.deepcopy(self))
+        elif mode == 'copy':
             return copy.deepcopy(self)
         else:
             # mode == share
             return copy.copy(self)
 
-    def repeat(self, n_repeat: int, mode: 'str' = 'copy'):
+    def repeat(self, n_repeat: int, mode: 'str' = 'init'):
         """Repeats this Sequential multiple times.
 
         This method returns a :class:`~torch.nn.Sequential` object which has
@@ -38,7 +55,7 @@ class ExtendedSequential(torch.nn.Sequential):
         if n_repeat <= 0:
             return ExtendedSequential()
 
-        if mode not in ['copy', 'share']:
+        if mode not in ['copy', 'share', 'init']:
             raise ValueError(
                 'The \'mode\' argument should be either ,'
                 '\'copy\', or \'share\'. But {} was given.'.format(mode))

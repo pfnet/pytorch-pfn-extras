@@ -14,6 +14,39 @@ class TestExtendedSequential(unittest.TestCase):
         # s2: s1 (l1 -> l2) -> l3
         self.s2 = ppe.nn.ExtendedSequential(self.s1, self.l3)
 
+    def test_repeat_with_init(self):
+        # s2 ((l1 -> l2) -> l3) -> s2 ((l1 -> l2) -> l3)
+        ret = self.s2.repeat(2)
+        self.assertIsNot(ret[0], self.s2)
+        self.assertIs(type(ret[0]), type(self.s2))
+        self.assertIsNot(ret[1], self.s2)
+        self.assertIs(type(ret[1]), type(self.s2))
+
+        # bias is filled with 0, so they should have the same values
+        numpy.testing.assert_array_equal(
+            ret[0][0][0].bias.detach().numpy(),
+            ret[1][0][0].bias.detach().numpy())
+        # weight is initialized randomly, so they should be different
+        self.assertFalse(
+            numpy.array_equal(ret[0][1].weight.detach().numpy(),
+                              self.l3.weight.detach().numpy()))
+        # And the object should also be different
+        self.assertIsNot(ret[0][1].weight.detach().numpy(),
+                         self.l3.weight.detach().numpy())
+        # Repeated elements should be different objects
+        self.assertIsNot(ret[0], ret[1])
+        # Also for the arrays
+        self.assertIsNot(ret[0][1].weight.detach().numpy(),
+                         ret[1][1].weight.detach().numpy())
+        # And values should be different
+        self.assertFalse(
+            numpy.array_equal(ret[0][1].weight.detach().numpy(),
+                              ret[1][1].weight.detach().numpy()))
+
+        self.assertEqual(len(ret), 2)
+        ret = self.s2.repeat(0, mode='init')
+        self.assertEqual(len(ret), 0)
+
     def test_repeat_with_copy(self):
         # s2 ((l1 -> l2) -> l3) -> s2 ((l1 -> l2) -> l3)
         ret = self.s2.repeat(2, mode='copy')
