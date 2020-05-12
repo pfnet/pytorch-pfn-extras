@@ -411,6 +411,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
 
     def set_ignite_handlers(self):
         from ignite.engine import Events
+
         # Set a handler that sets the reporter scope on every iteration
         @self.engine.on(Events.ITERATION_STARTED)
         def set_reporter_on_iter(engine):
@@ -427,6 +428,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             iters_per_epoch = len(engine.state.dataloader)
             self._prepare_for_training(start_iteration, iters_per_epoch)
             self.start_extensions()
+
             # Make all the next
             # handlers to be executed after user defined ones
             @self.engine.on(Events.ITERATION_COMPLETED)

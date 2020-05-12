@@ -75,7 +75,7 @@ def test_add_observer():
     reporter.report({'x': 1}, observer)
 
     observation = reporter.observation
-    assert 'o/x'in observation
+    assert 'o/x' in observation
     assert observation['o/x'] == 1
     assert 'x'not in observation
 
@@ -93,7 +93,7 @@ def test_add_observers():
     observation = reporter.observation
     assert 'o1/x' in observation
     assert observation['o1/x'] == 1
-    assert 'o2/y'in observation
+    assert 'o2/y' in observation
     assert observation['o2/y'] == 2
     assert 'x' not in observation
     assert 'y' not in observation
@@ -106,7 +106,7 @@ def test_report_without_observer():
     reporter.report({'x': 1})
 
     observation = reporter.observation
-    assert 'x'in observation
+    assert 'x' in observation
     assert observation['x'] == 1
 
 
