@@ -1,0 +1,15 @@
+configs {
+  key: "pytorch-pfn-extras"
+  value {
+    requirement {
+      cpu: 2
+      gpu: 1
+      memory: 8
+      disk: 10
+    }
+    time_limit: {
+      seconds: 900
+    }
+    command: "bash .flexci/run.sh"
+  }
+}
