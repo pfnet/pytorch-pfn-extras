@@ -23,12 +23,22 @@ def open_wrapper(func):
     return wrapper
 
 
+class _PosixFileStat:
+    def __init__(self, _stat, filename):
+        self.filename = filename
+        self.last_modified = _stat.st_mtime
+        self.last_accessed = _stat.st_atime
+        self.created = _stat.st_ctime
+        self.mode = _stat.st_mode
+        self.size = _stat.st_size
+
+
 class _PosixFileSystem(object):
     """Class to abstract the calls to the FileSystem
 
-    This class obbeys the same interface as chainerIO
-    Filesystems declarations. When using HDFS, chainerIO
-    handler can be used instead.
+    This class obeys the same interface as PFIO's POSIX
+    Filesystems declarations. When using HDFS, PFIO
+    handler can be used instead (requires PFIO>1.0).
 
     This class currently abstracts POSIX
     """
@@ -77,7 +87,7 @@ class _PosixFileSystem(object):
                                                 file.path)
 
     def stat(self, path):
-        return os.stat(path)
+        return _PosixFileStat(os.stat(path), path)
 
     def close(self):
         pass
@@ -137,16 +147,16 @@ class Writer:
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, fs=None, outdir=None):
+    def __init__(self, fs=None, out_dir=None):
         self._post_save_hooks = []
         self.fs = fs
-        self.outdir = outdir
+        self.out_dir = out_dir
         if fs is None:
             self.fs = _PosixFileSystem()
 
         self._initialized = False
 
-    def __call__(self, filename, outdir, target):
+    def __call__(self, filename, out_dir, target):
         """Invokes the actual snapshot function.
 
         This method is invoked by a
@@ -157,16 +167,16 @@ class Writer:
             filename (str): Name of the file into which the serialized target
                 is saved. It is a concrete file name, i.e. not a pre-formatted
                 template string.
-            outdir (str): Output directory. Corresponds to
+            out_dir (str): Output directory. Corresponds to
                 :py:attr:`ExtensionsManager.out
                  <pytorch_pfn_extras.training.ExtensionsManager.out>`.
             target (dict): Serialized object which will be saved.
         """
         raise NotImplementedError
 
-    def initialize(self, outdir):
-        if not self.fs.exists(outdir):
-            self.fs.makedirs(outdir)
+    def initialize(self, out_dir):
+        if not self.fs.exists(out_dir):
+            self.fs.makedirs(out_dir)
         self._initialized = True
 
     def __del__(self):
@@ -181,16 +191,16 @@ class Writer:
         """
         pass
 
-    def save(self, filename, outdir, target, savefun, **kwds):
-        if self.outdir is not None:
-            outdir = self.outdir
+    def save(self, filename, out_dir, target, savefun, **kwds):
+        if self.out_dir is not None:
+            out_dir = self.out_dir
         if not self._initialized:
-            self.initialize(outdir)
+            self.initialize(out_dir)
         # Some filesystems are not compatible with temp folders, etc
         # so we rely on raw temp files
         prefix = 'tmp_{}'.format(filename)
-        dest = os.path.join(outdir, filename)
-        tmppath = os.path.join(outdir, prefix)
+        dest = os.path.join(out_dir, filename)
+        tmppath = os.path.join(out_dir, prefix)
         make_backup = self.fs.exists(dest)
         if make_backup:
             bak = '{}.bak'.format(dest)
@@ -233,7 +243,7 @@ class SimpleWriter(Writer):
             arguments.
         fs: FileSystem abstracting interface to implement all the operations.
             optional, defaults to None
-        outdir: str. Specifies the directory this writer will use.
+        out_dir: str. Specifies the directory this writer will use.
             It takes precedence over the one specified in `__call__`
             optional, defaults to None
         kwds: Keyword arguments for the ``savefun``.
@@ -243,15 +253,15 @@ class SimpleWriter(Writer):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, outdir=None, **kwds):
-        super().__init__(fs=fs, outdir=outdir)
+    def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
+        super().__init__(fs=fs, out_dir=out_dir)
         self._savefun = savefun
         self._kwds = kwds
 
-    def __call__(self, filename, outdir, target, *, savefun=None):
+    def __call__(self, filename, out_dir, target, *, savefun=None):
         if savefun is None:
             savefun = self._savefun
-        self.save(filename, outdir, target, savefun, **self._kwds)
+        self.save(filename, out_dir, target, savefun, **self._kwds)
 
 
 class StandardWriter(Writer):
@@ -266,7 +276,7 @@ class StandardWriter(Writer):
             arguments.
         fs: FileSystem abstracting interface to implement all the operations.
             optional, defaults to None
-        outdir: str. Specifies the directory this writer will use.
+        out_dir: str. Specifies the directory this writer will use.
             It takes precedence over the one specified in `__call__`
             optional, defaults to None
         kwds: Keyword arguments for the ``savefun``.
@@ -280,26 +290,26 @@ class StandardWriter(Writer):
     _finalized = False
     _worker = None
 
-    def __init__(self, savefun=torch.save, fs=None, outdir=None, **kwds):
-        super().__init__(fs=fs, outdir=outdir)
+    def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
+        super().__init__(fs=fs, out_dir=out_dir)
         self._savefun = savefun
         self._kwds = kwds
         self._started = False
         self._finalized = False
 
-    def __call__(self, filename, outdir, target, *, savefun=None):
+    def __call__(self, filename, out_dir, target, *, savefun=None):
         if savefun is None:
             savefun = self._savefun
         if self._started:
             self._worker.join()
             self._started = False
         self._filename = filename
-        self._worker = self.create_worker(filename, outdir, target,
+        self._worker = self.create_worker(filename, out_dir, target,
                                           savefun, **self._kwds)
         self._worker.start()
         self._started = True
 
-    def create_worker(self, filename, outdir, target, savefun, **kwds):
+    def create_worker(self, filename, out_dir, target, savefun, **kwds):
         """Creates a worker for the snapshot.
 
         This method creates a thread or a process to take a snapshot. The
@@ -308,7 +318,7 @@ class StandardWriter(Writer):
         Args:
             filename (str): Name of the file into which the serialized target
                 is saved. It is already formated string.
-            outdir (str): Output directory. Passed by `manager.out`.
+            out_dir (str): Output directory. Passed by `manager.out`.
             target (dict): Serialized object which will be saved.
             kwds: Keyword arguments for the ``savefun``.
 
@@ -333,13 +343,13 @@ class ThreadWriter(StandardWriter):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, outdir=None, **kwds):
-        super().__init__(savefun=savefun, fs=fs, outdir=outdir, **kwds)
+    def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
+        super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
-    def create_worker(self, filename, outdir, target, **kwds):
+    def create_worker(self, filename, out_dir, target, **kwds):
         return threading.Thread(
             target=self.save,
-            args=(filename, outdir, target, self._savefun),
+            args=(filename, out_dir, target, self._savefun),
             kwargs=self._kwds)
 
 
@@ -358,13 +368,13 @@ class ProcessWriter(StandardWriter):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, outdir=None, **kwds):
-        super().__init__(savefun=savefun, fs=fs, outdir=outdir, **kwds)
+    def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
+        super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
-    def create_worker(self, filename, outdir, target, **kwds):
+    def create_worker(self, filename, out_dir, target, **kwds):
         return multiprocessing.Process(
             target=self.save,
-            args=(filename, outdir, target, self._savefun),
+            args=(filename, out_dir, target, self._savefun),
             kwargs=self._kwds)
 
 
@@ -382,7 +392,7 @@ class QueueWriter(Writer):
             arguments.
         fs: FileSystem abstracting interface to implement all the operations.
             optional, defaults to None
-        outdir: str. Specifies the directory this writer will use.
+        out_dir: str. Specifies the directory this writer will use.
             It takes precedence over the one specified in `__call__`
             optional, defaults to None
         task: Callable object. Its ``__call__`` must have a same interface to
@@ -398,8 +408,8 @@ class QueueWriter(Writer):
     _queue = None
     _consumer = None
 
-    def __init__(self, savefun=torch.save, fs=None, outdir=None, task=None):
-        super().__init__(fs=fs, outdir=outdir)
+    def __init__(self, savefun=torch.save, fs=None, out_dir=None, task=None):
+        super().__init__(fs=fs, out_dir=out_dir)
         if task is None:
             self._task = self.create_task(savefun)
         else:
@@ -410,8 +420,8 @@ class QueueWriter(Writer):
         self._started = True
         self._finalized = False
 
-    def __call__(self, filename, outdir, target, *, savefun=None):
-        self._queue.put([self._task, filename, outdir, target, savefun])
+    def __call__(self, filename, out_dir, target, *, savefun=None):
+        self._queue.put([self._task, filename, out_dir, target, savefun])
 
     def create_task(self, savefun):
         return SimpleWriter(savefun=savefun)
@@ -455,8 +465,8 @@ class ThreadQueueWriter(QueueWriter):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, outdir=None, task=None):
-        super().__init__(savefun=savefun, fs=fs, task=task, outdir=outdir)
+    def __init__(self, savefun=torch.save, fs=None, out_dir=None, task=None):
+        super().__init__(savefun=savefun, fs=fs, task=task, out_dir=out_dir)
 
     def create_queue(self):
         return queue.Queue()
@@ -482,8 +492,8 @@ class ProcessQueueWriter(QueueWriter):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, outdir=None, task=None):
-        super().__init__(savefun=savefun, fs=fs, outdir=outdir, task=task)
+    def __init__(self, savefun=torch.save, fs=None, out_dir=None, task=None):
+        super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, task=task)
 
     def create_queue(self):
         return multiprocessing.JoinableQueue()

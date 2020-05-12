@@ -33,7 +33,7 @@ def _find_snapshot_files(fmt, path, fs):
                      if file.startswith(prefix) and file.endswith(suffix))
 
     def _prepend_mtime(f):
-        t = fs.stat(os.path.join(path, f)).st_mtime
+        t = fs.stat(os.path.join(path, f)).last_modified
         return (t, f)
 
     return sorted(_prepend_mtime(file) for file in matched_files)

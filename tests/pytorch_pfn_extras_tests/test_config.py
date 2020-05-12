@@ -117,7 +117,11 @@ class TestConfig(unittest.TestCase):
                 json.dump({
                     'foo': {'v0': {'type': 'func_0', 'a': 1, 'b': 2}},
                     'bar': {'import': os.path.join(temp1, 'bar.json')},
-                    'baz': {'import': 'baz.json'},
+                    'baz': {
+                        'import': 'baz.json',
+                        '0/b': 3,
+                        '1/d': [1, 2],
+                    },
                 }, f)
             with open(os.path.join(temp1, 'bar.json'), mode='w') as f:
                 json.dump({'type': 'func_0', 'a': 3, 'b': 4}, f)
@@ -136,12 +140,12 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(config['!/bar'], {'type': 'func_0', 'a': 3, 'b': 4})
         self.assertEqual(config['/bar'], 17)
         self.assertEqual(config['!/baz'], [
-            {'type': 'func_1', 'a': 1, 'b': 2},
-            {'d': 3, 'e': 4},
+            {'type': 'func_1', 'a': 1, 'b': 3},
+            {'d': [1, 2], 'e': 4},
         ])
         self.assertEqual(config['/baz'], [
-            {'d': 2, 'e': 13},
-            {'d': 3, 'e': 4},
+            {'d': 3, 'e': 13},
+            {'d': [1, 2], 'e': 4},
         ])
 
     def test_config_with_circular_dependency(self):

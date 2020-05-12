@@ -88,11 +88,11 @@ class _BaseExtensionsManager:
         else:
             self._stop_trigger = stop_trigger
         if writer is None:
-            writer = writing.SimpleWriter()
+            writer = writing.SimpleWriter(out_dir=out_dir)
         # triggers are stateful, so we need to make a copy for internal use
         self._internal_stop_trigger = copy.deepcopy(self._stop_trigger)
         self.observation = {}
-        self.out = out_dir
+        self._out = out_dir
         self.writer = writer
         self.reporter = Reporter()
 
@@ -146,6 +146,13 @@ class _BaseExtensionsManager:
         # Trigger is stateful, we close the extensions the first time
         # it evaluates to True, as it won't do it again
         return self._stop_trigger(self)
+
+    @property
+    def out(self):
+        if self.writer.out_dir is not None:
+            return self.writer.out_dir
+        else:
+            return self._out
 
     def _prepare_for_training(self, start_iteration, iters_per_epoch):
         assert self.updater is None
