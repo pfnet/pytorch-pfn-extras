@@ -277,6 +277,7 @@ class IgniteEvaluator(Evaluator):
 
     def set_evaluator_handlers(self):
         from ignite.engine import Events
+
         # Register handlers to retrieve the Average metrics and report them
         @self.evaluator.on(Events.EPOCH_STARTED)
         def set_evaluation_started(engine):
