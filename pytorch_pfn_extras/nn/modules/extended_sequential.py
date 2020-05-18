@@ -1,6 +1,5 @@
 import torch
 import copy
-from collections.abc import Iterable
 
 
 def _reset_parameters(model):
