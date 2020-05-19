@@ -56,7 +56,7 @@ def test(args, model, device, data, target):
     model.eval()
     test_loss = 0
     correct = 0
-    data, target = data.cuda(), target.cuda()
+    data, target = data.to(device), target.to(device)
     output = model(data)
     # Final result will be average of averages of the same size
     test_loss += F.nll_loss(output, target, reduction='mean').item()
