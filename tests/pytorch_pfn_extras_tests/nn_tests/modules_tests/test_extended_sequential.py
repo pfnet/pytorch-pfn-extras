@@ -18,6 +18,8 @@ class TestExtendedSequential(object):
         self.l1 = ppe.nn.LazyLinear(None, 3)
         self.l2 = nn.Linear(3, 2)
         self.l3 = nn.Linear(2, 3)
+        # a layer without reset_parameters
+        self.l4 = nn.ReLU()
         # s1: l1 -> l2
         if module == nn.Sequential:
             self.s1 = module(self.l1, self.l2)
@@ -28,11 +30,11 @@ class TestExtendedSequential(object):
         else:
             self.s1 = module([self.l1, self.l2])
         self.module = module
-        # s2: s1 (l1 -> l2) -> l3
-        self.s2 = ppe.nn.ExtendedSequential(self.s1, self.l3)
+        # s2: s1 (l1 -> l2) -> l3 -> l4
+        self.s2 = ppe.nn.ExtendedSequential(self.s1, self.l3, self.l4)
 
     def test_repeat_with_init(self):
-        # s2 ((l1 -> l2) -> l3) -> s2 ((l1 -> l2) -> l3)
+        # s2 ((l1 -> l2) -> l3 -> l4) -> s2 ((l1 -> l2) -> l3 -> l4)
         ret = self.s2.repeat(2)
         assertions.assertIsNot(ret[0], self.s2)
         assertions.assertIs(type(ret[0]), type(self.s2))
@@ -70,7 +72,7 @@ class TestExtendedSequential(object):
         assertions.assertEqual(len(ret), 0)
 
     def test_repeat_with_copy(self):
-        # s2 ((l1 -> l2) -> l3) -> s2 ((l1 -> l2) -> l3)
+        # s2 ((l1 -> l2) -> l3 -> l4) -> s2 ((l1 -> l2) -> l3 -> l4)
         ret = self.s2.repeat(2, mode='copy')
         assertions.assertIsNot(ret[0], self.s2)
         assertions.assertIs(type(ret[0]), type(self.s2))
@@ -106,7 +108,7 @@ class TestExtendedSequential(object):
         assertions.assertEqual(len(ret), 0)
 
     def test_repeat_with_share(self):
-        # s2 ((l1 -> l2) -> l3) -> s2 ((l1 -> l2) -> l3)
+        # s2 ((l1 -> l2) -> l3 -> l4) -> s2 ((l1 -> l2) -> l3 -> l4)
         ret = self.s2.repeat(2, mode='share')
         assertions.assertIsNot(ret[0], self.s2)
         assertions.assertIs(type(ret[0]), type(self.s2))
