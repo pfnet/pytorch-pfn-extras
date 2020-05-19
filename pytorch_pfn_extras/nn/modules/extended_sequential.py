@@ -11,7 +11,8 @@ def _reset_parameters(model):
         for submodel in model.values():
             _reset_parameters(submodel)
     else:
-        if isinstance(model, torch.nn.Module):
+        if (isinstance(model, torch.nn.Module) and
+           hasattr(model, 'reset_parameters')):
             model.reset_parameters()
     return model
 
