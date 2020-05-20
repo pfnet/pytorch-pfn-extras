@@ -208,7 +208,7 @@ class Writer:
         with self.fs.open(tmppath, 'wb') as f:
             # HDFS does not support overwrite
             savefun(target, f)
-            self.fs.rename(tmppath, dest)
+        self.fs.rename(tmppath, dest)
         if make_backup:
             self.fs.remove(bak)
 
