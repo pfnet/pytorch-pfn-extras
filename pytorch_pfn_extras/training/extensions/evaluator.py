@@ -279,7 +279,7 @@ class IgniteEvaluator(Evaluator):
         from ignite.engine import Events
 
         # Register handlers to retrieve the Average metrics and report them
-        @self.evaluator.on(Events.EPOCH_STARTED)
+        @self.evaluator.on(Events.ITERATION_STARTED)
         def set_evaluation_started(engine):
             self.observation = {}
             self.cm = reporting.report_scope(self.observation)
@@ -291,14 +291,17 @@ class IgniteEvaluator(Evaluator):
                 self.updater.current_position = engine.state.iteration
                 self.pbar.update()
 
+        @self.evaluator.on(Events.ITERATION_COMPLETED)
+        def report_iteration_metrics(engine):
+            self.summary.add(self.observation)
+            self.cm.__exit__(None, None, None)
+
         @self.evaluator.on(Events.EPOCH_COMPLETED)
         def set_evaluation_completed(engine):
             metrics = self.evaluator.state.metrics
             for metric in metrics:
                 reporting.report(
                     {'val/{}'.format(metric): metrics[metric]})
-            self.cm.__exit__(None, None, None)
-            self.summary.add(self.observation)
 
     def evaluate(self):
         iterator = self._iterators['main']
