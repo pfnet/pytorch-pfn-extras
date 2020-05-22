@@ -6,3 +6,5 @@ from pytorch_pfn_extras.training.extension import PRIORITY_WRITER  # NOQA
 from pytorch_pfn_extras.training import extensions  # NOQA
 from pytorch_pfn_extras.training.manager import ExtensionsManager  # NOQA
 from pytorch_pfn_extras.training.manager import IgniteExtensionsManager  # NOQA
+from pytorch_pfn_extras.training.updater import Updater  # NOQA
+from pytorch_pfn_extras.training import updaters # NOQA
