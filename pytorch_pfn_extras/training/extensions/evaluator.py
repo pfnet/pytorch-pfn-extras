@@ -298,10 +298,13 @@ class IgniteEvaluator(Evaluator):
 
         @self.evaluator.on(Events.EPOCH_COMPLETED)
         def set_evaluation_completed(engine):
-            metrics = self.evaluator.state.metrics
-            for metric in metrics:
-                reporting.report(
-                    {'val/{}'.format(metric): metrics[metric]})
+            ignite_metrics = {}
+            with reporting.report_scope(ignite_metrics):
+                metrics = self.evaluator.state.metrics
+                for metric in metrics:
+                    reporting.report(
+                        {'val/{}'.format(metric): metrics[metric]})
+                self.summary.add(ignite_metrics)
 
     def evaluate(self):
         iterator = self._iterators['main']
