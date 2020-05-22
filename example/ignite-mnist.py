@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torchvision.transforms import Compose, ToTensor, Normalize
 from torchvision.datasets import MNIST
 
+from ignite.engine import Engine
 from ignite.engine import Events
 from ignite.engine import create_supervised_trainer
 from ignite.engine import create_supervised_evaluator
@@ -15,6 +16,7 @@ from ignite.metrics import Accuracy, Loss
 
 import pytorch_pfn_extras as ppe
 import pytorch_pfn_extras.training.extensions as extensions
+import pytorch_pfn_extras.training.updaters as updaters
 
 
 class Net(nn.Module):
@@ -61,8 +63,8 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval):
 
     optimizer = SGD(model.parameters(), lr=lr, momentum=momentum)
     optimizer.step()
-    trainer = create_supervised_trainer(
-        model, optimizer, F.nll_loss, device=device)
+    updater = updaters.SupervisedUpdater(model, optimizer, F.nll_loss, device=device)
+    trainer = Engine(updater)
     evaluator = create_supervised_evaluator(
         model,
         metrics={'acc': Accuracy(), 'loss': Loss(F.nll_loss)},
