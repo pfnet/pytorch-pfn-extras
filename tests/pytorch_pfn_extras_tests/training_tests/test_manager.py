@@ -305,7 +305,6 @@ def test_model_transformations():
     state_dict = manager.state_dict(
         transform_models=lambda n, x: x.wrapper_module())
     assert model.accessed
-    print(state_dict)
 
     new_model = _StateDictModel(state_dict_to_be_loaded=model_state_dict)
     new_optimizer = _StateDictObj(state_dict_to_be_loaded=optimizer_state_dict)

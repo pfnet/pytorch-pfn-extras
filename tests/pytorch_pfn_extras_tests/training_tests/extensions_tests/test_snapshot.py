@@ -304,7 +304,6 @@ def test_remove_stale_snapshots(path):
 
     pattern = os.path.join(trainer.out, "snapshot_iter_*")
     found = [os.path.basename(path) for path in glob.glob(pattern)]
-    print(found)
     assert retain == len(found)
     found.sort()
     # snapshot_iter_(8, 9, 10) expected
@@ -317,3 +316,46 @@ def test_remove_stale_snapshots(path):
     snapshot2 = extensions.snapshot(filename=fmt, autoload=True)
     # Just making sure no error occurs
     snapshot2.initialize(trainer2)
+
+
+class Wrapper(torch.nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self._wrapper_module = model
+        self.accessed = False
+
+    def wrapper_module(self):
+        self.accessed = True
+        return self._wrapper_module
+
+
+def test_model_transformations(path):
+    model_state_dict = object()
+    optimizer_state_dict = object()
+    max_epochs = 5
+    iters_per_epoch = 4
+    model = Wrapper(_StateDictModel(state_dict=model_state_dict))
+    manager = training.ExtensionsManager(
+        model,
+        _StateDictObj(state_dict=optimizer_state_dict),
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=path,
+    )
+
+    snapshot = extensions.snapshot(
+        filename='test',
+        transform_models=lambda n, x: x.wrapper_module())
+    snapshot(manager)
+
+    assert model.accessed
+
+    # Verify that autoload applies the transformation
+    to_load = torch.load(os.path.join(path, 'test'))
+    trainer = get_trainer_with_mock_updater(
+        out_dir=path, state_to_load=to_load)
+    snapshot = extensions.snapshot(
+        filename='test', autoload=True,
+        autoload_transform_models=lambda n, x: Wrapper(x))
+    snapshot.initialize(trainer)
+    assert isinstance(trainer._models['main'], Wrapper)
