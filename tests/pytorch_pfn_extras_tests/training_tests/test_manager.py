@@ -190,7 +190,10 @@ def test_extensions_manager_state_dict():
 
 def test_ignite_extensions_manager_state_dict():
 
-    from ignite.engine import create_supervised_trainer
+    try:
+        from ignite.engine import create_supervised_trainer
+    except ImportError:
+        pytest.skip('pytorch-ignite not found')
 
     model_state_dict = object()
     optimizer_state_dict = object()
