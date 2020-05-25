@@ -6,15 +6,21 @@ from torch import nn
 from pytorch_pfn_extras import training
 
 
-def test_fool_updater():
-    updater = training.manager.FoolUpdater(9, 4)
-    assert updater.iteration == 9
-    assert updater.epoch == 2
-    assert updater.epoch_detail == 2.25
+def test_manager_status_info():
+    manager = training.ExtensionsManager(
+        nn.Module(),
+        object(),
+        10,
+        iters_per_epoch=4
+    )
+    manager.iteration = 9
+    assert manager.iteration == 9
+    assert manager.epoch == 2
+    assert manager.epoch_detail == 2.25
 
-    updater.iteration = 15
-    assert updater.epoch == 3
-    assert updater.epoch_detail == 3.75
+    manager.iteration = 15
+    assert manager.epoch == 3
+    assert manager.epoch_detail == 3.75
 
 
 class _DummyExtension(object):
@@ -77,7 +83,7 @@ def test_extensions_manager_extensions():
         init_record.clear()
 
         with manager.run_iteration():
-            assert manager.updater.iteration == it
+            assert manager.iteration == it
 
             if it == 0:
                 assert call_record == [4, 0, 3]

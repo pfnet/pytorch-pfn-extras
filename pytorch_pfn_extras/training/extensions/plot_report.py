@@ -165,9 +165,8 @@ filename='plot.png', marker='x', grid=True)
             for name, value in stats.items():
                 stats_cpu[name] = float(value)  # copy to CPU
 
-            updater = manager.updater
-            stats_cpu['epoch'] = updater.epoch
-            stats_cpu['iteration'] = updater.iteration
+            stats_cpu['epoch'] = manager.epoch
+            stats_cpu['iteration'] = manager.iteration
             x = stats_cpu[self._x_key]
             data = self._data
 

@@ -27,7 +27,7 @@ def _create_distributed_model(gpu=True):
     return model
 
 
-def get_trainer_with_mock_updater(path):
+def get_trainer(path):
     epochs = 10  # FIXME
     model = _create_distributed_model()
     optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
@@ -81,22 +81,22 @@ def test_distributed_snapshot(path):
         torch.distributed.barrier()
 
     saver_rank = 0
-    fmt = 'snapshot_iter_{.updater.iteration}'
+    fmt = 'snapshot_iter_{.iteration}'
     snapshot = extensions.snapshot(filename=fmt, saver_rank=saver_rank)
 
-    trainer = get_trainer_with_mock_updater(path)
+    trainer = get_trainer(path)
     trainer.extend(snapshot, trigger=(1, 'iteration'), priority=2)
     for i in range(1):
         with trainer.run_iteration():
             pass
-    assert 1 == trainer.updater.iteration
+    assert 1 == trainer.iteration
     pattern = os.path.join(trainer.out, "snapshot_iter_*")
     found = [os.path.basename(path) for path in glob.glob(pattern)]
     # the snapshot is generated only for the saver rank
     assert comm_rank == saver_rank and len(found) == 1 or len(found) == 0
 
     if comm_rank == saver_rank:
-        new_trainer = get_trainer_with_mock_updater(path)
+        new_trainer = get_trainer(path)
         new_trainer.load_state_dict(torch.load(os.path.join(path, found[0])))
         assert _model_params_equal(
             trainer._models['main'], new_trainer._models['main'])

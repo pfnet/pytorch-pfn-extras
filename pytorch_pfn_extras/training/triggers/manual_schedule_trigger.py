@@ -7,7 +7,7 @@ class ManualScheduleTrigger:
     ``iteration`` means the number of updates, while ``epoch`` means the number
     of sweeps over the training dataset. Fractional values are allowed
     if the point is a number of epochs; the trigger uses the ``iteration``
-    and ``epoch_detail`` attributes defined by the updater.
+    and ``epoch_detail`` attributes defined by the manager.
 
     Args:
         points (int, float, or list of int or float): time of the trigger.
@@ -40,7 +40,7 @@ class ManualScheduleTrigger:
         Args:
             manager (~pytorch_pfn_extras.training.ExtensionsManager):
                 Manager object that this trigger is associated with.
-                The updater associated with this manager is used to
+                The iteration information in this manager is used to
                 determine if the trigger should fire.
 
         Returns:
@@ -48,15 +48,14 @@ class ManualScheduleTrigger:
             iteration.
 
         """
-        updater = manager.updater
         if self.unit == 'epoch':
-            epoch_detail = updater.epoch_detail
+            epoch_detail = manager.epoch_detail
             previous_epoch_detail = self._previous_epoch_detail
 
             # if previous_epoch_detail is invalid value,
-            # use the value of updater.
+            # use the value of manager.
             if previous_epoch_detail < 0:
-                previous_epoch_detail = updater.previous_epoch_detail
+                previous_epoch_detail = manager.previous_epoch_detail
 
             fire = any(
                 previous_epoch_detail < p <= epoch_detail
@@ -69,7 +68,7 @@ class ManualScheduleTrigger:
             if fire and epoch_detail >= max(self.points):
                 self.finished = True
         else:
-            iteration = updater.iteration
+            iteration = manager.iteration
             previous_iteration = self._previous_iteration
 
             # if previous_iteration is invalid value,
@@ -89,9 +88,9 @@ class ManualScheduleTrigger:
                 self.finished = True
 
         # save current values
-        self._previous_iteration = updater.iteration
-        if hasattr(updater, 'epoch_detail'):
-            self._previous_epoch_detail = updater.epoch_detail
+        self._previous_iteration = manager.iteration
+        if hasattr(manager, 'epoch_detail'):
+            self._previous_epoch_detail = manager.epoch_detail
 
         return fire
 
