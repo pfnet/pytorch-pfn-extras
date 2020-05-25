@@ -216,20 +216,6 @@ def create_dummy_evaluator(model):
     return evaluator
 
 
-class IgniteDataset(torch.utils.data.Dataset):
-    def __init__(self, n_data):
-        self.values = [i for i in range(n_data)]
-        self.n_data = n_data
-
-    def __len__(self):
-        return len(self.values)
-
-    def __getitem__(self, idx):
-        x = torch.randn((3, 2), requires_grad=True)
-        y = torch.randn((3, 2))
-        return x, y
-
-
 def test_ignite_evaluator_reporting_metrics():
     try:
         from ignite.metrics import MeanSquaredError
@@ -240,7 +226,11 @@ def test_ignite_evaluator_reporting_metrics():
     # and ignite calculated ones are correctly reflected in the reporter
     # observation
     model = IgniteDummyModel()
-    loader = torch.utils.data.DataLoader(IgniteDataset(10), batch_size=3)
+    n_data = 10
+    x = torch.randn((n_data, 2), requires_grad=True)
+    y = torch.randn((n_data, 2))
+    dataset = torch.utils.data.TensorDataset(x, y)
+    loader = torch.utils.data.DataLoader(dataset, batch_size=3)
     evaluator = create_dummy_evaluator(model)
     # Attach metrics to the evaluator
     metric = MeanSquaredError()
