@@ -9,10 +9,21 @@ import pytorch_pfn_extras as ppe
 assertions = unittest.TestCase('__init__')
 
 
+class UserDefinedLayer(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self):
+        pass
+
+    def reset_parameters(self):
+        pass
+
 @pytest.mark.parametrize('module', [nn.Sequential,
                                     nn.ModuleList,
                                     nn.ModuleDict])
 @pytest.mark.parametrize('irregular_layer', [
+    UserDefinedLayer,
     # No reset_parameters
     nn.ReLU,
     # use reset_running_stats

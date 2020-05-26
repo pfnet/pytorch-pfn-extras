@@ -15,9 +15,6 @@ def _reset_parameters(model):
             model.reset_parameters()
         elif hasattr(model, '_reset_parameters'):
             model._reset_parameters()
-        else:
-            raise RuntimeError(
-                "Can not reset parameters of model {}".format(model))
     return model
 
 
