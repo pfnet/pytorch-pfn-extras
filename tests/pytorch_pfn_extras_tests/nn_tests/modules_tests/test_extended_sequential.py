@@ -160,3 +160,43 @@ class TestExtendedSequential(object):
         assertions.assertEqual(len(ret), 2)
         ret = self.s2.repeat(0, mode='share')
         assertions.assertEqual(len(ret), 0)
+
+
+class UserDefinedLayerWithReset(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self):
+        pass
+
+    def reset_parameters(self):
+        pass
+
+
+class UserDefinedLayerWithUnderScoreReset(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self):
+        pass
+
+    def _reset_parameters(self):
+        pass
+
+
+@pytest.mark.parametrize('module', [nn.ReLU,
+                                    UserDefinedLayerWithUnderScoreReset,
+                                    UserDefinedLayerWithReset])
+def test_no_warning_when_repeat(module):
+    model = ppe.nn.ExtendedSequential(module())
+    # no warnings are raised on these modules
+    with pytest.warns(None):
+        model.repeat(2)
+
+
+@pytest.mark.parametrize('module', [UserDefinedLayer])
+def test_warning_when_repeat(module):
+    model = ppe.nn.ExtendedSequential(module())
+    # warnings are raised on these modules
+    with pytest.warns(UserWarning):
+        model.repeat(2)
