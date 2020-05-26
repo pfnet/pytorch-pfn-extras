@@ -1,5 +1,6 @@
 import torch
 import copy
+import warnings
 
 
 def _reset_parameters(model):
@@ -15,6 +16,16 @@ def _reset_parameters(model):
             model.reset_parameters()
         elif hasattr(model, '_reset_parameters'):
             model._reset_parameters()
+        else:
+            module_name = model.__module__
+            if not (module_name.startswith('torch.nn') or
+                    module_name.startswith('pytorch_pfn_extras.nn')):
+                warnings.warn('Cannot reset the parameters of module {}. '
+                              'Consider adding `reset_parameters` or'
+                              '`_reset_parameters`'
+                              'functions to the module'.format(model),
+                              UserWarning)
+
     return model
 
 
