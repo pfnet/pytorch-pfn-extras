@@ -16,8 +16,6 @@ class UserDefinedLayer(nn.Module):
     def forward(self):
         pass
 
-    def reset_parameters(self):
-        pass
 
 @pytest.mark.parametrize('module', [nn.Sequential,
                                     nn.ModuleList,
