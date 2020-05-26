@@ -17,9 +17,7 @@ def _reset_parameters(model):
         elif hasattr(model, '_reset_parameters'):
             model._reset_parameters()
         else:
-            module_name = model.__module__
-            if not (module_name.startswith('torch.nn') or
-                    module_name.startswith('pytorch_pfn_extras.nn')):
+            if len(list(model.parameters())) != 0:
                 warnings.warn('Cannot reset the parameters of module {}. '
                               'Consider adding `reset_parameters` or'
                               '`_reset_parameters`'
@@ -52,7 +50,7 @@ class ExtendedSequential(torch.nn.Sequential):
         The functions is supposed to behave the same way as `repeat`
         in `chainer`.
 
-        For user-defined module, add a ``reset_parameters`` or
+        For user-defined module with parameters, add a ``reset_parameters`` or
         ``_reset_parameters`` function to repeat with mode ``init``.
         Otherwise, a warning message is generated.
 

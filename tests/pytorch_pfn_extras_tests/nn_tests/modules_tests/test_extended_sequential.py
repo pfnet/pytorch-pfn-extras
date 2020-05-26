@@ -3,6 +3,7 @@ import pytest
 import functools
 
 import numpy
+import torch
 from torch import nn
 import pytorch_pfn_extras as ppe
 
@@ -184,9 +185,26 @@ class UserDefinedLayerWithUnderScoreReset(nn.Module):
         pass
 
 
-@pytest.mark.parametrize('module', [nn.ReLU,
-                                    UserDefinedLayerWithUnderScoreReset,
-                                    UserDefinedLayerWithReset])
+class UserDefinedLayerWithParameters(nn.Module):
+    def __init__(self):
+        super().__init__()
+        param = nn.Parameter(torch.zeros(1, 1))
+        self.register_parameter('weight', param)
+
+    def forward(self):
+        pass
+
+
+@pytest.mark.parametrize('module', [
+    # buit-in, no parameters
+    nn.ReLU,
+    # no parameters
+    UserDefinedLayer,
+    # has `_reset_parameters`
+    UserDefinedLayerWithUnderScoreReset,
+    # has `reset_parameters`
+    UserDefinedLayerWithReset,
+])
 def test_no_warning_when_repeat(module):
     model = ppe.nn.ExtendedSequential(module())
     # no warnings are raised on these modules
@@ -194,7 +212,9 @@ def test_no_warning_when_repeat(module):
         model.repeat(2)
 
 
-@pytest.mark.parametrize('module', [UserDefinedLayer])
+@pytest.mark.parametrize('module', [
+    UserDefinedLayerWithParameters
+])
 def test_warning_when_repeat(module):
     model = ppe.nn.ExtendedSequential(module())
     # warnings are raised on these modules
