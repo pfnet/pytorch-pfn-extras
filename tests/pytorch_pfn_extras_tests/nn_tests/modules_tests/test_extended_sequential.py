@@ -18,9 +18,11 @@ class UserDefinedLayer(nn.Module):
         pass
 
 
-@pytest.mark.parametrize('module', [nn.Sequential,
-                                    nn.ModuleList,
-                                    nn.ModuleDict])
+@pytest.mark.parametrize('container', [
+    nn.Sequential,
+    nn.ModuleList,
+    nn.ModuleDict,
+])
 @pytest.mark.parametrize('irregular_layer', [
     UserDefinedLayer,
     # No reset_parameters
@@ -33,26 +35,27 @@ class UserDefinedLayer(nn.Module):
         nn.MultiheadAttention, 1, 1),
     # ppe.nn layer
     functools.partial(
-        ppe.nn.LazyConv1d, None, 1, 1)])
+        ppe.nn.LazyConv1d, None, 1, 1),
+])
 class TestExtendedSequential(object):
 
     @pytest.fixture(autouse=True)
-    def setUp(self, module, irregular_layer):
+    def setUp(self, container, irregular_layer):
         self.l1 = ppe.nn.LazyLinear(None, 3)
         self.l2 = nn.Linear(3, 2)
         self.l3 = nn.Linear(2, 3)
         # a layer without reset_parameters
         self.l4 = irregular_layer()
         # s1: l1 -> l2
-        if module == nn.Sequential:
-            self.s1 = module(self.l1, self.l2)
-        elif module == nn.ModuleDict:
-            self.s1 = module({
+        if container == nn.Sequential:
+            self.s1 = container(self.l1, self.l2)
+        elif container == nn.ModuleDict:
+            self.s1 = container({
                 'l1': self.l1,
                 'l2': self.l2})
         else:
-            self.s1 = module([self.l1, self.l2])
-        self.module = module
+            self.s1 = container([self.l1, self.l2])
+        self.container = container
         # s2: s1 (l1 -> l2) -> l3 -> l4
         self.s2 = ppe.nn.ExtendedSequential(self.s1, self.l3, self.l4)
 
@@ -65,7 +68,7 @@ class TestExtendedSequential(object):
         assertions.assertIs(type(ret[1]), type(self.s2))
 
         # bias is filled with 0, so they should have the same values
-        if self.module == nn.ModuleDict:
+        if self.container == nn.ModuleDict:
             numpy.testing.assert_array_equal(
                 ret[0][0]['l1'].bias.detach().numpy(),
                 ret[1][0]['l1'].bias.detach().numpy())
@@ -104,7 +107,7 @@ class TestExtendedSequential(object):
         assertions.assertIsNot(ret[0], ret[1])
 
         # b is filled with 0, so they should have the same values
-        if self.module == nn.ModuleDict:
+        if self.container == nn.ModuleDict:
             numpy.testing.assert_array_equal(
                 ret[0][0]["l1"].bias.detach().numpy(),
                 ret[1][0]["l1"].bias.detach().numpy())
@@ -139,7 +142,7 @@ class TestExtendedSequential(object):
         assertions.assertIs(type(ret[1]), type(self.s2))
 
         # b is filled with 0, so they should have the same values
-        if self.module == nn.ModuleDict:
+        if self.container == nn.ModuleDict:
             numpy.testing.assert_array_equal(
                 ret[0][0]["l1"].bias.detach().numpy(),
                 ret[1][0]["l1"].bias.detach().numpy())
