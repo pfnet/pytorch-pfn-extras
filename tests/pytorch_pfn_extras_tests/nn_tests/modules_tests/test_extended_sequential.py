@@ -1,5 +1,6 @@
 import unittest
 import pytest
+import functools
 
 import numpy
 from torch import nn
@@ -11,15 +12,27 @@ assertions = unittest.TestCase('__init__')
 @pytest.mark.parametrize('module', [nn.Sequential,
                                     nn.ModuleList,
                                     nn.ModuleDict])
+@pytest.mark.parametrize('irregular_layer', [
+    # No reset_parameters
+    nn.ReLU,
+    # use reset_running_stats
+    functools.partial(
+        nn.BatchNorm1d, 1),
+    # use _reset_parameters
+    functools.partial(
+        nn.MultiheadAttention, 1, 1),
+    # ppe.nn layer
+    functools.partial(
+        ppe.nn.LazyConv1d, None, 1, 1)])
 class TestExtendedSequential(object):
 
     @pytest.fixture(autouse=True)
-    def setUp(self, module):
+    def setUp(self, module, irregular_layer):
         self.l1 = ppe.nn.LazyLinear(None, 3)
         self.l2 = nn.Linear(3, 2)
         self.l3 = nn.Linear(2, 3)
         # a layer without reset_parameters
-        self.l4 = nn.ReLU()
+        self.l4 = irregular_layer()
         # s1: l1 -> l2
         if module == nn.Sequential:
             self.s1 = module(self.l1, self.l2)
