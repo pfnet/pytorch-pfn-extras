@@ -216,7 +216,7 @@ def test_no_warning_when_repeat(module):
 
 
 @pytest.mark.parametrize('module', [
-    UserDefinedLayerWithParameters
+    UserDefinedLayerWithParameters,
 ])
 def test_warning_when_repeat(module):
     model = ppe.nn.ExtendedSequential(module())
