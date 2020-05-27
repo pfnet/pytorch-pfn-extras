@@ -198,6 +198,15 @@ class UserDefinedLayerWithParameters(nn.Module):
         pass
 
 
+class UserDefinedLayerWithBuffer(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.register_buffer('weight', torch.zeros(1, 1))
+
+    def forward(self):
+        pass
+
+
 @pytest.mark.parametrize('module', [
     # buit-in, no parameters
     nn.ReLU,
@@ -217,6 +226,7 @@ def test_no_warning_when_repeat(module):
 
 @pytest.mark.parametrize('module', [
     UserDefinedLayerWithParameters,
+    UserDefinedLayerWithBuffer,
 ])
 def test_warning_when_repeat(module):
     model = ppe.nn.ExtendedSequential(module())
