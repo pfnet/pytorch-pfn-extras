@@ -341,18 +341,16 @@ class _Snapshot(extension.Extension):
         outdir = manager.out
         writer = manager.writer if self.writer is None else self.writer
         self.writer = writer
+        loaded_fn = None
         if self.autoload:
             # If ``autoload`` is on, this code scans the ``outdir``
             # for potential snapshot files by matching the file names
             # from ``filename`` format, picks up the latest one in
             # terms of mtime, and tries to load it it the target or
             # manager.
-            filename = _find_latest_snapshot(self.filename, outdir, writer.fs)
-            if filename is None:
-                print('No snapshot file that matches {} was found'
-                      .format(self.filename))
-            else:
-                snapshot_file = writer.fs.open(os.path.join(outdir, filename))
+            loaded_fn = _find_latest_snapshot(self.filename, outdir, writer.fs)
+            if loaded_fn:
+                snapshot_file = writer.fs.open(os.path.join(outdir, loaded_fn))
                 # As described above (at ``autoload`` option),
                 # snapshot files to be autoloaded must be saved by
                 # ``save_npz`` . In order to support general format,
@@ -386,6 +384,8 @@ class _Snapshot(extension.Extension):
                     writer.fs.remove(os.path.join(outdir, file))
 
             writer._add_cleanup_hook(_cleanup)
+
+        return loaded_fn
 
     def on_error(self, manager, exc, tb):
         super().on_error(manager, exc, tb)
