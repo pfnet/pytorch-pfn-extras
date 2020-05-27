@@ -38,3 +38,7 @@ Before making a contribution, please confirm that:
 - Code quality stays consistent across the script, module or package.
 - Code is covered by unit tests.
 - API is maintainable.
+
+## License
+
+MIT License
