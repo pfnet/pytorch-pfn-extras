@@ -51,9 +51,17 @@ class ExtendedSequential(torch.nn.Sequential):
         The functions is supposed to behave the same way as `repeat`
         in `chainer`.
 
-        For user-defined module with parameters, add a ``reset_parameters`` or
-        ``_reset_parameters`` function to repeat with mode ``init``.
-        Otherwise, a warning message is generated.
+        When the mode is set to ``init``, the default value,
+        modules will be copied and reinitialized by calling
+        ``reset_parameters`` (or ``_reset_parameters``) method.
+
+        To repeat user-defined modules, which have parameters or buffers,
+        with mode=``init`` in this Sequential,
+        you need to implement the ``reset_parameters`` or ``_reset_parameters``
+        method to the module to reinitialize parameters
+        and (if necessary) buffers;
+        otherwise the initialization cannot be performed
+        and a warning message will be shown.
 
         Args:
             n_repeat (int): Number of times to repeat.
