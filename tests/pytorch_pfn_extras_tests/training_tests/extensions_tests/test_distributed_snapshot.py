@@ -42,7 +42,7 @@ def _init_distributed(use_cuda):
             or 'MV2_COMM_WORLD_SIZE' in os.environ):
         # This test assumes NCCL backend.
         size, rank, local_rank = (
-            extensions._snapshot._get_ranks_from_env())
+            training.manager._get_ranks_from_env())
 
         if not torch.distributed.is_initialized():
             os.environ["WORLD_SIZE"] = str(size)

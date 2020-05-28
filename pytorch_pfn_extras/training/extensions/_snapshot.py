@@ -420,11 +420,11 @@ class _DistributedSnapshot(_Snapshot):
                          autoload, savefun)
         # To support distributed snapshots
         self._saver_rank = saver_rank
-        if not (0 <= saver_rank < self._size):
-            raise ValueError('Distributed snapshot requires a saver rank'
-                             ' in the range [0-{})'.format(self._size))
 
     def __call__(self, manager):
+        if not (0 <= self._saver_rank < manager.size):
+            raise ValueError('Distributed snapshot requires a saver rank'
+                             ' in the range [0-{})'.format(manager.size))
         if self.condition():
             # on distributed environments only the designed rank
             # saves the snapshot
