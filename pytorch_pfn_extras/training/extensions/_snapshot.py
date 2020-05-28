@@ -1,7 +1,6 @@
 import os
 
 import torch
-import torch.distributed
 
 from pytorch_pfn_extras.training import extension
 
@@ -421,34 +420,15 @@ class _DistributedSnapshot(_Snapshot):
                          autoload, savefun)
         # To support distributed snapshots
         self._saver_rank = saver_rank
-        self._size, self._rank, self._local_rank = _get_ranks_from_env()
         if not (0 <= saver_rank < self._size):
             raise ValueError('Distributed snapshot requires a saver rank'
                              ' in the range [0-{})'.format(self._size))
 
-    def __call__(self, trainer):
+    def __call__(self, manager):
         if self.condition():
             # on distributed environments only the designed rank
             # saves the snapshot
-            if self._rank == self._saver_rank:
-                self._make_snapshot(trainer)
-            if self._size > 1:
+            if manager.rank == self._saver_rank:
+                self._make_snapshot(manager)
+            if manager.size > 1:
                 torch.distributed.barrier()
-
-
-def _get_ranks_from_env():
-    if 'OMPI_COMM_WORLD_SIZE' in os.environ:
-        # We are running Open MPI
-        comm_world_size = int(os.environ["OMPI_COMM_WORLD_SIZE"])
-        comm_rank = int(os.environ["OMPI_COMM_WORLD_RANK"])
-        comm_local_rank = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-    elif 'MV2_COMM_WORLD_SIZE' in os.environ:
-        comm_world_size = int(os.environ['MV2_COMM_WORLD_SIZE'])
-        comm_rank = int(os.environ['MV2_COMM_WORLD_RANK'])
-        comm_local_rank = int(os.environ['MV2_COMM_WORLD_LOCAL_RANK'])
-    else:
-        comm_world_size = 1
-        comm_rank = 0
-        comm_local_rank = 0
-
-    return comm_world_size, comm_rank, comm_local_rank

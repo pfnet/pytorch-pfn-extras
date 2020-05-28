@@ -121,6 +121,9 @@ class PrintReport(extension.Extension):
             self._templates = templates
 
     def __call__(self, manager):
+        # Do not print in slave workers
+        if manager.rank != 0:
+            return
         log_report = self.get_log_report(manager)
         log = log_report.log
 

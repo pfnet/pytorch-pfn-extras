@@ -35,6 +35,9 @@ class ProgressBar(extension.Extension):
             self._training_length, self._bar_length, self._out)
 
     def __call__(self, manager):
+        # Do not print in slave workers
+        if manager.rank != 0:
+            return
         if self._pbar.manager is None:
             self._pbar.manager = manager
 

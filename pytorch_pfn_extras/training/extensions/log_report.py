@@ -110,7 +110,8 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
             self._log.append(stats_cpu)
 
             # write to the log file
-            if self._log_name is not None:
+            # Do not execute in slave workers
+            if self._log_name is not None and manager.rank == 0:
                 log_name = self._log_name.format(**stats_cpu)
                 out = manager.out
                 writer(log_name, out, self._log, savefun=log_writer_save_func)

@@ -122,8 +122,12 @@ class _BaseExtensionsManager:
         for ext in extensions:
             self.extend(ext)
 
-        # Initialize the writer
-        self.writer.initialize(self.out)
+        # Get track of the process ranks
+        self.size, self.rank, self.local_rank = _get_ranks_from_env()
+
+        # Initialize the writer on the master rank
+        if self.rank == 0:
+            self.writer.initialize(self.out)
 
     @property
     def elapsed_time(self):
@@ -474,3 +478,21 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
     def load_state_dict(self, to_load):
         super().load_state_dict(to_load)
         self._start_epoch = self._start_iteration // to_load['_epoch_length']
+
+
+def _get_ranks_from_env():
+    if 'OMPI_COMM_WORLD_SIZE' in os.environ:
+        # We are running Open MPI
+        comm_world_size = int(os.environ["OMPI_COMM_WORLD_SIZE"])
+        comm_rank = int(os.environ["OMPI_COMM_WORLD_RANK"])
+        comm_local_rank = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
+    elif 'MV2_COMM_WORLD_SIZE' in os.environ:
+        comm_world_size = int(os.environ['MV2_COMM_WORLD_SIZE'])
+        comm_rank = int(os.environ['MV2_COMM_WORLD_RANK'])
+        comm_local_rank = int(os.environ['MV2_COMM_WORLD_LOCAL_RANK'])
+    else:
+        comm_world_size = 1
+        comm_rank = 0
+        comm_local_rank = 0
+
+    return comm_world_size, comm_rank, comm_local_rank
