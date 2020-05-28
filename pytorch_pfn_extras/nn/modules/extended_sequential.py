@@ -20,8 +20,8 @@ def _reset_parameters(model):
             if (len(list(model.parameters())) != 0 or
                     len(list(model.buffers())) != 0):
                 warnings.warn('Cannot reset the parameters of module {}. '
-                              'Consider adding `reset_parameters` or'
-                              '`_reset_parameters`'
+                              'Consider adding `reset_parameters` or '
+                              '`_reset_parameters` '
                               'functions to the module'.format(model),
                               UserWarning)
 
