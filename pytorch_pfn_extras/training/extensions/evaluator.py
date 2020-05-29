@@ -243,7 +243,7 @@ class _IteratorProgressBar(util.ProgressBar):
 
         super().__init__(out=out)
 
-    def get_lines(self):
+    def get_lines(self, manager):
         iteration = self._iterator.current_position
         epoch_detail = self._iterator.epoch_detail
         epoch_size = getattr(self._iterator, '_epoch_size', None)

@@ -35,13 +35,10 @@ class ProgressBar(extension.Extension):
             self._training_length, self._bar_length, self._out)
 
     def __call__(self, manager):
-        if self._pbar.manager is None:
-            self._pbar.manager = manager
-
         iteration = manager.updater.iteration
         # print the progress bar
         if iteration % self._update_interval == 0:
-            self._pbar.update()
+            self._pbar.update(manager)
 
     def finalize(self):
         self._pbar.close()
@@ -54,18 +51,16 @@ class _ManagerProgressBar(util.ProgressBar):
         self.training_length = training_length
         self.bar_length = bar_length
         self.updater_template = None
-        self.manager = None
 
-    def get_lines(self):
-        assert self.manager is not None
-
+    def get_lines(self, manager):
+        assert manager is not None
         lines = []
 
-        iteration = self.manager.updater.iteration
-        epoch = self.manager.updater.epoch_detail
+        iteration = manager.updater.iteration
+        epoch = manager.updater.epoch_detail
 
         if self.training_length is None:
-            t = self.manager._stop_trigger
+            t = manager._stop_trigger
             self.training_length = t.get_training_length()
         length, unit = self.training_length
 
@@ -89,7 +84,7 @@ class _ManagerProgressBar(util.ProgressBar):
             self.updater_template = (
                 '{0.iteration:10} iter, {0.epoch} epoch / %s %ss\n' %
                 self.training_length)
-        updater = self.updater_template.format(self.manager.updater)
+        updater = self.updater_template.format(manager.updater)
         lines.append(updater)
 
         speed_t, speed_e = self.update_speed(iteration, epoch)
