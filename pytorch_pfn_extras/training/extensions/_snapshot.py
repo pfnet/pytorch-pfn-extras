@@ -215,6 +215,7 @@ def snapshot(savefun=None,
             by :func:`torch.save` .
         saver_rank (int): If defined, the snapshot will be taken by only one
             rank when running in distributed mode and restored by all.
+            If -1 is specified, all the workers will save the snapshot.
     Returns:
         Snapshot extension object.
 
@@ -415,6 +416,10 @@ class _DistributedSnapshot(_Snapshot):
             filename='snapshot_iter_{.updater.iteration}',
             snapshot_on_error=False, n_retains=-1, autoload=False,
             saver_rank=0, savefun=None):
+        # This is for all the workers to automatically restore
+        # and save the correct snapshot
+        if saver_rank == -1 and '.rank' not in filename:
+            filename = filename + '_{.rank}'
         super().__init__(target, condition, writer, filename,
                          snapshot_on_error, n_retains,
                          autoload, savefun)
@@ -422,13 +427,11 @@ class _DistributedSnapshot(_Snapshot):
         self._saver_rank = saver_rank
 
     def __call__(self, manager):
-        if not (0 <= self._saver_rank < manager.size):
+        if not (-1 <= self._saver_rank < manager.size):
             raise ValueError('Distributed snapshot requires a saver rank'
-                             ' in the range [0-{})'.format(manager.size))
+                             ' in the range [-1-{})'.format(manager.size))
         if self.condition():
             # on distributed environments only the designed rank
             # saves the snapshot
-            if manager.rank == self._saver_rank:
+            if self._saver_rank in (-1, manager.rank):
                 self._make_snapshot(manager)
-            if manager.size > 1:
-                torch.distributed.barrier()
