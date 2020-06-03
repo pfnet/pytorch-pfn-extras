@@ -22,6 +22,7 @@ pip install pytorch-ignite torchvision
 * [Lazy Modules](docs/lazy.md)
 * [Distributed Snapshot](docs/snapshot.md)
 * [Config System](docs/config.md)
+* [ONNX Utils](docs/tou.md)
 
 ## Examples
 
