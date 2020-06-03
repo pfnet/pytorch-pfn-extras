@@ -500,3 +500,21 @@ class ProcessQueueWriter(QueueWriter):
 
     def create_consumer(self, q):
         return multiprocessing.Process(target=self.consume, args=(q,))
+
+
+class TensorBoardWriter(object):
+    def __init__(self, savefun=None, fs=None, out_dir=None, **kwds):
+        import torch.utils.tensorboard
+        self._writer = torch.utils.tensorboard.SummaryWriter()
+
+    def __call__(self, filename, out_dir, target, *, savefun=None):
+        stats_cpu = target
+        # we only take the last value
+        if isinstance(target, list):
+            stats_cpu = target[-1]
+
+        if not isinstance(stats_cpu, dict):
+            raise TypeError('target must be dict or list of dicts')
+
+        for key, value in stats_cpu.items():
+            self._writer.add_scalar(key, value, stats_cpu["iteration"])
