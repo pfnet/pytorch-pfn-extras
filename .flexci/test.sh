@@ -4,7 +4,7 @@ perl -pi.bak -e 's|http://archive\.ubuntu\.com/ubuntu/|mirror://mirrors.ubuntu.c
 apt update
 apt -y install python3 python3-pip
 
-pip3 install torch torchvision pytorch-ignite pytest flake8 matplotlib
+pip3 install torch torchvision pytorch-ignite pytest flake8 matplotlib tensorboard
 pip3 install -e .
 
 # Run unit tests
