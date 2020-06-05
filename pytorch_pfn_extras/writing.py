@@ -503,9 +503,19 @@ class ProcessQueueWriter(QueueWriter):
 
 
 class TensorBoardWriter(object):
-    def __init__(self, savefun=None, fs=None, out_dir=None, **kwds):
+    """ Writer that sends statistics to TensorBoard.
+
+    This class contains a `torch.utils.tensorboard.SummaryWriter`
+    object that is used to send the collected statistics to TensorBoard.
+    A list of stats can be specified to report only the desired ones.
+
+    """
+    def __init__(
+            self, savefun=None, fs=None, out_dir=None, stats=None, **kwds):
         import torch.utils.tensorboard
-        self._writer = torch.utils.tensorboard.SummaryWriter()
+        self._stats = stats
+        self._writer = torch.utils.tensorboard.SummaryWriter(
+            log_dir=out_dir, **kwds)
 
     def __call__(self, filename, out_dir, target, *, savefun=None):
         stats_cpu = target
@@ -515,6 +525,9 @@ class TensorBoardWriter(object):
 
         if not isinstance(stats_cpu, dict):
             raise TypeError('target must be dict or list of dicts')
-
-        for key, value in stats_cpu.items():
-            self._writer.add_scalar(key, value, stats_cpu["iteration"])
+        keys = stats_cpu.keys()
+        if self._stats is not None:
+            keys = self._stats
+        for key in keys:
+            value = stats_cpu[key]
+            self._writer.add_scalar(key, value, stats_cpu['iteration'])
