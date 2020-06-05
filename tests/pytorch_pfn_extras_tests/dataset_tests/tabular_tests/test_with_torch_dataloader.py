@@ -14,7 +14,7 @@ def test_with_dataloader(batch_size, mode):
     size = 10
     keys = ('a', 'b', 'c')
     dataset = dummy_dataset.DummyDataset(size=size, keys=keys, mode=mode)
-    expected = torch.tensor(dataset.data).type(torch.float32)
+    expected = torch.tensor(dataset.data).type(torch.float64)
     expected_per_key = [
         [
             expected[i, j * batch_size:(j + 1) * batch_size]
@@ -22,6 +22,7 @@ def test_with_dataloader(batch_size, mode):
         ]
         for i in range(len(keys))
     ]
+    print(expected_per_key)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size)
     for i, example in enumerate(dataloader):
         for j, key in enumerate(keys):
