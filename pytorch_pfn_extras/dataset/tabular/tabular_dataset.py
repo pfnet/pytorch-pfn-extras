@@ -215,11 +215,15 @@ class TabularDataset(Dataset):
         """
         return ppe.dataset.tabular._join._Join(self, *datasets)
 
-    def transform(self, transform):
+    def transform(self, keys, transform):
         """Apply a transform to each example.
 
         Args:
-            transform (callable): A callable that takes an example
+            keys (tuple of strs): The keys of transformed examples.
+            transform (list of tuples): A list where each element
+                specifies a transformation with a tuple with the
+                input keys needed and the output keys it produces
+                and a callable that takes an example
                 and returns transformed example. :attr:`mode` of
                 transformed dataset is determined by the transformed
                 examples.
@@ -228,7 +232,7 @@ class TabularDataset(Dataset):
             A transfromed dataset.
         """
         return ppe.dataset.tabular._transform._Transform(
-            self, transform)
+            self, keys, transform)
 
     def transform_batch(self, keys, transform_batch):
         """Apply a transform to examples.

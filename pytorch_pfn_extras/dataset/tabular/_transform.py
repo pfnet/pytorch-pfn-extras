@@ -3,17 +3,18 @@ from pytorch_pfn_extras.dataset.tabular import _utils
 
 
 class _Transform(tabular_dataset.TabularDataset):
-    def __init__(self, dataset, transforms):
-
+    def __init__(self, dataset, keys, transforms):
         self._dataset = dataset
-        # keys are derived from the transform signatures
-        keys = set()
+
+        key_set = set()
         for s, _ in transforms:
-            keys.update(s[1])
+            if any([k in key_set for k in s[1]]):
+                raise ValueError('Transformations must be disjoint')
+            key_set.update(s[1])
+        if len(key_set - set(keys)) != 0:
+            raise ValueError('Transformations must produce all specified keys')
 
-        # There might be issues with keys order?
-        self._keys = tuple(sorted(list(keys)))
-
+        self._keys = keys
         self._transforms = transforms
 
     def __len__(self):
@@ -45,10 +46,17 @@ class _Transform(tabular_dataset.TabularDataset):
             # We only allow to execute transformations that will generate
             # the exact requested columns
             key_indices = list(key_indices)  # sometimes we get ranges
-            contained = all([r in key_indices for r in res_idx])
-            if (key_indices is None) or contained:
+            # We look for transformations that produces the requested keys
+            # we allow key_indices select a given key for transformations
+            # producting multiple keys since we have ensured all are disjoint
+            contained = set(res_idx).intersection(key_indices)
+            # res_idx holds the transf. indexes that belong to key_indices
+            res_idx = list(contained)
+            if (key_indices is None) or len(contained) > 0:
                 # Now look the indices of the keys we need to fetch
                 # from the original dataset to apply this transformation
+                if len(ops) == 0:
+                    ops = self._dataset.keys
                 ops_idx = _utils._as_key_indices(ops, self._dataset.keys)
                 operands.update(ops_idx)
                 transforms.append((ops_idx, t, res_idx))
@@ -57,7 +65,6 @@ class _Transform(tabular_dataset.TabularDataset):
     def get_examples(self, indices, key_indices):
         if key_indices is None:
             key_indices = range(len(self._keys))
-
         ops_idx, transforms = self._find_candidate_transforms(key_indices)
         in_examples = self._dataset.get_examples(indices, ops_idx)
         out_examples = tuple([] for _ in key_indices)
@@ -77,13 +84,12 @@ class _Transform(tabular_dataset.TabularDataset):
                     # Should be always be a tuple with the correct value
                     out_example = transform(*inputs)
                 elif self._dataset.mode is dict:
-                    # TODO fix the inputs
-                    keys = [self._dataset.keys for i in ops_idx]
+                    keys = [self._dataset.keys[i] for i in ops_idx]
                     out_example = transform(
                         **dict(zip(keys, inputs))
                     )
                 elif self._dataset.mode is None:
-                    out_example = self.transform(*inputs)
+                    out_example = transform(*inputs)
                 if isinstance(out_example, tuple):
                     if hasattr(self, "_mode") and self._mode is not tuple:
                         raise ValueError(
@@ -103,10 +109,10 @@ class _Transform(tabular_dataset.TabularDataset):
                             "transform must not change its return type"
                         )
                     self._mode = dict
-                    # TODO fix output index calc
-                    for col_index, key_index in enumerate(key_indices):
-                        out_examples[col_index].append(
-                            out_example[self._keys[key_index]]
+                    for col_index, key_index in enumerate(t_res_idx):
+                        key = self._keys[key_index]
+                        out_examples[key_indices.index(key_index)].append(
+                            out_example[key]
                         )
                 else:
                     if hasattr(self, "_mode") and self._mode is not None:
@@ -115,9 +121,9 @@ class _Transform(tabular_dataset.TabularDataset):
                         )
                     self._mode = None
                     out_example = (out_example,)
-                    # TODO fix output index calc
-                    for col_index, key_index in enumerate(key_indices):
-                        out_examples[col_index].append(out_example[key_index])
+                    for col_index, key_index in enumerate(t_res_idx):
+                        out_examples[key_indices.index(key_index)].append(
+                            out_example[col_index])
 
         return out_examples
 
