@@ -205,8 +205,7 @@ class TabularDataset(Dataset):
     def join(self, *datasets):
         """Stack datasets along columns.
 
-        Args:
-            datasets (iterable of :class:`TabularDataset`):
+        Args: datasets (iterable of :class:`TabularDataset`):
                 Datasets to be concatenated.
                 All datasets must have the same length
 
@@ -218,12 +217,23 @@ class TabularDataset(Dataset):
     def transform(self, keys, transform):
         """Apply a transform to each example.
 
+        The transformations are a list where each element
+        is a tuple that holds the transformation signature and
+        a callable that is the transformation itself.
+
+        The transformation signature is a tuple of 2 elements with
+        the first one being the keys of the dataset that are taken
+        as inputs. And the last one the outputs it produces for the
+        transformation `keys` argument.
+
+        When multiple transformations are specified, the outputs
+        must be disjoint or `ValueError` will be risen.
+
         Args:
             keys (tuple of strs): The keys of transformed examples.
             transform (list of tuples): A list where each element
                 specifies a transformation with a tuple with the
-                input keys needed and the output keys it produces
-                and a callable that takes an example
+                transformation signature and a callable that takes an example
                 and returns transformed example. :attr:`mode` of
                 transformed dataset is determined by the transformed
                 examples.

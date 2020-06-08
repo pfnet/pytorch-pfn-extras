@@ -55,8 +55,6 @@ class _Transform(tabular_dataset.TabularDataset):
             if (key_indices is None) or len(contained) > 0:
                 # Now look the indices of the keys we need to fetch
                 # from the original dataset to apply this transformation
-                if len(ops) == 0:
-                    ops = self._dataset.keys
                 ops_idx = _utils._as_key_indices(ops, self._dataset.keys)
                 operands.update(ops_idx)
                 transforms.append((ops_idx, t, res_idx))
