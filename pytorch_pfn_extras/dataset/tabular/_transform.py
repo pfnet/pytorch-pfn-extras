@@ -5,17 +5,20 @@ from pytorch_pfn_extras.dataset.tabular import _utils
 class _Transform(tabular_dataset.TabularDataset):
     def __init__(self, dataset, keys, transforms):
         self._dataset = dataset
-
         key_set = set()
-        for s, _ in transforms:
-            if any([k in key_set for k in s[1]]):
+
+        self._transforms = []
+        for s, t in transforms:
+            if any(k in key_set for k in s[1]):
                 raise ValueError('Transformations must be disjoint')
             key_set.update(s[1])
-        if len(key_set - set(keys)) != 0:
+            ops_idx = _utils._as_key_indices(s[0], self._dataset.keys)
+            res_idx = _utils._as_key_indices(s[1], keys)
+            self._transforms.append(((ops_idx, res_idx), t))
+        if key_set != set(keys):
             raise ValueError('Transformations must produce all specified keys')
 
         self._keys = keys
-        self._transforms = transforms
 
     def __len__(self):
         return len(self._dataset)
@@ -35,30 +38,30 @@ class _Transform(tabular_dataset.TabularDataset):
 
         # Assume that all the registered transformations are
         # disjoint on the outputs
+        key_indices = list(key_indices)  # sometimes we get ranges
         transforms = []
         operands = set()
         # Look for the transforms that produce the
         # columns specified in the result
         # to avoid calculating uneeded columns
         for s, t in self._transforms:
-            ops, res = s
-            res_idx = _utils._as_key_indices(res, self._keys)
+            ops_idx, res_idx = s
+            # res_idx = _utils._as_key_indices(res, self._keys)
             # We only allow to execute transformations that will generate
             # the exact requested columns
-            key_indices = list(key_indices)  # sometimes we get ranges
             # We look for transformations that produces the requested keys
             # we allow key_indices select a given key for transformations
             # producting multiple keys since we have ensured all are disjoint
             contained = set(res_idx).intersection(key_indices)
             # res_idx holds the transf. indexes that belong to key_indices
             res_idx = list(contained)
-            if (key_indices is None) or len(contained) > 0:
+            if len(contained) > 0:
                 # Now look the indices of the keys we need to fetch
                 # from the original dataset to apply this transformation
-                ops_idx = _utils._as_key_indices(ops, self._dataset.keys)
+                # ops_idx = _utils._as_key_indices(ops, self._dataset.keys)
                 operands.update(ops_idx)
                 transforms.append((ops_idx, t, res_idx))
-        return sorted(list(operands)), transforms
+        return list(operands), transforms
 
     def get_examples(self, indices, key_indices):
         if key_indices is None:
