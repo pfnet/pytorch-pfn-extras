@@ -16,7 +16,8 @@ class _Transform(tabular_dataset.TabularDataset):
             res_idx = _utils._as_key_indices(s[1], keys)
             self._transforms.append(((ops_idx, res_idx), t))
         if key_set != set(keys):
-            raise ValueError('Transformations must produce all specified keys')
+            raise ValueError(
+                'Transformations must produce only all specified keys')
 
         self._keys = keys
 
