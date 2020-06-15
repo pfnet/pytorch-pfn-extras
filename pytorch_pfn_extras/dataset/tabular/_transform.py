@@ -47,7 +47,6 @@ class _Transform(tabular_dataset.TabularDataset):
         # to avoid calculating uneeded columns
         for s, t in self._transforms:
             ops_idx, res_idx = s
-            # res_idx = _utils._as_key_indices(res, self._keys)
             # We only allow to execute transformations that will generate
             # the exact requested columns
             # We look for transformations that produces the requested keys
@@ -59,7 +58,6 @@ class _Transform(tabular_dataset.TabularDataset):
             if len(contained) > 0:
                 # Now look the indices of the keys we need to fetch
                 # from the original dataset to apply this transformation
-                # ops_idx = _utils._as_key_indices(ops, self._dataset.keys)
                 operands.update(ops_idx)
                 transforms.append((ops_idx, t, res_idx))
         return list(operands), transforms
