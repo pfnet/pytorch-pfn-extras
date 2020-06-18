@@ -41,7 +41,7 @@ class ProgressBar(extension.Extension):
         iteration = manager.iteration
         # print the progress bar
         if iteration % self._update_interval == 0:
-            self._pbar.update(manager)
+            self._pbar.update()
 
     def finalize(self):
         self._pbar.close()

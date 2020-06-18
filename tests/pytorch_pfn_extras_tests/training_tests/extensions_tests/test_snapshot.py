@@ -352,7 +352,7 @@ def test_model_transformations(path):
 
     # Verify that autoload applies the transformation
     to_load = torch.load(os.path.join(path, 'test'))
-    trainer = get_trainer_with_mock_updater(
+    trainer = get_trainer(
         out_dir=path, state_to_load=to_load)
     snapshot = extensions.snapshot(
         filename='test', autoload=True,
