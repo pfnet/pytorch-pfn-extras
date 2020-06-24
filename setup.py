@@ -19,13 +19,5 @@ setuptools.setup(
         'test': ['pytest'],
         'tou': ['onnx'],
     },
-    packages=[
-        'pytorch_pfn_extras',
-        'pytorch_pfn_extras.nn',
-        'pytorch_pfn_extras.nn.modules',
-        'pytorch_pfn_extras.tou',
-        'pytorch_pfn_extras.training',
-        'pytorch_pfn_extras.training.extensions',
-        'pytorch_pfn_extras.training.triggers',
-    ],
+    packages=setuptools.find_packages(exclude=['tests']),
 )
