@@ -10,7 +10,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.onnx.symbolic_helper import _default_onnx_opset_version
 
-from pytorch_pfn_extras.tou import export_testcase, is_large_tensor, LARGE_TENSOR_DATA_THRESHOLD
+from pytorch_pfn_extras.tou import \
+    export_testcase, is_large_tensor, LARGE_TENSOR_DATA_THRESHOLD
 
 
 output_dir = 'out'
@@ -60,7 +61,8 @@ def test_export_testcase():
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.isfile(os.path.join(test_data_set_dir, 'input_0.pb'))
     assert os.path.isfile(os.path.join(test_data_set_dir, 'output_0.pb'))
-    assert os.path.isfile(os.path.join(test_data_set_dir, 'gradient_input_0.pb'))
+    assert os.path.isfile(os.path.join(
+        test_data_set_dir, 'gradient_input_0.pb'))
 
     for i in range(8):
         assert os.path.isfile(os.path.join(
@@ -76,7 +78,7 @@ def test_cuda_tensor():
     model = Net().to(device)
     x = torch.zeros((1, 1, 28, 28), device=device)
 
-    output_dir = _helper(model, x, 'mnist_cuda', output_grad=True)
+    _helper(model, x, 'mnist_cuda', output_grad=True)
 
 
 def test_model_not_overwrite():
@@ -100,7 +102,7 @@ def _to_array(f, name=None):
     with open(f, 'rb') as fp:
         onnx_tensor.ParseFromString(fp.read())
     if name is not None:
-       assert onnx_tensor.name == name
+        assert onnx_tensor.name == name
     return onnx.numpy_helper.to_array(onnx_tensor)
 
 
@@ -147,7 +149,8 @@ def test_backward_multiple_input():
     h = torch.ones((1, 5, 3), requires_grad=True)
 
     grads = [torch.ones((4, 5, 3)) / 2, torch.ones((1, 5, 3)) / 3]
-    output_dir = _helper(model, (input, h), 'backward_multiple_input', output_grad=grads,
+    output_dir = _helper(model, (input, h), 'backward_multiple_input',
+                         output_grad=grads,
                          output_names=['output0', 'output1'])
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
@@ -207,7 +210,8 @@ def test_export_testcase_strip_large_tensor_data():
         else:
             assert len(tensor.external_data) == 0
 
-    onnx_model = onnx.load(os.path.join(output_dir, 'model.onnx'), load_external_data=False)
+    onnx_model = onnx.load(os.path.join(output_dir, 'model.onnx'),
+                           load_external_data=False)
     for init in onnx_model.graph.initializer:
         check_tensor(init)
 

@@ -5,7 +5,6 @@ import torch
 import torch.nn as nn
 import torch.onnx
 
-from pytorch_pfn_extras.tou import export_testcase
 from pytorch_pfn_extras.tou import annotate
 from tests.pytorch_pfn_extras_tests.tou.test_export_testcase import _helper
 
@@ -17,6 +16,7 @@ def test_annotate():
             self.conv = nn.Conv2d(1, 6, 3)
             self.conv2 = nn.Conv2d(6, 12, 3)
             self.linear = nn.Linear(28, 10)
+
         def forward(self, x):
             with annotate(self.conv, aaa='a', bbb=['b', 'c']):
                 h = self.conv(x)

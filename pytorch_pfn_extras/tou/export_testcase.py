@@ -36,11 +36,13 @@ def _export_meta(model, out_dir, strip_large_tensor_data):
                                       stderr=subprocess.PIPE)
         git_status.communicate()
         if git_status.returncode == os.EX_OK:
+            def strip_cmd(cmd):
+                return os.popen(cmd).read().strip()
             ret['git'] = {
-                'branch': os.popen('git rev-parse --abbrev-ref HEAD').read().strip(),
-                'commit': os.popen('git rev-parse HEAD').read().strip(),
-                'remote': os.popen('git ls-remote --get-url origin').read().strip(),
-                'commit_date': os.popen('git show -s --format=%ci HEAD').read().strip(),
+                'branch': strip_cmd('git rev-parse --abbrev-ref HEAD'),
+                'commit': strip_cmd('git rev-parse HEAD'),
+                'remote': strip_cmd('git ls-remote --get-url origin'),
+                'commit_date': strip_cmd('git show -s --format=%ci HEAD'),
             }
     except FileNotFoundError:
         pass
@@ -133,7 +135,7 @@ def export_testcase(
     if opset_ver is None:
         opset_ver = _default_onnx_opset_version
     with init_annotate(opset_ver):
-       outs = _export_util(model, args, filename, **kwargs)
+        outs = _export_util(model, args, filename, **kwargs)
 
     if strip_large_tensor_data:
         _strip_large_initializer_raw_data(filename, large_tensor_threshold)
@@ -142,7 +144,8 @@ def export_testcase(
         array = tensor.detach().cpu().numpy()
         with open(f, 'wb') as fp:
             t = onnx.numpy_helper.from_array(array, name)
-            if strip_large_tensor_data and is_large_tensor(t, large_tensor_threshold):
+            if strip_large_tensor_data and is_large_tensor(
+                    t, large_tensor_threshold):
                 _strip_raw_data(t)
             fp.write(t.SerializeToString())
 
@@ -182,17 +185,22 @@ def export_testcase(
 
     if output_grad is not False:
         if isinstance(output_grad, bool):
-            output_grad = [torch.ones_like(outs[idx]) for idx in range(len(output_names))]
+            output_grad = \
+                [torch.ones_like(outs[idx])
+                 for idx in range(len(output_names))]
         if isinstance(output_grad, torch.Tensor):
             output_grad = [output_grad]
         for idx in range(len(output_names)):
             write_to_pb(
-                os.path.join(data_set_path, 'gradient_input_{}.pb'.format(idx)), output_grad[idx],
+                os.path.join(data_set_path,
+                             'gradient_input_{}.pb'.format(idx)),
+                output_grad[idx],
                 output_names[idx])
         if len(output_names) == len(outs):
             torch.autograd.backward(outs, grad_tensors=output_grad)
         else:
-            assert len(output_names) == 1, 'Single output names is only supported'
+            assert len(output_names) == 1, \
+                   'Single output names is only supported'
             outs[0].backward(output_grad[0])
 
         for i, (name, param) in enumerate(model.named_parameters()):
@@ -207,4 +215,5 @@ def export_testcase(
 
     if metadata:
         with open(os.path.join(out_dir, 'meta.json'), 'w') as f:
-            json.dump(_export_meta(model, out_dir, strip_large_tensor_data), f, indent=2)
+            json.dump(_export_meta(model, out_dir, strip_large_tensor_data),
+                      f, indent=2)
