@@ -32,7 +32,7 @@ class Reporter:
 
     See the following example:
 
-    >>> from pytorch_pfn_extras import Reporter, report, report_scope
+    >>> from pytorch_pfn_extras.reporting import Reporter, report, report_scope
     >>>
     >>> reporter = Reporter()
     >>> observer = object()  # it can be an arbitrary (reference) object
