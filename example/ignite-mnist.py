@@ -58,7 +58,7 @@ def run(train_batch_size, val_batch_size, epochs, lr, momentum, log_interval):
     device = 'cpu'
     if torch.cuda.is_available():
         device = 'cuda:0'
-
+    model = model.to(device)
     optimizer = SGD(model.parameters(), lr=lr, momentum=momentum)
     optimizer.step()
     trainer = create_supervised_trainer(
