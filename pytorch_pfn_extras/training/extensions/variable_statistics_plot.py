@@ -288,7 +288,7 @@ grid=True)
                         numpy.atleast_1d(stat_dict['percentile']))
                 stats[i] = numpy.concatenate(stat_list, axis=0)
 
-        self._samples.add(stats, idx=manager.updater.iteration)
+        self._samples.add(stats, idx=manager.iteration)
 
         if self._trigger(manager):
             self.save_plot_using_module(plt, manager)

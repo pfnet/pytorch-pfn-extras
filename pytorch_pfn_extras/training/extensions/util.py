@@ -83,7 +83,7 @@ class ProgressBar:
     def update(self, manager=None):
         self.erase_console()
 
-        lines = self.get_lines(manager)
+        lines = self.get_lines()
         for line in lines:
             self._out.write(line)
 

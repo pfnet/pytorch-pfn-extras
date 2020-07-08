@@ -21,8 +21,8 @@ def test_run():
     for epoch in range(max_epochs):
         for batch_idx in range(iters_per_epoch):
             with manager.run_iteration():
-                if manager.updater.iteration < 2:
+                if manager.iteration < 2:
                     continue
                 status = '{} iter, {} epoch / {} epochs'.format(
-                    manager.updater.iteration, epoch, max_epochs)
+                    manager.iteration, epoch, max_epochs)
                 assert status in out.getvalue()
