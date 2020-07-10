@@ -96,6 +96,11 @@ class LazyTestBase:
         assert expected.shape == actual.shape
         assert (expected == actual).all()
 
+    def test_share_memory(self):
+        m1 = self.get_lazy_module()
+        with pytest.raises(RuntimeError):
+            m1.share_memory()
+
     def test_double(self):
         torch.manual_seed(0)
         input = self.get_input().double()
