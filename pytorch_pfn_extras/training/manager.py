@@ -348,15 +348,30 @@ class ExtensionsManager(_BaseExtensionsManager):
         self._prepare_for_training(0, iters_per_epoch)
 
     @contextlib.contextmanager
-    def run_iteration(self):
+    def run_iteration(self, *, step_optimizers=None):
+        """ Context manager to run an iteration.
+
+        This manager can additionally run a step in the
+        specified optimizers names.
+
+        Args:
+            step_optimizers (list or None): names of the optimizers
+            to call `zero_grad` and `step`
+        """
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
-
+        step_optimizers_names = []
+        if step_optimizers is not None:
+            step_optimizers_names = step_optimizers
         self.observation = {}
         with self.reporter.scope(self.observation):
             try:
+                for name in step_optimizers_names:
+                    self._optimizers[name].zero_grad()
                 yield
+                for name in step_optimizers_names:
+                    self._optimizers[name].step()
             finally:
                 # In chainer, the iteration count was increased
                 # just before calling the extensions, we need
