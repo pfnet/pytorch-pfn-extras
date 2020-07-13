@@ -3,15 +3,12 @@ used by ../dataloder.py.
 
 A lot of multiprocessing is used in data loading, which only supports running
 functions defined in global environment (py2 can't serialize static methods).
-Therefore, for code tidiness we put these functions into different files in this
-folder.
+Therefore, for code tidiness we put these functions into different files in
+this folder.
 """
 
 import sys
 import atexit
-
-# old private location of the ExceptionWrapper that some users rely on:
-from torch._utils import ExceptionWrapper
 
 
 IS_WINDOWS = sys.platform == "win32"
@@ -39,7 +36,8 @@ def _set_python_exit_flag():
     global python_exit_status
     python_exit_status = True
 
+
 atexit.register(_set_python_exit_flag)
 
 
-from . import worker
+from . import worker  # NOQA
