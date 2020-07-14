@@ -13,7 +13,7 @@ _thread_local = threading.local()
 
 def _copy_variable(value):
     if isinstance(value, torch.Tensor):
-        return value.clone()
+        return value.detach()
     return value
 
 

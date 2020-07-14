@@ -158,6 +158,17 @@ def test_report_scope():
     assert 'x' not in reporter.observation
 
 
+def test_report_tensor_detached():
+    reporter = ppe.reporting.Reporter()
+    x = torch.tensor(numpy.array(1, 'float32'), requires_grad=True)
+    with reporter:
+        ppe.reporting.report({'x': x})
+    observation = reporter.observation
+    assert 'x' in observation
+    assert not observation['x'].requires_grad
+    assert x.requires_grad
+
+
 # ppe.reporting.Summary
 
 def test_summary_basic():
