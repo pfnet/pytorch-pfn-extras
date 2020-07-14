@@ -104,7 +104,7 @@ def _strip_large_initializer_raw_data(onnx_path, large_tensor_threshold):
 
 
 def export_testcase(
-        model, args, out_dir, output_grad=False, metadata=True,
+        model, args, out_dir, *, output_grad=False, metadata=True,
         model_overwrite=True, strip_large_tensor_data=False,
         large_tensor_threshold=LARGE_TENSOR_DATA_THRESHOLD, **kwargs):
     """Export model and I/O tensors of the model in protobuf format.
