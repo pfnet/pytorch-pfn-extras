@@ -27,17 +27,20 @@ def _export_meta(model, out_dir, strip_large_tensor_data):
         'exporter': 'torch-onnx-utils',
         'strip_large_tensor_data': strip_large_tensor_data,
     }
-    git_status = subprocess.Popen(['git', 'status'],
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
-    git_status.communicate()
-    if git_status.returncode == os.EX_OK:
-        ret['git'] = {
-            'branch': os.popen('git rev-parse --abbrev-ref HEAD').read().strip(),
-            'commit': os.popen('git rev-parse HEAD').read().strip(),
-            'remote': os.popen('git ls-remote --get-url origin').read().strip(),
-            'commit_date': os.popen('git show -s --format=%ci HEAD').read().strip(),
-        }
+    try:
+        git_status = subprocess.Popen(['git', 'status'],
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE)
+        git_status.communicate()
+        if git_status.returncode == os.EX_OK:
+            ret['git'] = {
+                'branch': os.popen('git rev-parse --abbrev-ref HEAD').read().strip(),
+                'commit': os.popen('git rev-parse HEAD').read().strip(),
+                'remote': os.popen('git ls-remote --get-url origin').read().strip(),
+                'commit_date': os.popen('git show -s --format=%ci HEAD').read().strip(),
+            }
+    except FileNotFoundError:
+        pass
 
     return ret
 
