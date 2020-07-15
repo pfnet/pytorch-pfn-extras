@@ -17,7 +17,7 @@ setuptools.setup(
     install_requires=['numpy', 'torch'],
     extras_require={
         'test': ['pytest'],
-        'tou': ['onnx'],
+        'onnx': ['onnx'],
     },
     packages=setuptools.find_packages(exclude=['tests']),
 )

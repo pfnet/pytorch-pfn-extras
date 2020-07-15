@@ -5,8 +5,8 @@ import torch
 import torch.nn as nn
 import torch.onnx
 
-from pytorch_pfn_extras.tou import annotate
-from tests.pytorch_pfn_extras_tests.tou.test_export_testcase import _helper
+from pytorch_pfn_extras.onnx import annotate
+from tests.pytorch_pfn_extras_tests.onnx.test_export_testcase import _helper
 
 
 def test_annotate():

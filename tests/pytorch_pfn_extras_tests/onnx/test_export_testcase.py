@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.onnx.symbolic_helper import _default_onnx_opset_version
 
-from pytorch_pfn_extras.tou import \
+from pytorch_pfn_extras.onnx import \
     export_testcase, is_large_tensor, LARGE_TENSOR_DATA_THRESHOLD
 
 

@@ -17,7 +17,7 @@ from torch.onnx import OperatorExportTypes
 from torch.onnx.symbolic_helper import _default_onnx_opset_version
 from torch.onnx.utils import _export
 
-from pytorch_pfn_extras.tou.annotate import init_annotate
+from pytorch_pfn_extras.onnx.annotate import init_annotate
 
 
 LARGE_TENSOR_DATA_THRESHOLD = 100
