@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from contextlib import nullcontext
+from contextlib import suppress
 import os
 
 import numpy as np
@@ -168,8 +168,8 @@ def test_scoped_anchor():
                 self.anchor1 = scoped_anchor()
                 self.anchor2 = scoped_anchor()
             else:
-                self.anchor1 = nullcontext()
-                self.anchor2 = nullcontext()
+                self.anchor1 = suppress()
+                self.anchor2 = suppress()
 
         def forward(self, x):
             h = self.conv(x)
