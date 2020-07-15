@@ -7,6 +7,9 @@ Supplementary components to accelerate research and development in PyTorch.
 ```sh
 pip install pytorch-pfn-extras
 
+# Use `[onnx]` to use onnx submodule like:
+#  pip install pytorch-pfn-extras[onnx]
+
 ### Optinal dependencies
 # For PlotReport / VariableStatisticsPlot extensions
 pip install matplotlib
@@ -22,7 +25,7 @@ pip install pytorch-ignite torchvision
 * [Lazy Modules](docs/lazy.md)
 * [Distributed Snapshot](docs/snapshot.md)
 * [Config System](docs/config.md)
-* [ONNX Utils](docs/tou.md)
+* [ONNX Utils](docs/onnx.md)
 
 ## Examples
 
