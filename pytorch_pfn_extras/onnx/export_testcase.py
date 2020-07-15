@@ -119,7 +119,7 @@ def export(
         warnings.warn(
             'When export ONNX graph as file, "export_testcase" is '
             'strongly recommended, please consider use it instead',
-                UserWarning)
+            UserWarning)
         with open(f, 'wb') as fp:
             fp.write(onnx_graph.SerializeToString())
 
@@ -205,17 +205,20 @@ def export_testcase(
 
     if output_grad is not False:
         if isinstance(output_grad, bool):
-            output_grad = [torch.ones_like(outs[idx]) for idx in range(len(output_names))]
+            output_grad = [torch.ones_like(outs[idx])
+                           for idx in range(len(output_names))]
         if isinstance(output_grad, torch.Tensor):
             output_grad = [output_grad]
         for idx in range(len(output_names)):
             write_to_pb(
-                os.path.join(data_set_path, 'gradient_input_{}.pb'.format(idx)), output_grad[idx],
+                os.path.join(data_set_path, 'gradient_input_{}.pb'.format(
+                    idx)), output_grad[idx],
                 output_names[idx])
         if len(output_names) == len(outs):
             torch.autograd.backward(outs, grad_tensors=output_grad)
         else:
-            assert len(output_names) == 1, 'Single output names is only supported'
+            assert len(
+                output_names) == 1, 'Single output names is only supported'
             outs[0].backward(output_grad[0])
 
         for i, (name, param) in enumerate(model.named_parameters()):
@@ -230,4 +233,5 @@ def export_testcase(
 
     if metadata:
         with open(os.path.join(out_dir, 'meta.json'), 'w') as f:
-            json.dump(_export_meta(model, out_dir, strip_large_tensor_data), f, indent=2)
+            json.dump(_export_meta(model, out_dir,
+                                   strip_large_tensor_data), f, indent=2)

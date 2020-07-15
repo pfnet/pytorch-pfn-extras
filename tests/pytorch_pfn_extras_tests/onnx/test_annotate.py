@@ -27,6 +27,7 @@ def test_annotate():
             self.conv2 = nn.Conv2d(6, 12, 3)
             self.linear = nn.Linear(28, 10)
             self.linear2 = nn.Linear(10, 5)
+
         def forward(self, x):
             with annotate(aaa='a', bbb=['b', 'c']):
                 h = self.conv(x)
@@ -77,6 +78,7 @@ def test_apply_annotation():
             self.conv2 = nn.Conv2d(6, 12, 3)
             self.linear = nn.Linear(28, 10)
             self.linear2 = nn.Linear(10, 5)
+
         def forward(self, x):
             def _fn1():
                 h = self.conv(x)
@@ -84,6 +86,7 @@ def test_apply_annotation():
                 return h
             h = apply_annotation(_fn1, aaa='a', bbb=['b', 'c'])
             h = self.conv2(h)
+
             def _fn2(x):
                 h = self.linear(x)
                 h = self.linear2(h)

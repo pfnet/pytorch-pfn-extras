@@ -52,8 +52,8 @@ class _AnnotationInit(object):
         tracked_id = node.doc_string[start_idx:start_idx+next_ub_idx]
         assert tracked_id.isdigit()
 
-        attrs = [onnx.helper.make_attribute(k, v) for k, v in\
-            self.attrs_map[tracked_id].items()]
+        attrs = [onnx.helper.make_attribute(k, v) for k, v in
+                 self.attrs_map[tracked_id].items()]
         node.attribute.extend(attrs)
 
     def reorg_anchor(self, onnx_graph):
@@ -112,8 +112,8 @@ class _AnnotationInit(object):
         if start_end == 'e' and node_total != node_num:
             return True
 
-        attrs = [onnx.helper.make_attribute(k, v) for k, v in\
-            self.attrs_map[tracked_id].items()]
+        attrs = [onnx.helper.make_attribute(k, v) for k, v in
+                 self.attrs_map[tracked_id].items()]
         node.attribute.extend(attrs)
         node.op_type = 'Identity'
         node.name = 'Anchor_{}_{}'.format(

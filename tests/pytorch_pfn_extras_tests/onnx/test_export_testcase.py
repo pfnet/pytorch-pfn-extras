@@ -67,7 +67,8 @@ def test_export_testcase():
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.isfile(os.path.join(test_data_set_dir, 'input_0.pb'))
     assert os.path.isfile(os.path.join(test_data_set_dir, 'output_0.pb'))
-    assert os.path.isfile(os.path.join(test_data_set_dir, 'gradient_input_0.pb'))
+    assert os.path.isfile(os.path.join(
+        test_data_set_dir, 'gradient_input_0.pb'))
 
     for i in range(8):
         assert os.path.isfile(os.path.join(
@@ -137,7 +138,7 @@ def _to_array(f, name=None):
     with open(f, 'rb') as fp:
         onnx_tensor.ParseFromString(fp.read())
     if name is not None:
-       assert onnx_tensor.name == name
+        assert onnx_tensor.name == name
     return onnx.numpy_helper.to_array(onnx_tensor)
 
 
@@ -214,8 +215,8 @@ def test_export_testcase_strip_large_tensor_data():
     x = torch.zeros((1, 1, 28, 28))
 
     output_dir = _helper(
-            model, x, 'mnist_stripped_tensor_data',
-            output_grad=True, strip_large_tensor_data=True)
+        model, x, 'mnist_stripped_tensor_data',
+        output_grad=True, strip_large_tensor_data=True)
 
     assert os.path.isdir(output_dir)
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))
@@ -244,7 +245,8 @@ def test_export_testcase_strip_large_tensor_data():
         else:
             assert len(tensor.external_data) == 0
 
-    onnx_model = onnx.load(os.path.join(output_dir, 'model.onnx'), load_external_data=False)
+    onnx_model = onnx.load(os.path.join(
+        output_dir, 'model.onnx'), load_external_data=False)
     for init in onnx_model.graph.initializer:
         check_tensor(init)
 
@@ -260,9 +262,10 @@ def test_export_testcase_options():
     x = torch.zeros((1, 1, 28, 28))
 
     output_dir = _helper(
-            model, x, 'mnist_stripped_tensor_data',
-            opset_version=11, strip_doc_string=False)
+        model, x, 'mnist_stripped_tensor_data',
+        opset_version=11, strip_doc_string=False)
 
-    onnx_model = onnx.load(os.path.join(output_dir, 'model.onnx'), load_external_data=False)
+    onnx_model = onnx.load(os.path.join(
+        output_dir, 'model.onnx'), load_external_data=False)
     assert onnx_model.opset_import[0].version == 11
     assert onnx_model.graph.node[0].doc_string != ''
