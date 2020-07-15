@@ -1,3 +1,4 @@
+import io
 import os
 import json
 
@@ -10,8 +11,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.onnx.symbolic_helper import _default_onnx_opset_version
 
-from pytorch_pfn_extras.onnx import \
-    export_testcase, is_large_tensor, LARGE_TENSOR_DATA_THRESHOLD
+from pytorch_pfn_extras.onnx import export
+from pytorch_pfn_extras.onnx import export_testcase
+from pytorch_pfn_extras.onnx import is_large_tensor
+from pytorch_pfn_extras.onnx import LARGE_TENSOR_DATA_THRESHOLD
 
 
 output_dir = 'out'
@@ -36,16 +39,19 @@ class Net(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-def _helper(model, args, d, **kwargs):
+def _get_output_dir(d, **kwargs):
     output_dir_base = 'out'
     opset_ver = kwargs.get('opset_version', _default_onnx_opset_version)
 
     output_dir = os.path.join(
         output_dir_base, 'opset{}'.format(opset_ver), d)
     os.makedirs(output_dir, exist_ok=True)
+    return output_dir
 
+
+def _helper(model, args, d, **kwargs):
+    output_dir = _get_output_dir(d)
     export_testcase(model, args, output_dir, **kwargs)
-
     return output_dir
 
 
@@ -61,13 +67,42 @@ def test_export_testcase():
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.isfile(os.path.join(test_data_set_dir, 'input_0.pb'))
     assert os.path.isfile(os.path.join(test_data_set_dir, 'output_0.pb'))
-    assert os.path.isfile(os.path.join(
-        test_data_set_dir, 'gradient_input_0.pb'))
+    assert os.path.isfile(os.path.join(test_data_set_dir, 'gradient_input_0.pb'))
 
     for i in range(8):
         assert os.path.isfile(os.path.join(
             test_data_set_dir, 'gradient_{}.pb'.format(i)))
     assert not os.path.isfile(os.path.join(test_data_set_dir, 'gradient_8.pb'))
+
+
+def test_export_filename():
+    model = nn.Sequential(nn.Linear(5, 10, bias=False))
+    x = torch.zeros((2, 5))
+
+    output_dir = _get_output_dir('export_filename')
+    model_path = os.path.join(output_dir, 'model.onnx')
+
+    with pytest.warns(UserWarning):
+        out = export(model, x, model_path, return_output=True)
+
+    assert os.path.isfile(model_path)
+    expected_out = torch.zeros((2, 10))  # check only shape size
+    np.testing.assert_allclose(
+        out.detach().cpu().numpy(), expected_out.detach().cpu().numpy())
+
+
+def test_export_stream():
+    model = nn.Sequential(nn.Linear(5, 10, bias=False))
+    x = torch.zeros((2, 5))
+
+    bytesio = io.BytesIO()
+    assert len(bytesio.getvalue()) == 0
+    out = export(model, x, bytesio, return_output=True)
+
+    assert len(bytesio.getvalue()) > 0
+    expected_out = torch.zeros((2, 10))  # check only shape size
+    np.testing.assert_allclose(
+        out.detach().cpu().numpy(), expected_out.detach().cpu().numpy())
 
 
 def test_cuda_tensor():
@@ -78,7 +113,7 @@ def test_cuda_tensor():
     model = Net().to(device)
     x = torch.zeros((1, 1, 28, 28), device=device)
 
-    _helper(model, x, 'mnist_cuda', output_grad=True)
+    output_dir = _helper(model, x, 'mnist_cuda', output_grad=True)
 
 
 def test_model_not_overwrite():
@@ -102,7 +137,7 @@ def _to_array(f, name=None):
     with open(f, 'rb') as fp:
         onnx_tensor.ParseFromString(fp.read())
     if name is not None:
-        assert onnx_tensor.name == name
+       assert onnx_tensor.name == name
     return onnx.numpy_helper.to_array(onnx_tensor)
 
 
@@ -149,8 +184,7 @@ def test_backward_multiple_input():
     h = torch.ones((1, 5, 3), requires_grad=True)
 
     grads = [torch.ones((4, 5, 3)) / 2, torch.ones((1, 5, 3)) / 3]
-    output_dir = _helper(model, (input, h), 'backward_multiple_input',
-                         output_grad=grads,
+    output_dir = _helper(model, (input, h), 'backward_multiple_input', output_grad=grads,
                          output_names=['output0', 'output1'])
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
@@ -210,8 +244,7 @@ def test_export_testcase_strip_large_tensor_data():
         else:
             assert len(tensor.external_data) == 0
 
-    onnx_model = onnx.load(os.path.join(output_dir, 'model.onnx'),
-                           load_external_data=False)
+    onnx_model = onnx.load(os.path.join(output_dir, 'model.onnx'), load_external_data=False)
     for init in onnx_model.graph.initializer:
         check_tensor(init)
 
@@ -220,3 +253,16 @@ def test_export_testcase_strip_large_tensor_data():
             tensor = onnx.TensorProto()
             tensor.ParseFromString(f.read())
             check_tensor(tensor)
+
+
+def test_export_testcase_options():
+    model = Net().to('cpu')
+    x = torch.zeros((1, 1, 28, 28))
+
+    output_dir = _helper(
+            model, x, 'mnist_stripped_tensor_data',
+            opset_version=11, strip_doc_string=False)
+
+    onnx_model = onnx.load(os.path.join(output_dir, 'model.onnx'), load_external_data=False)
+    assert onnx_model.opset_import[0].version == 11
+    assert onnx_model.graph.node[0].doc_string != ''

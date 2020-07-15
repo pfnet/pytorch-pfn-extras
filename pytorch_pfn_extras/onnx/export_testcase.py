@@ -4,23 +4,20 @@ import json
 import os
 import subprocess
 import warnings
-from functools import reduce
-import operator
 
-import numpy
 import onnx
-import onnx.external_data_helper
 import onnx.numpy_helper
 import torch
 import torch.autograd
 from torch.onnx import OperatorExportTypes
 from torch.onnx.symbolic_helper import _default_onnx_opset_version
-from torch.onnx.utils import _export
+from torch.onnx.utils import _export as torch_export
 
 from pytorch_pfn_extras.onnx.annotate import init_annotate
-
-
-LARGE_TENSOR_DATA_THRESHOLD = 100
+from pytorch_pfn_extras.onnx.strip_large_tensor import LARGE_TENSOR_DATA_THRESHOLD
+from pytorch_pfn_extras.onnx.strip_large_tensor import is_large_tensor
+from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_raw_data
+from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_large_initializer_raw_data
 
 
 def _export_meta(model, out_dir, strip_large_tensor_data):
@@ -30,22 +27,17 @@ def _export_meta(model, out_dir, strip_large_tensor_data):
         'exporter': 'torch-onnx-utils',
         'strip_large_tensor_data': strip_large_tensor_data,
     }
-    try:
-        git_status = subprocess.Popen(['git', 'status'],
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE)
-        git_status.communicate()
-        if git_status.returncode == os.EX_OK:
-            def strip_cmd(cmd):
-                return os.popen(cmd).read().strip()
-            ret['git'] = {
-                'branch': strip_cmd('git rev-parse --abbrev-ref HEAD'),
-                'commit': strip_cmd('git rev-parse HEAD'),
-                'remote': strip_cmd('git ls-remote --get-url origin'),
-                'commit_date': strip_cmd('git show -s --format=%ci HEAD'),
-            }
-    except FileNotFoundError:
-        pass
+    git_status = subprocess.Popen(['git', 'status'],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+    git_status.communicate()
+    if git_status.returncode == os.EX_OK:
+        ret['git'] = {
+            'branch': os.popen('git rev-parse --abbrev-ref HEAD').read().strip(),
+            'commit': os.popen('git rev-parse HEAD').read().strip(),
+            'remote': os.popen('git ls-remote --get-url origin').read().strip(),
+            'commit_date': os.popen('git show -s --format=%ci HEAD').read().strip(),
+        }
 
     return ret
 
@@ -53,11 +45,12 @@ def _export_meta(model, out_dir, strip_large_tensor_data):
 def _export_util(model, args, f, **kwargs):
     """Wrap operator type to export
 
-    Copied from torch.onnx.utils.export
+    Copied from torch.onnx.utils.export, to get output values.
     """
     aten = kwargs.get('aten', False)
     export_raw_ir = kwargs.get('export_raw_ir', False)
     operator_export_type = kwargs.get('operator_export_type', None)
+
     if aten or export_raw_ir:
         assert operator_export_type is None
         assert aten ^ export_raw_ir
@@ -69,38 +62,66 @@ def _export_util(model, args, f, **kwargs):
         else:
             operator_export_type = OperatorExportTypes.ONNX
 
-    return _export(model, args, f, _retain_param_name=True, **kwargs)
+    return torch_export(model, args, f, _retain_param_name=True, **kwargs)
 
 
-def is_large_tensor(tensor, threshold):
-    size = reduce(operator.mul, tensor.dims, 1)
-    return size > threshold
+def _export(
+        model, args, strip_large_tensor_data=False,
+        large_tensor_threshold=LARGE_TENSOR_DATA_THRESHOLD, **kwargs):
+    model.zero_grad()
+    bytesio = io.BytesIO()
+    opset_ver = kwargs.get('opset_version', None)
+    if opset_ver is None:
+        opset_ver = _default_onnx_opset_version
+    strip_doc_string = kwargs.pop('strip_doc_string', True)
+    with init_annotate(model, opset_ver) as ann:
+        outs = _export_util(
+            model, args, bytesio, strip_doc_string=False, **kwargs)
+        onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
+        onnx_graph = ann.set_annotate(onnx_graph)
+        onnx_graph = ann.reorg_anchor(onnx_graph)
+    if strip_doc_string:
+        for node in onnx_graph.graph.node:
+            node.doc_string = b''
+    if strip_large_tensor_data:
+        _strip_large_initializer_raw_data(onnx_graph, large_tensor_threshold)
+
+    return onnx_graph, outs
 
 
-def _strip_raw_data(tensor):
-    arr = onnx.numpy_helper.to_array(tensor)
-    meta_dict = {}
-    meta_dict['type'] = "stripped"
-    meta_dict['average'] = float(numpy.average(arr))
-    meta_dict['variance'] = float(numpy.var(arr))
-    onnx.external_data_helper.set_external_data(
-            tensor,
-            location=json.dumps(meta_dict),
-            length=len(tensor.raw_data))
-    tensor.data_location = onnx.TensorProto.EXTERNAL
-    tensor.ClearField('raw_data')
-    return tensor
+def export(
+        model, args, f, return_output=False, strip_large_tensor_data=False,
+        large_tensor_threshold=LARGE_TENSOR_DATA_THRESHOLD, **kwargs):
+    """Export model into ONNX Graph.
 
+    Args:
+        f: A file-like object or a string file path to be written to this
+            file.
+        return_output (bool): If True, return output values come from the
+            model.
+        strip_large_tensor_data (bool): If True, this function will strip
+            data of large tensors to reduce ONNX file size for benchmarking
+        large_tensor_threshold (int): If number of elements of tensor is
+            larger than this value, the tensor is stripped when
+            *strip_large_tensor_data* is True
+    """
+    onnx_graph, outs = _export(
+        model, args, strip_large_tensor_data, large_tensor_threshold,
+        **kwargs)
 
-def _strip_large_initializer_raw_data(onnx_path, large_tensor_threshold):
-    model = onnx.load(onnx_path)
-    for init in model.graph.initializer:
-        if is_large_tensor(init, large_tensor_threshold):
-            _strip_raw_data(init)
+    if hasattr(f, 'write'):
+        f.write(onnx_graph.SerializeToString())
+    else:
+        assert isinstance(f, str)
+        warnings.warn(
+            'When export ONNX graph as file, "export_testcase" is '
+            'strongly recommended, please consider use it instead',
+                UserWarning)
+        with open(f, 'wb') as fp:
+            fp.write(onnx_graph.SerializeToString())
 
-    # Overwrite onnx file
-    with open(onnx_path, "wb") as model_file:
-        model_file.write(model.SerializeToString())
+    if return_output:
+        return outs
 
 
 def export_testcase(
@@ -125,27 +146,23 @@ def export_testcase(
     """
 
     os.makedirs(out_dir, exist_ok=True)
-    filename = os.path.join(out_dir, 'model.onnx')
-    is_on_memory = False
-    if (not model_overwrite) and os.path.isfile(filename):
-        filename = io.BytesIO(b"")
-        is_on_memory = True
-    model.zero_grad()
-    opset_ver = kwargs.get('opset_version', None)
-    if opset_ver is None:
-        opset_ver = _default_onnx_opset_version
-    with init_annotate(opset_ver):
-        outs = _export_util(model, args, filename, **kwargs)
 
-    if strip_large_tensor_data:
-        _strip_large_initializer_raw_data(filename, large_tensor_threshold)
+    onnx_graph, outs = _export(
+        model, args, strip_large_tensor_data, large_tensor_threshold,
+        **kwargs)
+
+    output_path = os.path.join(out_dir, 'model.onnx')
+    is_on_memory = True
+    if model_overwrite or (not os.path.isfile(output_path)):
+        is_on_memory = False
+        with open(output_path, 'wb') as fp:
+            fp.write(onnx_graph.SerializeToString())
 
     def write_to_pb(f, tensor, name=None):
         array = tensor.detach().cpu().numpy()
         with open(f, 'wb') as fp:
             t = onnx.numpy_helper.from_array(array, name)
-            if strip_large_tensor_data and is_large_tensor(
-                    t, large_tensor_threshold):
+            if strip_large_tensor_data and is_large_tensor(t, large_tensor_threshold):
                 _strip_raw_data(t)
             fp.write(t.SerializeToString())
 
@@ -185,22 +202,17 @@ def export_testcase(
 
     if output_grad is not False:
         if isinstance(output_grad, bool):
-            output_grad = \
-                [torch.ones_like(outs[idx])
-                 for idx in range(len(output_names))]
+            output_grad = [torch.ones_like(outs[idx]) for idx in range(len(output_names))]
         if isinstance(output_grad, torch.Tensor):
             output_grad = [output_grad]
         for idx in range(len(output_names)):
             write_to_pb(
-                os.path.join(data_set_path,
-                             'gradient_input_{}.pb'.format(idx)),
-                output_grad[idx],
+                os.path.join(data_set_path, 'gradient_input_{}.pb'.format(idx)), output_grad[idx],
                 output_names[idx])
         if len(output_names) == len(outs):
             torch.autograd.backward(outs, grad_tensors=output_grad)
         else:
-            assert len(output_names) == 1, \
-                   'Single output names is only supported'
+            assert len(output_names) == 1, 'Single output names is only supported'
             outs[0].backward(output_grad[0])
 
         for i, (name, param) in enumerate(model.named_parameters()):
@@ -215,5 +227,4 @@ def export_testcase(
 
     if metadata:
         with open(os.path.join(out_dir, 'meta.json'), 'w') as f:
-            json.dump(_export_meta(model, out_dir, strip_large_tensor_data),
-                      f, indent=2)
+            json.dump(_export_meta(model, out_dir, strip_large_tensor_data), f, indent=2)
