@@ -1,8 +1,6 @@
-import contextlib
 import functools
 
 import onnx.helper
-from onnx.onnx_pb import AttributeProto
 import torch
 import torch.nn as nn
 import torch.onnx.symbolic_registry as sym_reg
@@ -186,7 +184,8 @@ def annotate(**attrs):
     are invalid for ONNX format, so pay attention that some ONNX runtimes
     cannot run the output ONNX graph.
 
-    This annotation is enabled with either ``pytorch_pfn_extras.onnx.export_testcase`` or
+    This annotation is enabled with either
+    ``pytorch_pfn_extras.onnx.export_testcase`` or
     ``pytorch_pfn_extras.onnx.export``.
 
     Args:
@@ -209,7 +208,8 @@ def apply_annotation(fn, *args, **attrs):
     ...         def _conv(x):
     ...             h = self.conv(x)
     ...             return torch.relu(h)
-    ...         h = pytorch_pfn_extras.onnx.apply_annotation(_conv, key='value')
+    ...         h = pytorch_pfn_extras.onnx.apply_annotation(
+    ...             _conv, key='value')
     ...         h = self.conv2(h)
     ...         return h
 
@@ -219,7 +219,8 @@ def apply_annotation(fn, *args, **attrs):
     attributes are invlid for ONNX format, so pay attention that some ONNX
     runtimes cannot run the output ONNX graph.
 
-    This applier is enabled with either ``pytorch_pfn_extras.onnx.export_testcase`` or
+    This applier is enabled with either
+    ``pytorch_pfn_extras.onnx.export_testcase`` or
     ``pytorch_pfn_extras.onnx.export``.
 
     Args:
@@ -356,7 +357,8 @@ def scoped_anchor(**attrs):
     This anchoring is triggered by ``nn.Module`` applying function, cannot
     use this with ``torch.*`` functions.
 
-    This annotation is enabled with either ``pytorch_pfn_extras.onnx.export_testcase`` or
+    This annotation is enabled with either
+    ``pytorch_pfn_extras.onnx.export_testcase`` or
     ``pytorch_pfn_extras.onnx.export``.
 
     Args:

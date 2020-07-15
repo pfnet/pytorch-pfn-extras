@@ -14,10 +14,12 @@ from torch.onnx.symbolic_helper import _default_onnx_opset_version
 from torch.onnx.utils import _export as torch_export
 
 from pytorch_pfn_extras.onnx.annotate import init_annotate
-from pytorch_pfn_extras.onnx.strip_large_tensor import LARGE_TENSOR_DATA_THRESHOLD
+from pytorch_pfn_extras.onnx.strip_large_tensor import \
+    LARGE_TENSOR_DATA_THRESHOLD
 from pytorch_pfn_extras.onnx.strip_large_tensor import is_large_tensor
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_raw_data
-from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_large_initializer_raw_data
+from pytorch_pfn_extras.onnx.strip_large_tensor import \
+    _strip_large_initializer_raw_data
 
 
 def _export_meta(model, out_dir, strip_large_tensor_data):
@@ -32,12 +34,15 @@ def _export_meta(model, out_dir, strip_large_tensor_data):
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
         git_status.communicate()
+
+        def strip_cmd(cmd):
+            return os.popen(cmd).read().strip()
         if git_status.returncode == os.EX_OK:
             ret['git'] = {
-                'branch': os.popen('git rev-parse --abbrev-ref HEAD').read().strip(),
-                'commit': os.popen('git rev-parse HEAD').read().strip(),
-                'remote': os.popen('git ls-remote --get-url origin').read().strip(),
-                'commit_date': os.popen('git show -s --format=%ci HEAD').read().strip(),
+                'branch': strip_cmd('git rev-parse --abbrev-ref HEAD'),
+                'commit': strip_cmd('git rev-parse HEAD'),
+                'remote': strip_cmd('git ls-remote --get-url origin'),
+                'commit_date': strip_cmd('git show -s --format=%ci HEAD'),
             }
     except FileNotFoundError:
         pass
@@ -165,7 +170,8 @@ def export_testcase(
         array = tensor.detach().cpu().numpy()
         with open(f, 'wb') as fp:
             t = onnx.numpy_helper.from_array(array, name)
-            if strip_large_tensor_data and is_large_tensor(t, large_tensor_threshold):
+            if (strip_large_tensor_data and
+                    is_large_tensor(t, large_tensor_threshold)):
                 _strip_raw_data(t)
             fp.write(t.SerializeToString())
 

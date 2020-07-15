@@ -114,7 +114,7 @@ def test_cuda_tensor():
     model = Net().to(device)
     x = torch.zeros((1, 1, 28, 28), device=device)
 
-    output_dir = _helper(model, x, 'mnist_cuda', output_grad=True)
+    _helper(model, x, 'mnist_cuda', output_grad=True)
 
 
 def test_model_not_overwrite():
@@ -185,7 +185,8 @@ def test_backward_multiple_input():
     h = torch.ones((1, 5, 3), requires_grad=True)
 
     grads = [torch.ones((4, 5, 3)) / 2, torch.ones((1, 5, 3)) / 3]
-    output_dir = _helper(model, (input, h), 'backward_multiple_input', output_grad=grads,
+    output_dir = _helper(model, (input, h), 'backward_multiple_input',
+                         output_grad=grads,
                          output_names=['output0', 'output1'])
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
