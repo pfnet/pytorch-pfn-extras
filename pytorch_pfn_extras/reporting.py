@@ -13,7 +13,7 @@ _thread_local = threading.local()
 
 def _copy_variable(value):
     if isinstance(value, torch.Tensor):
-        return value.clone()
+        return value.detach()
     return value
 
 
@@ -30,28 +30,30 @@ class Reporter:
     prefix of the value name. The observer name should be registered
     beforehand.
 
-    See the following example::
+    See the following example:
 
-       >>> from pytorch_pfn_extras import Reporter, report, report_scope
-       >>>
-       >>> reporter = Reporter()
-       >>> observer = object()  # it can be an arbitrary (reference) object
-       >>> reporter.add_observer('my_observer', observer)
-       >>> observation = {}
-       >>> with reporter.scope(observation):
-       ...     reporter.report({'x': 1}, observer)
-       ...
-       >>> observation
-       {'my_observer/x': 1}
+    >>> from pytorch_pfn_extras.reporting import Reporter, report, report_scope
+    >>>
+    >>> reporter = Reporter()
+    >>> observer = object()  # it can be an arbitrary (reference) object
+    >>> reporter.add_observer('my_observer', observer)
+    >>> observation = {}
+    >>> with reporter.scope(observation):
+    ...     reporter.report({'x': 1}, observer)
+    ...
+    >>> observation
+    {'my_observer/x': 1}
 
-    There are also a global API to add values::
+    There are also a global API to add values:
 
-       >>> observation = {}
-       >>> with report_scope(observation):
-       ...     report({'x': 1}, observer)
-       ...
-       >>> observation
-       {'my_observer/x': 1}
+    >>> reporter = Reporter()
+    >>> observation = {}
+    >>> with reporter:
+    ...     with report_scope(observation):
+    ...         report({'x': 1})
+    ...
+    >>> observation
+    {'x': 1}
 
     The most important application of Reporter is to report observed values
     from each link or chain in the training and validation procedures.

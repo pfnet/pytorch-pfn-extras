@@ -22,7 +22,7 @@ from pytorch_pfn_extras.training import triggers
          [False, False, False, False, False, False, False]),
         (2, triggers.IntervalTrigger(2, 'iteration'),
          [False, True, False, True, False, True, False]),
-        (2, (lambda trainer: trainer.updater.iteration == 3),
+        (2, (lambda trainer: trainer.iteration == 3),
          [False, False, True, False, False, False, False]),
     ]
 )

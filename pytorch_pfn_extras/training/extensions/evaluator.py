@@ -170,13 +170,13 @@ class Evaluator(extension.Extension):
 
         summary = reporting.DictSummary()
 
-        updater = IterationStatus(len(iterator))
+        progress = IterationStatus(len(iterator))
         if self._progress_bar:
-            pbar = _IteratorProgressBar(iterator=updater)
+            pbar = _IteratorProgressBar(iterator=progress)
 
         with _in_eval_mode(self._targets.values()):
             for idx, batch in enumerate(iterator):
-                updater.current_position = idx
+                progress.current_position = idx
                 observation = {}
                 with reporting.report_scope(observation):
                     if isinstance(batch, (tuple, list)):
@@ -243,7 +243,7 @@ class _IteratorProgressBar(util.ProgressBar):
 
         super().__init__(out=out)
 
-    def get_lines(self, manager):
+    def get_lines(self):
         iteration = self._iterator.current_position
         epoch_detail = self._iterator.epoch_detail
         epoch_size = getattr(self._iterator, '_epoch_size', None)
@@ -288,7 +288,7 @@ class IgniteEvaluator(Evaluator):
         if self._progress_bar:
             @self.evaluator.on(Events.ITERATION_STARTED)
             def update_progress_bar(engine):
-                self.updater.current_position = engine.state.iteration
+                self.progress.current_position = engine.state.iteration
                 self.pbar.update()
 
         @self.evaluator.on(Events.ITERATION_COMPLETED)
@@ -309,9 +309,9 @@ class IgniteEvaluator(Evaluator):
     def evaluate(self):
         iterator = self._iterators['main']
         self.summary = reporting.DictSummary()
-        self.updater = IterationStatus(len(iterator))
+        self.progress = IterationStatus(len(iterator))
         if self._progress_bar:
-            self.pbar = _IteratorProgressBar(iterator=self.updater)
+            self.pbar = _IteratorProgressBar(iterator=self.progress)
         self.evaluator.run(iterator)
         if self._progress_bar:
             self.pbar.close()

@@ -114,7 +114,7 @@ n_retains=-1, autoload=False)
         filename (str): Name of the file into which the object is serialized.
             It can be a format string, where the manager object is passed to
             the :meth:`str.format` method. For example,
-            ``'snapshot_{.updater.iteration}'`` is converted to
+            ``'snapshot_{.iteration}'`` is converted to
             ``'snapshot_10000'`` at the 10,000th iteration.
         savefun: Function to save the object. It takes two arguments: the
             output file path and the object to serialize.
@@ -162,7 +162,7 @@ n_retains=-1, autoload=False)
 
 
 def snapshot(savefun=None,
-             filename='snapshot_iter_{.updater.iteration}',
+             filename='snapshot_iter_{.iteration}',
              *,
              target=None,
              condition=None,
@@ -319,7 +319,7 @@ class _Snapshot(extension.Extension):
 
     def __init__(
             self, target=None, condition=None, writer=None,
-            filename='snapshot_iter_{.updater.iteration}',
+            filename='snapshot_iter_{.iteration}',
             snapshot_on_error=False, n_retains=-1, autoload=False,
             savefun=None,
             transform_models=None, autoload_transform_models=None):
@@ -445,7 +445,7 @@ class _DistributedSnapshot(_Snapshot):
 
     def __init__(
             self, target=None, condition=None, writer=None,
-            filename='snapshot_iter_{.updater.iteration}',
+            filename='snapshot_iter_{.iteration}',
             snapshot_on_error=False, n_retains=-1, autoload=False,
             saver_rank=0, savefun=None, transform_models=None,
             autoload_transform_models=None):

@@ -34,18 +34,16 @@ class Net(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-def train(manager, args, model, device, train_loader, optimizer):
+def train(manager, args, model, device, train_loader):
     while not manager.stop_trigger:
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
-            with manager.run_iteration():
+            with manager.run_iteration(step_optimizers=['main']):
                 data, target = data.to(device), target.to(device)
-                optimizer.zero_grad()
                 output = model(data)
                 loss = F.nll_loss(output, target)
                 ppe.reporting.report({'train/loss': loss.item()})
                 loss.backward()
-                optimizer.step()
 
 
 def test(args, model, device, data, target):
@@ -157,7 +155,7 @@ def main():
     if args.snapshot is not None:
         state = torch.load(args.snapshot)
         manager.load_state_dict(state)
-    train(manager, args, model, device, train_loader, optimizer)
+    train(manager, args, model, device, train_loader)
     # Test function is called from the evaluator extension
     # to get access to the reporter and other facilities
     # test(args, model, device, test_loader)

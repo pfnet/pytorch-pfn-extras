@@ -83,7 +83,6 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
         # accumulate the observations
         keys = self._keys
         observation = manager.observation
-        updater = manager.updater
         summary = self._summary
 
         if keys is None:
@@ -100,8 +99,8 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
             for name, value in stats.items():
                 stats_cpu[name] = float(value)  # copy to CPU
 
-            stats_cpu['epoch'] = updater.epoch
-            stats_cpu['iteration'] = updater.iteration
+            stats_cpu['epoch'] = manager.epoch
+            stats_cpu['iteration'] = manager.iteration
             stats_cpu['elapsed_time'] = manager.elapsed_time
 
             if self._postprocess is not None:

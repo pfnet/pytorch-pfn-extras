@@ -23,21 +23,6 @@ except AttributeError:
         _get_time = time.time
 
 
-class FoolUpdater:
-
-    def __init__(self, start_iteration, iters_per_epoch):
-        self.iteration = start_iteration
-        self._iters_per_epoch = iters_per_epoch
-
-    @property
-    def epoch(self):
-        return self.iteration // self._iters_per_epoch
-
-    @property
-    def epoch_detail(self):
-        return self.iteration / self._iters_per_epoch
-
-
 class _ExtensionEntry:
 
     def __init__(self, extension, priority, trigger, call_before_training):
@@ -65,11 +50,6 @@ class _BaseExtensionsManager:
     """
     Keeps track of the extensions and the current status
     """
-    # The updater is used for compatibility with old extensions
-    # written for Chainer.
-    # New extensions can access the current epoch and iteration
-    # directly from the manager.
-    updater = None
 
     def __init__(
             self,
@@ -130,16 +110,16 @@ class _BaseExtensionsManager:
         return _get_time()-self._start_time
 
     @property
-    def iteration(self):
-        return self.updater.iteration
+    def is_before_training(self):
+        return self.iteration == 0
 
     @property
     def epoch(self):
-        return self.updater.epoch
+        return self.iteration // self._iters_per_epoch
 
     @property
-    def is_before_training(self):
-        return self.updater is None or self.updater.iteration == 0
+    def epoch_detail(self):
+        return self.iteration / self._iters_per_epoch
 
     @property
     def stop_trigger(self):
@@ -155,8 +135,8 @@ class _BaseExtensionsManager:
             return self._out
 
     def _prepare_for_training(self, start_iteration, iters_per_epoch):
-        assert self.updater is None
-        self.updater = FoolUpdater(start_iteration, iters_per_epoch)
+        self.iteration = start_iteration
+        self._iters_per_epoch = iters_per_epoch
 
     def start_extensions(self):
         exts = self._extensions
@@ -292,10 +272,7 @@ class _BaseExtensionsManager:
         state_dict(transform_models=lambda n, x: x.module)
         """
         to_save = {}
-        if self.updater is not None:
-            to_save['_start_iteration'] = self.updater.iteration
-        else:
-            to_save['_start_iteration'] = 0
+        to_save['_start_iteration'] = self.iteration
         # Save manager status ?
         to_save['models'] = {
             name: transform_models(name, self._models[name]).state_dict()
@@ -317,8 +294,7 @@ class _BaseExtensionsManager:
             state, transform_models=lambda n, x: torch.nn.DataParallel(x))
         """
         self._start_iteration = to_load['_start_iteration']
-        if self.updater is not None:
-            self.updater.iteration = self._start_iteration
+        self.iteration = self._start_iteration
         for name in self._models:
             # TODO(ecastill) map_loc when loading the model and DDP check
             self._models[name].load_state_dict(to_load['models'][name])
@@ -372,21 +348,35 @@ class ExtensionsManager(_BaseExtensionsManager):
         self._prepare_for_training(0, iters_per_epoch)
 
     @contextlib.contextmanager
-    def run_iteration(self):
-        assert self.updater is not None
+    def run_iteration(self, *, step_optimizers=None):
+        """ Context manager to run an iteration.
+
+        This manager can additionally run a step in the
+        specified optimizers names.
+
+        Args:
+            step_optimizers (list or None): names of the optimizers
+            to call `zero_grad` and `step`
+        """
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
-
+        step_optimizers_names = []
+        if step_optimizers is not None:
+            step_optimizers_names = step_optimizers
         self.observation = {}
         with self.reporter.scope(self.observation):
             try:
+                for name in step_optimizers_names:
+                    self._optimizers[name].zero_grad()
                 yield
+                for name in step_optimizers_names:
+                    self._optimizers[name].step()
             finally:
                 # In chainer, the iteration count was increased
                 # just before calling the extensions, we need
                 # to keep the semantics
-                self.updater.iteration += 1
+                self.iteration += 1
                 self.run_extensions()
 
         if self._internal_stop_trigger(self):
@@ -453,7 +443,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             # handlers to be executed after user defined ones
             @self.engine.on(Events.ITERATION_COMPLETED)
             def run_extensions_on_iter(engine):
-                self.updater.iteration = engine.state.iteration
+                self.iteration = engine.state.iteration
                 self.run_extensions()
 
             # This should be the last extension to be run
