@@ -57,12 +57,27 @@ class _LazyBatchNorm(_LazyNormBase, torch.nn.modules.batchnorm._BatchNorm):
 
 
 class LazyBatchNorm1d(_LazyBatchNorm, torch.nn.BatchNorm1d):
+    """BatchNorm1d module with lazy weight initialization.
+
+    When ``num_features`` is ``None``, it is determined at the first time of
+    the forward step.
+    """
     pass
 
 
 class LazyBatchNorm2d(_LazyBatchNorm, torch.nn.BatchNorm2d):
+    """BatchNorm2d module with lazy weight initialization.
+
+    When ``num_features`` is ``None``, it is determined at the first time of
+    the forward step.
+    """
     pass
 
 
 class LazyBatchNorm3d(_LazyBatchNorm, torch.nn.BatchNorm3d):
+    """BatchNorm3d module with lazy weight initialization.
+
+    When ``num_features`` is ``None``, it is determined at the first time of
+    the forward step.
+    """
     pass
