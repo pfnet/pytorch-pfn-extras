@@ -305,7 +305,7 @@ class StandardWriter(Writer):
             self._started = False
         self._filename = filename
         self._worker = self.create_worker(filename, out_dir, target,
-                                          savefun, **self._kwds)
+                                          savefun=savefun, **self._kwds)
         self._worker.start()
         self._started = True
 
