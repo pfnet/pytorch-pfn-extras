@@ -44,7 +44,12 @@ class Config(object):
                     obj = getattr(obj, k)
                 else:
                     obj = obj[k]
-        except (IndexError, KeyError):
+        except IndexError:
+            raise IndexError('{} does not exist: {}'.format(
+                _dump_key(config_key, attr_key),
+                ' -> '.join(_dump_key(config_key, attr_key)
+                            for config_key, attr_key in trace)))
+        except KeyError:
             raise KeyError('{} does not exist: {}'.format(
                 _dump_key(config_key, attr_key),
                 ' -> '.join(_dump_key(config_key, attr_key)
@@ -101,7 +106,12 @@ class Config(object):
         try:
             for k in config_key:
                 config = config[k]
-        except (IndexError, KeyError):
+        except IndexError:
+            raise IndexError('{} does not exist: {}'.format(
+                _dump_key(config_key, ()),
+                ' -> '.join(_dump_key(config_key, attr_key)
+                            for config_key, attr_key in trace)))
+        except KeyError:
             raise KeyError('{} does not exist: {}'.format(
                 _dump_key(config_key, ()),
                 ' -> '.join(_dump_key(config_key, attr_key)

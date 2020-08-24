@@ -150,7 +150,7 @@ class TestConfig(unittest.TestCase):
 
     def test_config_with_invalid_config_index(self):
         config = Config({'foo': ['a', 'b', 'c']})
-        with self.assertRaises(KeyError) as cm:
+        with self.assertRaises(IndexError) as cm:
             config['/foo/3']
 
         self.assertEqual(cm.exception.args, ('/foo/3 does not exist: /foo/3',))
@@ -164,7 +164,7 @@ class TestConfig(unittest.TestCase):
 
     def test_config_with_invalid_attr_index(self):
         config = Config({'foo': ['a', 'b', 'c']})
-        with self.assertRaises(KeyError) as cm:
+        with self.assertRaises(IndexError) as cm:
             config['/foo.3']
 
         self.assertEqual(cm.exception.args, ('/foo.3 does not exist: /foo.3',))
