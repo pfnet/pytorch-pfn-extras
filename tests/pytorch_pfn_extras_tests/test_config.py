@@ -148,33 +148,65 @@ class TestConfig(unittest.TestCase):
             {'d': [1, 2], 'e': 4},
         ])
 
-    def test_config_with_invalid_config_index(self):
-        config = Config({'foo': ['a', 'b', 'c']})
+    def test_config_with_config_key_invalid_index(self):
+        config = Config([['a'], [['b', ['c', 'd']]]])
         with self.assertRaises(IndexError) as cm:
-            config['/foo/3']
+            config['/1/2/3']
 
-        self.assertEqual(cm.exception.args, ('/foo/3 does not exist: /foo/3',))
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('2 not in !/1',
+             '/1/2/3 -> !/1/2/3 -> !/1/2'))
 
-    def test_config_with_invalid_config_key(self):
-        config = Config({'foo': {'a': 'A', 'b': 'B', 'c': 'C'}})
+    def test_config_with_config_key_invalid_key(self):
+        config = Config({'foo': {'bar': {'baz': None}}})
         with self.assertRaises(KeyError) as cm:
-            config['/foo/d']
+            config['/foo/Bar/baz']
 
-        self.assertEqual(cm.exception.args, ('/foo/d does not exist: /foo/d',))
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('Bar not in !/foo',
+             '/foo/Bar/baz -> !/foo/Bar/baz -> !/foo/Bar'))
 
-    def test_config_with_invalid_attr_index(self):
-        config = Config({'foo': ['a', 'b', 'c']})
+    def test_config_with_config_key_invalid_type(self):
+        config = Config({'foo': [['b', {'baz': None}]]})
+        with self.assertRaises(TypeError) as cm:
+            config['/foo/bar/baz']
+
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('bar not in !/foo',
+             '/foo/bar/baz -> !/foo/bar/baz -> !/foo/bar'))
+
+    def test_config_with_attr_key_invalid_index(self):
+        config = Config([['a'], [['b', ['c', 'd']]]])
         with self.assertRaises(IndexError) as cm:
-            config['/foo.3']
+            config['/.1.2.3']
 
-        self.assertEqual(cm.exception.args, ('/foo.3 does not exist: /foo.3',))
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('2 not in /.1 ([[\'b\', [\'c\', \'d\']]])',
+             '/.1.2.3 -> /.1.2'))
 
-    def test_config_with_invalid_attr_key(self):
-        config = Config({'foo': {'a': 'A', 'b': 'B', 'c': 'C'}})
+    def test_config_with_config_key_invalid_key(self):
+        config = Config({'foo': {'bar': {'baz': None}}})
         with self.assertRaises(KeyError) as cm:
-            config['/foo.d']
+            config['/.foo.Bar.baz']
 
-        self.assertEqual(cm.exception.args, ('/foo.d does not exist: /foo.d',))
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('Bar not in /.foo ({\'bar\': {\'baz\': None}})',
+             '/.foo.Bar.baz -> /.foo.Bar'))
+
+    def test_config_with_config_key_invalid_type(self):
+        config = Config({'foo': [['b', {'baz': None}]]})
+        with self.assertRaises(TypeError) as cm:
+            config['/.foo.bar.baz']
+
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('bar not in /.foo ([[\'b\', {\'baz\': None}]])',
+             '/.foo.bar.baz -> /.foo.bar'))
 
     def test_config_with_circular_dependency(self):
         config = Config({'foo': '@/bar', 'bar': '@foo.d'})

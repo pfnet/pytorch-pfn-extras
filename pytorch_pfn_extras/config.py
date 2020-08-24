@@ -27,6 +27,9 @@ class Config(object):
         return cls(_load(path, loader, ()), types)
 
     def _eval(self, config_key, attr_key, trace):
+        if attr_key is None:
+            return self._get_config(config_key, trace)
+
         circular = (config_key, attr_key) in trace
         trace = (*trace, (config_key, attr_key))
         if circular:
@@ -34,28 +37,25 @@ class Config(object):
                 ' -> '.join(_dump_key(config_key, attr_key)
                             for config_key, attr_key in trace)))
 
-        if attr_key is None:
-            return self._get_config(config_key, trace)
+        if len(attr_key) == 0:
+            return self._eval_config(config_key, trace)
 
-        obj = self._eval_config(config_key, (*trace, (config_key, ())) if attr_key else trace)
+        obj = self._eval(config_key, attr_key[:-1], trace)
         try:
-            for k in attr_key:
-                if isinstance(k, str) and hasattr(obj, k):
-                    obj = getattr(obj, k)
-                else:
-                    obj = obj[k]
-        except IndexError:
-            raise IndexError('{} does not exist: {}'.format(
-                _dump_key(config_key, attr_key),
-                ' -> '.join(_dump_key(config_key, attr_key)
-                            for config_key, attr_key in trace)))
-        except KeyError:
-            raise KeyError('{} does not exist: {}'.format(
-                _dump_key(config_key, attr_key),
-                ' -> '.join(_dump_key(config_key, attr_key)
-                            for config_key, attr_key in trace)))
-
-        return obj
+            if isinstance(attr_key[-1], str) and hasattr(obj, attr_key[-1]):
+                return getattr(obj, attr_key[-1])
+            else:
+                return obj[attr_key[-1]]
+        except Exception as e:
+            e.args = e.args + (
+                '{} not in {} ({})'.format(
+                    attr_key[-1],
+                    _dump_key(config_key, attr_key[:-1]),
+                    reprlib.repr(obj)),
+                ' -> '.join(
+                    _dump_key(config_key, attr_key)
+                    for config_key, attr_key in trace))
+            raise e
 
     def _eval_config(self, config_key, trace):
         if config_key in self._cache:
@@ -102,21 +102,23 @@ class Config(object):
         return self._cache[config_key]
 
     def _get_config(self, config_key, trace):
-        config = self._config
+        trace = (*trace, (config_key, None))
+
+        if len(config_key) == 0:
+            return self._config
+
+        config = self._get_config(config_key[:-1], trace)
         try:
-            for k in config_key:
-                config = config[k]
-        except IndexError:
-            raise IndexError('{} does not exist: {}'.format(
-                _dump_key(config_key, ()),
-                ' -> '.join(_dump_key(config_key, attr_key)
-                            for config_key, attr_key in trace)))
-        except KeyError:
-            raise KeyError('{} does not exist: {}'.format(
-                _dump_key(config_key, ()),
-                ' -> '.join(_dump_key(config_key, attr_key)
-                            for config_key, attr_key in trace)))
-        return config
+            return config[config_key[-1]]
+        except Exception as e:
+            e.args = e.args + (
+                '{} not in {}'.format(
+                    config_key[-1],
+                    _dump_key(config_key[:-1], None)),
+                ' -> '.join(
+                    _dump_key(config_key, attr_key)
+                    for config_key, attr_key in trace))
+            raise e
 
 
 def _parse_key(key, path):
@@ -169,9 +171,9 @@ def _parse_k(k):
 
 def _dump_key(config_key, attr_key):
     config_key = '/' + '/'.join(str(k) for k in config_key)
-    attr_key = '.'.join(str(k) for k in attr_key)
 
     if attr_key:
+        attr_key = '.'.join(str(k) for k in attr_key)
         return config_key + '.' + attr_key
     elif attr_key is None:
         return '!' + config_key
