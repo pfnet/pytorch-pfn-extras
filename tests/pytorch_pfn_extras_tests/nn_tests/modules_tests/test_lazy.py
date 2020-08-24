@@ -16,7 +16,7 @@ class _MyFunc(torch.nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.weight = nn.Parameter(torch.Tensor(out_features, in_features))
-        self.register_buffer('const', torch.full((in_features,), 1))
+        self.register_buffer('const', torch.full((in_features,), 1.0))
         self._reset_params()
 
     def forward(self, input):
