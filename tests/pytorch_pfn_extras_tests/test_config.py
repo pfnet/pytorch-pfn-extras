@@ -148,6 +148,34 @@ class TestConfig(unittest.TestCase):
             {'d': [1, 2], 'e': 4},
         ])
 
+    def test_config_with_invalid_config_index(self):
+        config = Config({'foo': ['a', 'b', 'c']})
+        with self.assertRaises(KeyError) as cm:
+            config['/foo/3']
+
+        self.assertEqual(cm.exception.args, ('/foo/3 does not exist: /foo/3',))
+
+    def test_config_with_invalid_config_key(self):
+        config = Config({'foo': {'a': 'A', 'b': 'B', 'c': 'C'}})
+        with self.assertRaises(KeyError) as cm:
+            config['/foo/d']
+
+        self.assertEqual(cm.exception.args, ('/foo/d does not exist: /foo/d',))
+
+    def test_config_with_invalid_attr_index(self):
+        config = Config({'foo': ['a', 'b', 'c']})
+        with self.assertRaises(KeyError) as cm:
+            config['/foo.3']
+
+        self.assertEqual(cm.exception.args, ('/foo.3 does not exist: /foo.3',))
+
+    def test_config_with_invalid_attr_key(self):
+        config = Config({'foo': {'a': 'A', 'b': 'B', 'c': 'C'}})
+        with self.assertRaises(KeyError) as cm:
+            config['/foo.d']
+
+        self.assertEqual(cm.exception.args, ('/foo.d does not exist: /foo.d',))
+
     def test_config_with_circular_dependency(self):
         config = Config({'foo': '@/bar', 'bar': '@foo.d'})
         with self.assertRaises(RuntimeError) as cm:
