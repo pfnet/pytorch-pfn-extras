@@ -150,8 +150,15 @@ class TestConfig(unittest.TestCase):
 
     def test_config_with_circular_dependency(self):
         config = Config({'foo': '@/bar', 'bar': '@foo.d'})
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(RuntimeError) as cm:
             config['/']
+
+        self.assertIn(
+            cm.exception.args,
+            {
+                ('Circular dependency: / -> /foo.d -> /bar -> /foo.d',),
+                ('Circular dependency: / -> /bar -> /foo.d -> /bar',),
+            })
 
     def test_config_with_circular_import(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -160,5 +167,11 @@ class TestConfig(unittest.TestCase):
             with open(os.path.join(temp, 'bar.json'), mode='w') as f:
                 json.dump([{'import': './foo.json'}], f)
 
-            with self.assertRaises(RuntimeError):
+            with self.assertRaises(RuntimeError) as cm:
                 Config.load_path(os.path.join(temp, 'foo.json'))
+
+        self.assertEqual(
+            cm.exception.args,
+            ('Circular import: {foo} -> {bar} -> {foo}'.format(
+                foo=os.path.join(temp, 'foo.json'),
+                bar=os.path.join(temp, 'bar.json')),))
