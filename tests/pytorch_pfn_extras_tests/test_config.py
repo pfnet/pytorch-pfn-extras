@@ -184,8 +184,8 @@ class TestConfig(unittest.TestCase):
         self.assertIn(
             cm.exception.args,
             {
-                ('Circular dependency: / -> /foo.d -> /bar -> /foo.d',),
-                ('Circular dependency: / -> /bar -> /foo.d -> /bar',),
+                ('Circular dependency: / -> /foo -> /bar -> /foo.d -> /foo',),
+                ('Circular dependency: / -> /bar -> /foo.d -> /foo -> /bar',),
             })
 
     def test_config_with_circular_import(self):

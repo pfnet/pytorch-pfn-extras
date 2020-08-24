@@ -37,7 +37,7 @@ class Config(object):
         if attr_key is None:
             return self._get_config(config_key, trace)
 
-        obj = self._eval_config(config_key, trace)
+        obj = self._eval_config(config_key, (*trace, (config_key, ())) if attr_key else trace)
         try:
             for k in attr_key:
                 if isinstance(k, str) and hasattr(obj, k):
