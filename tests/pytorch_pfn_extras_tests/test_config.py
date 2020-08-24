@@ -208,6 +208,30 @@ class TestConfig(unittest.TestCase):
             ('bar not in /.foo ([[\'b\', {\'baz\': None}]])',
              '/.foo.bar.baz -> /.foo.bar'))
 
+    def test_config_with_invalid_type(self):
+        config = Config({'foo': [{'type': 'foo', 'a': 0, 'b': 1}]})
+        with self.assertRaises(KeyError) as cm:
+            config['/']
+
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('foo not in types',
+             '/ -> /foo -> /foo/0'))
+
+    def test_config_with_invalid_call(self):
+        def foo():
+            raise RuntimeError('foo')
+
+        config = Config(
+            {'foo': [{'type': 'foo', 'a': 0, 'b': 1}]},
+            types={'foo': foo})
+        with self.assertRaises(TypeError) as cm:
+            config['/']
+
+        self.assertEqual(
+            cm.exception.args[-1:],
+            ('/ -> /foo -> /foo/0',))
+
     def test_config_with_circular_dependency(self):
         config = Config({'foo': '@/bar', 'bar': '@foo.d'})
         with self.assertRaises(RuntimeError) as cm:
