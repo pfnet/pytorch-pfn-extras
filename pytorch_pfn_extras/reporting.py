@@ -303,10 +303,13 @@ class Summary:
         return state
 
     def load_state_dict(self, to_load):
-        self._x = to_load['_x']
-        self._x2 = to_load['_x2']
-        self._n = to_load['_n']
-
+        # TODO : still got warning `UserWarning: To copy construct from a tensor,
+        #        it is recommended to use sourceTensor.clone().detach() or
+        #        sourceTensor.clone().detach().requires_grad_(True),
+        #        rather than torch.tensor(sourceTensor).
+        self._x = torch.tensor(to_load['_x'], requires_grad = False)
+        self._x2 = torch.tensor(to_load['_x2'], requires_grad = False)
+        self._n = torch.tensor(to_load['_n'], requires_grad = False)
 
 class DictSummary:
 
