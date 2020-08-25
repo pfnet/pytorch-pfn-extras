@@ -188,7 +188,7 @@ class TestConfig(unittest.TestCase):
             ('2 not in /.1 ([[\'b\', [\'c\', \'d\']]])',
              '/.1.2.3 -> /.1.2'))
 
-    def test_config_with_config_key_invalid_key(self):
+    def test_config_with_attr_key_invalid_key(self):
         config = Config({'foo': {'bar': {'baz': None}}})
         with self.assertRaises(KeyError) as cm:
             config['/.foo.Bar.baz']
@@ -198,7 +198,7 @@ class TestConfig(unittest.TestCase):
             ('Bar not in /.foo ({\'bar\': {\'baz\': None}})',
              '/.foo.Bar.baz -> /.foo.Bar'))
 
-    def test_config_with_config_key_invalid_type(self):
+    def test_config_with_attr_key_invalid_type(self):
         config = Config({'foo': [['b', {'baz': None}]]})
         with self.assertRaises(TypeError) as cm:
             config['/.foo.bar.baz']

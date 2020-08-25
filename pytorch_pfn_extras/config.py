@@ -42,8 +42,8 @@ class Config(object):
         if attr_key:
             obj = self._eval(config_key, attr_key[:-1], trace)
             try:
-                if (isinstance(attr_key[-1], str)
-                    and hasattr(obj, attr_key[-1])):
+                if isinstance(attr_key[-1], str) \
+                   and hasattr(obj, attr_key[-1]):
                     return cache(getattr(obj, attr_key[-1]))
                 else:
                     return cache(obj[attr_key[-1]])
