@@ -32,7 +32,8 @@ class Config(object):
         circular = (config_key, attr_key) in trace
         trace = (*trace, (config_key, attr_key))
         if circular:
-            raise RuntimeError('Circular dependency: {}'.format(_dump_trace(trace)))
+            raise RuntimeError('Circular dependency: {}'.format(
+                _dump_trace(trace)))
 
         def cache(value):
             self._cache[(config_key, attr_key)] = value
@@ -41,7 +42,8 @@ class Config(object):
         if attr_key:
             obj = self._eval(config_key, attr_key[:-1], trace)
             try:
-                if isinstance(attr_key[-1], str) and hasattr(obj, attr_key[-1]):
+                if (isinstance(attr_key[-1], str)
+                    and hasattr(obj, attr_key[-1])):
                     return cache(getattr(obj, attr_key[-1]))
                 else:
                     return cache(obj[attr_key[-1]])
@@ -84,9 +86,11 @@ class Config(object):
                 for k in config.keys():
                     if not k == 'type':
                         kwargs[k] = self._eval((*config_key, k), (), trace)
-                for k, v in getattr(type_, '_custom_default_kwargs', {}).items():
+                for k, v in getattr(
+                        type_, '_custom_default_kwargs', {}).items():
                     if k not in kwargs:
-                        kwargs[k] = self._eval(*_parse_key(v, config_key)[:2], trace)
+                        kwargs[k] = self._eval(
+                            *_parse_key(v, config_key)[:2], trace)
 
                 try:
                     return cache(type_(**kwargs))
