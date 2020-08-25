@@ -32,8 +32,9 @@ class Config(object):
         circular = (config_key, attr_key) in trace
         trace = (*trace, (config_key, attr_key))
         if circular:
-            raise RuntimeError('Circular dependency: {}'.format(
-                _dump_trace(trace)))
+            raise RuntimeError(
+                'Circular dependency',
+                _dump_trace(trace))
 
         def cache(value):
             self._cache[(config_key, attr_key)] = value
