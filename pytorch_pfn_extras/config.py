@@ -181,18 +181,22 @@ def _dump_trace(trace):
 
 def _load(path, loader, trace):
     path = os.path.normpath(path)
-    circular = path in trace
-    trace = (*trace, path)
+    circular = (path, ()) in trace
+    trace = (*trace, (path, ()))
     if circular:
-        raise RuntimeError('Circular import: {}'.format(' -> '.join(trace)))
-
+        raise RuntimeError(
+            'Circular import',
+            ' -> '.join('{} of {}'.format(_dump_key(config_key, None), path)
+                        for path, config_key in trace))
     config = loader(path)
     return _expand_import(config, os.path.dirname(path), loader, trace)
 
 
 def _expand_import(config, workdir, loader, trace):
+    path, config_key = trace[-1]
     if isinstance(config, dict):
-        config = {k: _expand_import(v, workdir, loader, trace)
+        config = {k: _expand_import(v, workdir, loader,
+                                    (*trace, (path, (*config_key, k))))
                   for k, v in config.items()}
         if 'import' in config:
             path = config['import']
@@ -211,12 +215,17 @@ def _expand_import(config, workdir, loader, trace):
                     for k in config_key[:-1]:
                         c = c[k]
                     c[config_key[-1]] = v
-                except (IndexError, KeyError):
-                    raise KeyError('{} does not exist'.format(
-                        _dump_key(config_key, ())))
+                except Exception as e:
+                    e.args = e.args + (
+                        '{} not in {}'.format(
+                            _dump_key(config_key, attr_key), path),)
+                    raise e
+
         return config
     elif isinstance(config, list):
-        return [_expand_import(v, workdir, loader, trace) for v in config]
+        return [_expand_import(v, workdir, loader,
+                               (*trace, (path, (*config_key, i))))
+                for i, v in enumerate(config)]
     else:
         return config
 

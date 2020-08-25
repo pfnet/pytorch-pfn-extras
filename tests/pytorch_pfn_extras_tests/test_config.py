@@ -247,7 +247,7 @@ class TestConfig(unittest.TestCase):
     def test_config_with_circular_import(self):
         with tempfile.TemporaryDirectory() as temp:
             with open(os.path.join(temp, 'foo.json'), mode='w') as f:
-                json.dump({'import': 'bar.json'}, f)
+                json.dump({'a': {'import': 'bar.json'}}, f)
             with open(os.path.join(temp, 'bar.json'), mode='w') as f:
                 json.dump([{'import': './foo.json'}], f)
 
@@ -256,6 +256,8 @@ class TestConfig(unittest.TestCase):
 
         self.assertEqual(
             cm.exception.args,
-            ('Circular import: {foo} -> {bar} -> {foo}'.format(
-                foo=os.path.join(temp, 'foo.json'),
-                bar=os.path.join(temp, 'bar.json')),))
+            ('Circular import',
+             '!/ of {foo} -> !/a of {foo} -> !/ of {bar}'
+             ' -> !/0 of {bar} -> !/ of {foo}'.format(
+                 foo=os.path.join(temp, 'foo.json'),
+                 bar=os.path.join(temp, 'bar.json'))))
