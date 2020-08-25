@@ -113,7 +113,7 @@ class Config(object):
                 return cache(config)
 
 
-def _parse_key(key, path):
+def _parse_key(key, current_config_key):
     if key.startswith('!'):
         key = key[1:]
         escape = True
@@ -137,7 +137,7 @@ def _parse_key(key, path):
         attr_key = None
 
     if rel:
-        config_key = list(path) + config_key
+        config_key = list(current_config_key) + config_key
 
     i = 0
     while i < len(config_key):
