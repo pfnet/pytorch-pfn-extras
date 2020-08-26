@@ -223,6 +223,19 @@ def test_summary_weight():
     numpy.testing.assert_allclose(mean.numpy(), val)
 
 
+def test_summary_resume():
+    summary = ppe.reporting.Summary()
+    summary.add(torch.tensor([[15.0]], requires_grad=True))
+
+    f = io.BytesIO()
+    torch.save(summary.state_dict(), f)
+    summary.load_state_dict(torch.load(io.BytesIO(f.getvalue())))
+
+    summary.add(5.0)
+    mean = summary.compute_mean()
+    numpy.testing.assert_allclose(mean, 10)
+
+
 def _check_summary_serialize(value1, value2, value3):
     summary = ppe.reporting.Summary()
     summary.add(value1)
