@@ -148,17 +148,116 @@ class TestConfig(unittest.TestCase):
             {'d': [1, 2], 'e': 4},
         ])
 
+    def test_config_with_config_key_invalid_index(self):
+        config = Config([['a'], [['b', ['c', 'd']]]])
+        with self.assertRaises(IndexError) as cm:
+            config['/1/2/3']
+
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('2 not in !/1',
+             '/1/2/3 -> !/1/2/3 -> !/1/2'))
+
+    def test_config_with_config_key_invalid_key(self):
+        config = Config({'foo': {'bar': {'baz': None}}})
+        with self.assertRaises(KeyError) as cm:
+            config['/foo/Bar/baz']
+
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('Bar not in !/foo',
+             '/foo/Bar/baz -> !/foo/Bar/baz -> !/foo/Bar'))
+
+    def test_config_with_config_key_invalid_type(self):
+        config = Config({'foo': [['b', {'baz': None}]]})
+        with self.assertRaises(TypeError) as cm:
+            config['/foo/bar/baz']
+
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('bar not in !/foo',
+             '/foo/bar/baz -> !/foo/bar/baz -> !/foo/bar'))
+
+    def test_config_with_attr_key_invalid_index(self):
+        config = Config([['a'], [['b', ['c', 'd']]]])
+        with self.assertRaises(IndexError) as cm:
+            config['/.1.2.3']
+
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('2 not in /.1 ([[\'b\', [\'c\', \'d\']]])',
+             '/.1.2.3 -> /.1.2'))
+
+    def test_config_with_attr_key_invalid_key(self):
+        config = Config({'foo': {'bar': {'baz': None}}})
+        with self.assertRaises(KeyError) as cm:
+            config['/.foo.Bar.baz']
+
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('Bar not in /.foo ({\'bar\': {\'baz\': None}})',
+             '/.foo.Bar.baz -> /.foo.Bar'))
+
+    def test_config_with_attr_key_invalid_type(self):
+        config = Config({'foo': [['b', {'baz': None}]]})
+        with self.assertRaises(TypeError) as cm:
+            config['/.foo.bar.baz']
+
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('bar not in /.foo ([[\'b\', {\'baz\': None}]])',
+             '/.foo.bar.baz -> /.foo.bar'))
+
+    def test_config_with_invalid_type(self):
+        config = Config({'foo': [{'type': 'foo', 'a': 0, 'b': 1}]})
+        with self.assertRaises(KeyError) as cm:
+            config['/']
+
+        self.assertEqual(
+            cm.exception.args[-2:],
+            ('foo not in types',
+             '/ -> /foo -> /foo/0'))
+
+    def test_config_with_invalid_call(self):
+        def foo():
+            raise RuntimeError('foo')
+
+        config = Config(
+            {'foo': [{'type': 'foo', 'a': 0, 'b': 1}]},
+            types={'foo': foo})
+        with self.assertRaises(TypeError) as cm:
+            config['/']
+
+        self.assertEqual(
+            cm.exception.args[-1:],
+            ('/ -> /foo -> /foo/0',))
+
     def test_config_with_circular_dependency(self):
         config = Config({'foo': '@/bar', 'bar': '@foo.d'})
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(RuntimeError) as cm:
             config['/']
+
+        self.assertIn(
+            cm.exception.args,
+            {
+                ('Circular dependency', '/ -> /foo -> /bar -> /foo.d -> /foo'),
+                ('Circular dependency', '/ -> /bar -> /foo.d -> /foo -> /bar'),
+            })
 
     def test_config_with_circular_import(self):
         with tempfile.TemporaryDirectory() as temp:
             with open(os.path.join(temp, 'foo.json'), mode='w') as f:
-                json.dump({'import': 'bar.json'}, f)
+                json.dump({'a': {'import': 'bar.json'}}, f)
             with open(os.path.join(temp, 'bar.json'), mode='w') as f:
                 json.dump([{'import': './foo.json'}], f)
 
-            with self.assertRaises(RuntimeError):
+            with self.assertRaises(RuntimeError) as cm:
                 Config.load_path(os.path.join(temp, 'foo.json'))
+
+        self.assertEqual(
+            cm.exception.args,
+            ('Circular import',
+             '!/ of {foo} -> !/a of {foo} -> !/ of {bar}'
+             ' -> !/0 of {bar} -> !/ of {foo}'.format(
+                 foo=os.path.join(temp, 'foo.json'),
+                 bar=os.path.join(temp, 'bar.json'))))
