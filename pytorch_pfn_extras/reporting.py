@@ -11,7 +11,7 @@ import torch
 _thread_local = threading.local()
 
 
-def _copy_variable(value):
+def _nograd(value):
     if isinstance(value, torch.Tensor):
         return value.detach()
     return value
@@ -152,7 +152,7 @@ class Reporter:
                 name of the observed value.
 
         """
-        values = {k: _copy_variable(v) for k, v in values.items()}
+        values = {k: _nograd(v) for k, v in values.items()}
 
         if observer is not None:
             observer_id = id(observer)
@@ -303,9 +303,9 @@ class Summary:
         return state
 
     def load_state_dict(self, to_load):
-        self._x = to_load['_x']
-        self._x2 = to_load['_x2']
-        self._n = to_load['_n']
+        self._x = _nograd(to_load['_x'])
+        self._x2 = _nograd(to_load['_x2'])
+        self._n = _nograd(to_load['_n'])
 
 
 class DictSummary:
