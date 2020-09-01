@@ -225,7 +225,6 @@ def test_summary_weight():
     numpy.testing.assert_allclose(mean.numpy(), val)
 
 
-
 def _nograd(v):
     if isinstance(v, torch.Tensor):
         return v.detach()
