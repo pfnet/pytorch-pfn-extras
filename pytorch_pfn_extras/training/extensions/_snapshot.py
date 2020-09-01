@@ -454,8 +454,12 @@ class _DistributedSnapshot(_Snapshot):
                          autoload, savefun, transform_models,
                          autoload_transform_models)
         # To support distributed snapshots
+        if not torch.distributed.is_initialized():
+            raise RuntimeError('The Distributed Snapshot extension',
+                               ' requires torch.distributed to be initialized')
         self._saver_rank = saver_rank
-        self._size, self._rank, self._local_rank = _get_ranks_from_env()
+        self._size = torch.distributed.get_world_size()
+        self._rank = torch.distributed.get_rank()
         if not (0 <= saver_rank < self._size):
             raise ValueError('Distributed snapshot requires a saver rank'
                              ' in the range [0-{})'.format(self._size))
@@ -468,21 +472,3 @@ class _DistributedSnapshot(_Snapshot):
                 self._make_snapshot(trainer)
             if self._size > 1:
                 torch.distributed.barrier()
-
-
-def _get_ranks_from_env():
-    if 'OMPI_COMM_WORLD_SIZE' in os.environ:
-        # We are running Open MPI
-        comm_world_size = int(os.environ["OMPI_COMM_WORLD_SIZE"])
-        comm_rank = int(os.environ["OMPI_COMM_WORLD_RANK"])
-        comm_local_rank = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-    elif 'MV2_COMM_WORLD_SIZE' in os.environ:
-        comm_world_size = int(os.environ['MV2_COMM_WORLD_SIZE'])
-        comm_rank = int(os.environ['MV2_COMM_WORLD_RANK'])
-        comm_local_rank = int(os.environ['MV2_COMM_WORLD_LOCAL_RANK'])
-    else:
-        comm_world_size = 1
-        comm_rank = 0
-        comm_local_rank = 0
-
-    return comm_world_size, comm_rank, comm_local_rank
