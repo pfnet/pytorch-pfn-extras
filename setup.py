@@ -15,6 +15,9 @@ setuptools.setup(
     author='Preferred Networks, Inc.',
     license='MIT License',
     install_requires=['numpy', 'torch'],
-    extras_require={'test': ['pytest']},
+    extras_require={
+        'test': ['pytest'],
+        'onnx': ['onnx'],
+    },
     packages=setuptools.find_packages(exclude=['tests']),
 )
