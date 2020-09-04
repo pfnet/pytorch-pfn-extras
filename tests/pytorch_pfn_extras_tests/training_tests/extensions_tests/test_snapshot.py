@@ -138,7 +138,7 @@ def test_multi_target_autoload(remover):
 
 
 def test_multi_target_autoload_not_found(remover):
-    trainer = get_trainer_with_mock_updater(out_dir='.')
+    trainer = get_trainer(out_dir='.')
     other = _StateDictObj(state_dict={'original': 'state'})
 
     target = {'trainer': trainer, 'other': other}
