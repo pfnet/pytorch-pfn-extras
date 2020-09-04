@@ -132,9 +132,21 @@ def test_multi_target_autoload(remover):
     snapshot2 = extensions.snapshot_object(target, 'myfile.dat',
                                            autoload=True)
     # Load the snapshot and verify it
-    snapshot2.initialize(new_trainer)
+    assert snapshot2.initialize(new_trainer) == 'myfile.dat'
     assert new_trainer.state_dict() == trainer.state_dict()
     assert new_other.state_dict() == other_state_dict
+
+
+def test_multi_target_autoload_not_found(remover):
+    trainer = get_trainer(out_dir='.')
+    other = _StateDictObj(state_dict={'original': 'state'})
+
+    target = {'trainer': trainer, 'other': other}
+    snapshot = extensions.snapshot_object(target, 'myfile.dat',
+                                          autoload=True)
+
+    assert snapshot.initialize(trainer) is None
+    assert other.state_dict() == {'original': 'state'}
 
 
 def test_clean_up_tempdir(remover):
