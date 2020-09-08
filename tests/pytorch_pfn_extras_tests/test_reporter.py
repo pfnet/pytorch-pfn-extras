@@ -1,4 +1,6 @@
 import io
+import math
+import tempfile
 import threading
 import time
 
@@ -158,6 +160,17 @@ def test_report_scope():
     assert 'x' not in reporter.observation
 
 
+def test_report_tensor_detached():
+    reporter = ppe.reporting.Reporter()
+    x = torch.tensor(numpy.array(1, 'float32'), requires_grad=True)
+    with reporter:
+        ppe.reporting.report({'x': x})
+    observation = reporter.observation
+    assert 'x' in observation
+    assert not observation['x'].requires_grad
+    assert x.requires_grad
+
+
 # ppe.reporting.Summary
 
 def test_summary_basic():
@@ -212,25 +225,33 @@ def test_summary_weight():
     numpy.testing.assert_allclose(mean.numpy(), val)
 
 
+def _nograd(v):
+    if isinstance(v, torch.Tensor):
+        return v.detach()
+    return v
+
+
 def _check_summary_serialize(value1, value2, value3):
     summary = ppe.reporting.Summary()
     summary.add(value1)
     summary.add(value2)
 
     summary2 = ppe.reporting.Summary()
-    summary2.load_state_dict(summary.state_dict())
+    with tempfile.NamedTemporaryFile() as f:
+        torch.save(summary.state_dict(), f.name)
+        summary2.load_state_dict(torch.load(f.name))
     summary2.add(value3)
 
     expected_mean = (value1 + value2 + value3) / 3.
-    expected_std = numpy.sqrt(
+    expected_std = math.sqrt(
         (value1**2 + value2**2 + value3**2) / 3. - expected_mean**2)
 
     mean = summary2.compute_mean()
-    numpy.testing.assert_allclose(mean, expected_mean)
+    numpy.testing.assert_allclose(mean, _nograd(expected_mean))
 
     mean, std = summary2.make_statistics()
-    numpy.testing.assert_allclose(mean, expected_mean)
-    numpy.testing.assert_allclose(std, expected_std)
+    numpy.testing.assert_allclose(mean, _nograd(expected_mean))
+    numpy.testing.assert_allclose(std, _nograd(expected_std))
 
 
 def test_serialize_array_float():
@@ -257,6 +278,20 @@ def test_serialize_scalar_float():
 
 def test_serialize_scalar_int():
     _check_summary_serialize(1, -2, 2)
+
+
+def test_serialize_tensor():
+    _check_summary_serialize(
+        torch.tensor(1.5),
+        torch.tensor(2.0),
+        torch.tensor(3.5))
+
+
+def test_serialize_tensor_with_grad():
+    _check_summary_serialize(
+        torch.tensor(1.5, requires_grad=True),
+        torch.tensor(2.0, requires_grad=True),
+        3.5)
 
 
 # ppe.reporting.DictSummary

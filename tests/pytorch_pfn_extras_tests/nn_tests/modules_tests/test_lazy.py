@@ -16,7 +16,7 @@ class _MyFunc(torch.nn.Module):
         self.in_features = in_features
         self.out_features = out_features
         self.weight = nn.Parameter(torch.Tensor(out_features, in_features))
-        self.register_buffer('const', torch.full((in_features,), 1))
+        self.register_buffer('const', torch.full((in_features,), 1.0))
         self._reset_params()
 
     def forward(self, input):
@@ -95,6 +95,11 @@ class LazyTestBase:
 
         assert expected.shape == actual.shape
         assert (expected == actual).all()
+
+    def test_share_memory(self):
+        m1 = self.get_lazy_module()
+        with pytest.raises(RuntimeError):
+            m1.share_memory()
 
     def test_double(self):
         torch.manual_seed(0)

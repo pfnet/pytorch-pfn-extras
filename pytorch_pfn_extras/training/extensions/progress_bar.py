@@ -7,7 +7,7 @@ from pytorch_pfn_extras.training.extensions import util
 
 class ProgressBar(extension.Extension):
 
-    """An extension to print a progress bar and recent training updater.
+    """An extension to print a progress bar and recent training status.
 
     This extension prints a progress bar at every call. It watches the current
     iteration and epoch to print the bar.
@@ -38,7 +38,7 @@ class ProgressBar(extension.Extension):
         if self._pbar.manager is None:
             self._pbar.manager = manager
 
-        iteration = manager.updater.iteration
+        iteration = manager.iteration
         # print the progress bar
         if iteration % self._update_interval == 0:
             self._pbar.update()
@@ -53,16 +53,15 @@ class _ManagerProgressBar(util.ProgressBar):
         super().__init__(out)
         self.training_length = training_length
         self.bar_length = bar_length
-        self.updater_template = None
+        self.progress_template = None
         self.manager = None
 
     def get_lines(self):
         assert self.manager is not None
-
         lines = []
 
-        iteration = self.manager.updater.iteration
-        epoch = self.manager.updater.epoch_detail
+        iteration = self.manager.iteration
+        epoch = self.manager.epoch_detail
 
         if self.training_length is None:
             t = self.manager._stop_trigger
@@ -85,12 +84,12 @@ class _ManagerProgressBar(util.ProgressBar):
         lines.append('this epoch [{}{}] {:6.2%}\n'.format(
             marks, '.' * (bar_length - len(marks)), epoch_rate))
 
-        if self.updater_template is None:
-            self.updater_template = (
+        if self.progress_template is None:
+            self.progress_template = (
                 '{0.iteration:10} iter, {0.epoch} epoch / %s %ss\n' %
                 self.training_length)
-        updater = self.updater_template.format(self.manager.updater)
-        lines.append(updater)
+        progress = self.progress_template.format(self.manager)
+        lines.append(progress)
 
         speed_t, speed_e = self.update_speed(iteration, epoch)
         if unit == 'iteration':

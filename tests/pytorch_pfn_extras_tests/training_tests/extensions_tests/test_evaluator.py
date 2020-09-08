@@ -188,3 +188,60 @@ def test_evaluator_progress_bar():
     reporter.add_observer('target', target)
     with reporter:
         evaluator.evaluate()
+
+
+# Code excerpts to test IgniteEvaluator
+class IgniteDummyModel(torch.nn.Module):
+    def __init__(self):
+        super(IgniteDummyModel, self).__init__()
+        self.count = 0.
+
+    def forward(self, *args):
+        ppe.reporting.report({'x': self.count}, self)
+        self.count += 1.
+        return 0.
+
+
+def create_dummy_evaluator(model):
+    from ignite.engine import Engine
+
+    def update_fn(engine, batch):
+        y_pred = torch.tensor(batch[1])
+        model()
+        # We return fake results for the reporters to
+        # and metrics to work
+        return (y_pred, y_pred)
+
+    evaluator = Engine(update_fn)
+    return evaluator
+
+
+def test_ignite_evaluator_reporting_metrics():
+    try:
+        from ignite.metrics import MeanSquaredError
+    except ImportError:
+        pytest.skip('pytorch-ignite is not installed')
+
+    # This tests verifies that either, usuer manually reported metrics
+    # and ignite calculated ones are correctly reflected in the reporter
+    # observation
+    model = IgniteDummyModel()
+    n_data = 10
+    x = torch.randn((n_data, 2), requires_grad=True)
+    y = torch.randn((n_data, 2))
+    dataset = torch.utils.data.TensorDataset(x, y)
+    loader = torch.utils.data.DataLoader(dataset, batch_size=3)
+    evaluator = create_dummy_evaluator(model)
+    # Attach metrics to the evaluator
+    metric = MeanSquaredError()
+    metric.attach(evaluator, 'mse')
+    evaluator_ignite_ext = ppe.training.extensions.IgniteEvaluator(
+        evaluator, loader, model, progress_bar=False
+    )
+    reporter = ppe.reporting.Reporter()
+    with reporter:
+        result = evaluator_ignite_ext()
+    # Internally reported metrics
+    assert result['main/x'] == 1.5
+    # Ignite calculated metric
+    assert result['val/mse'] == 0.0

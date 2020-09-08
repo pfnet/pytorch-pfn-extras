@@ -114,7 +114,7 @@ n_retains=-1, autoload=False)
         filename (str): Name of the file into which the object is serialized.
             It can be a format string, where the manager object is passed to
             the :meth:`str.format` method. For example,
-            ``'snapshot_{.updater.iteration}'`` is converted to
+            ``'snapshot_{.iteration}'`` is converted to
             ``'snapshot_10000'`` at the 10,000th iteration.
         savefun: Function to save the object. It takes two arguments: the
             output file path and the object to serialize.
@@ -142,6 +142,12 @@ n_retains=-1, autoload=False)
             Automatic loading only works when the filename is a string.
         saver_rank (int): If defined, the snapshot will be taken by only one
             rank when running in distributed mode and restored by all.
+        transform_models (callable): If defined, function to apply to a model
+            before obtaining its `state_dict`. Takes two parameters, the object
+            name and the object itself.
+        autoload_transform_models (callable): If defined, function to apply to
+            a model after loading it. Takes two parameters, the object
+            name and the object itself.
 
     Returns:
         Snapshot extension object.
@@ -156,7 +162,7 @@ n_retains=-1, autoload=False)
 
 
 def snapshot(savefun=None,
-             filename='snapshot_iter_{.updater.iteration}',
+             filename='snapshot_iter_{.iteration}',
              *,
              target=None,
              condition=None,
@@ -164,7 +170,9 @@ def snapshot(savefun=None,
              snapshot_on_error=False,
              n_retains=-1,
              autoload=False,
-             saver_rank=None):
+             saver_rank=None,
+             transform_models=None,
+             autoload_transform_models=None):
     """
     Returns a trainer extension to take snapshots of the trainer.
 
@@ -216,6 +224,12 @@ def snapshot(savefun=None,
             by :func:`torch.save` .
         saver_rank (int): If defined, the snapshot will be taken by only one
             rank when running in distributed mode and restored by all.
+        transform_models (callable): If defined, function to apply to a model
+            before obtaining its `state_dict`. Takes two parameters, the object
+            name and the object itself.
+        autoload_transform_models (callable): If defined, function to apply to
+            a model after loading it. Takes two parameters, the object
+            name and the object itself.
     Returns:
         Snapshot extension object.
 
@@ -272,11 +286,14 @@ trigger=(1, 'epoch'))
         return _Snapshot(
             target=target, condition=condition, writer=writer,
             filename=filename, snapshot_on_error=snapshot_on_error,
-            n_retains=n_retains, autoload=autoload, savefun=savefun)
+            n_retains=n_retains, autoload=autoload, savefun=savefun,
+            transform_models=transform_models,
+            autoload_transform_models=autoload_transform_models)
     return _DistributedSnapshot(
         target=target, condition=condition, writer=writer, filename=filename,
         snapshot_on_error=snapshot_on_error, n_retains=n_retains,
-        autoload=autoload, saver_rank=saver_rank, savefun=savefun)
+        autoload=autoload, saver_rank=saver_rank, savefun=savefun,
+        autoload_transform_models=autoload_transform_models)
 
 
 def _always_true():
@@ -302,9 +319,10 @@ class _Snapshot(extension.Extension):
 
     def __init__(
             self, target=None, condition=None, writer=None,
-            filename='snapshot_iter_{.updater.iteration}',
+            filename='snapshot_iter_{.iteration}',
             snapshot_on_error=False, n_retains=-1, autoload=False,
-            savefun=None):
+            savefun=None,
+            transform_models=None, autoload_transform_models=None):
         if condition is None:
             condition = _always_true
         self._target = target
@@ -315,24 +333,24 @@ class _Snapshot(extension.Extension):
         self.n_retains = n_retains
         self.autoload = autoload
         self._savefun = savefun
+        self._transform_models = transform_models
+        self._autoload_transform_models = autoload_transform_models
 
     def initialize(self, manager):
         target = manager if self._target is None else self._target
         outdir = manager.out
         writer = manager.writer if self.writer is None else self.writer
         self.writer = writer
+        loaded_fn = None
         if self.autoload:
             # If ``autoload`` is on, this code scans the ``outdir``
             # for potential snapshot files by matching the file names
             # from ``filename`` format, picks up the latest one in
             # terms of mtime, and tries to load it it the target or
             # manager.
-            filename = _find_latest_snapshot(self.filename, outdir, writer.fs)
-            if filename is None:
-                print('No snapshot file that matches {} was found'
-                      .format(self.filename))
-            else:
-                snapshot_file = writer.fs.open(os.path.join(outdir, filename))
+            loaded_fn = _find_latest_snapshot(self.filename, outdir, writer.fs)
+            if loaded_fn:
+                snapshot_file = writer.fs.open(os.path.join(outdir, loaded_fn))
                 # As described above (at ``autoload`` option),
                 # snapshot files to be autoloaded must be saved by
                 # ``save_npz`` . In order to support general format,
@@ -340,11 +358,15 @@ class _Snapshot(extension.Extension):
                 # and loadfun.
                 state = torch.load(snapshot_file,
                                    map_location=torch.device("cpu"))
+                kwargs = {}
+                if self._autoload_transform_models is not None:
+                    kwargs['transform_models'] = (
+                        self._autoload_transform_models)
                 if type(target) is dict:
                     for k in target:
-                        target[k].load_state_dict(state[k])
+                        target[k].load_state_dict(state[k], **kwargs)
                 else:
-                    target.load_state_dict(state)
+                    target.load_state_dict(state, **kwargs)
 
         if (hasattr(writer, '_add_cleanup_hook')
                 and self.n_retains > 0
@@ -363,6 +385,8 @@ class _Snapshot(extension.Extension):
 
             writer._add_cleanup_hook(_cleanup)
 
+        return loaded_fn
+
     def on_error(self, manager, exc, tb):
         super().on_error(manager, exc, tb)
         if self._snapshot_on_error:
@@ -377,10 +401,18 @@ class _Snapshot(extension.Extension):
         writer = manager.writer if self.writer is None else self.writer
         self.writer = writer
         # We need to get a dictionary with the sate here
+        kwargs = {}
+        # If the user defines a transform_models function and a custom
+        # target, he knows what he is doing so he should override state_dict
+        # for his own target
+        if self._transform_models is not None:
+            kwargs['transform_models'] = self._transform_models
+
         if type(target) is dict:
-            serialized_target = {k: v.state_dict() for k, v in target.items()}
+            serialized_target = {
+                k: v.state_dict(**kwargs) for k, v in target.items()}
         else:
-            serialized_target = target.state_dict()
+            serialized_target = target.state_dict(**kwargs)
         filename = self.filename
         if callable(filename):
             filename = filename(manager)
@@ -413,15 +445,21 @@ class _DistributedSnapshot(_Snapshot):
 
     def __init__(
             self, target=None, condition=None, writer=None,
-            filename='snapshot_iter_{.updater.iteration}',
+            filename='snapshot_iter_{.iteration}',
             snapshot_on_error=False, n_retains=-1, autoload=False,
-            saver_rank=0, savefun=None):
+            saver_rank=0, savefun=None, transform_models=None,
+            autoload_transform_models=None):
         super().__init__(target, condition, writer, filename,
                          snapshot_on_error, n_retains,
-                         autoload, savefun)
+                         autoload, savefun, transform_models,
+                         autoload_transform_models)
         # To support distributed snapshots
+        if not torch.distributed.is_initialized():
+            raise RuntimeError('The Distributed Snapshot extension',
+                               ' requires torch.distributed to be initialized')
         self._saver_rank = saver_rank
-        self._size, self._rank, self._local_rank = _get_ranks_from_env()
+        self._size = torch.distributed.get_world_size()
+        self._rank = torch.distributed.get_rank()
         if not (0 <= saver_rank < self._size):
             raise ValueError('Distributed snapshot requires a saver rank'
                              ' in the range [0-{})'.format(self._size))
@@ -434,21 +472,3 @@ class _DistributedSnapshot(_Snapshot):
                 self._make_snapshot(trainer)
             if self._size > 1:
                 torch.distributed.barrier()
-
-
-def _get_ranks_from_env():
-    if 'OMPI_COMM_WORLD_SIZE' in os.environ:
-        # We are running Open MPI
-        comm_world_size = int(os.environ["OMPI_COMM_WORLD_SIZE"])
-        comm_rank = int(os.environ["OMPI_COMM_WORLD_RANK"])
-        comm_local_rank = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-    elif 'MV2_COMM_WORLD_SIZE' in os.environ:
-        comm_world_size = int(os.environ['MV2_COMM_WORLD_SIZE'])
-        comm_rank = int(os.environ['MV2_COMM_WORLD_RANK'])
-        comm_local_rank = int(os.environ['MV2_COMM_WORLD_LOCAL_RANK'])
-    else:
-        comm_world_size = 1
-        comm_rank = 0
-        comm_local_rank = 0
-
-    return comm_world_size, comm_rank, comm_local_rank

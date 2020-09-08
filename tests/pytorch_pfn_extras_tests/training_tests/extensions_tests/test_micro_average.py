@@ -7,7 +7,10 @@ def test_run():
     trigger_iters = 3
     data_shape = (4, trigger_iters)
     data_total = numpy.random.randint(7, 32, size=data_shape)
-    data_correct = numpy.random.randint(data_total + 1)
+
+    # NumPy<1.17 does not support array-like inputs in `numpy.random.randint`.
+    data_correct = numpy.random.randint(10000, size=data_shape) % data_total
+
     manager = ppe.training.ExtensionsManager(
         {}, [], 100,
         iters_per_epoch=5)

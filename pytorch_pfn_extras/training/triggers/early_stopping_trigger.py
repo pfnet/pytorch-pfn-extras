@@ -138,7 +138,7 @@ class EarlyStoppingTrigger:
 
         if self._stop_condition():
             if self.verbose:
-                print('Epoch {}: early stopping'.format(manager.updater.epoch))
+                print('Epoch {}: early stopping'.format(manager.epoch))
             return True
 
         return False

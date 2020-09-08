@@ -80,7 +80,7 @@ class ProgressBar:
     def get_lines(self):
         raise NotImplementedError
 
-    def update(self):
+    def update(self, manager=None):
         self.erase_console()
 
         lines = self.get_lines()

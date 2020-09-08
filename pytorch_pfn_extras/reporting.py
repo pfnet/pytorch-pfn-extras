@@ -11,9 +11,9 @@ import torch
 _thread_local = threading.local()
 
 
-def _copy_variable(value):
+def _nograd(value):
     if isinstance(value, torch.Tensor):
-        return value.clone()
+        return value.detach()
     return value
 
 
@@ -30,28 +30,30 @@ class Reporter:
     prefix of the value name. The observer name should be registered
     beforehand.
 
-    See the following example::
+    See the following example:
 
-       >>> from pytorch_pfn_extras import Reporter, report, report_scope
-       >>>
-       >>> reporter = Reporter()
-       >>> observer = object()  # it can be an arbitrary (reference) object
-       >>> reporter.add_observer('my_observer', observer)
-       >>> observation = {}
-       >>> with reporter.scope(observation):
-       ...     reporter.report({'x': 1}, observer)
-       ...
-       >>> observation
-       {'my_observer/x': 1}
+    >>> from pytorch_pfn_extras.reporting import Reporter, report, report_scope
+    >>>
+    >>> reporter = Reporter()
+    >>> observer = object()  # it can be an arbitrary (reference) object
+    >>> reporter.add_observer('my_observer', observer)
+    >>> observation = {}
+    >>> with reporter.scope(observation):
+    ...     reporter.report({'x': 1}, observer)
+    ...
+    >>> observation
+    {'my_observer/x': 1}
 
-    There are also a global API to add values::
+    There are also a global API to add values:
 
-       >>> observation = {}
-       >>> with report_scope(observation):
-       ...     report({'x': 1}, observer)
-       ...
-       >>> observation
-       {'my_observer/x': 1}
+    >>> reporter = Reporter()
+    >>> observation = {}
+    >>> with reporter:
+    ...     with report_scope(observation):
+    ...         report({'x': 1})
+    ...
+    >>> observation
+    {'x': 1}
 
     The most important application of Reporter is to report observed values
     from each link or chain in the training and validation procedures.
@@ -150,7 +152,7 @@ class Reporter:
                 name of the observed value.
 
         """
-        values = {k: _copy_variable(v) for k, v in values.items()}
+        values = {k: _nograd(v) for k, v in values.items()}
 
         if observer is not None:
             observer_id = id(observer)
@@ -301,9 +303,9 @@ class Summary:
         return state
 
     def load_state_dict(self, to_load):
-        self._x = to_load['_x']
-        self._x2 = to_load['_x2']
-        self._n = to_load['_n']
+        self._x = _nograd(to_load['_x'])
+        self._x2 = _nograd(to_load['_x2'])
+        self._n = _nograd(to_load['_n'])
 
 
 class DictSummary:

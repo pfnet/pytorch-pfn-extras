@@ -1,5 +1,6 @@
 import torch
 import copy
+import warnings
 
 
 def _reset_parameters(model):
@@ -11,8 +12,19 @@ def _reset_parameters(model):
         for submodel in model.values():
             _reset_parameters(submodel)
     else:
-        if isinstance(model, torch.nn.Module):
+        if hasattr(model, 'reset_parameters'):
             model.reset_parameters()
+        elif hasattr(model, '_reset_parameters'):
+            model._reset_parameters()
+        else:
+            if (len(list(model.parameters())) != 0 or
+                    len(list(model.buffers())) != 0):
+                warnings.warn('Cannot reset the parameters of module {}. '
+                              'Consider adding `reset_parameters` or '
+                              '`_reset_parameters` '
+                              'functions to the module'.format(model),
+                              UserWarning)
+
     return model
 
 
@@ -38,6 +50,18 @@ class ExtendedSequential(torch.nn.Sequential):
 
         The functions is supposed to behave the same way as `repeat`
         in `chainer`.
+
+        When the mode is set to ``init``, the default value,
+        modules will be copied and reinitialized by calling
+        ``reset_parameters`` (or ``_reset_parameters``) method.
+
+        To repeat user-defined modules, which have parameters or buffers,
+        with mode=``init`` in this Sequential,
+        you need to implement the ``reset_parameters`` or ``_reset_parameters``
+        method to the module to reinitialize parameters
+        and (if necessary) buffers;
+        otherwise the initialization cannot be performed
+        and a warning message will be shown.
 
         Args:
             n_repeat (int): Number of times to repeat.

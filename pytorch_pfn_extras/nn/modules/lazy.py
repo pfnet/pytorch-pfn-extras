@@ -114,6 +114,12 @@ class UninitializedParameter(torch.nn.Parameter):
     def __repr__(self):
         return 'Uninitialized lazy parameter'
 
+    def share_memory_(self):
+        raise RuntimeError(
+            'Can\'t share memory on an unitialized parameter. '
+            'Run forward to initialize the network before calling '
+            '`module.share_memory()`.')
+
     @property
     def is_leaf(self):
         # Hacky workaround to detect use of uninitialized lazy parameters.
