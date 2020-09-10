@@ -1,6 +1,6 @@
 # pytorch_pfn_extras.onnx
 
-Extensions of `torch.onnx.export` for PFN tools.
+Extensions to `torch.onnx.export`.
 
 ## Installation
 
