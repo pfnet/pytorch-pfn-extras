@@ -206,7 +206,7 @@ def create_dummy_evaluator(model):
     from ignite.engine import Engine
 
     def update_fn(engine, batch):
-        y_pred = torch.tensor(batch[1])
+        y_pred = batch[1].clone().detach()
         model()
         # We return fake results for the reporters to
         # and metrics to work
