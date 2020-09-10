@@ -4,8 +4,9 @@ from pytorch_pfn_extras.nn.modules.lazy import LazyInitializationMixin
 from pytorch_pfn_extras.nn.modules.lazy import UninitializedParameter
 
 
-class _LazyNormBase(
-    LazyInitializationMixin, torch.nn.modules.batchnorm._NormBase
+class _LazyBatchNorm(
+    LazyInitializationMixin,
+    torch.nn.modules.batchnorm._BatchNorm
 ):
 
     lazy_parameter_names = ('weight', 'bias')
@@ -48,11 +49,6 @@ class _LazyNormBase(
                     dtype=self.running_mean.dtype
                 )
             self.reset_parameters()
-        return super().forward(input)
-
-
-class _LazyBatchNorm(_LazyNormBase, torch.nn.modules.batchnorm._BatchNorm):
-    def forward(self, input):
         return super().forward(input)
 
 
