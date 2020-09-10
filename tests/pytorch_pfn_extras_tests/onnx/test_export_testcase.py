@@ -51,7 +51,9 @@ def _get_output_dir(d, **kwargs):
 
 def _helper(model, args, d, **kwargs):
     output_dir = _get_output_dir(d)
-    export_testcase(model, args, output_dir, training=model.training, **kwargs)
+    if 'training' not in kwargs:
+        kwargs['training'] = model.training
+    export_testcase(model, args, output_dir, **kwargs)
     return output_dir
 
 
