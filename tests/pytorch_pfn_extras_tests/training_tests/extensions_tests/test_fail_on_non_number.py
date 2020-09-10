@@ -40,7 +40,7 @@ def run_train(manager, model, optimizer):
     for _ in range(3):
         with manager.run_iteration():
             for x, y in data_loader:
-                x = torch.tensor(x, dtype=torch.float)
+                x = x.clone().detach().type(torch.float)
                 optimizer.zero_grad()
                 out = model(x)
                 loss = torch.nn.functional.nll_loss(out, y)
