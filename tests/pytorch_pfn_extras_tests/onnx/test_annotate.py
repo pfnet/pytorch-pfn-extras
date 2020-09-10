@@ -18,6 +18,7 @@ from pytorch_pfn_extras.onnx import scoped_anchor
 from tests.pytorch_pfn_extras_tests.onnx.test_export_testcase import _helper
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_annotate():
     class Net(nn.Module):
         def __init__(self):
@@ -139,6 +140,7 @@ def test_apply_annotation():
     assert 'yyy' in node_attrs
 
 
+@pytest.mark.filterwarnings("ignore::torch.jit.TracerWarning")
 def test_scoped_anchor():
     class Net(nn.Module):
         def __init__(self, anchor_mode='on'):
