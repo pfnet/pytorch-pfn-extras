@@ -69,9 +69,9 @@ def _torch_alloc(size, device_id):
             'The current stream set in PyTorch and CuPy must be same.'
             ' Use `pytorch_pfn_extras.cuda.stream` instead of'
             ' `torch.cuda.stream`.')
-    return torch.cuda.memory.caching_allocator_alloc(
+    return torch.cuda.caching_allocator_alloc(
             size, device_id, torch_stream_ptr)
 
 
 def _torch_free(mem_ptr, device_id):
-    torch.cuda.memory.caching_allocator_delete(mem_ptr)
+    torch.cuda.caching_allocator_delete(mem_ptr)
