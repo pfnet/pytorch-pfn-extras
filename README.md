@@ -16,6 +16,10 @@ pip install matplotlib
 
 # For IgniteExtensionsManager
 pip install pytorch-ignite torchvision
+
+# For CuPy interoperability (see: https://docs.cupy.dev/en/stable/install.html)
+pip install cupy  # or cupy-cudaXXX
+
 ```
 
 ## Documentation
