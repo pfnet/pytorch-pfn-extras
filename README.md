@@ -26,6 +26,7 @@ pip install pytorch-ignite torchvision
 * [Distributed Snapshot](docs/snapshot.md)
 * [Config System](docs/config.md)
 * [ONNX Utils](docs/onnx.md)
+* [CUDA Utils (CuPy Interoperability)](docs/cuda.md)
 
 ## Examples
 

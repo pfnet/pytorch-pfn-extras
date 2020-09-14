@@ -5,6 +5,8 @@ apt update
 apt -y install python3 python3-pip
 
 pip3 install torch torchvision pytorch-ignite pytest flake8 matplotlib tensorboard onnx
+# TODO(kmaehashi): fix to use stable version after v8 release
+pip3 install 'cupy-cuda100>=8.0.0rc1'
 pip3 install -e .
 
 # Run unit tests
