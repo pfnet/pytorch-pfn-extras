@@ -10,7 +10,7 @@ class PrintReportNotebook(PrintReport):
 
     """An extension to print the accumulated results.
 
-    This extension is aimed to work on jupyter notebook as replacement of `PrintReport`.
+    It is aimed to work on jupyter notebook as replacement of `PrintReport`.
     This extension uses the log accumulated by a :class:`LogReport` extension
     to print specified entries of the log in a human-readable format.
 
@@ -21,12 +21,15 @@ class PrintReportNotebook(PrintReport):
             observations. This is either the name of a LogReport extensions
             registered to the manager, or a LogReport instance to use
             internally.
-        out: This is not used, argument is kept to be consistent with `PrintReport`.
+        out: This is not used, argument is kept to be consistent with
+            `PrintReport`.
 
     """
 
     def __init__(self, entries=None, log_report='LogReport', out=sys.stdout):
-        super(PrintReportNotebook, self).__init__(entries=entries, log_report=log_report, out=out)
+        super(PrintReportNotebook, self).__init__(
+            entries=entries, log_report=log_report, out=out
+        )
         self._widget = HTML()
 
     def initialize(self, trainer):
