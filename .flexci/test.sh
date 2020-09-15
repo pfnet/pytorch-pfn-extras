@@ -1,10 +1,10 @@
 #!/bin/bash -uex
 
-perl -pi.bak -e 's|http://archive\.ubuntu\.com/ubuntu/|mirror://mirrors.ubuntu.com/mirrors.txt|g' /etc/apt/sources.list
-apt update
-apt -y install python3 python3-pip
-
-pip3 install torch torchvision pytorch-ignite pytest flake8 matplotlib onnx
+ln -s /opt/conda/bin/pip /opt/conda/bin/pip3
+# torch & torchvision is already installed.
+pip3 install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets
+# TODO(kmaehashi): fix to use stable version after v8 release
+pip3 install 'cupy-cuda101>=8.0.0rc1'
 pip3 install -e .
 
 # Run unit tests

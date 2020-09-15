@@ -500,3 +500,34 @@ class ProcessQueueWriter(QueueWriter):
 
     def create_consumer(self, q):
         return multiprocessing.Process(target=self.consume, args=(q,))
+
+
+class TensorBoardWriter(object):
+    """ Writer that sends statistics to TensorBoard.
+
+    This class contains a `torch.utils.tensorboard.SummaryWriter`
+    object that is used to send the collected statistics to TensorBoard.
+    A list of stats can be specified to report only the desired ones.
+
+    """
+    def __init__(
+            self, savefun=None, fs=None, out_dir=None, stats=None, **kwds):
+        import torch.utils.tensorboard
+        self._stats = stats
+        self._writer = torch.utils.tensorboard.SummaryWriter(
+            log_dir=out_dir, **kwds)
+
+    def __call__(self, filename, out_dir, target, *, savefun=None):
+        stats_cpu = target
+        # we only take the last value
+        if isinstance(target, list):
+            stats_cpu = target[-1]
+
+        if not isinstance(stats_cpu, dict):
+            raise TypeError('target must be dict or list of dicts')
+        keys = stats_cpu.keys()
+        if self._stats is not None:
+            keys = self._stats
+        for key in keys:
+            value = stats_cpu[key]
+            self._writer.add_scalar(key, value, stats_cpu['iteration'])
