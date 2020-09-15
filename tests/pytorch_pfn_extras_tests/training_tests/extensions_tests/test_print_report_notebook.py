@@ -8,7 +8,7 @@ from pytorch_pfn_extras.training.extensions import _ipython_module_available
 
 @pytest.mark.skipif(
     not _ipython_module_available,
-    reason="progress bar notebook import failed, "
+    reason="print report notebook import failed, "
            "maybe ipython is not installed"
 )
 def test_run_progress_bar_notebook():
@@ -18,12 +18,9 @@ def test_run_progress_bar_notebook():
         {}, {}, max_epochs, iters_per_epoch=iters_per_epoch)
 
     out = io.StringIO()
-    extension = ppe.training.extensions.ProgressBarNotebook(
-        training_length=None,
-        update_interval=1,
-        bar_length=40,
-        out=out,
-    )
+    log_report = ppe.training.extensions.LogReport()
+    manager.extend(log_report)
+    extension = ppe.training.extensions.PrintReportNotebook(out=out)
     manager.extend(extension)
 
     for epoch in range(max_epochs):
@@ -31,9 +28,8 @@ def test_run_progress_bar_notebook():
             with manager.run_iteration():
                 if manager.iteration < 2:
                     continue
-                status = '{} iter, {} epoch / {} epochs'.format(
-                    manager.iteration, epoch, max_epochs)
-                assert status in extension._status_html.value
+                # Only test it runs without fail
+                # The value is not tested now...
 
 
 if __name__ == '__main__':

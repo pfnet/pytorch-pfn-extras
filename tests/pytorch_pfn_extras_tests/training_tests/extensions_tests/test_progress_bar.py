@@ -4,8 +4,8 @@ import pytorch_pfn_extras as ppe
 
 
 def test_run():
-    max_epochs = 10
-    iters_per_epoch = 10
+    max_epochs = 5
+    iters_per_epoch = 5
     manager = ppe.training.ExtensionsManager(
         {}, {}, max_epochs, iters_per_epoch=iters_per_epoch)
 

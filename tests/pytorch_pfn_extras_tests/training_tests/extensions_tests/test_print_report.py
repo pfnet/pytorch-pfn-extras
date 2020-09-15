@@ -18,12 +18,9 @@ def test_run_progress_bar_notebook():
         {}, {}, max_epochs, iters_per_epoch=iters_per_epoch)
 
     out = io.StringIO()
-    extension = ppe.training.extensions.ProgressBarNotebook(
-        training_length=None,
-        update_interval=1,
-        bar_length=40,
-        out=out,
-    )
+    log_report = ppe.training.extensions.LogReport()
+    manager.extend(log_report)
+    extension = ppe.training.extensions.PrintReport(out=out)
     manager.extend(extension)
 
     for epoch in range(max_epochs):
@@ -31,9 +28,7 @@ def test_run_progress_bar_notebook():
             with manager.run_iteration():
                 if manager.iteration < 2:
                     continue
-                status = '{} iter, {} epoch / {} epochs'.format(
-                    manager.iteration, epoch, max_epochs)
-                assert status in extension._status_html.value
+        assert "epoch       elapsed_time" in out.getvalue()
 
 
 if __name__ == '__main__':
