@@ -5,7 +5,7 @@ configs {
       cpu: 2
       gpu: 1
       memory: 8
-      disk: 20
+      disk: 10
     }
     time_limit: {
       seconds: 900
