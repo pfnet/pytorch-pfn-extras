@@ -8,7 +8,7 @@ configs {
       disk: 10
     }
     time_limit: {
-      seconds: 900
+      seconds: 1200
     }
     command: "bash .flexci/run.sh"
   }

@@ -12,3 +12,10 @@ from pytorch_pfn_extras.training.extensions.plot_report import PlotReport  # NOQ
 from pytorch_pfn_extras.training.extensions.value_observation import observe_lr  # NOQA
 from pytorch_pfn_extras.training.extensions.value_observation import observe_value  # NOQA
 from pytorch_pfn_extras.training.extensions.variable_statistics_plot import VariableStatisticsPlot  # NOQA
+
+try:
+    from pytorch_pfn_extras.training.extensions.progress_bar_notebook import ProgressBarNotebook  # NOQA
+
+    _ipython_module_available = True
+except ImportError:
+    _ipython_module_available = False
