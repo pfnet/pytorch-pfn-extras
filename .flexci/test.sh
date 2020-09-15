@@ -1,10 +1,6 @@
 #!/bin/bash -uex
 
-perl -pi.bak -e 's|http://archive\.ubuntu\.com/ubuntu/|mirror://mirrors.ubuntu.com/mirrors.txt|g' /etc/apt/sources.list
-apt update
-apt -y install python3 python3-pip
-
-pip3 install torch torchvision pytorch-ignite pytest flake8 matplotlib tensorboard onnx
+pip3 install torchvision pytorch-ignite pytest flake8 matplotlib tensorboard onnx
 # TODO(kmaehashi): fix to use stable version after v8 release
 pip3 install 'cupy-cuda100>=8.0.0rc1'
 pip3 install -e .
