@@ -4,10 +4,11 @@ import pytest
 
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras.training.extensions import _ipython_module_available
+from pytorch_pfn_extras.training.extensions.log_report import _pandas_available
 
 
 @pytest.mark.skipif(
-    not _ipython_module_available,
+    not _ipython_module_available or not _pandas_available,
     reason="print report notebook import failed, "
            "maybe ipython is not installed"
 )
@@ -26,10 +27,9 @@ def test_run_print_report_notebook():
     for epoch in range(max_epochs):
         for batch_idx in range(iters_per_epoch):
             with manager.run_iteration():
-                if manager.iteration < 2:
-                    continue
                 # Only test it runs without fail
                 # The value is not tested now...
+                pass
 
 
 if __name__ == '__main__':

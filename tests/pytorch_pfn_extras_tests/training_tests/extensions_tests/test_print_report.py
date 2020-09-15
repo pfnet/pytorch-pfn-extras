@@ -20,8 +20,7 @@ def test_run_print_report():
     for epoch in range(max_epochs):
         for batch_idx in range(iters_per_epoch):
             with manager.run_iteration():
-                if manager.iteration < 2:
-                    continue
+                pass
         assert "epoch       elapsed_time" in out.getvalue()
 
 
