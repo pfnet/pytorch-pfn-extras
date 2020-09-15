@@ -3,16 +3,16 @@ import sys
 import time
 
 from IPython.core.display import display
-from ipywidgets import HTML, FloatProgress, HBox, VBox
+from ipywidgets import HTML, FloatProgress, HBox, VBox  # NOQA
 
-from pytorch_pfn_extras.training import extension, trigger
+from pytorch_pfn_extras.training import extension, trigger  # NOQA
 
 
 class ProgressBarNotebook(extension.Extension):
 
     """An extension to print a progress bar and recent training status.
 
-    This extension is aimed to work on jupyter notebook as replacement of `ProgressBar`.
+    It is aimed to work on jupyter notebook as replacement of `ProgressBar`.
     This extension prints a progress bar at every call. It watches the current
     iteration and epoch to print the bar.
 
@@ -24,8 +24,11 @@ class ProgressBarNotebook(extension.Extension):
             determine the length of the training.
         update_interval (int): Number of iterations to skip printing the
             progress bar.
-        bar_length (int): This is not used, argument is kept to be consistent with `ProgressBar`.
-        out: This is not used, argument is kept to be consistent with `ProgressBar`.
+        bar_length (int): This is not used, argument is kept to be consistent
+            with `ProgressBar`.
+        out: This is not used, argument is kept to be consistent with
+            `ProgressBar`.
+
     """
 
     def __init__(self, training_length=None, update_interval=100,
