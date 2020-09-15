@@ -8,7 +8,8 @@ from pytorch_pfn_extras.training.extensions import _ipython_module_available
 
 @pytest.mark.skipif(
     not _ipython_module_available,
-    reason="progress bar notebook import failed, maybe ipython is not installed"
+    reason="progress bar notebook import failed, "
+           "maybe ipython is not installed"
 )
 def test_run_progress_bar_notebook():
     max_epochs = 10
