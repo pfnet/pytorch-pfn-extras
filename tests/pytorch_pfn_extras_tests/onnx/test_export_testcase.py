@@ -51,6 +51,8 @@ def _get_output_dir(d, **kwargs):
 
 def _helper(model, args, d, **kwargs):
     output_dir = _get_output_dir(d)
+    if 'training' not in kwargs:
+        kwargs['training'] = model.training
     export_testcase(model, args, output_dir, **kwargs)
     return output_dir
 
@@ -92,6 +94,7 @@ def test_export_filename():
         out.detach().cpu().numpy(), expected_out.detach().cpu().numpy())
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_export_stream():
     model = nn.Sequential(nn.Linear(5, 10, bias=False))
     x = torch.zeros((2, 5))
@@ -179,6 +182,8 @@ def test_backward_custom_input():
     np.testing.assert_allclose(grad, expected_grad)
 
 
+@pytest.mark.filterwarnings(
+        "ignore::torch.jit.TracerWarning", "ignore::UserWarning")
 def test_backward_multiple_input():
     model = nn.GRU(input_size=10, hidden_size=3, num_layers=1)
     input = torch.ones((4, 5, 10), requires_grad=True)
