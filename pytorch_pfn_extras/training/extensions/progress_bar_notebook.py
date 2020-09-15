@@ -10,7 +10,7 @@ from pytorch_pfn_extras.training import extension, trigger
 
 class ProgressBarNotebook(extension.Extension):
 
-    """An extension to print a progress bar and recent training updater.
+    """An extension to print a progress bar and recent training status.
 
     This extension is aimed to work on jupyter notebook as replacement of `ProgressBar`.
     This extension prints a progress bar at every call. It watches the current
@@ -59,15 +59,13 @@ class ProgressBarNotebook(extension.Extension):
             self._training_length = t.period, t.unit
             self._init_status_template()
 
-        updater = manager.updater
-        self.update(updater.iteration, updater.epoch_detail)
+        self.update(manager.iteration, manager.epoch_detail)
         display(self._widget)
 
     def __call__(self, manager):
         length, unit = self._training_length
 
-        updater = manager.updater
-        iteration, epoch_detail = updater.iteration, updater.epoch_detail
+        iteration, epoch_detail = manager.iteration, manager.epoch_detail
 
         if unit == 'iteration':
             is_finished = iteration == length
