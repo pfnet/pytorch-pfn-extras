@@ -1,6 +1,8 @@
 #!/bin/bash -uex
 
-pip3 install torchvision pytorch-ignite pytest flake8 matplotlib tensorboard onnx
+ln -s /opt/conda/bin/pip /opt/conda/bin/pip3
+# torch & torchvision is already installed.
+pip3 install pytorch-ignite pytest flake8 matplotlib tensorboard onnx
 # TODO(kmaehashi): fix to use stable version after v8 release
 pip3 install 'cupy-cuda101>=8.0.0rc1'
 pip3 install -e .
