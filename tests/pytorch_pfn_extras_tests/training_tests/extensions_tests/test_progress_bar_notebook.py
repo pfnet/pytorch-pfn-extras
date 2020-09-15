@@ -3,9 +3,14 @@ import io
 import pytest
 
 import pytorch_pfn_extras as ppe
+from pytorch_pfn_extras.training.extensions import _ipython_module_available
 
 
-def test_run():
+@pytest.mark.skipif(
+    not _ipython_module_available,
+    reason="progress bar notebook import failed, maybe ipython is not installed"
+)
+def test_run_progress_bar_notebook():
     max_epochs = 10
     iters_per_epoch = 10
     manager = ppe.training.ExtensionsManager(
