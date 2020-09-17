@@ -431,13 +431,13 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
 
         @self.engine.on(Events.STARTED)
         def set_training_started(engine):
+            self.start_extensions()
             start_iteration = self._start_iteration
             self.engine.state.iteration = self._start_iteration
             self.engine.state.epoch = self._start_epoch
             self._start_time = _get_time()
             iters_per_epoch = len(engine.state.dataloader)
             self._prepare_for_training(start_iteration, iters_per_epoch)
-            self.start_extensions()
 
             # Make all the next
             # handlers to be executed after user defined ones
