@@ -4,6 +4,13 @@ from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 
+try:
+    import pandas
+
+    _pandas_available = True
+except ImportError:
+    _pandas_available = False
+
 
 def log_writer_save_func(target, file_o):
     file_o.write(bytes(json.dumps(target, indent=4).encode('ascii')))
@@ -144,6 +151,8 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
         self._summary = reporting.DictSummary()
 
     def to_dataframe(self):
-        # Need to install pandas to use this method.
-        import pandas
+        if not _pandas_available:
+            raise ImportError(
+                "Need to install pandas to use `to_dataframe` method."
+            )
         return pandas.DataFrame(self._log)
