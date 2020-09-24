@@ -205,6 +205,8 @@ grid=True)
                  trigger=(1, 'epoch'), filename=None,
                  figsize=None, marker=None, grid=True, **kwargs):
 
+        _check_available()
+
         file_name = kwargs.get('file_name', 'statistics.png')
         if filename is None:
             filename = file_name
@@ -260,7 +262,7 @@ grid=True)
         return _available
 
     def __call__(self, manager):
-        if self.available():
+        if _available:
             # Dynamically import pyplot to call matplotlib.use()
             # after importing pytorch_pfn_extras.training.extensions
             import matplotlib.pyplot as plt
