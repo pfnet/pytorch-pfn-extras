@@ -205,6 +205,8 @@ grid=True)
                  trigger=(1, 'epoch'), filename=None,
                  figsize=None, marker=None, grid=True, **kwargs):
 
+        _check_available()
+
         file_name = kwargs.get('file_name', 'statistics.png')
         if filename is None:
             filename = file_name
