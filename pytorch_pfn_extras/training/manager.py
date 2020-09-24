@@ -3,6 +3,7 @@ import copy
 import contextlib
 import os
 import time
+import warnings
 
 import torch
 
@@ -133,6 +134,18 @@ class _BaseExtensionsManager:
             return self.writer.out_dir
         else:
             return self._out
+
+    @property
+    def updater(self):
+        warnings.warn(
+            'The `updater` attribute has been deprecated in v0.3.0.'
+            ' Use `iteration`, `epoch`, and `epoch_detail` attributes in'
+            ' `ExtensionsManager` instead of attributes under `updater`.'
+            ' You may also need to update the filename template specified to'
+            ' snapshot extensions (e.g., from '
+            '`snapshot_iter_{.updater.iteration}` to'
+            ' `snapshot_iter_{.iteration}`).', DeprecationWarning)
+        return self
 
     def _prepare_for_training(self, start_iteration, iters_per_epoch):
         self.iteration = start_iteration
