@@ -400,7 +400,7 @@ class _Snapshot(extension.Extension):
         target = manager if self._target is None else self._target
         writer = manager.writer if self.writer is None else self.writer
         self.writer = writer
-        # We need to get a dictionary with the sate here
+        # We need to get a dictionary with the state here
         kwargs = {}
         # If the user defines a transform_models function and a custom
         # target, he knows what he is doing so he should override state_dict
