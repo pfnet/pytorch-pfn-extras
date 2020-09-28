@@ -341,3 +341,7 @@ def test_call_optimizers():
     with manager.run_iteration(step_optimizers=['main']):
         a.grad = torch.tensor([2.0])
     assert torch.equal(a.detach(), torch.tensor([-1.]))
+
+
+if __name__ == '__main__':
+    pytest.main([__file__, '-v', '-s'])
