@@ -1,18 +1,17 @@
 import collections
-import copy
 import contextlib
+import copy
 import os
 import time
 import warnings
 
 import torch
 
+from pytorch_pfn_extras import writing
+from pytorch_pfn_extras.reporting import Reporter
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training import util as util_module
-from pytorch_pfn_extras.reporting import Reporter
-from pytorch_pfn_extras import writing
-
 
 # Select the best-resolution timer function
 try:
@@ -444,12 +443,15 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
 
         @self.engine.on(Events.STARTED)
         def set_training_started(engine):
+            iters_per_epoch = len(engine.state.dataloader)
+            # Initialize manager once before extensions' `initialize` call
+            self._prepare_for_training(0, iters_per_epoch)
             self.start_extensions()
             start_iteration = self._start_iteration
             self.engine.state.iteration = self._start_iteration
             self.engine.state.epoch = self._start_epoch
             self._start_time = _get_time()
-            iters_per_epoch = len(engine.state.dataloader)
+            # Initialize manager again after all state is restored
             self._prepare_for_training(start_iteration, iters_per_epoch)
 
             # Make all the next
