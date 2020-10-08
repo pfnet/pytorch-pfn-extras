@@ -12,8 +12,6 @@
 # Config
 
 ## Basic
-Config object is created from a dictionary.
-
 ```python
 from pytorch_pfn_extras.config import Config
 import yaml
@@ -67,18 +65,6 @@ config = Config(pre_eval_config, types)
 print(config['/name'])
 # 'First Last'
 ```
-
-#### How it works
-
-```python
-def resolve_key(pre_eval_config, types, path):
-    c = pre_eval_config[path]
-    func = types[c.pop('type')]
-    return func(**c)
-```
-
-`Config(pre_eval_config, types)['/name']` is the same as 
-`resolve_key(pre_eval_config, types, 'name')`.
 
 #### Nested
 
