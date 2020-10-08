@@ -1,11 +1,11 @@
 - [Config](#config)
   - [Basic](#basic)
-  - [Interpolation](#interpolation)
-    - [Callable Interpolation](#callable-interpolation)
-    - [Interpolation by Path](#interpolation-by-path)
-    - [Interpolation by Attribute](#interpolation-by-attribute)
-    - [Default Value by Path Interpolation](#default-value-by-path-interpolation)
-    - [Ignore Interpolation](#ignore-interpolation)
+  - [Substitution](#substitution)
+    - [Callable Substitution](#callable-substitution)
+    - [Substitution by Path](#substitution-by-path)
+    - [Substitution by Attribute](#substitution-by-attribute)
+    - [Default Value by Path Substitution](#default-value-by-path-substitution)
+    - [Ignore Substitution](#ignore-substitution)
     - [Lazy Evaluation](#lazy-evaluation)
 
 
@@ -41,13 +41,13 @@ print(config['/baz'])
 # 'baz_value'
 ```
 
-## Interpolation
+## Substitution
 
-### Callable Interpolation
+### Callable Substitution
 
 You could replace a value as the return value of a callable.
 - `types` is an additional input to `Config`. `types` is a mapping from a callable's name to the actual callable.
-- A sub-dictionary containing the key `type` invokes callable interpolation.
+- A sub-dictionary containing the key `type` invokes callable substitution.
 
 ```python
 pre_eval_config = yaml.load('''
@@ -123,7 +123,7 @@ print(isintance(config['/dataset'], Dataset))
 # True
 ```
 
-### Interpolation by Path
+### Substitution by Path
 #### Absolute
 `@/absolute/path` is replaced by the value at `/absolute/path`.
 
@@ -152,10 +152,10 @@ print(config['/boo/baz'])
 # FOO
 ```
 
-### Interpolation by Attribute
+### Substitution by Attribute
 
 `@/path/to/obj.attr_name` is replaced by:
-1. Use interpolation by path to get an object at `/path/to/obj`.
+1. Use substitution by path to get an object at `/path/to/obj`.
 2. Replace the config value by `getattr(obj, attr_name)`, where `obj` is obtained at step 1.
 
 ```python
@@ -181,8 +181,8 @@ print(config['/n_data'])
 # 4
 ```
 
-### Default Value by Path Interpolation
-`customize_type` is a decorator that sets default argument values by path interpolation.
+### Default Value by Path Substitution
+`customize_type` is a decorator that sets default argument values by path substitution.
 
 ```python
 from pytorch_pfn_extras.config import customize_type
@@ -210,7 +210,7 @@ print(config['/dataset'].n_class)
 # 5
 ```
 
-### Ignore Interpolation
+### Ignore Substitution
 
 Access using `config['!/path']` instead of `config['/path']`.
 
@@ -232,7 +232,7 @@ print(config['!/name'])
 ```
 
 ### Lazy Evaluation
-Callable interpolation is lazily executed.
+Callable substitution is lazily executed.
 This means that callables that are not dependent on the accesed value do not get executed.
 
 ```python
