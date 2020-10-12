@@ -2,7 +2,7 @@ from pytorch_pfn_extras.dataset.tabular import tabular_dataset
 from pytorch_pfn_extras.dataset.tabular import _utils
 
 
-class _TransformBase:
+class _TransformBase(tabular_dataset.TabularDataset):
     def __init__(self, dataset, keys, transforms):
         self._dataset = dataset
         key_set = set()
@@ -66,7 +66,7 @@ class _TransformBase:
         return self._dataset.convert(data)
 
 
-class _Transform(_TransformBase, tabular_dataset.TabularDataset):
+class _Transform(_TransformBase):
 
     def get_examples(self, indices, key_indices):
         if key_indices is None:
@@ -137,7 +137,7 @@ class _Transform(_TransformBase, tabular_dataset.TabularDataset):
         return self._dataset.convert(data)
 
 
-class _TransformBatch(_TransformBase, tabular_dataset.TabularDataset):
+class _TransformBatch(_TransformBase):
 
     def get_examples(self, indices, key_indices):
         if indices is None:
