@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -27,49 +28,49 @@ class TestConfigTypes(unittest.TestCase):
     def test_load_path_with_optuna_types(self):
         low = 0
         high = 8
-        def objective(trial):
-            with tempfile.TemporaryDirectory() as temp0:
-                with open(os.path.join(temp0, 'foo.json'), mode='w') as f:
-                    json.dump({
-                        'foo': {
-                            'type': 'suggest_int',
-                            'name': 'a',
-                            'low': low,
-                            'high': high
-                        }
-                    }, f)
+        with tempfile.TemporaryDirectory() as temp0:
+            with open(os.path.join(temp0, 'foo.json'), mode='w') as f:
+                json.dump({
+                    'foo': {
+                        'type': 'suggest_int',
+                        'name': 'a',
+                        'low': low,
+                        'high': high
+                    }
+                }, f)
+            def objective(trial):
                 config = load_path_with_optuna_types(os.path.join(temp0, 'foo.json'), trial)
-            self.assertIsInstance(config['/foo'], int)
-            self.assertGreaterEqual(config['/foo'], low)
-            self.assertLessEqual(config['/foo'], high)
-            return 0.0
-        self.study.optimize(objective, n_trials=2 * (high - low + 1))
+                self.assertIsInstance(config['/foo'], int)
+                self.assertGreaterEqual(config['/foo'], low)
+                self.assertLessEqual(config['/foo'], high)
+                return 0.0
+            self.study.optimize(objective, n_trials=2 * (high - low + 1))
 
     def test_load_path_with_optuna_types_with_types_argument(self):
         low = 0
         high = 8
-        def objective(trial):
-            with tempfile.TemporaryDirectory() as temp0:
-                with open(os.path.join(temp0, 'foo.json'), mode='w') as f:
-                    json.dump({
-                        'foo': {
-                            'type': 'suggest_int',
-                            'name': 'a',
-                            'low': low,
-                            'high': high
-                        },
-                        'bar': {
-                            'type': 'dict',
-                            'x': 0
-                        }
-                    }, f)
+        with tempfile.TemporaryDirectory() as temp0:
+            with open(os.path.join(temp0, 'foo.json'), mode='w') as f:
+                json.dump({
+                    'foo': {
+                        'type': 'suggest_int',
+                        'name': 'a',
+                        'low': low,
+                        'high': high
+                    },
+                    'bar': {
+                        'type': 'dict',
+                        'x': 0
+                    }
+                }, f)
+            def objective(trial):
                 config = load_path_with_optuna_types(
                     os.path.join(temp0, 'foo.json'), trial,
                     types={'suggest_int': float, 'dict': dict})
-            self.assertIsInstance(config['/foo'], int)
-            self.assertGreaterEqual(config['/foo'], low)
-            self.assertLessEqual(config['/foo'], high)
-            self.assertIsInstance(config['/bar'], dict)
-            self.assertEqual(config['/bar']['x'], 0)
-            return 0.0
-        self.study.optimize(objective, n_trials=2 * (high - low + 1))
+                self.assertIsInstance(config['/foo'], int)
+                self.assertGreaterEqual(config['/foo'], low)
+                self.assertLessEqual(config['/foo'], high)
+                self.assertIsInstance(config['/bar'], dict)
+                self.assertEqual(config['/bar']['x'], 0)
+                return 0.0
+            self.study.optimize(objective, n_trials=2 * (high - low + 1))
