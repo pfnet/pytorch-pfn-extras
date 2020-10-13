@@ -4,12 +4,12 @@ from .config import Config
 
 def optuna_types(trial):
     types = {
-        "suggest_categorical": trial.suggest_categorical,
-        "suggest_discrete_uniform": trial.suggest_discrete_uniform,
-        "suggest_float": trial.suggest_float,
-        "suggest_int": trial.suggest_int,
-        "suggest_loguniform": trial.suggest_loguniform,
-        "suggest_uniform": trial.suggest_uniform,
+        "optuna_suggest_categorical": trial.suggest_categorical,
+        "optuna_suggest_discrete_uniform": trial.suggest_discrete_uniform,
+        "optuna_suggest_float": trial.suggest_float,
+        "optuna_suggest_int": trial.suggest_int,
+        "optuna_suggest_loguniform": trial.suggest_loguniform,
+        "optuna_suggest_uniform": trial.suggest_uniform,
     }
     return types
 
