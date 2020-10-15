@@ -56,6 +56,11 @@ class Evaluator(extension.Extension):
             which is similar to
             :class:`~extensions.ProgressBar`.
             (default: ``False``)
+        metrics: List of callables that are called every batch to
+            calculate metrics such as accuracy, roc_auc or others
+            The signature of the callable is:
+            `def metric_fn(batch, output, last_iteration)`
+            (default: ``[]``)
 
     .. warning::
 
@@ -76,6 +81,7 @@ class Evaluator(extension.Extension):
     def __init__(
             self, iterator, target, eval_hook=None, eval_func=None, **kwargs):
         progress_bar = kwargs.get('progress_bar', False)
+        metrics = kwargs.get('metrics', [])
 
         if isinstance(iterator, torch.utils.data.DataLoader):
             iterator = {'main': iterator}
@@ -88,6 +94,7 @@ class Evaluator(extension.Extension):
         self.eval_hook = eval_hook
         self._eval_func = eval_func
         self._progress_bar = progress_bar
+        self._metrics = metrics
 
     def eval_func(self, *args, **kwargs):
         if self._eval_func:
@@ -111,6 +118,20 @@ class Evaluator(extension.Extension):
     def get_all_targets(self):
         """Returns a dictionary of all target links."""
         return dict(self._targets)
+
+    def add_metric(self, metric_fn):
+        """Adds a custom metric to the evaluator.
+
+        The metric is a callable that is executed every batch
+        with the following signature:
+        `def metric_fn(batch, output, last_iteration)`
+
+        Batch is the input batch passed to the model. Output
+        is the result of evaluating batch, last_iteration is
+        a boolean flag that indicates if its the last batch
+        in the evaluation.
+        """
+        self._metrics.append(metric_fn)
 
     def __call__(self, manager=None):
         """Executes the evaluator extension.
@@ -174,17 +195,21 @@ class Evaluator(extension.Extension):
         if self._progress_bar:
             pbar = _IteratorProgressBar(iterator=progress)
 
+        last_iter = len(iterator) - 1
         with _in_eval_mode(self._targets.values()):
             for idx, batch in enumerate(iterator):
+                last_batch = idx == last_iter
                 progress.current_position = idx
                 observation = {}
                 with reporting.report_scope(observation):
                     if isinstance(batch, (tuple, list)):
-                        self.eval_func(*batch)
+                        outs = self.eval_func(*batch)
                     elif isinstance(batch, dict):
-                        self.eval_func(**batch)
+                        outs = self.eval_func(**batch)
                     else:
-                        self.eval_func(batch)
+                        outs = self.eval_func(batch)
+                    for metric in self._metrics:
+                        metric(batch, outs, last_batch)
                 summary.add(observation)
 
                 if self._progress_bar:

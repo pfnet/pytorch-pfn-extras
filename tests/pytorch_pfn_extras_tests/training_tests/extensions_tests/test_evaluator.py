@@ -14,6 +14,11 @@ class DummyModel(torch.nn.Module):
     def forward(self, x):
         self.args.append(x)
         ppe.reporting.report({'loss': x.sum()}, self)
+        return x
+
+
+def custom_metric(batch, out, last_iter):
+    ppe.reporting.report({'custom-metric': out.sum()})
 
 
 class DummyModelTwoArgs(torch.nn.Module):
@@ -68,6 +73,16 @@ def test_evaluate(evaluator_dummies):
         mean['target/loss'], expect_mean, decimal=4)
 
     evaluator.finalize()
+
+
+def test_metric(evaluator_dummies):
+    data, data_loader, target, evaluator, expect_mean = evaluator_dummies
+    evaluator.add_metric(custom_metric)
+    mean = evaluator()
+    # 'main' is used by default
+    assert 'custom-metric' in mean
+    numpy.testing.assert_almost_equal(
+        mean['main/loss'], expect_mean, decimal=4)
 
 
 def test_call(evaluator_dummies):
