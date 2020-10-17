@@ -247,12 +247,26 @@ class TabularDataset(Dataset):
     def transform_batch(self, keys, transform_batch):
         """Apply a transform to examples.
 
+        The transformations are a list where each element
+        is a tuple that holds the transformation signature and
+        a callable that is the transformation itself.
+
+        The transformation signature is a tuple of 2 elements with
+        the first one being the keys of the dataset that are taken
+        as inputs. And the last one the outputs it produces for the
+        transformation `keys` argument.
+
+        When multiple transformations are specified, the outputs
+        must be disjoint or `ValueError` will be risen.
+
         Args:
             keys (tuple of strs): The keys of transformed examples.
-            transform_batch (callable): A callable that takes examples
-                and returns transformed examples. :attr:`mode` of
-                transformed dataset is determined by the transformed
-                examples.
+            transform_batch (list of tuples): A list where each element
+                specifies a transformation with a tuple with the
+                transformation signature and a callable that takes a
+                batch of examples and returns a batch of transformed examples.
+                :attr:`mode` of transformed dataset is determined by
+                the transformed examples.
 
         Returns:
             A transfromed dataset.

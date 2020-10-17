@@ -132,31 +132,29 @@ def test_transform(in_mode, out_mode, indices, key_indices, with_batch):
         b, c = a, a
 
     if out_mode is not None:
-        if with_batch:
-            view = dataset.transform_batch(('alpha', 'beta'), transform)
+        if in_mode is not None:
+            d_transform = [
+                ((('a', 'b', 'c'), ('alpha', 'beta')), transform)]
         else:
-            if in_mode is not None:
-                view = dataset.transform(
-                    ('alpha', 'beta'),
-                    [((('a', 'b', 'c'), ('alpha', 'beta')), transform)])
-            else:
-                view = dataset.transform(
-                    ('alpha', 'beta'),
-                    [((('a',), ('alpha',)), transform_alpha),
-                     ((('a',), ('beta',)), transform_beta)])
+            d_transform = [
+                ((('a',), ('alpha',)), transform_alpha),
+                ((('a',), ('beta',)), transform_beta)]
+        if with_batch:
+            view = dataset.transform_batch(('alpha', 'beta'), d_transform)
+        else:
+            view = dataset.transform(('alpha', 'beta'), d_transform)
         data = np.vstack((a + b, b + c))
     else:
-        if with_batch:
-            view = dataset.transform_batch('alpha', transform)
+        if in_mode is not None:
+            d_transform = [
+                ((('a', 'b', 'c'), ('alpha',)), transform_alpha)]
         else:
-            if in_mode is not None:
-                view = dataset.transform(
-                    ('alpha',),
-                    [((('a', 'b', 'c'), ('alpha',)), transform_alpha)])
-            else:
-                view = dataset.transform(
-                    ('alpha',),
-                    [((('a',), ('alpha',)), transform_alpha)])
+            d_transform = [
+                ((('a',), ('alpha',)), transform_alpha)]
+        if with_batch:
+            view = dataset.transform_batch(('alpha',), d_transform)
+        else:
+            view = dataset.transform(('alpha',), d_transform)
         data = (a + b + c)[None]
 
     assert isinstance(view, ppe.dataset.TabularDataset)
@@ -217,8 +215,8 @@ class TestTransformInvalid:
         dataset = dummy_dataset.DummyDataset()
         self.mode = mode
         view = dataset.transform(
-                ('a',),
-                [((('a', 'b', 'c'), ('a',)), self._transform)])
+            ('a',),
+            [((('a', 'b', 'c'), ('a',)), self._transform)])
         view.get_examples([0], None)
         with pytest.raises(ValueError):
             view.get_examples([0], None)
@@ -226,7 +224,9 @@ class TestTransformInvalid:
     def test_transform_batch_inconsistent_mode(self, mode):
         dataset = dummy_dataset.DummyDataset()
         self.mode = mode
-        view = dataset.transform_batch(('a',), self._transform)
+        view = dataset.transform_batch(
+            ('a',),
+            [((('a', 'b', 'c'), ('a',)), self._transform)])
         view.get_examples(None, None)
         with pytest.raises(ValueError):
             view.get_examples(None, None)
@@ -243,6 +243,8 @@ class TestTransformInvalid:
             elif self.mode is None:
                 return a + [0]
 
-        view = dataset.transform_batch(('a',), transform_batch)
+        view = dataset.transform_batch(
+            ('a',),
+            [((('a', 'b', 'c'), ('a',)), transform_batch)])
         with pytest.raises(ValueError):
             view.get_examples(None, None)
