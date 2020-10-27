@@ -280,7 +280,7 @@ class DistributedDataParallel(nn.Module):
         if isinstance(obj, torch.Tensor):
             if not self._show_send_gpu_warning and obj.device != self._device:
                 logger.warning(
-                    f"Data are moved from {obj.device} to {self.device}"
+                    f"Data are moved from {obj.device} to {self._device}"
                 )
                 self._show_send_gpu_warning = True
             return obj.to(self._device)
