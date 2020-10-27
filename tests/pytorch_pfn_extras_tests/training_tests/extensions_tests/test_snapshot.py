@@ -370,4 +370,4 @@ def test_model_transformations(path):
         filename='test', autoload=True,
         autoload_transform_models=lambda n, x: Wrapper(x))
     snapshot.initialize(trainer)
-    assert isinstance(trainer._models['main'], Wrapper)
+    assert isinstance(trainer.models['main'], Wrapper)
