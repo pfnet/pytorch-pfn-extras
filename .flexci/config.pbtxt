@@ -2,7 +2,7 @@ configs {
   key: "pytorch-pfn-extras"
   value {
     requirement {
-      cpu: 2
+      cpu: 4
       gpu: 2
       memory: 16
       disk: 10
