@@ -3,8 +3,8 @@ configs {
   value {
     requirement {
       cpu: 2
-      gpu: 1
-      memory: 8
+      gpu: 2
+      memory: 16
       disk: 10
     }
     time_limit: {
