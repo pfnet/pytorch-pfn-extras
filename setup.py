@@ -16,7 +16,7 @@ setuptools.setup(
     license='MIT License',
     install_requires=['numpy', 'torch'],
     extras_require={
-        'test': ['pytest', 'optuna'],
+        'test': ['pytest'],
         'onnx': ['onnx'],
     },
     packages=setuptools.find_packages(exclude=['tests']),
