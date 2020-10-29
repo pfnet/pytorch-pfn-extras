@@ -87,7 +87,7 @@ def _run(init_file, input, module, rank, args, step, device_type):
     if device_type == "cpu":
         device = torch.device(device_type)
     elif device_type == "cuda":
-        device = torch.device(f"{device_type}:0")
+        device = torch.device(f"{device_type}:{rank}")
         torch.cuda.set_device(device)
     else:
         raise AssertionError
@@ -119,7 +119,7 @@ def _launch(inputs,
 
 def _device_types():
     retval = ["cpu"]
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and torch.cuda.device_count() >= 2:
         retval.append("cuda")
     return retval
 
