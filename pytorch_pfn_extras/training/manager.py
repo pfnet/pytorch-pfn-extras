@@ -80,17 +80,17 @@ class _BaseExtensionsManager:
             if not isinstance(models, torch.nn.Module):
                 raise ValueError(
                     'model must be an instance of dict or toch.nn.Module')
-            self.models = {'main': models}
+            self._models = {'main': models}
         else:
-            self.models = models
+            self._models = models
         if not isinstance(optimizers, dict):
             # TODO(ecastill) Optimizer type is not checked because of tests
             # using mocks and other classes
-            self.optimizers = {'main': optimizers}
+            self._optimizers = {'main': optimizers}
         else:
-            self.optimizers = optimizers
+            self._optimizers = optimizers
 
-        for name, model in self.models.items():
+        for name, model in self._models.items():
             self.reporter.add_observer(name, model)
             self.reporter.add_observers(
                 name, model.named_modules())
@@ -104,6 +104,14 @@ class _BaseExtensionsManager:
 
         # Initialize the writer
         self.writer.initialize(self.out)
+
+    @property
+    def models(self):
+        return self._models
+
+    @property
+    def optimizers(self):
+        return self._optimizers
 
     @property
     def elapsed_time(self):
@@ -287,10 +295,10 @@ class _BaseExtensionsManager:
         to_save['_start_iteration'] = self.iteration
         # Save manager status ?
         to_save['models'] = {
-            name: transform_models(name, self.models[name]).state_dict()
-            for name in self.models}
-        to_save['optimizers'] = {name: self.optimizers[name].state_dict()
-                                 for name in self.optimizers}
+            name: transform_models(name, self._models[name]).state_dict()
+            for name in self._models}
+        to_save['optimizers'] = {name: self._optimizers[name].state_dict()
+                                 for name in self._optimizers}
         to_save['extensions'] = {name: self._extensions[name].state_dict()
                                  for name in self._extensions}
         return to_save
@@ -307,13 +315,13 @@ class _BaseExtensionsManager:
         """
         self._start_iteration = to_load['_start_iteration']
         self.iteration = self._start_iteration
-        for name in self.models:
+        for name in self._models:
             # TODO(ecastill) map_loc when loading the model and DDP check
-            self.models[name].load_state_dict(to_load['models'][name])
-            self.models[name] = transform_models(name, self.models[name])
+            self._models[name].load_state_dict(to_load['models'][name])
+            self._models[name] = transform_models(name, self._models[name])
 
-        for name in self.optimizers:
-            self.optimizers[name].load_state_dict(to_load['optimizers'][name])
+        for name in self._optimizers:
+            self._optimizers[name].load_state_dict(to_load['optimizers'][name])
 
         for name in self._extensions:
             self._extensions[name].load_state_dict(
@@ -380,10 +388,10 @@ class ExtensionsManager(_BaseExtensionsManager):
         with self.reporter.scope(self.observation):
             try:
                 for name in step_optimizers_names:
-                    self.optimizers[name].zero_grad()
+                    self._optimizers[name].zero_grad()
                 yield
                 for name in step_optimizers_names:
-                    self.optimizers[name].step()
+                    self._optimizers[name].step()
             finally:
                 # In chainer, the iteration count was increased
                 # just before calling the extensions, we need
