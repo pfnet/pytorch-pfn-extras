@@ -325,7 +325,7 @@ def test_model_transformations():
     )
     new_manager.load_state_dict(
         state_dict, transform_models=lambda n, x: Wrapper(x))
-    assert isinstance(new_manager._models['main'], Wrapper)
+    assert isinstance(new_manager.models['main'], Wrapper)
 
 
 def test_call_optimizers():

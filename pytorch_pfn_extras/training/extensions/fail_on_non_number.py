@@ -13,7 +13,7 @@ class FailOnNonNumber(extension.Extension):
     """
 
     def __call__(self, manager):
-        for name, model in manager._models.items():
+        for name, model in manager.models.items():
             for param in model.parameters():
                 if (not torch.isfinite(param).all()
                         or (param.grad is not None
