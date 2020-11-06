@@ -73,4 +73,4 @@ class TestConfigTypes(unittest.TestCase):
                 self.assertIsInstance(config['/bar'], dict)
                 self.assertEqual(config['/bar']['x'], 0)
                 return 0.0
-            self.study.optimize(objective, n_trials=2 * (high - low + 1))
+            self.assertWarns(UserWarning, self.study.optimize, objective, n_trials=2 * (high - low + 1))
