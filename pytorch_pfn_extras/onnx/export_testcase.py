@@ -157,6 +157,7 @@ def export_testcase(
     input_names = kwargs.pop(
         'input_names',
         ['input_{}'.format(i) for i in range(len(args))])
+    assert len(input_names) == len(args)
 
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
