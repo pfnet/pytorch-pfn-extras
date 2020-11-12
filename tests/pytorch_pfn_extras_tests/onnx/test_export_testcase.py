@@ -53,6 +53,8 @@ def _helper(model, args, d, **kwargs):
     output_dir = _get_output_dir(d)
     if 'training' not in kwargs:
         kwargs['training'] = model.training
+    if 'do_constant_folding' not in kwargs:
+        kwargs['do_constant_folding'] = False
     export_testcase(model, args, output_dir, **kwargs)
     return output_dir
 
