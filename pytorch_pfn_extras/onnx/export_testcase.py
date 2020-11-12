@@ -164,8 +164,14 @@ def export_testcase(
         input_names=input_names, **kwargs)
 
     # Remove unused inputs
-    used_input_index_list = [
-        input_names.index(input.name) for input in onnx_graph.graph.input]
+    # - When keep_initializers_as_inputs=True, inputs contains initializers.
+    #   So we have to filt initializers.
+    # - model.onnx is already issued, so we can modify args here.
+    initializer_names = [init.name for init in onnx_graph.graph.initializer]
+    used_input_index_list = []
+    for used_input in onnx_graph.graph.input:
+        if used_input.name not in initializer_names:
+            used_input_index_list.append(input_names.index(used_input.name))
     input_names = [input_names[i] for i in used_input_index_list]
     args = [args[i] for i in used_input_index_list]
 
