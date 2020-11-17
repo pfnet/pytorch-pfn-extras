@@ -279,7 +279,7 @@ def test_export_testcase_options():
 
 class NetWithUnusedInput(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super(NetWithUnusedInput, self).__init__()
         self.conv1 = nn.Conv2d(1, 20, 5, 1)
         self.conv2 = nn.Conv2d(20, 50, 5, 1)
         self.fc1 = nn.Linear(4*4*50, 500)
@@ -298,25 +298,28 @@ class NetWithUnusedInput(nn.Module):
 
 @pytest.mark.parametrize("keep_initializers_as_inputs", [None, True, False])
 def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
-    model = Net().to('cpu')
+    model = NetWithUnusedInput().to('cpu')
     x = torch.zeros((1, 1, 28, 28))
+    unused = torch.zeros((1,))
 
     # Without input_names
     output_dir = _helper(
-        model, x, 'net_with_unused_input_without_input_names',
+        model, args=(x, unused), d='net_with_unused_input_without_input_names',
         opset_version=11, strip_doc_string=False,
         keep_initializers_as_inputs=keep_initializers_as_inputs)
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.exists(os.path.join(test_data_set_dir, 'input_0.pb'))
     assert not os.path.exists(os.path.join(test_data_set_dir, 'input_1.pb'))
+
     xmodel = onnx.load_model(os.path.join(output_dir, 'model.onnx'))
-    assert len(xmodel.graph.input) == 1
+    assert keep_initializers_as_inputs or len(xmodel.graph.input) == 1
     assert xmodel.graph.input[0].name == 'input_0'
+    assert len(xmodel.graph.input) == 1 or xmodel.graph.input[1].name != 'input_1'
 
     # With input_names
     output_dir = _helper(
-        model, x, 'net_with_unused_input_with_input_names',
+        model, args=(x, unused), d='net_with_unused_input_with_input_names',
         opset_version=11, strip_doc_string=False,
         keep_initializers_as_inputs=keep_initializers_as_inputs,
         input_names=['x', 'unused'])
@@ -324,6 +327,8 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.exists(os.path.join(test_data_set_dir, 'input_0.pb'))
     assert not os.path.exists(os.path.join(test_data_set_dir, 'input_1.pb'))
+
     xmodel = onnx.load_model(os.path.join(output_dir, 'model.onnx'))
-    assert len(xmodel.graph.input) == 1
+    assert keep_initializers_as_inputs or len(xmodel.graph.input) == 1
     assert xmodel.graph.input[0].name == 'x'
+    assert len(xmodel.graph.input) == 1 or xmodel.graph.input[1].name != 'unused'
