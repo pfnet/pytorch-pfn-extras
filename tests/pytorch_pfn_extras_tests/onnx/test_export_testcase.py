@@ -314,7 +314,8 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
 
     xmodel = onnx.load_model(os.path.join(output_dir, 'model.onnx'))
     assert xmodel.graph.input[0].name == 'input_0'
-    assert len(xmodel.graph.input) == 1 or xmodel.graph.input[1].name != 'input_1'
+    assert len(xmodel.graph.input) == 1 or \
+        xmodel.graph.input[1].name != 'input_1'
 
     # With input_names
     output_dir = _helper(
@@ -329,4 +330,5 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
 
     xmodel = onnx.load_model(os.path.join(output_dir, 'model.onnx'))
     assert xmodel.graph.input[0].name == 'x'
-    assert len(xmodel.graph.input) == 1 or xmodel.graph.input[1].name != 'unused'
+    assert len(xmodel.graph.input) == 1 or \
+        xmodel.graph.input[1].name != 'unused'
