@@ -313,7 +313,6 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
     assert not os.path.exists(os.path.join(test_data_set_dir, 'input_1.pb'))
 
     xmodel = onnx.load_model(os.path.join(output_dir, 'model.onnx'))
-    assert keep_initializers_as_inputs or len(xmodel.graph.input) == 1
     assert xmodel.graph.input[0].name == 'input_0'
     assert len(xmodel.graph.input) == 1 or xmodel.graph.input[1].name != 'input_1'
 
@@ -329,6 +328,5 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
     assert not os.path.exists(os.path.join(test_data_set_dir, 'input_1.pb'))
 
     xmodel = onnx.load_model(os.path.join(output_dir, 'model.onnx'))
-    assert keep_initializers_as_inputs or len(xmodel.graph.input) == 1
     assert xmodel.graph.input[0].name == 'x'
     assert len(xmodel.graph.input) == 1 or xmodel.graph.input[1].name != 'unused'
