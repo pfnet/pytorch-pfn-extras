@@ -154,10 +154,26 @@ def export_testcase(
     """
 
     os.makedirs(out_dir, exist_ok=True)
+    input_names = kwargs.pop(
+        'input_names',
+        ['input_{}'.format(i) for i in range(len(args))])
+    assert len(input_names) == len(args)
 
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
-        **kwargs)
+        input_names=input_names, **kwargs)
+
+    # Remove unused inputs
+    # - When keep_initializers_as_inputs=True, inputs contains initializers.
+    #   So we have to filt initializers.
+    # - model.onnx is already issued, so we can modify args here.
+    initializer_names = [init.name for init in onnx_graph.graph.initializer]
+    used_input_index_list = []
+    for used_input in onnx_graph.graph.input:
+        if used_input.name not in initializer_names:
+            used_input_index_list.append(input_names.index(used_input.name))
+    input_names = [input_names[i] for i in used_input_index_list]
+    args = [args[i] for i in used_input_index_list]
 
     output_path = os.path.join(out_dir, 'model.onnx')
     is_on_memory = True
@@ -186,8 +202,7 @@ def export_testcase(
         data_set_path = os.path.join(
             out_dir, 'test_data_set_{:d}'.format(seq_id))
     os.makedirs(data_set_path, exist_ok=True)
-    for i, (arg, name) in enumerate(
-            zip(args, kwargs.get('input_names', [None]*len(args)))):
+    for i, (arg, name) in enumerate(zip(args, input_names)):
         f = os.path.join(data_set_path, 'input_{}.pb'.format(i))
         write_to_pb(f, arg, name)
 
