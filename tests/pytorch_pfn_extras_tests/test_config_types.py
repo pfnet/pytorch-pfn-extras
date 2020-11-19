@@ -16,12 +16,24 @@ class TestConfigTypes(unittest.TestCase):
     def test_config_optuna_types(self):
         def objective(trial):
             types = optuna_types(trial)
-            self.assertEqual(types['optuna_suggest_categorical'], trial.suggest_categorical)
-            self.assertEqual(types['optuna_suggest_discrete_uniform'], trial.suggest_discrete_uniform)
-            self.assertEqual(types['optuna_suggest_float'], trial.suggest_float)
-            self.assertEqual(types['optuna_suggest_int'], trial.suggest_int)
-            self.assertEqual(types['optuna_suggest_loguniform'], trial.suggest_loguniform)
-            self.assertEqual(types['optuna_suggest_uniform'], trial.suggest_uniform)
+            self.assertEqual(
+                types['optuna_suggest_categorical'],
+                trial.suggest_categorical)
+            self.assertEqual(
+                types['optuna_suggest_discrete_uniform'],
+                trial.suggest_discrete_uniform)
+            self.assertEqual(
+                types['optuna_suggest_float'],
+                trial.suggest_float)
+            self.assertEqual(
+                types['optuna_suggest_int'],
+                trial.suggest_int)
+            self.assertEqual(
+                types['optuna_suggest_loguniform'],
+                trial.suggest_loguniform)
+            self.assertEqual(
+                types['optuna_suggest_uniform'],
+                trial.suggest_uniform)
             return 0.0
         self.study.optimize(objective, n_trials=1)
 
@@ -38,8 +50,10 @@ class TestConfigTypes(unittest.TestCase):
                         'high': high
                     }
                 }, f)
+
             def objective(trial):
-                config = load_path_with_optuna_types(os.path.join(temp0, 'foo.json'), trial)
+                config = load_path_with_optuna_types(
+                    os.path.join(temp0, 'foo.json'), trial)
                 self.assertIsInstance(config['/foo'], int)
                 self.assertGreaterEqual(config['/foo'], low)
                 self.assertLessEqual(config['/foo'], high)
@@ -63,6 +77,7 @@ class TestConfigTypes(unittest.TestCase):
                         'x': 0
                     }
                 }, f)
+
             def objective(trial):
                 config = load_path_with_optuna_types(
                     os.path.join(temp0, 'foo.json'), trial,
@@ -73,4 +88,6 @@ class TestConfigTypes(unittest.TestCase):
                 self.assertIsInstance(config['/bar'], dict)
                 self.assertEqual(config['/bar']['x'], 0)
                 return 0.0
-            self.assertWarns(UserWarning, self.study.optimize, objective, n_trials=2 * (high - low + 1))
+            self.assertWarns(
+                UserWarning, self.study.optimize, objective,
+                n_trials=2 * (high - low + 1))
