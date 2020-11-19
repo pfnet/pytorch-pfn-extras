@@ -2,6 +2,7 @@ import warnings
 
 from .config import Config
 
+
 def optuna_types(trial):
     types = {
         "optuna_suggest_categorical": trial.suggest_categorical,
@@ -12,6 +13,7 @@ def optuna_types(trial):
         "optuna_suggest_uniform": trial.suggest_uniform,
     }
     return types
+
 
 def load_path_with_optuna_types(path, trial, loader=None, types=None):
     if types is None:
