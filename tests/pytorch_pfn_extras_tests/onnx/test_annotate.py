@@ -45,8 +45,9 @@ def test_annotate():
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
     assert 'Conv_0' in named_nodes
     assert 'Conv_1' in named_nodes
-    assert 'MatMul_2' in named_nodes
-    assert 'MatMul_4' in named_nodes
+
+    assert 'MatMul_3' in named_nodes
+    assert 'MatMul_6' in named_nodes
 
     node_conv_0_attrs = [a.name for a in named_nodes['Conv_0'].attribute]
     assert 'aaa' in node_conv_0_attrs
@@ -58,12 +59,12 @@ def test_annotate():
     assert 'bbb' not in node_conv_1_attrs
     assert 'zzz' not in node_conv_1_attrs
     assert 'yyy' not in node_conv_1_attrs
-    node_matmul_2_attrs = [a.name for a in named_nodes['MatMul_2'].attribute]
+    node_matmul_2_attrs = [a.name for a in named_nodes['MatMul_3'].attribute]
     assert 'aaa' not in node_matmul_2_attrs
     assert 'bbb' not in node_matmul_2_attrs
     assert 'zzz' in node_matmul_2_attrs
     assert 'yyy' in node_matmul_2_attrs
-    node_matmul_4_attrs = [a.name for a in named_nodes['MatMul_4'].attribute]
+    node_matmul_4_attrs = [a.name for a in named_nodes['MatMul_6'].attribute]
     assert 'aaa' not in node_matmul_4_attrs
     assert 'bbb' not in node_matmul_4_attrs
     assert 'zzz' in node_matmul_4_attrs
@@ -104,9 +105,9 @@ def test_apply_annotation():
     assert 'Conv_0' in named_nodes
     assert 'Relu_1' in named_nodes
     assert 'Conv_2' in named_nodes
-    assert 'MatMul_3' in named_nodes
-    assert 'MatMul_5' in named_nodes
-    assert 'Elu_7' in named_nodes
+    assert 'MatMul_4' in named_nodes
+    assert 'MatMul_7' in named_nodes
+    assert 'Elu_9' in named_nodes
 
     node_attrs = [a.name for a in named_nodes['Conv_0'].attribute]
     assert 'aaa' in node_attrs
@@ -123,17 +124,17 @@ def test_apply_annotation():
     assert 'bbb' not in node_attrs
     assert 'zzz' not in node_attrs
     assert 'yyy' not in node_attrs
-    node_attrs = [a.name for a in named_nodes['MatMul_3'].attribute]
+    node_attrs = [a.name for a in named_nodes['MatMul_4'].attribute]
     assert 'aaa' not in node_attrs
     assert 'bbb' not in node_attrs
     assert 'zzz' in node_attrs
     assert 'yyy' in node_attrs
-    node_attrs = [a.name for a in named_nodes['MatMul_5'].attribute]
+    node_attrs = [a.name for a in named_nodes['MatMul_7'].attribute]
     assert 'aaa' not in node_attrs
     assert 'bbb' not in node_attrs
     assert 'zzz' in node_attrs
     assert 'yyy' in node_attrs
-    node_attrs = [a.name for a in named_nodes['Elu_7'].attribute]
+    node_attrs = [a.name for a in named_nodes['Elu_9'].attribute]
     assert 'aaa' not in node_attrs
     assert 'bbb' not in node_attrs
     assert 'zzz' in node_attrs
@@ -251,22 +252,22 @@ def test_scoped_anchor():
     assert 'aaa' in anchor_attrs
     assert 'bbb' in anchor_attrs
     assert 'ccc' not in anchor_attrs
-    assert pre_node.name == 'Add_7'
-    assert next_node.name == 'MatMul_10'
+    assert pre_node.name == 'Add_8'
+    assert next_node.name == 'Transpose_11'
     anchor_node, pre_node, next_node = named_nodes['Anchor_1_start']
     anchor_attrs = [a.name for a in anchor_node.attribute]
     assert 'aaa' not in anchor_attrs
     assert 'bbb' not in anchor_attrs
     assert 'ccc' in anchor_attrs
-    assert pre_node.name == 'Add_11'
-    assert next_node.name == 'Constant_14'  # this is shape of next reshape
+    assert pre_node.name == 'Add_13'
+    assert next_node.name == 'Constant_16'  # this is shape of next reshape
     anchor_node, pre_node, next_node = named_nodes['Anchor_1_end']
     anchor_attrs = [a.name for a in anchor_node.attribute]
     assert 'aaa' not in anchor_attrs
     assert 'bbb' not in anchor_attrs
     assert 'ccc' in anchor_attrs
-    assert pre_node.name == 'Add_22'
-    assert next_node.name == 'MatMul_25'
+    assert pre_node.name == 'Add_26'
+    assert next_node.name == 'Transpose_29'
 
 
 def test_scoped_anchor_multiple_inout():
