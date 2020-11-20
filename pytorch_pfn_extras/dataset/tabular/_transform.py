@@ -2,7 +2,7 @@ from pytorch_pfn_extras.dataset.tabular import tabular_dataset
 from pytorch_pfn_extras.dataset.tabular import _utils
 
 
-class _Transform(tabular_dataset.TabularDataset):
+class _TransformBase(tabular_dataset.TabularDataset):
     def __init__(self, dataset, keys, transforms):
         self._dataset = dataset
         key_set = set()
@@ -61,6 +61,12 @@ class _Transform(tabular_dataset.TabularDataset):
                 operands.update(ops_idx)
                 transforms.append((ops_idx, t, res_idx))
         return list(operands), transforms
+
+    def convert(self, data):
+        return self._dataset.convert(data)
+
+
+class _Transform(_TransformBase):
 
     def get_examples(self, indices, key_indices):
         if key_indices is None:
@@ -131,27 +137,7 @@ class _Transform(tabular_dataset.TabularDataset):
         return self._dataset.convert(data)
 
 
-class _TransformBatch(tabular_dataset.TabularDataset):
-    def __init__(self, dataset, keys, transform_batch):
-        if not isinstance(keys, tuple):
-            keys = (keys,)
-
-        self._dataset = dataset
-        self._keys = keys
-        self._transform_batch = transform_batch
-
-    def __len__(self):
-        return len(self._dataset)
-
-    @property
-    def keys(self):
-        return self._keys
-
-    @property
-    def mode(self):
-        if not hasattr(self, "_mode"):
-            self.get_examples([0], None)
-        return self._mode
+class _TransformBatch(_TransformBase):
 
     def get_examples(self, indices, key_indices):
         if indices is None:
@@ -165,54 +151,64 @@ class _TransformBatch(tabular_dataset.TabularDataset):
         if key_indices is None:
             key_indices = range(len(self._keys))
 
-        in_examples = self._dataset.get_examples(indices, None)
+        ops_idx, transforms = self._find_candidate_transforms(key_indices)
+        in_examples = self._dataset.get_examples(indices, ops_idx)
+        out_examples = [None for _ in key_indices]
+        for t_op_idx, transform, t_res_idx in transforms:
+            inputs = [in_examples[ops_idx.index(i)] for i in t_op_idx]
+            if self._dataset.mode is tuple:
+                out_example = transform(*inputs)
+            elif self._dataset.mode is dict:
+                keys = [self._dataset.keys[i] for i in ops_idx]
+                out_example = transform(
+                    **dict(zip(keys, inputs))
+                )
+            elif self._dataset.mode is None:
+                out_example = transform(*inputs)
 
-        if self._dataset.mode is tuple:
-            out_examples = self._transform_batch(*in_examples)
-        elif self._dataset.mode is dict:
-            out_examples = self._transform_batch(
-                **dict(zip(self._dataset.keys, in_examples))
-            )
-        elif self._dataset.mode is None:
-            out_examples = self._transform_batch(*in_examples)
-
-        if isinstance(out_examples, tuple):
-            if hasattr(self, "_mode") and self._mode is not tuple:
-                raise ValueError(
-                    "transform_batch must not change its return type"
-                )
-            self._mode = tuple
-            if not all(len(col) == len_ for col in out_examples):
-                raise ValueError(
-                    "transform_batch must not change the length of data"
-                )
-            return tuple(out_examples[key_index] for key_index in key_indices)
-        elif isinstance(out_examples, dict):
-            if hasattr(self, "_mode") and self._mode is not dict:
-                raise ValueError(
-                    "transform_batch must not change its return type"
-                )
-            self._mode = dict
-            if not all(len(col) == len_ for col in out_examples.values()):
-                raise ValueError(
-                    "transform_batch must not change the length of data"
-                )
-            return tuple(
-                out_examples[self._keys[key_index]]
-                for key_index in key_indices
-            )
-        else:
-            if hasattr(self, "_mode") and self._mode is not None:
-                raise ValueError(
-                    "transform_batch must not change its return type"
-                )
-            self._mode = None
-            out_examples = (out_examples,)
-            if not all(len(col) == len_ for col in out_examples):
-                raise ValueError(
-                    "transform_batch must not change the length of data"
-                )
-            return tuple(out_examples[key_index] for key_index in key_indices)
-
-    def convert(self, data):
-        return self._dataset.convert(data)
+            if isinstance(out_example, tuple):
+                if hasattr(self, "_mode") and self._mode is not tuple:
+                    raise ValueError(
+                        "transform_batch must not change its return type"
+                    )
+                self._mode = tuple
+                if not all(len(col) == len_ for col in out_example):
+                    raise ValueError(
+                        "transform_batch must not change the length of data"
+                    )
+                for col_index, key_index in enumerate(t_res_idx):
+                    # t_res_idx should directly map the output, when
+                    # all the outputs are covered this works but when
+                    # we are slicing the outputs using key_indices
+                    # the result key index needs to be recalculated
+                    out_examples[key_indices.index(key_index)] = (
+                        out_example[col_index])
+            elif isinstance(out_example, dict):
+                if hasattr(self, "_mode") and self._mode is not dict:
+                    raise ValueError(
+                        "transform must not change its return type"
+                    )
+                self._mode = dict
+                if not all(len(col) == len_ for col in out_example.values()):
+                    raise ValueError(
+                        "transform_batch must not change the length of data"
+                    )
+                for col_index, key_index in enumerate(t_res_idx):
+                    key = self._keys[key_index]
+                    out_examples[key_indices.index(key_index)] = (
+                        out_example[key])
+            else:
+                if hasattr(self, "_mode") and self._mode is not None:
+                    raise ValueError(
+                        "transform must not change its return type"
+                    )
+                self._mode = None
+                out_example = (out_example,)
+                if not all(len(col) == len_ for col in out_example):
+                    raise ValueError(
+                        "transform_batch must not change the length of data"
+                    )
+                for col_index, key_index in enumerate(t_res_idx):
+                    out_examples[key_indices.index(key_index)] = (
+                        out_example[col_index])
+        return tuple(out_examples)

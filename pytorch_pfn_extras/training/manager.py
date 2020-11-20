@@ -106,6 +106,14 @@ class _BaseExtensionsManager:
         self.writer.initialize(self.out)
 
     @property
+    def models(self):
+        return self._models
+
+    @property
+    def optimizers(self):
+        return self._optimizers
+
+    @property
     def elapsed_time(self):
         return _get_time()-self._start_time
 
