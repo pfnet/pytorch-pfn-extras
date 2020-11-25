@@ -175,8 +175,7 @@ class Writer:
         raise NotImplementedError
 
     def initialize(self, out_dir):
-        if not self.fs.exists(out_dir):
-            self.fs.makedirs(out_dir)
+        self.fs.makedirs(out_dir, exist_ok=True)
         self._initialized = True
 
     def __del__(self):
