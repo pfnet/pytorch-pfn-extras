@@ -2,7 +2,7 @@
 
 ln -s /opt/conda/bin/pip /opt/conda/bin/pip3
 # torch & torchvision is already installed.
-pip3 install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas
+pip3 install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna
 pip3 install cupy-cuda110
 pip3 install -e .
 
