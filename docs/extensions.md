@@ -8,6 +8,7 @@ Currently the following extensions are available:
 
 + `Evaluator`
 + `LogReport`
++ `LRScheduler`
 + `MicroAverage`
 + `PrintReport`
 + `ProgressBar`
