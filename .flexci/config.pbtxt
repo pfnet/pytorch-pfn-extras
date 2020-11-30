@@ -73,6 +73,6 @@ configs {
     time_limit: {
       seconds: 1200
     }
-    command: ".flexci/run.bat"
+    command: ".flexci\run.bat"
   }
 }
