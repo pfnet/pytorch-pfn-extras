@@ -60,3 +60,19 @@ configs {
     command: "bash .flexci/linux/script.sh torch17"
   }
 }
+configs {
+  key: "pytorch-pfn-extras.win"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 2
+      memory: 16
+      disk: 10
+      image: "windows"
+    }
+    time_limit: {
+      seconds: 1200
+    }
+    command: ".flexci/run.bat"
+  }
+}
