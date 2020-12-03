@@ -37,7 +37,7 @@ def _export_meta(model, out_dir, strip_large_tensor_data):
 
         def strip_cmd(cmd):
             return os.popen(cmd).read().strip()
-        if git_status.returncode == os.EX_OK:
+        if git_status.returncode == 0:
             ret['git'] = {
                 'branch': strip_cmd('git rev-parse --abbrev-ref HEAD'),
                 'commit': strip_cmd('git rev-parse HEAD'),
