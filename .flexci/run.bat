@@ -1,1 +1,1 @@
-.flexci\test.bat
+PowerShell .flexci\test.ps1
