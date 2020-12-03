@@ -139,7 +139,7 @@ class DistributedDataParallel(nn.Module):
     def __init__(self, module,
                  broadcast_buffers=True,
                  negotiate_grads=True,
-                 process_group=dist.group.WORLD,
+                 process_group=None,
                  reduce_function=None,
                  broadcast_function=None,
                  **kwargs):
@@ -155,6 +155,9 @@ class DistributedDataParallel(nn.Module):
                 logger.warning(
                     f"ppe.nn.parallel.DistributedDataParallel ignores {name}"
                 )
+
+        if process_group is None:
+            process_group = dist.group.WORLD
 
         self.module = module
         self._broadcast_buffers = broadcast_buffers
