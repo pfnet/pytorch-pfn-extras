@@ -1,9 +1,11 @@
 import torch
 
-import pytorch_pfn_extras as ppe
+from pytorch_pfn_extras.backend import _backend_dispatcher
+from pytorch_pfn_extras import engine
+from pytorch_pfn_extras import reporting
 
 
-class Evaluator(ppe.engine.Inferer):
+class Evaluator(engine.Inferer):
     def __init__(
         self,
         backend,
@@ -28,7 +30,7 @@ class Evaluator(ppe.engine.Inferer):
         return self.to_report_outputs
 
     def run(self, data):
-        summary = ppe.reporting.DictSummary()
+        summary = reporting.DictSummary()
         self.models["main"].eval()
         # For extensions such as the progress bar to work
         self._manager._iters_per_epoch = len(data)
@@ -42,10 +44,10 @@ class Evaluator(ppe.engine.Inferer):
                     self._process_outputs_fn(self, outs)
                     # Get the reported values and add them to the summary
                     summary.add(self._manager.observation)
-        ppe.reporting.report(summary.compute_mean())
+        reporting.report(summary.compute_mean())
 
 
 def create_evaluator(device, *args, **kwargs):
     # Get the backend
-    backend = ppe.backend._backend_dispatcher.dispatch_backend(device)
+    backend = _backend_dispatcher.dispatch_backend(device)
     return Evaluator(backend, *args, **kwargs)
