@@ -4,7 +4,10 @@ import pytorch_pfn_extras as ppe
 
 
 def _convert(device, args):
-    return [x.to(device) if isinstance(x, torch.Tensor) else x for x in args]
+    return {
+        k: v.to(device) if isinstance(v, torch.Tensor) else v
+        for k, v in args.items()
+    }
 
 
 class TorchBackend(ppe.backend.Backend):
@@ -30,9 +33,16 @@ class TorchBackend(ppe.backend.Backend):
         # Currently using a single model,
         # Rethink this for GAN case?
         model = trainer.get_model("main")
-        y = model(*_convert(self._device, batch))
-        y.backward()
-        return y
+        outs = model(**_convert(self._device, batch))
+        to_bwd_names = trainer.get_backward_variable_names
+
+        if to_bwd_names is None:
+            for k, v in outs.items():
+                v.backward()
+        else:
+            for var in to_bwd_names:
+                outs[v].backward()
+        return outs
 
     def pre_validation(self, trainer, evaluator):
         model = evaluator.get_model("main")
@@ -40,20 +50,22 @@ class TorchBackend(ppe.backend.Backend):
 
     def inference_step(self, inferencer, batch):
         model = inferencer.get_model("main")
-        y = model(*_convert(self._device, batch))
+        y = model(**_convert(self._device, batch))
         return y
 
     def validation_step(self, evaluator, batch):
         return self.inference_step(evaluator, batch)
 
     def process_train_step_outputs(self, trainer, outputs):
-        pass
+        for out in trainer.get_to_report_outputs():
+            ppe.reporting.report({f"train/{out}": outputs[out]})
 
     def process_inference_outputs(self, inferencer, outputs):
         pass
 
     def process_validation_outputs(self, evaluator, outputs):
-        pass
+        for out in evaluator.get_to_report_outputs():
+            ppe.reporting.report({f"val/{out}": outputs[out]})
 
 
 ppe.backend._backend_dispatcher.register(TorchBackend("cpu"))

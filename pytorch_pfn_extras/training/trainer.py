@@ -18,6 +18,7 @@ class Trainer(ppe.engine._Engine):
         out_dir="result",
         stop_trigger=None,
         to_report_outputs=[],
+        backward_variable_names=None,
         writer=None,
         device_options=None,
     ):
@@ -36,6 +37,7 @@ class Trainer(ppe.engine._Engine):
         self.evaluator = evaluator
         self.val_loader = None
         self.to_report_outputs = to_report_outputs
+        self.backward_variable_names = backward_variable_names
 
     @property
     def epoch(self):
@@ -75,6 +77,9 @@ class Trainer(ppe.engine._Engine):
 
     def get_to_report_outputs(self):
         return self.to_report_outputs
+
+    def get_backward_variable_names(self):
+        return self.backward_variable_names
 
     def run(self, train_loader, val_loader=None):
 
