@@ -38,7 +38,8 @@ class TorchBackend(ppe.backend.Backend):
 
         if to_bwd_names is None:
             for k, v in outs.items():
-                v.backward()
+                if isinstance(v, torch.Tensor):
+                    v.backward()
         else:
             for var in to_bwd_names:
                 outs[v].backward()
