@@ -96,6 +96,21 @@ def test_export_filename():
         out.detach().cpu().numpy(), expected_out.detach().cpu().numpy())
 
 
+def test_export_testcase_return_output():
+    model = nn.Sequential(nn.Linear(5, 10, bias=False))
+    x = torch.zeros((2, 5))
+
+    output_dir = _get_output_dir('export_filename')
+
+    with pytest.warns(UserWarning):
+        (out,) = export_testcase(model, x, output_dir, return_output=True)
+
+    assert os.path.isfile(os.path.join(output_dir, 'model.onnx'))
+    expected_out = torch.zeros((2, 10))  # check only shape size
+    np.testing.assert_allclose(
+        out.detach().cpu().numpy(), expected_out.detach().cpu().numpy())
+
+
 @pytest.mark.filterwarnings("ignore::UserWarning")
 def test_export_stream():
     model = nn.Sequential(nn.Linear(5, 10, bias=False))
