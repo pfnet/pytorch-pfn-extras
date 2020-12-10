@@ -4,6 +4,7 @@ from pytorch_pfn_extras.training.extensions._snapshot import snapshot_object  # 
 from pytorch_pfn_extras.training.extensions.evaluator import Evaluator, IgniteEvaluator  # NOQA
 from pytorch_pfn_extras.training.extensions.fail_on_non_number import FailOnNonNumber  # NOQA
 from pytorch_pfn_extras.training.extensions.log_report import LogReport  # NOQA
+from pytorch_pfn_extras.training.extensions.lr_scheduler import LRScheduler  # NOQA
 from pytorch_pfn_extras.training.extensions.micro_average import MicroAverage  # NOQA
 from pytorch_pfn_extras.training.extensions.print_report import PrintReport  # NOQA
 from pytorch_pfn_extras.training.extensions.progress_bar import ProgressBar  # NOQA
