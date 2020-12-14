@@ -89,8 +89,8 @@ class _PosixFileSystem(object):
     def stat(self, path):
         return _PosixFileStat(os.stat(path), path)
 
-    def close(self, file_stream):
-        file_stream.close()
+    def close(self):
+        pass
 
     def __enter__(self):
         return self
