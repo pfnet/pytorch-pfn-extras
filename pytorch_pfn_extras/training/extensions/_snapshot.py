@@ -367,6 +367,7 @@ class _Snapshot(extension.Extension):
                         target[k].load_state_dict(state[k], **kwargs)
                 else:
                     target.load_state_dict(state, **kwargs)
+                writer.fs.close(snapshot_file)
 
         if (hasattr(writer, '_add_cleanup_hook')
                 and self.n_retains > 0
