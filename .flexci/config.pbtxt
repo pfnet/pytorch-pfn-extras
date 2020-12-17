@@ -1,5 +1,20 @@
 configs {
-  key: "pytorch-pfn-extras"
+  key: "pytorch-pfn-extras.prep-linux"
+  value {
+    requirement {
+      cpu: 8
+      memory: 32
+      disk: 20
+    }
+    time_limit: {
+      seconds: 3600
+    }
+    command: "bash .flexci/linux/script.sh prep"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch15-linux"
   value {
     requirement {
       cpu: 4
@@ -10,6 +25,38 @@ configs {
     time_limit: {
       seconds: 1200
     }
-    command: "bash .flexci/run.sh"
+    command: "bash .flexci/linux/script.sh torch15"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch16-linux"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 2
+      memory: 16
+      disk: 10
+    }
+    time_limit: {
+      seconds: 1200
+    }
+    command: "bash .flexci/linux/script.sh torch16"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch17-linux"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 2
+      memory: 16
+      disk: 10
+    }
+    time_limit: {
+      seconds: 1200
+    }
+    command: "bash .flexci/linux/script.sh torch17"
   }
 }
