@@ -84,12 +84,13 @@ class MyModuleWithCheckpoint(nn.Module):
 
 
 def _run(init_file, input, module, rank, args, step, device_type):
-    dist.init_process_group(backend="gloo", init_method=f"file://{init_file}",
+    dist.init_process_group(backend="gloo",
+                            init_method="file://{}".format(init_file),
                             world_size=2, rank=rank)
     if device_type == "cpu":
         device = torch.device(device_type)
     elif device_type == "cuda":
-        device = torch.device(f"{device_type}:{rank}")
+        device = torch.device("{}:{}".format(device_type, rank))
         torch.cuda.set_device(device)
     else:
         raise AssertionError

@@ -153,7 +153,8 @@ class DistributedDataParallel(nn.Module):
         for name in DistributedDataParallel._unused_parameters:
             if name in kwargs:
                 logger.warning(
-                    f"ppe.nn.parallel.DistributedDataParallel ignores {name}"
+                    "ppe.nn.parallel.DistributedDataParallel"
+                    " ignores {}".format(name)
                 )
 
         if process_group is None:
@@ -283,7 +284,8 @@ class DistributedDataParallel(nn.Module):
         if isinstance(obj, torch.Tensor):
             if not self._show_send_gpu_warning and obj.device != self._device:
                 logger.warning(
-                    f"Data are moved from {obj.device} to {self._device}"
+                    "Data are moved from {}"
+                    " to {}".format(obj.device, self._device)
                 )
                 self._show_send_gpu_warning = True
             return obj.to(self._device)
