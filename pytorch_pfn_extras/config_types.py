@@ -20,6 +20,6 @@ def load_path_with_optuna_types(path, trial, loader=None, types=None):
         types = {}
     for key, value in optuna_types(trial).items():
         if key in types:
-            warnings.warn(f'{key} is overwritten by optuna suggest.')
+            warnings.warn(key + ' is overwritten by optuna suggest.')
         types[key] = value
     return Config.load_path(path, loader=loader, types=types)
