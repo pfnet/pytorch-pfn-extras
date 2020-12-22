@@ -1,5 +1,6 @@
 import datetime
 import io
+import itertools
 import json
 import os
 import subprocess
@@ -11,7 +12,7 @@ import torch
 import torch.autograd
 from torch.onnx import OperatorExportTypes
 from torch.onnx.symbolic_helper import _default_onnx_opset_version
-from torch.onnx.utils import _export as torch_export
+from torch.onnx.utils import _export as torch_export, _model_to_graph as torch_model_to_graph
 
 from pytorch_pfn_extras.onnx.annotate import init_annotate
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
@@ -20,6 +21,27 @@ from pytorch_pfn_extras.onnx.strip_large_tensor import is_large_tensor
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_raw_data
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
     _strip_large_initializer_raw_data
+
+
+def _model_to_graph_with_value_names(*args, add_value_names=True, **kwargs):
+    g, p, o = torch_model_to_graph(*args, **kwargs)
+    if not add_value_names:
+        return g, p, o
+
+    for n in g.nodes():
+        for v in itertools.chain(n.inputs(), n.outputs()):
+            if not v.debugName().isnumeric():
+                continue
+            old_name = v.debugName()
+            new_name = 'v{}_{}'.format(old_name, n.kind().split('::')[-1])
+            v.setDebugName(new_name)
+            if old_name in p:
+                i = p[old_name]
+                del p[old_name]
+                p[new_name] = i
+    return g, p, o
+
+torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
 
 
 def _export_meta(model, out_dir, strip_large_tensor_data):
