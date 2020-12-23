@@ -12,7 +12,8 @@ import torch
 import torch.autograd
 from torch.onnx import OperatorExportTypes
 from torch.onnx.symbolic_helper import _default_onnx_opset_version
-from torch.onnx.utils import _export as torch_export, _model_to_graph as torch_model_to_graph
+from torch.onnx.utils import \
+    _export as torch_export, _model_to_graph as torch_model_to_graph
 
 from pytorch_pfn_extras.onnx.annotate import init_annotate
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
@@ -40,6 +41,7 @@ def _model_to_graph_with_value_names(*args, add_value_names=True, **kwargs):
                 del p[old_name]
                 p[new_name] = i
     return g, p, o
+
 
 torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
 
