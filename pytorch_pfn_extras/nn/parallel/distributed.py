@@ -65,7 +65,14 @@ class _ApexWrapper:
                 d.copy_(s * scale)
 
 
-apex_wrapper = _ApexWrapper()
+apex_wrapper = None
+
+
+def get_apex_wrapper():
+    global apex_wrapper
+    if apex_wrapper is None:
+        apex_wrapper = _ApexWrapper()
+    return apex_wrapper
 
 
 def _reduce(values, group):
@@ -74,14 +81,14 @@ def _reduce(values, group):
     # flatten values to improve the runtime perfomance of all-reduce
     coalesced = torch.empty(size, device=values[0].device,
                             dtype=values[0].dtype)
-    coalesced_views = apex_wrapper.unflatten(coalesced, values)
-    apex_wrapper.multi_tensor_scale(values, coalesced_views, 1.0)
+    coalesced_views = get_apex_wrapper().unflatten(coalesced, values)
+    get_apex_wrapper().multi_tensor_scale(values, coalesced_views, 1.0)
 
     with record_function("torch.distributed.all_reduce"):
         dist.all_reduce(coalesced, group=group)
 
     # unflatten values
-    apex_wrapper.multi_tensor_scale(
+    get_apex_wrapper().multi_tensor_scale(
         coalesced_views, values,
         1.0 / dist.get_world_size(group)
     )
@@ -89,11 +96,11 @@ def _reduce(values, group):
 
 def _broadcast(values, group):
     with torch.no_grad():
-        coalesced = apex_wrapper.flatten(values)
+        coalesced = get_apex_wrapper().flatten(values)
         with record_function("torch.distributed.broadcast"):
             dist.broadcast(coalesced, 0, group=group)
-        apex_wrapper.multi_tensor_scale(
-            apex_wrapper.unflatten(coalesced, values),
+        get_apex_wrapper().multi_tensor_scale(
+            get_apex_wrapper().unflatten(coalesced, values),
             values, 1.0
         )
 
