@@ -43,9 +43,6 @@ def _model_to_graph_with_value_names(*args, add_value_names=True, **kwargs):
     return g, p, o
 
 
-torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
-
-
 def _export_meta(model, out_dir, strip_large_tensor_data):
     ret = {
         'generated_at': datetime.datetime.now().isoformat(),
@@ -94,7 +91,12 @@ def _export_util(model, args, f, **kwargs):
         else:
             operator_export_type = OperatorExportTypes.ONNX
 
-    return torch_export(model, args, f, _retain_param_name=True, **kwargs)
+    old_model_to_graph = torch.onnx.utils._model_to_graph
+    try:
+        torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
+        return torch_export(model, args, f, _retain_param_name=True, **kwargs)
+    finally:
+        torch.onnx.utils._model_to_graph = old_model_to_graph
 
 
 def _export(
