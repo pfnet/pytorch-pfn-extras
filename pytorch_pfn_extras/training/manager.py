@@ -66,7 +66,8 @@ class _BaseExtensionsManager:
             self._stop_trigger = trigger_module.get_trigger(
                 (max_epochs, 'epoch'))
         else:
-            self._stop_trigger = stop_trigger
+            self._stop_trigger = trigger_module.get_trigger(
+                stop_trigger)
         if writer is None:
             writer = writing.SimpleWriter(out_dir=out_dir)
         # triggers are stateful, so we need to make a copy for internal use
@@ -336,7 +337,8 @@ class ExtensionsManager(_BaseExtensionsManager):
             or an actual Module
         optimizers (dict or `torch.Optimizer`): Map of string to Optimizer
             or an actual Optimizer.
-        max_epochs (int): Number of epochs in the whole training loop.
+        max_epochs (int): Number of epochs in the whole training loop. Ignored
+            if `stop_trigger` is passed as a kwarg.
         iters_per_epoch (int): Number of iterations in one epoch.
         extensions (list or None): List of Extentions to be used.
         out_dir (str): Output directory (default: ``result``).
