@@ -87,7 +87,7 @@ In order to report the results of the evaluation so they can be
 accessed by other extensions, an `Evaluation` extension
 needs to be created with the argument `eval_func` set to a function
 that gets the current data and target batches as parameters and
-reports the needed metrics. [Example](https://github.com/pfnet/pytorch-pfn-extras/blob/master/example/mnist.py#L51-L66)
+reports the needed metrics. [Example](https://github.com/pfnet/pytorch-pfn-extras/blob/master/example/mnist.py#L49-L64)
 
 The test function looks has the following signature
 ```python
@@ -110,7 +110,7 @@ def test(args, model, device, data, target):
 #### Ignite
 
 Just use the `IgniteEvaluator` extension with the ignite created evaluator as
-the first parameter and you are ready to go. [Example](https://github.com/pfnet/pytorch-pfn-extras/blob/master/example/ignite-mnist.py#L73-L75)
+the first parameter and you are ready to go. [Example](https://github.com/pfnet/pytorch-pfn-extras/blob/master/example/ignite-mnist.py#L79-L80)
 The metrics defined when creating the evaluator with `create_supervised_evaluator` will be automatically reported
 ```python
  create_supervised_evaluator(model, metrics={'acc': Accuracy(), 'loss': Loss(F.nll_loss)}, device)
@@ -118,11 +118,11 @@ The metrics defined when creating the evaluator with `create_supervised_evaluato
 
 ### Snapshots
 
-It is possible to take snapshots by using the [`snapshot`](https://github.com/pfnet/blob/master/example/mnist.py#L133)
+It is possible to take snapshots by using the [`snapshot`](https://github.com/pfnet/pytorch-pfn-extras/blob/master/example/mnist.py#L142)
 training extension just as in chainer.
 
 Whenever the extension is triggered, it saves the status of the optimizer, model and extensions to the output folder in the same way as chainer.
-To load the snapshot and continue the training call `torch.load` and use the `ExtensionsManager.load_state_dict`[example](https://github.com/pfnet/pytorch-pfn-extras/blob/master/example/mnist.py#L139-L141) to resume the training.
+To load the snapshot and continue the training call `torch.load` and use the `ExtensionsManager.load_state_dict`[example](https://github.com/pfnet/pytorch-pfn-extras/blob/master/example/mnist.py#L155-L157) to resume the training.
 The snapshots can be used outside the pytorch-pfn-extras module just by accessing the models, or optimizers fields of the loaded state.
 
 ### Extensions execution order
