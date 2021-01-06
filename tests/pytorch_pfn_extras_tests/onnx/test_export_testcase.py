@@ -69,7 +69,9 @@ def test_export_testcase():
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))
     assert os.path.isfile(os.path.join(output_dir, 'model.onnx'))
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
-    assert os.path.isfile(os.path.join(test_data_set_dir, 'input_0.pb'))
+    expected_input_0_path = os.path.join(test_data_set_dir, 'input_0.pb')
+    assert os.path.isfile(expected_input_0_path)
+    assert _to_array(expected_input_0_path).shape == (1, 1, 28, 28)
     assert os.path.isfile(os.path.join(test_data_set_dir, 'output_0.pb'))
     assert os.path.isfile(os.path.join(
         test_data_set_dir, 'gradient_input_0.pb'))
