@@ -163,6 +163,10 @@ def export_testcase(
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
         input_names=input_names, **kwargs)
+    if isinstance(args, torch.Tensor):
+        args = args,
+    if isinstance(outs, torch.Tensor):
+        outs = outs,
 
     # Remove unused inputs
     # - When keep_initializers_as_inputs=True, inputs contains initializers.
@@ -192,10 +196,6 @@ def export_testcase(
                 _strip_raw_data(t)
             fp.write(t.SerializeToString())
 
-    if isinstance(args, torch.Tensor):
-        args = args,
-    if isinstance(outs, torch.Tensor):
-        outs = outs,
     data_set_path = os.path.join(out_dir, 'test_data_set_0')
     seq_id = 0
     while is_on_memory and os.path.exists(data_set_path):
