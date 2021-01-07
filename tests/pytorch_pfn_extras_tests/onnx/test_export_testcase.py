@@ -240,6 +240,9 @@ def test_backward_multiple_input():
 
 
 def test_export_testcase_strip_large_tensor_data():
+    if torch_version < version.Version('1.6.0'):
+        pytest.skip('skip for PyTorch 1.5 or earlier')
+
     model = Net().to('cpu')
     x = torch.zeros((1, 1, 28, 28))
 
