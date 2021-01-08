@@ -4,11 +4,17 @@
 # "bash .flexci/linux/script.sh torch15".
 #
 # Environment variables:
+# - PPE_FLEXCI_IMAGE_NAME ... The Docker image name (without tag) to be
+#       used for CI.
 # - DRYRUN ... Set DRYRUN=1 for local testing.  This disables destructive
 #       actions and make the script print commands.
 
 # Fail immedeately on error or unbound variables.
 set -eu
+
+# note: Docker image names can be overridden per project using secret environment
+# variables of FlexCI.
+PPE_FLEXCI_IMAGE_NAME=${PPE_FLEXCI_IMAGE_NAME:-asia.gcr.io/pfn-public-ci/pytorch-pfn-extras-ci}
 
 ################################################################################
 # Main function
@@ -33,13 +39,13 @@ main() {
     torch* )
       # Unit test.
       run "${docker_args[@]}" \
-          "asia.gcr.io/pfn-public-ci/pytorch-pfn-extras-ci:${TARGET}" \
+          "${PPE_FLEXCI_IMAGE_NAME}:${TARGET}" \
           /src/.flexci/linux/unittest.sh "${TARGET}"
       ;;
     prep )
       # Build and push docker images for unit tests.
       run "${SRC_ROOT}/.flexci/linux/build_and_push.sh" \
-          "asia.gcr.io/pfn-public-ci/pytorch-pfn-extras-ci"
+          "${PPE_FLEXCI_IMAGE_NAME}"
       ;;
     * )
       echo "${TARGET}: Invalid target."
