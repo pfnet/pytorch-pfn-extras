@@ -1,1 +1,1 @@
-PowerShell .flexci\test.ps1
+PowerShell .flexci\windows\test.ps1
