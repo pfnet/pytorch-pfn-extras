@@ -1,14 +1,16 @@
 import os
-import torch
-import tempfile
 from packaging import version
+import urllib.request
+import tempfile
 
 import numpy as np
 import pytest
+import torch
 from torch import multiprocessing as mp
 from torch import distributed as dist
 from torch import nn
 from torch.utils.checkpoint import checkpoint
+
 from pytorch_pfn_extras.nn.parallel import DistributedDataParallel
 
 
@@ -84,8 +86,9 @@ class MyModuleWithCheckpoint(nn.Module):
 
 
 def _run(init_file, input, module, rank, args, step, device_type):
+    init_method = "file://{}".format(urllib.request.pathname2url(init_file))
     dist.init_process_group(backend="gloo",
-                            init_method="file://{}".format(init_file),
+                            init_method=init_method,
                             world_size=2, rank=rank)
     if device_type == "cpu":
         device = torch.device(device_type)
