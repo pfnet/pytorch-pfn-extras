@@ -1,0 +1,78 @@
+#!/bin/bash
+
+# script.sh is a script to run Docker for testing.  This is called by CI like
+# "bash .flexci/linux/script.sh torch15".
+#
+# Environment variables:
+# - DRYRUN ... Set DRYRUN=1 for local testing.  This disables destructive
+#       actions and make the script print commands.
+
+# Fail immedeately on error or unbound variables.
+set -eu
+
+################################################################################
+# Main function
+################################################################################
+main() {
+  TARGET="$1"
+  SRC_ROOT="$(cd "$(dirname "${BASH_SOURCE}")/../.."; pwd)"
+
+  # Initialization.
+  prepare_docker &
+  wait
+
+  # Prepare docker args.
+  docker_args=(
+    docker run --rm --ipc=host --privileged --runtime=nvidia
+    --volume="${SRC_ROOT}:/src"
+    --workdir="/src"
+  )
+
+  # Run target-specific commands.
+  case "${TARGET}" in
+    torch* )
+      # Unit test.
+      run "${docker_args[@]}" \
+          "asia.gcr.io/pfn-public-ci/pytorch-pfn-extras-ci:${TARGET}" \
+          /src/.flexci/linux/unittest.sh "${TARGET}"
+      ;;
+    prep )
+      # Build and push docker images for unit tests.
+      run "${SRC_ROOT}/.flexci/linux/build_and_push.sh" \
+          "asia.gcr.io/pfn-public-ci/pytorch-pfn-extras-ci"
+      ;;
+    * )
+      echo "${TARGET}: Invalid target."
+      exit 1
+      ;;
+  esac
+}
+
+################################################################################
+# Utility functions
+################################################################################
+
+# run executes a command.  If DRYRUN is enabled, run just prints the command.
+run() {
+  echo '+' "$@" >&2
+  if [ "${DRYRUN:-}" == '' ]; then
+    "$@"
+  fi
+}
+
+# prepare_docker makes docker use tmpfs to speed up.
+# CAVEAT: Do not use docker during this is running.
+prepare_docker() {
+  # Mount tmpfs to docker's root directory to speed up.
+  run service docker stop
+  run mount -t tmpfs -o size=100% tmpfs /var/lib/docker
+  run service docker start
+
+  # Configure docker to pull images from gcr.io.
+  run gcloud auth configure-docker
+}
+
+################################################################################
+# Bootstrap
+################################################################################
+main "$@"
