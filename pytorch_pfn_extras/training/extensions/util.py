@@ -7,17 +7,12 @@ if os.name == 'nt':
 
     _STD_OUTPUT_HANDLE = -11
 
-    class _COORD(ctypes.Structure):
-        _fields_ = [('X', ctypes.c_short), ('Y', ctypes.c_short)]
-
-    class _SMALL_RECT(ctypes.Structure):
-        _fields_ = [('Left', ctypes.c_short), ('Top', ctypes.c_short),
-                    ('Right', ctypes.c_short), ('Bottom', ctypes.c_short)]
+    _COORD = ctypes.wintypes._COORD
 
     class _CONSOLE_SCREEN_BUFFER_INFO(ctypes.Structure):
         _fields_ = [('dwSize', _COORD), ('dwCursorPosition', _COORD),
                     ('wAttributes', ctypes.c_ushort),
-                    ('srWindow', _SMALL_RECT),
+                    ('srWindow', ctypes.wintypes.SMALL_RECT),
                     ('dwMaximumWindowSize', _COORD)]
 
     def set_console_cursor_position(x, y):
@@ -29,7 +24,13 @@ if os.name == 'nt':
                                                           ctypes.byref(csbi))
         cur_pos = csbi.dwCursorPosition
         pos = _COORD(cur_pos.X + x, cur_pos.Y + y)
-        ctypes.windll.kernel32.SetConsoleCursorPosition(whnd, pos)
+
+        # Workaround the issue that pyreadline overwrites the argtype
+        setpos = ctypes.windll.kernel32.SetConsoleCursorPosition
+        argtypes = setpos.argtypes
+        setpos.argtypes = None
+        setpos(whnd, pos)
+        setpos.argtypes = argtypes
 
     def erase_console(x, y, mode=0):
         """Erase screen.
