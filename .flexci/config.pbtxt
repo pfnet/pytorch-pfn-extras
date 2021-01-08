@@ -62,7 +62,7 @@ configs {
 }
 
 configs {
-  key: "pytorch-pfn-extras.win"
+  key: "pytorch-pfn-extras.torch15-win"
   value {
     requirement {
       cpu: 4
@@ -74,6 +74,40 @@ configs {
     time_limit: {
       seconds: 1200
     }
-    command: ".flexci\\windows\\run.bat"
+    command: ".flexci\\windows\\run.bat torch15"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch16-win"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 2
+      memory: 16
+      disk: 10
+      image: "windows"
+    }
+    time_limit: {
+      seconds: 1200
+    }
+    command: ".flexci\\windows\\run.bat torch16"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch17-win"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 2
+      memory: 16
+      disk: 10
+      image: "windows"
+    }
+    time_limit: {
+      seconds: 1200
+    }
+    command: ".flexci\\windows\\run.bat torch17"
   }
 }
