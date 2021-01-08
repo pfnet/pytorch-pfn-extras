@@ -19,8 +19,16 @@ pip install pytorch-ignite torchvision
 
 # For CuPy interoperability (see: https://docs.cupy.dev/en/stable/install.html)
 pip install cupy  # or cupy-cudaXXX
-
 ```
+
+## Requirements
+
+* Python 3.5+
+* PyTorch 1.6+
+
+Optional dependencies:
+
+* CuPy 8.0+ for PyTorch/CuPy interoperatbility
 
 ## Documentation
 
