@@ -1,5 +1,6 @@
 import datetime
 import io
+import itertools
 import json
 import os
 import subprocess
@@ -11,7 +12,8 @@ import torch
 import torch.autograd
 from torch.onnx import OperatorExportTypes
 from torch.onnx.symbolic_helper import _default_onnx_opset_version
-from torch.onnx.utils import _export as torch_export
+from torch.onnx.utils import \
+    _export as torch_export, _model_to_graph as torch_model_to_graph
 
 from pytorch_pfn_extras.onnx.annotate import init_annotate
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
@@ -20,6 +22,25 @@ from pytorch_pfn_extras.onnx.strip_large_tensor import is_large_tensor
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_raw_data
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
     _strip_large_initializer_raw_data
+
+
+def _model_to_graph_with_value_names(*args, add_value_names=True, **kwargs):
+    g, p, o = torch_model_to_graph(*args, **kwargs)
+    if not add_value_names:
+        return g, p, o
+
+    for n in g.nodes():
+        for v in itertools.chain(n.inputs(), n.outputs()):
+            if not v.debugName().isnumeric():
+                continue
+            old_name = v.debugName()
+            new_name = 'v{}_{}'.format(old_name, n.kind().split('::')[-1])
+            v.setDebugName(new_name)
+            if old_name in p:
+                i = p[old_name]
+                del p[old_name]
+                p[new_name] = i
+    return g, p, o
 
 
 def _export_meta(model, out_dir, strip_large_tensor_data):
@@ -70,7 +91,14 @@ def _export_util(model, args, f, **kwargs):
         else:
             operator_export_type = OperatorExportTypes.ONNX
 
-    return torch_export(model, args, f, _retain_param_name=True, **kwargs)
+    old_model_to_graph = torch.onnx.utils._model_to_graph
+    # TODO(ecastill) _model_to_graph shouldn't be direclty overriden
+    # This is a temporal workaround until a fix is introduced in PyTorch.
+    try:
+        torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
+        return torch_export(model, args, f, _retain_param_name=True, **kwargs)
+    finally:
+        torch.onnx.utils._model_to_graph = old_model_to_graph
 
 
 def _export(
@@ -112,6 +140,9 @@ def export(
         large_tensor_threshold (int): If number of elements of tensor is
             larger than this value, the tensor is stripped when
             *strip_large_tensor_data* is True
+
+    .. warning:: This function is not thread safe.
+
     """
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
@@ -152,6 +183,9 @@ def export_testcase(
         large_tensor_threshold (int): If number of elements of tensor is
             larger than this value, the tensor is stripped when
             *strip_large_tensor_data* is True
+
+    .. warning:: This function is not thread safe.
+
     """
 
     os.makedirs(out_dir, exist_ok=True)
