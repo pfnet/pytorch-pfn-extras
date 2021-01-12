@@ -92,6 +92,8 @@ def _export_util(model, args, f, **kwargs):
             operator_export_type = OperatorExportTypes.ONNX
 
     old_model_to_graph = torch.onnx.utils._model_to_graph
+    # TODO(ecastill) _model_to_graph shouldn't be direclty overriden
+    # This is a temporal workaround until a fix is introduced in PyTorch.
     try:
         torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
         return torch_export(model, args, f, _retain_param_name=True, **kwargs)
@@ -138,6 +140,9 @@ def export(
         large_tensor_threshold (int): If number of elements of tensor is
             larger than this value, the tensor is stripped when
             *strip_large_tensor_data* is True
+
+    .. warning:: This function is not thread safe.
+
     """
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
@@ -178,6 +183,9 @@ def export_testcase(
         large_tensor_threshold (int): If number of elements of tensor is
             larger than this value, the tensor is stripped when
             *strip_large_tensor_data* is True
+
+    .. warning:: This function is not thread safe.
+
     """
 
     os.makedirs(out_dir, exist_ok=True)
