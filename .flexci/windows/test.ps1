@@ -25,17 +25,17 @@ function use_python($version) {
 if ($test -eq "torch15") {
 	# PyTorch 1.5 + Python 3.5
     use_python 3.5
-    RunOrDie python -m pip install torch===1.5.1 torchvision===0.6.1 -f https://download.pytorch.org/whl/torch_stable.html
+    RunOrDie python -m pip install torch==1.5.* torchvision==0.6.* -f https://download.pytorch.org/whl/torch_stable.html
 
 } elseif ($test -eq "torch16") {
 	# PyTorch 1.6 + Python 3.6
 	use_python 3.6
-    RunOrDie python -m pip install torch===1.6.0 torchvision===0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
+    RunOrDie python -m pip install torch==1.6.* torchvision===0.7.* -f https://download.pytorch.org/whl/torch_stable.html
 
 } elseif ($test -eq "torch17") {
 	# PyTorch 1.7 + Python 3.8
 	use_python 3.8
-    RunOrDie python -m pip install torch===1.7.* torchvision===0.8.* -f https://download.pytorch.org/whl/torch_stable.html
+    RunOrDie python -m pip install torch==1.7.* torchvision==0.8.* -f https://download.pytorch.org/whl/torch_stable.html
 
 } else {
     throw "Unsupported test variant: $test"
