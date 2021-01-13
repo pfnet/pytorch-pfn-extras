@@ -67,7 +67,7 @@ class _ApexWrapper:
 
 
 apex_wrapper = None
-_apex_wrapper_mutex = thrading.Lock()
+_apex_wrapper_mutex = threading.Lock()
 
 
 def get_apex_wrapper():
