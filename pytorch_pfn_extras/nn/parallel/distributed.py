@@ -9,6 +9,7 @@ from torch import distributed as dist
 from torch.utils import hooks
 from torch.autograd import Variable
 from torch.autograd.profiler import record_function
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -66,12 +67,15 @@ class _ApexWrapper:
 
 
 apex_wrapper = None
+_apex_wrapper_mutex = thrading.Lock()
 
 
 def get_apex_wrapper():
     global apex_wrapper
     if apex_wrapper is None:
-        apex_wrapper = _ApexWrapper()
+        with _apex_wrapper_mutex:
+            if apex_wrapper is None:
+                apex_wrapper = _ApexWrapper()
     return apex_wrapper
 
 
