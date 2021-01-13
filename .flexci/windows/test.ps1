@@ -9,12 +9,12 @@ $ErrorActionPreference = "Stop"
 
 # Setup environment
 if ($test -eq "torch15") {
-    # PyTorch 1.5 + Python 3.5
-    ActivatePython 3.5
+    # PyTorch 1.5 + Python 3.6
+    ActivatePython 3.6
     RunOrDie python -m pip install torch==1.5.* torchvision==0.6.* -f https://download.pytorch.org/whl/torch_stable.html
 
 } elseif ($test -eq "torch16") {
-    # PyTorch 1.6 + Python 3.6
+    # PyTorch 1.6 + Python 3.7
     ActivatePython 3.6
     RunOrDie python -m pip install torch==1.6.* torchvision==0.7.* -f https://download.pytorch.org/whl/torch_stable.html
 
