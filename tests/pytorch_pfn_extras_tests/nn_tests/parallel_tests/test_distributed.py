@@ -1,9 +1,10 @@
 import os
-from packaging import version
+import sys
 import urllib.request
 import tempfile
 
 import numpy as np
+from packaging import version
 import pytest
 import torch
 from torch import multiprocessing as mp
