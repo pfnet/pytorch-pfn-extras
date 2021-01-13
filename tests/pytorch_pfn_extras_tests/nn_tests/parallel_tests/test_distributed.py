@@ -132,8 +132,8 @@ def _device_types():
 
 
 @pytest.mark.skipif(
-    torch_version < version.Version('1.7.0') and sys.platform == 'win32',
-    reason='DDP support on Windows requries PyTorch 1.7+')
+    sys.platform == 'win32',
+    reason='DDP not fully supported on Windows')
 class TestDistributedDataParallel:
     def test_save_load(self):
         module = MyModule()
