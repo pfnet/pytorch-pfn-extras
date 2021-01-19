@@ -10,6 +10,6 @@ function RunOrDie {
     $global:LastExitCode = 0
     & $cmd @params
     if (-not $?) {
-        throw "Command failed (exit code = $LastExitCode)"
+        throw "Command failed (exit code = $LastExitCode): $args"
     }
 }
