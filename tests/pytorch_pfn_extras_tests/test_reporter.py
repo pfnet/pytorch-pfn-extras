@@ -238,6 +238,7 @@ def _check_summary_serialize(value1, value2, value3):
 
     summary2 = ppe.reporting.Summary()
     with tempfile.NamedTemporaryFile() as f:
+        f.close()
         torch.save(summary.state_dict(), f.name)
         summary2.load_state_dict(torch.load(f.name))
     summary2.add(value3)
