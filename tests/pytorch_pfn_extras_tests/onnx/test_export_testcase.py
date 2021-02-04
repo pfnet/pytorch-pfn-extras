@@ -363,3 +363,23 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
     assert xmodel.graph.input[0].name == 'x'
     assert len(xmodel.graph.input) == 1 or \
         xmodel.graph.input[1].name != 'unused'
+
+
+def test_user_meta():
+    model = nn.Sequential(nn.Linear(5, 10, bias=False))
+    x = torch.ones((2, 5))
+
+    output_dir = _helper(model, x, 'meta_without_user_meta', metadata=True)
+    with open(os.path.join(output_dir, "meta.json")) as metaf:
+        assert "user_meta" not in json.load(metaf)
+
+    output_dir = _helper(model, x, 'meta_with_user_meta', metadata=True,
+                         user_meta={"user_key": "user_value"})
+    with open(os.path.join(output_dir, "meta.json")) as metaf:
+        assert json.load(metaf)["user_meta"]["user_key"] == "user_value"
+
+    with pytest.warns(UserWarning):
+        output_dir = _helper(model, x, 'without_meta_with_user_meta',
+                             metadata=False,
+                             user_meta={"user_key": "user_value"})
+        assert not os.path.exists(os.path.join(output_dir, 'meta.json'))
