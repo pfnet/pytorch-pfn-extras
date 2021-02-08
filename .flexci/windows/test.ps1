@@ -15,7 +15,7 @@ if ($test -eq "torch15") {
 
 } elseif ($test -eq "torch16") {
     # PyTorch 1.6 + Python 3.7
-    ActivatePython 3.6
+    ActivatePython 3.7
     RunOrDie python -m pip install torch==1.6.* torchvision==0.7.* -f https://download.pytorch.org/whl/torch_stable.html
 
 } elseif ($test -eq "torch17") {
