@@ -145,9 +145,6 @@ n_retains=-1, autoload=False)
         transform_models (callable): If defined, function to apply to a model
             before obtaining its `state_dict`. Takes two parameters, the object
             name and the object itself.
-        autoload_transform_models (callable): If defined, function to apply to
-            a model after loading it. Takes two parameters, the object
-            name and the object itself.
 
     Returns:
         Snapshot extension object.
@@ -171,8 +168,7 @@ def snapshot(savefun=None,
              n_retains=-1,
              autoload=False,
              saver_rank=None,
-             transform_models=None,
-             autoload_transform_models=None):
+             transform_models=None):
     """
     Returns a trainer extension to take snapshots of the trainer.
 
@@ -226,9 +222,6 @@ def snapshot(savefun=None,
             rank when running in distributed mode and restored by all.
         transform_models (callable): If defined, function to apply to a model
             before obtaining its `state_dict`. Takes two parameters, the object
-            name and the object itself.
-        autoload_transform_models (callable): If defined, function to apply to
-            a model after loading it. Takes two parameters, the object
             name and the object itself.
     Returns:
         Snapshot extension object.
@@ -287,13 +280,11 @@ trigger=(1, 'epoch'))
             target=target, condition=condition, writer=writer,
             filename=filename, snapshot_on_error=snapshot_on_error,
             n_retains=n_retains, autoload=autoload, savefun=savefun,
-            transform_models=transform_models,
-            autoload_transform_models=autoload_transform_models)
+            transform_models=transform_models)
     return _DistributedSnapshot(
         target=target, condition=condition, writer=writer, filename=filename,
         snapshot_on_error=snapshot_on_error, n_retains=n_retains,
-        autoload=autoload, saver_rank=saver_rank, savefun=savefun,
-        autoload_transform_models=autoload_transform_models)
+        autoload=autoload, saver_rank=saver_rank, savefun=savefun)
 
 
 def _always_true():
@@ -322,7 +313,7 @@ class _Snapshot(extension.Extension):
             filename='snapshot_iter_{.iteration}',
             snapshot_on_error=False, n_retains=-1, autoload=False,
             savefun=None,
-            transform_models=None, autoload_transform_models=None):
+            transform_models=None):
         if condition is None:
             condition = _always_true
         self._target = target
@@ -334,7 +325,6 @@ class _Snapshot(extension.Extension):
         self.autoload = autoload
         self._savefun = savefun
         self._transform_models = transform_models
-        self._autoload_transform_models = autoload_transform_models
 
     def initialize(self, manager):
         target = manager if self._target is None else self._target
@@ -359,9 +349,6 @@ class _Snapshot(extension.Extension):
                 state = torch.load(snapshot_file,
                                    map_location=torch.device("cpu"))
                 kwargs = {}
-                if self._autoload_transform_models is not None:
-                    kwargs['transform_models'] = (
-                        self._autoload_transform_models)
                 if type(target) is dict:
                     for k in target:
                         target[k].load_state_dict(state[k], **kwargs)
@@ -448,12 +435,10 @@ class _DistributedSnapshot(_Snapshot):
             self, target=None, condition=None, writer=None,
             filename='snapshot_iter_{.iteration}',
             snapshot_on_error=False, n_retains=-1, autoload=False,
-            saver_rank=0, savefun=None, transform_models=None,
-            autoload_transform_models=None):
+            saver_rank=0, savefun=None, transform_models=None):
         super().__init__(target, condition, writer, filename,
                          snapshot_on_error, n_retains,
-                         autoload, savefun, transform_models,
-                         autoload_transform_models)
+                         autoload, savefun, transform_models)
         # To support distributed snapshots
         if not torch.distributed.is_initialized():
             raise RuntimeError('The Distributed Snapshot extension',

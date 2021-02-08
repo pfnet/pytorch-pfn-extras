@@ -361,13 +361,3 @@ def test_model_transformations(path):
     snapshot(manager)
 
     assert model.accessed
-
-    # Verify that autoload applies the transformation
-    to_load = torch.load(os.path.join(path, 'test'))
-    trainer = get_trainer(
-        out_dir=path, state_to_load=to_load)
-    snapshot = extensions.snapshot(
-        filename='test', autoload=True,
-        autoload_transform_models=lambda n, x: Wrapper(x))
-    snapshot.initialize(trainer)
-    assert isinstance(trainer.models['main'], Wrapper)

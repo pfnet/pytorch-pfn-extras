@@ -307,19 +307,21 @@ class _BaseExtensionsManager:
     def load_state_dict(self, to_load, *, transform_models=lambda n, x: x):
         """
         transform_models is a function that apply a transformation
-        to a model.
+        to a model before loading its state
 
         When using a `torch.nn.DataParallel` model, if we want
-        to load a model with the `torch.nn.DataParallel` applied
+        to load the original state in a model with the
+        `torch.nn.DataParallel` applied
         load_state_dict(
-            state, transform_models=lambda n, x: torch.nn.DataParallel(x))
+            state, transform_models=(lambda n, x:
+                x.module if isinstance(x, torch.nn.DataParallel) else  x))
         """
         self._start_iteration = to_load['_start_iteration']
         self.iteration = self._start_iteration
         for name in self._models:
             # TODO(ecastill) map_loc when loading the model and DDP check
-            self._models[name].load_state_dict(to_load['models'][name])
-            self._models[name] = transform_models(name, self._models[name])
+            transformed_model = transform_models(name, self._models[name])
+            transformed_model.load_state_dict(to_load['models'][name])
 
         for name in self._optimizers:
             self._optimizers[name].load_state_dict(to_load['optimizers'][name])

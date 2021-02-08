@@ -318,13 +318,13 @@ def test_model_transformations():
     new_model = _StateDictModel(state_dict_to_be_loaded=model_state_dict)
     new_optimizer = _StateDictObj(state_dict_to_be_loaded=optimizer_state_dict)
     new_manager = training.ExtensionsManager(
-        new_model,
+        Wrapper(new_model),
         new_optimizer,
         max_epochs,
         iters_per_epoch=iters_per_epoch,
     )
     new_manager.load_state_dict(
-        state_dict, transform_models=lambda n, x: Wrapper(x))
+        state_dict, transform_models=lambda n, x: x.wrapper_module())
     assert isinstance(new_manager.models['main'], Wrapper)
 
 
