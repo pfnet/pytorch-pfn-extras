@@ -43,7 +43,7 @@ def _model_to_graph_with_value_names(*args, add_value_names=True, **kwargs):
     return g, p, o
 
 
-def _export_meta(model, out_dir, strip_large_tensor_data, **user_meta):
+def _export_meta(model, out_dir, strip_large_tensor_data, user_meta):
     ret = {
         'generated_at': datetime.datetime.now().isoformat(),
         'output_directory': out_dir,
@@ -294,7 +294,7 @@ def export_testcase(
     if metadata:
         with open(os.path.join(out_dir, 'meta.json'), 'w') as f:
             json.dump(_export_meta(model, out_dir, strip_large_tensor_data,
-                                   **user_meta), f, indent=2)
+                                   user_meta), f, indent=2)
     elif user_meta:
         warnings.warn(
             '"user_meta" is given but "metadata" is False. '
