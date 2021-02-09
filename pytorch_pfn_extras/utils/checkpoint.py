@@ -10,8 +10,8 @@ class _CheckpointFunction(torch.utils.checkpoint.CheckpointFunction):
     momentum is updated twice, while we only need one update to ensure
     correctness.
     Using `ppe.utils.checkpointing.checkpoint` as a drop-in replacement
-    can help to lead with incorrect values in the backward pass generated
-    by this issue.
+    can help deal with incorrect values in the BatchNormalization
+    persistent parameters.
     """
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
