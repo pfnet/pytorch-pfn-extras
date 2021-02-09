@@ -9,8 +9,8 @@ def _get_value_from_log_report(manager, key):
         return None
     if key not in manager.observation:
         raise ValueError(
-            f'{key} is not found in the reported values '
-            f'{manager.observation}')
+            '{} is not found in the reported values {}'.format(
+                key, manager.observation))
 
     return manager.observation[key]
 
