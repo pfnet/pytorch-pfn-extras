@@ -190,26 +190,32 @@ class Writer:
         """
         pass
 
-    def save(self, filename, out_dir, target, savefun, **kwds):
+    def save(self, filename, out_dir, target, savefun, append, **kwds):
         if self.out_dir is not None:
             out_dir = self.out_dir
         if not self._initialized:
             self.initialize(out_dir)
-        # Some filesystems are not compatible with temp folders, etc
-        # so we rely on raw temp files
-        prefix = 'tmp_{}'.format(filename)
+
         dest = os.path.join(out_dir, filename)
-        tmppath = os.path.join(out_dir, prefix)
-        make_backup = self.fs.exists(dest)
-        if make_backup:
-            bak = '{}.bak'.format(dest)
-            self.fs.rename(dest, bak)
-        with self.fs.open(tmppath, 'wb') as f:
-            # HDFS does not support overwrite
-            savefun(target, f)
-        self.fs.rename(tmppath, dest)
-        if make_backup:
-            self.fs.remove(bak)
+
+        if append:
+            with self.fs.open(dest, 'ab') as f:
+                # HDFS does not support overwrite
+                savefun(target, f)
+        else:
+            # Some filesystems are not compatible with temp folders, etc
+            # so we rely on raw temp files
+            prefix = 'tmp_{}'.format(filename)
+            tmppath = os.path.join(out_dir, prefix)
+            make_backup = self.fs.exists(dest)
+            if make_backup:
+                bak = '{}.bak'.format(dest)
+                self.fs.rename(dest, bak)
+            with self.fs.open(tmppath, 'wb') as f:
+                savefun(target, f)
+            self.fs.rename(tmppath, dest)
+            if make_backup:
+                self.fs.remove(bak)
 
         self._post_save()
 
@@ -257,10 +263,11 @@ class SimpleWriter(Writer):
         self._savefun = savefun
         self._kwds = kwds
 
-    def __call__(self, filename, out_dir, target, *, savefun=None):
+    def __call__(self, filename, out_dir, target, *,
+                 savefun=None, append=False):
         if savefun is None:
             savefun = self._savefun
-        self.save(filename, out_dir, target, savefun, **self._kwds)
+        self.save(filename, out_dir, target, savefun, append, **self._kwds)
 
 
 class StandardWriter(Writer):
