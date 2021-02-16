@@ -106,7 +106,7 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
         del log_name  # avoid accidental use
         self._log_name = filename
 
-        if format is None:
+        if format is None and filename is not None:
             if filename.endswith('.jsonl'):
                 format = 'json-lines'
             elif filename.endswith('.yaml'):
