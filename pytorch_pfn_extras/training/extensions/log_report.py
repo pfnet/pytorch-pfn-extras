@@ -12,8 +12,30 @@ except ImportError:
     _pandas_available = False
 
 
-def log_writer_save_func(target, file_o):
-    file_o.write(bytes(json.dumps(target, indent=4).encode('ascii')))
+class LogWriterSaveFunc:
+
+    def __init__(self, format, append):
+        self._format = format
+        self._append = append
+
+    def __call__(self, target, file_o):
+        if self._format == 'json':
+            if self._append:
+                raise ValueError(
+                    'LogReport does not support json format with append mode.')
+            log = json.dumps(target, indent=4)
+        elif self._format == 'json-lines':
+            if self._append:
+                target = target[-1]
+            log = '\n'.join([json.dumps(x) for x in target])
+        elif self._format == 'yaml':
+            if self._append:
+                target = [target[-1]]
+            import yaml
+            log = yaml.dump(target)
+        else:
+            raise ValueError('Unknown format: {}'.format(self._format))
+        file_o.write(bytes(log.encode('ascii')))
 
 
 class LogReport(extension.Extension):
@@ -69,7 +91,7 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
     """
 
     def __init__(self, keys=None, trigger=(1, 'epoch'), postprocess=None,
-                 filename=None, **kwargs):
+                 filename=None, append=False, format=None, **kwargs):
         self._keys = keys
         self._trigger = trigger_module.get_trigger(trigger)
         self._postprocess = postprocess
@@ -84,6 +106,16 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
         del log_name  # avoid accidental use
         self._log_name = filename
 
+        if format is None and filename is not None:
+            if filename.endswith('.jsonl'):
+                format = 'json-lines'
+            elif filename.endswith('.yaml'):
+                format = 'yaml'
+            else:
+                format = 'json'
+
+        self._append = append
+        self._format = format
         self._init_summary()
 
     def __call__(self, manager):
@@ -119,7 +151,9 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
             if self._log_name is not None:
                 log_name = self._log_name.format(**stats_cpu)
                 out = manager.out
-                writer(log_name, out, self._log, savefun=log_writer_save_func)
+                savefun = LogWriterSaveFunc(self._format, self._append)
+                writer(log_name, out, self._log,
+                       savefun=savefun, append=self._append)
 
             # reset the summary for the next output
             self._init_summary()
