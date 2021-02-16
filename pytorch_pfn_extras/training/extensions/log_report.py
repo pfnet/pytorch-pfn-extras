@@ -91,7 +91,7 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
     """
 
     def __init__(self, keys=None, trigger=(1, 'epoch'), postprocess=None,
-                 filename=None, append=False, format='json', **kwargs):
+                 filename=None, append=False, format=None, **kwargs):
         self._keys = keys
         self._trigger = trigger_module.get_trigger(trigger)
         self._postprocess = postprocess
@@ -105,6 +105,14 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
             filename = log_name
         del log_name  # avoid accidental use
         self._log_name = filename
+
+        if format is None:
+            if filename.endswith('.jsonl'):
+                format = 'json-lines'
+            elif filename.endswith('.yaml'):
+                format = 'yaml'
+            else:
+                format = 'json'
 
         self._append = append
         self._format = format
