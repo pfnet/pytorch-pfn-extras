@@ -240,19 +240,27 @@ def _check_summary_serialize(value1, value2, value3):
     with tempfile.NamedTemporaryFile() as f:
         f.close()
         torch.save(summary.state_dict(), f.name)
-        summary2.load_state_dict(torch.load(f.name))
+        # Load tensors in CPU to simulate a snapshot restore
+        summary2.load_state_dict(
+            torch.load(f.name, map_location=torch.device('cpu')))
     summary2.add(value3)
 
-    expected_mean = (value1 + value2 + value3) / 3.
+    expected_mean = float((value1 + value2 + value3) / 3.)
     expected_std = math.sqrt(
         (value1**2 + value2**2 + value3**2) / 3. - expected_mean**2)
 
     mean = summary2.compute_mean()
-    numpy.testing.assert_allclose(mean, _nograd(expected_mean))
+    if isinstance(mean, torch.Tensor):
+        mean = mean.cpu()
+    numpy.testing.assert_allclose(mean, expected_mean)
 
     mean, std = summary2.make_statistics()
-    numpy.testing.assert_allclose(mean, _nograd(expected_mean))
-    numpy.testing.assert_allclose(std, _nograd(expected_std))
+    if isinstance(mean, torch.Tensor):
+        mean = mean.cpu()
+    if isinstance(std, torch.Tensor):
+        std = std.cpu()
+    numpy.testing.assert_allclose(mean, expected_mean)
+    numpy.testing.assert_allclose(std, expected_std)
 
 
 def test_serialize_array_float():
@@ -286,6 +294,13 @@ def test_serialize_tensor():
         torch.tensor(1.5),
         torch.tensor(2.0),
         torch.tensor(3.5))
+
+
+def test_serialize_tensor_cuda():
+    _check_summary_serialize(
+        torch.tensor(1.5).cuda(),
+        torch.tensor(2.0).cuda(),
+        torch.tensor(3.5).cuda())
 
 
 def test_serialize_tensor_with_grad():

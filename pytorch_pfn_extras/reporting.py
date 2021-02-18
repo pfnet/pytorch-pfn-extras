@@ -297,15 +297,21 @@ class Summary:
     def state_dict(self):
         state = {}
         try:
-            state = {'_x': self._x, '_x2': self._x2, '_n': self._n}
+            # Save the stats as python scalars in order to avoid
+            # different device errors when loading them back
+            state = {'_x': float(self._x),
+                     '_x2': float(self._x2),
+                     '_n': int(self._n)}
         except KeyError:
             warnings.warn('The previous statistics are not saved.')
         return state
 
     def load_state_dict(self, to_load):
-        self._x = _nograd(to_load['_x'])
-        self._x2 = _nograd(to_load['_x2'])
-        self._n = _nograd(to_load['_n'])
+        # Casting here is because of backward compatibility
+        # Restore previously taken snapshots with autoload
+        self._x = float(_nograd(to_load['_x']))
+        self._x2 = float(_nograd(to_load['_x2']))
+        self._n = int(_nograd(to_load['_n']))
 
 
 class DictSummary:
