@@ -55,13 +55,15 @@ def test_valid():
 
 def test_nan():
     manager, model, optimizer = get_manager_model_optimizer()
-    model.weight[1, 0] = float('NaN')
+    with torch.no_grad():
+        model.weight[1, 0] = float('NaN')
     with pytest.raises(RuntimeError):
         run_train(manager, model, optimizer)
 
 
 def test_inf():
     manager, model, optimizer = get_manager_model_optimizer()
-    model.weight[2, 0] = float('inf')
+    with torch.no_grad():
+        model.weight[2, 0] = float('inf')
     with pytest.raises(RuntimeError):
         run_train(manager, model, optimizer)
