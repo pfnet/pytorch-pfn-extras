@@ -103,6 +103,8 @@ def _make_dataset(key, data, size):
         if size is None:
             raise ValueError('size must be specified for callable')
         dataset = _Index(size)
+        if isinstance(key, str):
+            key = key,
         if not isinstance(key, tuple):
             key = tuple(key)
         data = [((dataset.keys, key), data)]
