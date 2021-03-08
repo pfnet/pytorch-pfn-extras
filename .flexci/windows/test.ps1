@@ -24,8 +24,9 @@ if ($test -eq "torch15") {
     RunOrDie python -m pip install torch==1.7.* torchvision==0.8.* -f https://download.pytorch.org/whl/torch_stable.html
 
 } elseif ($test -eq "torch18") {
-    # PyTorch 1.8 + Python 3.9
-    ActivatePython 3.9
+    # PyTorch 1.8 + Python 3.8
+    # TODO(kmaehashi): Bump to Python 3.9 once ONNX wheel for Python 3.9 is released.
+    ActivatePython 3.8
     RunOrDie python -m pip install torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/torch_stable.html
 
 } else {
