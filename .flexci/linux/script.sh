@@ -66,15 +66,8 @@ run() {
   fi
 }
 
-# prepare_docker makes docker use tmpfs to speed up.
-# CAVEAT: Do not use docker during this is running.
+# Configure docker to pull images from gcr.io.
 prepare_docker() {
-  # Mount tmpfs to docker's root directory to speed up.
-  run service docker stop
-  run mount -t tmpfs -o size=100% tmpfs /var/lib/docker
-  run service docker start
-
-  # Configure docker to pull images from gcr.io.
   run gcloud auth configure-docker
 }
 
