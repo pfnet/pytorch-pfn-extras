@@ -16,12 +16,11 @@ from pytorch_pfn_extras.training.extensions._snapshot import (
 from pytorch_pfn_extras import writing
 
 
-def get_trainer(*, out_dir, state_to_load=None):
+def get_trainer(*, out_dir, state_to_load=None, epochs=10):
     model_state_dict = {}
     optimizer_state_dict = {}
     models = {'main': _StateDictModel(state_dict=model_state_dict)}
     optimizers = {'main': _StateDictObj(state_dict=optimizer_state_dict)}
-    epochs = 10  # FIXME
     return training.ExtensionsManager(
         models, optimizers, epochs,
         iters_per_epoch=10,
@@ -361,3 +360,28 @@ def test_model_transformations(path):
     snapshot(manager)
 
     assert model.accessed
+
+
+def test_snapshot_autoload_twice(path):
+    max_epochs = 10
+    iters_per_epoch = 10
+    fmt = 'snapshot_iter_{.iteration}'
+
+    def get_epoch_indices():
+        manager = get_trainer(out_dir=path, epochs=max_epochs)
+        snapshot = extensions.snapshot(filename=fmt, autoload=True)
+        manager.extend(snapshot)
+
+        epoch_indices = []
+        while not manager.stop_trigger:
+            epoch_indices.append(manager.epoch)
+            for it in range(iters_per_epoch):
+                with manager.run_iteration():
+                    time.sleep(0.01)
+        return epoch_indices
+
+    epoch_indices = get_epoch_indices()
+    assert len(epoch_indices) == 10
+
+    epoch_indices = get_epoch_indices()
+    assert len(epoch_indices) == 0
