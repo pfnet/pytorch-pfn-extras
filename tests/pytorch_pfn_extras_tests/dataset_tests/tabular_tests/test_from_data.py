@@ -83,7 +83,8 @@ class TestFromData:
 
     def test_unary_callable_dict(self):
         dataset = tabular.from_data(
-            (('key_a', 'key_b'), lambda i: {'key_a': i * i, 'key_b': -i}), size=10)
+            (('key_a', 'key_b'),
+             lambda i: {'key_a': i * i, 'key_b': -i}), size=10)
 
         assert isinstance(dataset, ppe.dataset.TabularDataset)
         assert len(dataset) == 10
@@ -148,7 +149,8 @@ class TestFromData:
         assert isinstance(output[1], list)
 
     def test_tuple_array_callable_unary(self):
-        dataset = tabular.from_data((np.arange(10), ('key_b', lambda i: i * i)))
+        dataset = tabular.from_data(
+             (np.arange(10), ('key_b', lambda i: i * i)))
 
         assert isinstance(dataset, ppe.dataset.TabularDataset)
         assert len(dataset) == 10
@@ -178,7 +180,8 @@ class TestFromData:
 
     def test_tuple_array_callable_dict(self):
         dataset = tabular.from_data(
-            (np.arange(10), (('key_b', 'key_c'), lambda i: {'key_b': i * i, 'key_c': -i})))
+            (np.arange(10), (('key_b', 'key_c'),
+             lambda i: {'key_b': i * i, 'key_c': -i})))
 
         assert isinstance(dataset, ppe.dataset.TabularDataset)
         assert len(dataset) == 10
@@ -221,7 +224,8 @@ class TestFromData:
 
     def test_tuple_callable_unary_callable_unary_without_size(self):
         with pytest.raises(ValueError):
-            tabular.from_data((('key_a', lambda i: i * i), ('key_b', lambda i: -i)))
+            tabular.from_data(
+                (('key_a', lambda i: i * i), ('key_b', lambda i: -i)))
 
     def test_dict_array_list(self):
         dataset = tabular.from_data(
@@ -238,7 +242,8 @@ class TestFromData:
         assert isinstance(output['key_b'], list)
 
     def test_dict_array_callable_unary(self):
-        dataset = tabular.from_data({'key_a': np.arange(10), 'key_b': lambda i: i * i})
+        dataset = tabular.from_data(
+            {'key_a': np.arange(10), 'key_b': lambda i: i * i})
 
         assert isinstance(dataset, ppe.dataset.TabularDataset)
         assert len(dataset) == 10
@@ -252,7 +257,8 @@ class TestFromData:
 
     def test_dict_array_callable_tuple(self):
         dataset = tabular.from_data(
-            {'key_a': np.arange(10), ('key_b', 'key_c'): lambda i: (i * i, -i)})
+            {'key_a': np.arange(10),
+             ('key_b', 'key_c'): lambda i: (i * i, -i)})
 
         assert isinstance(dataset, ppe.dataset.TabularDataset)
         assert len(dataset) == 10
@@ -268,7 +274,8 @@ class TestFromData:
 
     def test_dict_array_callable_dict(self):
         dataset = tabular.from_data(
-            {'key_a': np.arange(10), ('key_b', 'key_c'): lambda i: {'key_b': i * i, 'key_c': -i}})
+            {'key_a': np.arange(10),
+             ('key_b', 'key_c'): lambda i: {'key_b': i * i, 'key_c': -i}})
 
         assert isinstance(dataset, ppe.dataset.TabularDataset)
         assert len(dataset) == 10
@@ -297,7 +304,8 @@ class TestFromData:
 
     def test_dict_callable_unary_callable_unary_without_size(self):
         with pytest.raises(ValueError):
-            tabular.from_data(({'key_a': lambda i: i * i, 'key_b': lambda i: -i}))
+            tabular.from_data((
+                {'key_a': lambda i: i * i, 'key_b': lambda i: -i}))
 
     def test_unique(self):
         dataset_a = tabular.from_data(np.arange(10))
