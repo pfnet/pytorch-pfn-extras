@@ -118,10 +118,12 @@ class _BaseExtensionsManager:
 
     @property
     def models(self):
+        self.start_extensions()
         return self._models
 
     @property
     def optimizers(self):
+        self.start_extensions()
         return self._optimizers
 
     @property
@@ -142,6 +144,7 @@ class _BaseExtensionsManager:
 
     @property
     def stop_trigger(self):
+        self.start_extensions()
         # Trigger is stateful, we close the extensions the first time
         # it evaluates to True, as it won't do it again
         return self._stop_trigger(self)
