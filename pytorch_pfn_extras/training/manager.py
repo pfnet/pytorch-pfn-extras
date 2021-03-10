@@ -76,6 +76,7 @@ class _BaseExtensionsManager:
         self._out = out_dir
         self.writer = writer
         self.reporter = Reporter()
+        self._start_extensions_called = False
 
         if not isinstance(models, dict):
             if not isinstance(models, torch.nn.Module):
@@ -107,11 +108,22 @@ class _BaseExtensionsManager:
         self.writer.initialize(self.out)
 
     @property
+    def iteration(self):
+        self.start_extensions()
+        return self._iteration
+
+    @iteration.setter
+    def iteration(self, value):
+        self._iteration = value
+
+    @property
     def models(self):
+        self.start_extensions()
         return self._models
 
     @property
     def optimizers(self):
+        self.start_extensions()
         return self._optimizers
 
     @property
@@ -132,6 +144,7 @@ class _BaseExtensionsManager:
 
     @property
     def stop_trigger(self):
+        self.start_extensions()
         # Trigger is stateful, we close the extensions the first time
         # it evaluates to True, as it won't do it again
         return self._stop_trigger(self)
@@ -160,6 +173,12 @@ class _BaseExtensionsManager:
         self._iters_per_epoch = iters_per_epoch
 
     def start_extensions(self):
+        if self._start_extensions_called:
+            # This method must not be called twice or more.
+            return
+        else:
+            self._start_extensions_called = True
+
         exts = self._extensions
         extension_order = sorted(
             exts.keys(),
