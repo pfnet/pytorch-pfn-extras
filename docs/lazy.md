@@ -6,9 +6,14 @@ Following modules are provided:
 
 * `ppe.nn.LazyLinear`
     * Module that behaves as `torch.nn.Linear` but `in_features` can be set to `None`.
+    * This module is now included as a part of PyTorch 1.8 release ([torch.nn.LazyLinear](https://pytorch.org/docs/stable/generated/torch.nn.LazyLinear.html), [pull-request](https://github.com/pytorch/pytorch/pull/44538)]).
 
 * `ppe.nn.LazyConv1d`, `ppe.nn.LazyConv2d`, `ppe.nn.LazyConv3d`
     * Module that behaves as `torch.nn.Conv[123]d` but `in_channels` can be set to `None`.
+    * These modles are now included as a part of PyTorch 1.8 release ([torch.nn.LazyConvXd](https://pytorch.org/docs/stable/generated/torch.nn.LazyConv1d.html), [pull-request](https://github.com/pytorch/pytorch/pull/47350)]).
+
+* `ppe.nn.LazyBatchNorm1d`, `ppe.nn.LazyBatchNorm2d`, `ppe.nn.LazyBatchNorm3d`
+    * Module that behaves as `torch.nn.BatchNorm[123]d` but `num_features` can be set to `None`.
 
 Note that you need to run a "dummy" forward to initialize lazy parameters.
 See the example below:
