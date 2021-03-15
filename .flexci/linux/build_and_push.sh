@@ -48,10 +48,11 @@ docker_build_and_push torch17 \
 WAIT_PIDS="$! ${WAIT_PIDS}"
 
 # PyTorch 1.8 + Python 3.9
+# TODO(kmaehashi): Use stable version once PyTorch 1.8.1 is released. (#125)
 docker_build_and_push torch18 \
     --build-arg base_image="nvidia/cuda:11.0-cudnn8-devel-ubuntu18.04" \
     --build-arg python_version="3.9.2" \
-    --build-arg pip_install_torch_args="torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu110/torch_stable.html" \
+    --build-arg pip_install_torch_args="torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu110/torch_nightly.html" \
     --build-arg pip_install_dep_args="cupy-cuda110 pytorch-ignite ${TEST_PIP_PACKAGES}" \
     &
 WAIT_PIDS="$! ${WAIT_PIDS}"
