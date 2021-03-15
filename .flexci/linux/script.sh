@@ -38,6 +38,7 @@ main() {
   case "${TARGET}" in
     torch* )
       # Unit test.
+      .flexci/linux/download_mnist.sh
       run "${docker_args[@]}" \
           "${PPE_FLEXCI_IMAGE_NAME}:${TARGET}" \
           /src/.flexci/linux/unittest.sh "${TARGET}"
