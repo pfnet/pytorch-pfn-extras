@@ -52,14 +52,15 @@ class _TransformBase(tabular_dataset.TabularDataset):
             # We look for transformations that produces the requested keys
             # we allow key_indices select a given key for transformations
             # producting multiple keys since we have ensured all are disjoint
-            contained = set(res_idx).intersection(key_indices)
-            # res_idx holds the transf. indexes that belong to key_indices
-            res_idx = list(contained)
-            if len(contained) > 0:
+            # contained holds the transf. indexes that belong to key_indices
+            # An element that is not required by key_indices,
+            # its index is replaced with None.
+            contained = [r if r in key_indices else None for r in res_idx]
+            if any(r is not None for r in contained):
                 # Now look the indices of the keys we need to fetch
                 # from the original dataset to apply this transformation
                 operands.update(ops_idx)
-                transforms.append((ops_idx, t, res_idx))
+                transforms.append((ops_idx, t, contained))
         return list(operands), transforms
 
     def convert(self, data):
@@ -103,6 +104,8 @@ class _Transform(_TransformBase):
                         )
                     self._mode = tuple
                     for col_index, key_index in enumerate(t_res_idx):
+                        if key_index is None:
+                            continue
                         # t_res_idx should directly map the output, when
                         # all the outputs are covered this works but when
                         # we are slicing the outputs using key_indices
@@ -116,6 +119,8 @@ class _Transform(_TransformBase):
                         )
                     self._mode = dict
                     for col_index, key_index in enumerate(t_res_idx):
+                        if key_index is None:
+                            continue
                         key = self._keys[key_index]
                         out_examples[key_indices.index(key_index)].append(
                             out_example[key]
@@ -128,6 +133,8 @@ class _Transform(_TransformBase):
                     self._mode = None
                     out_example = (out_example,)
                     for col_index, key_index in enumerate(t_res_idx):
+                        if key_index is None:
+                            continue
                         out_examples[key_indices.index(key_index)].append(
                             out_example[col_index])
 
@@ -177,6 +184,8 @@ class _TransformBatch(_TransformBase):
                         "transform_batch must not change the length of data"
                     )
                 for col_index, key_index in enumerate(t_res_idx):
+                    if key_index is None:
+                        continue
                     # t_res_idx should directly map the output, when
                     # all the outputs are covered this works but when
                     # we are slicing the outputs using key_indices
@@ -194,6 +203,8 @@ class _TransformBatch(_TransformBase):
                         "transform_batch must not change the length of data"
                     )
                 for col_index, key_index in enumerate(t_res_idx):
+                    if key_index is None:
+                        continue
                     key = self._keys[key_index]
                     out_examples[key_indices.index(key_index)] = (
                         out_example[key])
@@ -209,6 +220,8 @@ class _TransformBatch(_TransformBase):
                         "transform_batch must not change the length of data"
                     )
                 for col_index, key_index in enumerate(t_res_idx):
+                    if key_index is None:
+                        continue
                     out_examples[key_indices.index(key_index)] = (
                         out_example[col_index])
         return tuple(out_examples)
