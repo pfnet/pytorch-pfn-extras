@@ -25,7 +25,7 @@ def _filter_params(params):
          [tuple, dict, None],
          [tuple, dict, None],
          [None, [1, 3], slice(None, 2)],
-         [None, (0,), (1, 0)],
+         [None, (0,), (1,), (1, 0)],
          [False, True]))
 )
 def test_transform(in_mode, out_mode, indices, key_indices, with_batch):
