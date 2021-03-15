@@ -106,6 +106,9 @@ class _BaseExtensionsManager:
         # Initialize the writer
         self.writer.initialize(self.out)
 
+    # All properties cannot be accessed without starting extensions, because
+    # the snapshot extension must run first to restore the training state.
+
     @property
     def models(self):
         return self._models
@@ -116,18 +119,22 @@ class _BaseExtensionsManager:
 
     @property
     def elapsed_time(self):
+        # Unavailable until the initial run_iteration call
         return _get_time()-self._start_time
 
     @property
     def is_before_training(self):
+        # Extensions will start via self.iteration
         return self.iteration == 0
 
     @property
     def epoch(self):
+        # Extensions will start via self.iteration
         return self.iteration // self._iters_per_epoch
 
     @property
     def epoch_detail(self):
+        # Extensions will start via self.iteration
         return self.iteration / self._iters_per_epoch
 
     @property
