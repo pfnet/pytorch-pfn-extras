@@ -48,11 +48,12 @@ docker_build_and_push torch17 \
 WAIT_PIDS="$! ${WAIT_PIDS}"
 
 # PyTorch 1.8 + Python 3.9
+# TODO(kmaehashi) replace with the official wheel after 1.8.1 release
 docker_build_and_push torch18 \
-    --build-arg base_image="nvidia/cuda:11.0-cudnn8-devel-ubuntu18.04" \
+    --build-arg base_image="nvidia/cuda:11.1-cudnn8-devel-ubuntu18.04" \
     --build-arg python_version="3.9.2" \
-    --build-arg pip_install_torch_args="torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu110/torch_stable.html" \
-    --build-arg pip_install_dep_args="cupy-cuda110 pytorch-ignite ${TEST_PIP_PACKAGES}" \
+    --build-arg pip_install_torch_args="https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/pytorch-pfn-extras/torch/torch-1.8.0a0%2B37c1f4a-cp39-cp39-linux_x86_64.whl torchvision==0.9.* -f https://download.pytorch.org/whl/cu111/torch_stable.html" \
+    --build-arg pip_install_dep_args="cupy-cuda111 pytorch-ignite ${TEST_PIP_PACKAGES}" \
     &
 WAIT_PIDS="$! ${WAIT_PIDS}"
 
