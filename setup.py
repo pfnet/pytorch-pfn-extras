@@ -19,6 +19,6 @@ setuptools.setup(
         'test': ['pytest'],
         'onnx': ['onnx'],
     },
-    python_requires='>=3.5.0',
+    python_requires='>=3.6.0',
     packages=setuptools.find_packages(exclude=['tests']),
 )
