@@ -50,7 +50,7 @@ WAIT_PIDS="$! ${WAIT_PIDS}"
 # PyTorch 1.8 + Python 3.9
 docker_build_and_push torch18 \
     --build-arg base_image="nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04" \
-    --build-arg python_version="3.9.2" \
+    --build-arg python_version="3.8.6" \
     --build-arg pip_install_torch_args="torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu102/torch_stable.html" \
     --build-arg pip_install_dep_args="cupy-cuda102 pytorch-ignite ${TEST_PIP_PACKAGES}" \
     &
