@@ -30,6 +30,7 @@ main() {
   # Prepare docker args.
   docker_args=(
     docker run --rm --ipc=host --privileged --runtime=nvidia
+    --env CUDA_VISIBLE_DEVICES
     --volume="${SRC_ROOT}:/src"
     --workdir="/src"
   )
