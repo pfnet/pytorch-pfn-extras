@@ -9,7 +9,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get -y install \
         build-essential libssl-dev zlib1g-dev libbz2-dev \
         libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-        xz-utils tk-dev libffi-dev liblzma-dev git && \
+        xz-utils tk-dev libffi-dev liblzma-dev git cmake protobuf-compiler libprotobuf-dev && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install pyenv.
@@ -23,7 +23,9 @@ RUN pyenv install ${python_version} && \
     pyenv global ${python_version}
 
 # Install test dependencies.
-ARG pip_packages
+ARG pip_install_torch_args
+ARG pip_install_dep_args
 RUN pip install -U pip && \
-    pip install ${pip_packages} && \
+    pip install ${pip_install_torch_args} && \
+    pip install ${pip_install_dep_args} && \
     pip list
