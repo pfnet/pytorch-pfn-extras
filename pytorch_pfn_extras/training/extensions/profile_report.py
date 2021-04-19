@@ -23,16 +23,25 @@ def dump(stats, file):
 
 
 class ProfileReport(extension.Extension):
-    def __init__(self, store_keys=None, report_keys=None, trigger=(1, 'epoch'), filename=None, **kwargs):
+    def __init__(
+        self,
+        store_keys=None,
+        report_keys=None,
+        trigger=(1, "epoch"),
+        filename=None,
+        **kwargs,
+    ):
         if store_keys is None:
             self._store_keys = store_keys
         else:
-            self._store_keys = list(store_keys) + [key + ".std" for key in store_keys]
+            self._store_keys = list(store_keys) + [
+                key + ".std" for key in store_keys
+            ]
         self._report_keys = report_keys
         self._trigger = trigger_module.get_trigger(trigger)
         self._log = []
 
-        log_name = kwargs.get('log_name', 'log')
+        log_name = kwargs.get("log_name", "log")
         if filename is None:
             filename = log_name
         del log_name  # avoid accidental use
@@ -44,19 +53,25 @@ class ProfileReport(extension.Extension):
                 stats = s.make_statistics()
             # report
             if self._report_keys is not None:
-                reports = {f"time.{k}": v for k, v in stats.items() if k in self._report_keys}
+                reports = {
+                    f"time.{k}": v
+                    for k, v in stats.items()
+                    if k in self._report_keys
+                }
                 reporting.report(reports)
 
             # output the result
             if self._store_keys is not None:
-                stats = {k: v for k, v in stats.items() if k in self._store_keys}
+                stats = {
+                    k: v for k, v in stats.items() if k in self._store_keys
+                }
             stats_cpu = {}
             for name, value in stats.items():
                 stats_cpu[name] = float(value)  # copy to CPU
 
-            stats_cpu['epoch'] = manager.epoch
-            stats_cpu['iteration'] = manager.iteration
-            stats_cpu['elapsed_time'] = manager.elapsed_time
+            stats_cpu["epoch"] = manager.epoch
+            stats_cpu["iteration"] = manager.iteration
+            stats_cpu["elapsed_time"] = manager.elapsed_time
 
             # Recreate dict to fix order of logs
             out = {}
@@ -74,12 +89,12 @@ class ProfileReport(extension.Extension):
 
     def state_dict(self):
         state = {}
-        if hasattr(self._trigger, 'state_dict'):
-            state['_trigger'] = self._trigger.state_dict()
-        state['_log'] = json.dumps(self._log)
+        if hasattr(self._trigger, "state_dict"):
+            state["_trigger"] = self._trigger.state_dict()
+        state["_log"] = json.dumps(self._log)
         return state
 
     def load_state_dict(self, to_load):
-        if hasattr(self._trigger, 'load_state_dict'):
-            self._trigger.load_state_dict(to_load['_trigger'])
-        self._log = json.loads(to_load['_log'])
+        if hasattr(self._trigger, "load_state_dict"):
+            self._trigger.load_state_dict(to_load["_trigger"])
+        self._log = json.loads(to_load["_log"])
