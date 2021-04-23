@@ -2,20 +2,11 @@ import contextlib
 
 import torch
 
-try:
-    import cupy
-    _cupy_import_error = None
-except Exception as e:
-    _cupy_import_error = e
+from pytorch_pfn_extras._cupy import cupy
+from pytorch_pfn_extras._cupy import ensure_cupy
 
 
 _allocator = None
-
-
-def _ensure_cupy():
-    if _cupy_import_error is not None:
-        raise RuntimeError(
-            'CuPy is not available. Reason: \n{}'.format(_cupy_import_error))
 
 
 @contextlib.contextmanager
@@ -32,7 +23,7 @@ def stream(stream):
         return
 
     with torch.cuda.stream(stream):
-        if _cupy_import_error is None:
+        if cupy is not None:
             cupy_stream = cupy.cuda.ExternalStream(stream.cuda_stream)
             with cupy_stream:
                 yield
@@ -42,7 +33,7 @@ def stream(stream):
 
 def use_default_mempool_in_cupy():
     """Use the default memory pool in CuPy."""
-    _ensure_cupy()
+    ensure_cupy()
     cupy.cuda.set_allocator(cupy.get_default_memory_pool().malloc)
 
 
@@ -55,7 +46,7 @@ def use_torch_mempool_in_cupy():
     """
     global _allocator
 
-    _ensure_cupy()
+    ensure_cupy()
     _allocator = cupy.cuda.memory.PythonFunctionAllocator(
         _torch_alloc, _torch_free)
     cupy.cuda.set_allocator(_allocator.malloc)
