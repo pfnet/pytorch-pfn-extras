@@ -14,8 +14,16 @@ def from_ndarray(ndarray):
     supported by PyTorch.
     """
     if cupy is not None and isinstance(ndarray, cupy.ndarray):
-        return torch.utils.dlpack.from_dlpack(
-            _copy_if_negative_strides(ndarray).toDlpack())
+        pack = _copy_if_negative_strides(ndarray).toDlpack()
+        try:
+            return torch.utils.dlpack.from_dlpack(pack)
+        except Exception as e:
+            # TODO(kmaehashi): Remove this workaround once PyTorch is fixed.
+            # https://github.com/pytorch/pytorch/pull/56789
+            # This mitigates a bug above by deferring the destruction of the
+            # capsule so that users can see the exception.
+            e._dlpack = pack
+            raise
     elif isinstance(ndarray, numpy.ndarray):
         return torch.from_numpy(_copy_if_negative_strides(ndarray))
     raise TypeError(
