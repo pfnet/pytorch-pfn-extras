@@ -1,7 +1,5 @@
 import io
 
-import pytest
-
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras.training import extensions
 
