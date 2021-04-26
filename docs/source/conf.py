@@ -28,6 +28,7 @@ author = 'Preferred Networks, Inc.'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'sphinx.ext.autosummary',
     'myst_parser',
 ]
 
@@ -39,6 +40,8 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+# Autosummary
+autosummary_generate = True
 
 # -- Options for HTML output -------------------------------------------------
 
