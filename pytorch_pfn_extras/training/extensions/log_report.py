@@ -26,8 +26,9 @@ class LogWriterSaveFunc:
             log = json.dumps(target, indent=4)
         elif self._format == 'json-lines':
             if self._append:
-                target = target[-1]
-            log = '\n'.join([json.dumps(x) for x in target])
+                target = [target[-1]]
+            # Add a new line at the end for subsequent appends
+            log = '\n'.join([json.dumps(x) for x in target]) + '\n'
         elif self._format == 'yaml':
             if self._append:
                 target = [target[-1]]
