@@ -11,6 +11,8 @@ def test_run_print_report():
         {}, {}, max_epochs, iters_per_epoch=iters_per_epoch)
 
     out = io.StringIO()
+    log_report = extensions.LogReport()
+    manager.extend(log_report)
     extension = extensions.PrintReport(out=out)
     manager.extend(extension)
 
