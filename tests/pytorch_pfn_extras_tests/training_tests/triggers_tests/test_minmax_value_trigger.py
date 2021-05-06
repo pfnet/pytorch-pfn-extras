@@ -94,3 +94,16 @@ def test_resumed_trigger(
     new_trigger.load_state_dict(state)
     _test_trigger(
         manager, new_trigger, key, accuracies[resume:], expected[resume:])
+
+
+def test_trigger_not_stats():
+    key = 'main/accuracy'
+    accuracies = [0.5, 0.5, 0.4, 0.6]
+    manager = training.ExtensionsManager(
+        {}, [], 100, iters_per_epoch=1)
+    trigger = triggers.MaxValueTrigger(key, (1, 'iteration'))
+
+    for accuracy in accuracies:
+        with manager.run_iteration():
+            manager.observation = {'dummy': accuracy}
+        assert not trigger(manager)

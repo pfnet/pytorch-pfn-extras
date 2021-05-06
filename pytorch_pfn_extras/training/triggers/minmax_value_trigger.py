@@ -50,6 +50,11 @@ class BestValueTrigger:
             return False
 
         stats = summary.compute_mean()
+
+        # This is needed when using DDP as some process may not have this stat
+        if key not in stats:
+            return False
+
         value = float(stats[key])  # copy to CPU
         self._init_summary()
 
