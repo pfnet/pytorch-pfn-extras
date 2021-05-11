@@ -529,6 +529,9 @@ class TensorBoardWriter(object):
         self._writer = torch.utils.tensorboard.SummaryWriter(
             log_dir=out_dir, **kwds)
 
+    def __del__(self):
+        self.finalize()
+
     def __call__(
             self, filename, out_dir, target, *, savefun=None, append=False):
         """Sends the statistics to the TensorBoard.
@@ -554,3 +557,6 @@ class TensorBoardWriter(object):
         for key in keys:
             value = stats_cpu[key]
             self._writer.add_scalar(key, value, stats_cpu['iteration'])
+
+    def finalize(self):
+        self._writer.close()
