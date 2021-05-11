@@ -38,16 +38,20 @@ def test_thread_writer_create_worker():
     target = mock.MagicMock()
     w = writing.ThreadWriter()
     with tempfile.TemporaryDirectory() as tempd:
-        worker = w.create_worker('myfile.dat', tempd, target)
+        worker = w.create_worker('myfile.dat', tempd, target, append=False)
         assert isinstance(worker, threading.Thread)
+        w('myfile2.dat', tempd, 'test')
+        w.finalize()
 
 
 def test_process_writer_create_worker():
     target = mock.MagicMock()
     w = writing.ProcessWriter()
     with tempfile.TemporaryDirectory() as tempd:
-        worker = w.create_worker('myfile.dat', tempd, target)
+        worker = w.create_worker('myfile.dat', tempd, target, append=False)
         assert isinstance(worker, multiprocessing.Process)
+        w('myfile2.dat', tempd, 'test')
+        w.finalize()
 
 
 def test_queue_writer():
