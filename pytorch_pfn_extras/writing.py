@@ -156,7 +156,8 @@ class Writer:
 
         self._initialized = False
 
-    def __call__(self, filename, out_dir, target):
+    def __call__(self, filename, out_dir, target, *,
+                 savefun=None, append=False):
         """Invokes the actual snapshot function.
 
         This method is invoked by a
@@ -171,6 +172,12 @@ class Writer:
                 :py:attr:`ExtensionsManager.out
                  <pytorch_pfn_extras.training.ExtensionsManager.out>`.
             target (dict): Serialized object which will be saved.
+            savefun (callable): A callable that accepts a two positional
+                arguments (an object to be serialized, file path) like
+                `torch.save`.
+            append (bool): Mode used to open the file. True to use the append
+                mode, False to use the write mode (truncates the file if it
+                already exists).
         """
         raise NotImplementedError
 
@@ -182,12 +189,7 @@ class Writer:
         self.finalize()
 
     def finalize(self):
-        """Finalizes the writer.
-
-        this method is invoked at the end of the training in
-        :class:`~pytorch_pfn_extras.training.ExtensionsManager`,
-
-        """
+        """Finalizes the writer."""
         pass
 
     def save(self, filename, out_dir, target, savefun, append, **kwds):
@@ -303,7 +305,8 @@ class StandardWriter(Writer):
         self._started = False
         self._finalized = False
 
-    def __call__(self, filename, out_dir, target, *, savefun=None):
+    def __call__(self, filename, out_dir, target, *,
+                 savefun=None, append=False):
         if savefun is None:
             savefun = self._savefun
         if self._started:
@@ -311,22 +314,16 @@ class StandardWriter(Writer):
             self._started = False
         self._filename = filename
         self._worker = self.create_worker(filename, out_dir, target,
-                                          savefun=savefun, **self._kwds)
+                                          savefun=savefun, append=append,
+                                          **self._kwds)
         self._worker.start()
         self._started = True
 
-    def create_worker(self, filename, out_dir, target, savefun, **kwds):
+    def create_worker(self, filename, out_dir, target, append, **kwds):
         """Creates a worker for the snapshot.
 
         This method creates a thread or a process to take a snapshot. The
         created worker must have :meth:`start` and :meth:`join` methods.
-
-        Args:
-            filename (str): Name of the file into which the serialized target
-                is saved. It is already formated string.
-            out_dir (str): Output directory. Passed by `manager.out`.
-            target (dict): Serialized object which will be saved.
-            kwds: Keyword arguments for the ``savefun``.
 
         """
         raise NotImplementedError
@@ -352,10 +349,10 @@ class ThreadWriter(StandardWriter):
     def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
-    def create_worker(self, filename, out_dir, target, **kwds):
+    def create_worker(self, filename, out_dir, target, append, **kwds):
         return threading.Thread(
             target=self.save,
-            args=(filename, out_dir, target, self._savefun),
+            args=(filename, out_dir, target, self._savefun, append),
             kwargs=self._kwds)
 
 
@@ -377,10 +374,10 @@ class ProcessWriter(StandardWriter):
     def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
-    def create_worker(self, filename, out_dir, target, **kwds):
+    def create_worker(self, filename, out_dir, target, append, **kwds):
         return multiprocessing.Process(
             target=self.save,
-            args=(filename, out_dir, target, self._savefun),
+            args=(filename, out_dir, target, self._savefun, append),
             kwargs=self._kwds)
 
 
@@ -426,8 +423,10 @@ class QueueWriter(Writer):
         self._started = True
         self._finalized = False
 
-    def __call__(self, filename, out_dir, target, *, savefun=None):
-        self._queue.put([self._task, filename, out_dir, target, savefun])
+    def __call__(
+            self, filename, out_dir, target, *, savefun=None, append=False):
+        self._queue.put(
+            [self._task, filename, out_dir, target, savefun, append])
 
     def create_task(self, savefun):
         return SimpleWriter(savefun=savefun)
@@ -445,7 +444,8 @@ class QueueWriter(Writer):
                 q.task_done()
                 return
             else:
-                task[0](task[1], task[2], task[3], savefun=task[4])
+                task[0](
+                    task[1], task[2], task[3], savefun=task[4], append=task[5])
                 q.task_done()
 
     def finalize(self):
@@ -515,6 +515,12 @@ class TensorBoardWriter(object):
     object that is used to send the collected statistics to TensorBoard.
     A list of stats can be specified to report only the desired ones.
 
+    Args:
+        savefun: Ignored.
+        fs: Ignored.
+        out_dir: Passed as ``log_dir`` argument to SummaryWriter.
+        stats (list): List of statistic keys.
+        kwds: Passed as an additional arguments to SummaryWriter.
     """
     def __init__(
             self, savefun=None, fs=None, out_dir=None, stats=None, **kwds):
@@ -523,9 +529,20 @@ class TensorBoardWriter(object):
         self._writer = torch.utils.tensorboard.SummaryWriter(
             log_dir=out_dir, **kwds)
 
-    def __call__(self, filename, out_dir, target, *, savefun=None):
+    def __call__(
+            self, filename, out_dir, target, *, savefun=None, append=False):
+        """Sends the statistics to the TensorBoard.
+
+        Args:
+            filename: Ignored.
+            out_dir: Ignored.
+            target (dict or list): The statistics of the iteration. If given as
+                a list, only the last element (assumed to be a dict containing
+                the latest iteration statistics) is reported.
+            savefun: Ignored.
+            append: Ignored.
+        """
         stats_cpu = target
-        # we only take the last value
         if isinstance(target, list):
             stats_cpu = target[-1]
 
