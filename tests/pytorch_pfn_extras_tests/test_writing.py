@@ -16,3 +16,4 @@ def test_tensorboard_writing():
         # Check that the file was generated
         for snap in os.listdir(tempd):
             assert '_test' in snap
+        writer.finalize()
