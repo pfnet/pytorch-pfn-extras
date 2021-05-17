@@ -11,12 +11,13 @@ spshot_writers_path = 'pytorch_pfn_extras.writing'
 
 def test_simple_writer():
     target = mock.MagicMock()
-    w = writing.SimpleWriter()
-    w.save = mock.MagicMock()
+    w = writing.SimpleWriter(foo=True)
+    savefun = mock.MagicMock()
     with tempfile.TemporaryDirectory() as tempd:
-        w('myfile.dat', tempd, target)
-
-    assert w.save.call_count == 1
+        w('myfile.dat', tempd, target, savefun=savefun)
+    assert savefun.call_count == 1
+    assert savefun.call_args.args[0] == target
+    assert savefun.call_args.kwargs['foo'] is True
 
 
 def test_standard_writer():

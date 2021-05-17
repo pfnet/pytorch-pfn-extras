@@ -192,7 +192,8 @@ class Writer:
         """Finalizes the writer."""
         pass
 
-    def save(self, filename, out_dir, target, savefun, append, **kwds):
+    def save(self, filename, out_dir, target,
+             savefun, append, **savefun_kwargs):
         if self.out_dir is not None:
             out_dir = self.out_dir
         if not self._initialized:
@@ -203,7 +204,7 @@ class Writer:
         if append:
             with self.fs.open(dest, 'ab') as f:
                 # HDFS does not support overwrite
-                savefun(target, f)
+                savefun(target, f, **savefun_kwargs)
         else:
             # Some filesystems are not compatible with temp folders, etc
             # so we rely on raw temp files
@@ -214,7 +215,7 @@ class Writer:
                 bak = '{}.bak'.format(dest)
                 self.fs.rename(dest, bak)
             with self.fs.open(tmppath, 'wb') as f:
-                savefun(target, f)
+                savefun(target, f, **savefun_kwargs)
             self.fs.rename(tmppath, dest)
             if make_backup:
                 self.fs.remove(bak)
@@ -313,13 +314,15 @@ class StandardWriter(Writer):
             self._worker.join()
             self._started = False
         self._filename = filename
-        self._worker = self.create_worker(filename, out_dir, target,
-                                          savefun=savefun, append=append,
-                                          **self._kwds)
+        self._worker = self.create_worker(
+            filename, out_dir, target,
+            savefun=savefun, append=append, **self._kwds)
         self._worker.start()
         self._started = True
 
-    def create_worker(self, filename, out_dir, target, append, **kwds):
+    def create_worker(
+            self, filename, out_dir, target, *,
+            savefun=None, append=False, **savefun_kwargs):
         """Creates a worker for the snapshot.
 
         This method creates a thread or a process to take a snapshot. The
@@ -349,11 +352,13 @@ class ThreadWriter(StandardWriter):
     def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
-    def create_worker(self, filename, out_dir, target, append, **kwds):
+    def create_worker(
+            self, filename, out_dir, target, *,
+            savefun=None, append=False, **savefun_kwargs):
         return threading.Thread(
             target=self.save,
-            args=(filename, out_dir, target, self._savefun, append),
-            kwargs=self._kwds)
+            args=(filename, out_dir, target, savefun, append),
+            kwargs=savefun_kwargs)
 
 
 class ProcessWriter(StandardWriter):
@@ -374,11 +379,13 @@ class ProcessWriter(StandardWriter):
     def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
-    def create_worker(self, filename, out_dir, target, append, **kwds):
+    def create_worker(
+            self, filename, out_dir, target, *,
+            savefun=None, append=False, **savefun_kwargs):
         return multiprocessing.Process(
             target=self.save,
-            args=(filename, out_dir, target, self._savefun, append),
-            kwargs=self._kwds)
+            args=(filename, out_dir, target, savefun, append),
+            kwargs=savefun_kwargs)
 
 
 class QueueWriter(Writer):
