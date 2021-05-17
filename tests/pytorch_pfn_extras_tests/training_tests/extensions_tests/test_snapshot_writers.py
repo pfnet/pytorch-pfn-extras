@@ -17,7 +17,7 @@ def test_simple_writer():
         w('myfile.dat', tempd, target, savefun=savefun)
     assert savefun.call_count == 1
     assert savefun.call_args.args[0] == target
-    assert savefun.call_args.kwargs['foo'] == True
+    assert savefun.call_args.kwargs['foo'] is True
 
 
 def test_standard_writer():
