@@ -5,6 +5,7 @@ import queue
 import shutil
 import sys
 import threading
+from typing import Optional
 
 import torch
 
@@ -68,8 +69,11 @@ class _PosixFileSystem(object):
                        buffering, encoding, errors,
                        newline, closefd, opener)
 
-    def list(self, path_or_prefix: str = None, recursive=False):
+    def list(self, path_or_prefix: Optional[str] = None, recursive=False):
         if recursive:
+            if path_or_prefix is None:
+                raise ValueError(
+                    "'path_or_prefix' must not be None in recursive mode.")
             path_or_prefix = path_or_prefix.rstrip("/")
             # plus 1 to include the trailing slash
             prefix_end_index = len(path_or_prefix) + 1

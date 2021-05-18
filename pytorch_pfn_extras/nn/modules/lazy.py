@@ -1,4 +1,5 @@
 import inspect
+from typing import Tuple
 import warnings
 
 import torch
@@ -31,8 +32,8 @@ class LazyInitializationMixin:
 
     # Subclasses must override these fields and list names of all buffers /
     # parameters that will be initialized lazily.
-    lazy_buffer_names = ()
-    lazy_parameter_names = ()
+    lazy_buffer_names: Tuple[str, ...] = ()
+    lazy_parameter_names: Tuple[str, ...] = ()
 
     def __init__(self, *args, **kwargs):
         self._lazy_ready = False
