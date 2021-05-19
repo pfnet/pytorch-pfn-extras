@@ -125,6 +125,7 @@ def main():
     if comm_rank == 0:
         print("World size = {}".format(comm_world_size))
     print("Rank = {}, Local Rank = {}".format(comm_rank, comm_local_rank))
+    print("Device = {}".format(device))
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     dataset_root = '../data'
@@ -164,15 +165,14 @@ def main():
         **kwargs)
 
     model = Net(args.lazy)
+    model.to(device)
     if args.lazy:
         # You need to run a dummy forward to initialize parameters.
         # This should be done before passing parameter list to optimizers.
-        dummy_input = train_loader.dataset[0][0].unsqueeze(0)
+        dummy_input = train_loader.dataset[0][0].unsqueeze(0).to(device)
         model(dummy_input)
-    model.to(device)
 
-    model = ppe.nn.parallel.DistributedDataParallel(
-        model, device_ids=[comm_local_rank])
+    model = ppe.nn.parallel.DistributedDataParallel(model)
 
     optimizer = optim.SGD(
         model.parameters(), lr=args.lr, momentum=args.momentum)
