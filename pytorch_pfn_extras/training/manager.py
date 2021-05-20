@@ -265,7 +265,7 @@ class _BaseExtensionsManager:
 
         if priority is None:
             priority = getattr(
-                extension, 'priority', extension_module.PRIORITY_SNAPSHOT)
+                extension, 'priority', extension_module.PRIORITY_READER)
 
         modified_name = name
         ordinal = 0
@@ -305,7 +305,7 @@ class _BaseExtensionsManager:
                 # writer extensions are executed right away as they
                 # will report values that might be needed by other triggers
                 # i.e. trigger based on evaluator reported value
-                if entry.priority == extension_module.PRIORITY_READER:
+                if entry.priority == extension_module.PRIORITY_SNAPSHOT:
                     to_run.append(entry.extension)
                 else:
                     entry.extension(self)
