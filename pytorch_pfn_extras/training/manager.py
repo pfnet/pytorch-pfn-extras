@@ -294,9 +294,23 @@ class _BaseExtensionsManager:
             raise ValueError('extension %s not found' % name)
 
     def run_extensions(self):
+        to_run = []
         for name, entry in self.extensions:
             if entry.trigger(self):
-                entry.extension(self)
+                # Extensions that reads the state, such as snapshots
+                # are deferred until all the triggers are evaluated.
+                # If we dont do this, multiple snapshot extensions
+                # will save incorrect values for other extension triggers
+                # making them to fire again just after reloading
+                # writer extensions are executed right away as they
+                # will report values that might be needed by other triggers
+                # i.e. trigger based on evaluator reported value
+                if entry.priority == extension_module.PRIORITY_READER:
+                    to_run.append(entry.extension)
+                else:
+                    entry.extension(self)
+        for extension in to_run:
+            extension(self)
 
     def _finalize_extensions(self):
         for _, entry in self.extensions:
