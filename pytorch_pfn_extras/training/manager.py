@@ -297,14 +297,18 @@ class _BaseExtensionsManager:
         to_run = []
         for name, entry in self.extensions:
             if entry.trigger(self):
-                # Extensions that reads the state, such as snapshots
-                # are deferred until all the triggers are evaluated.
-                # If we dont do this, multiple snapshot extensions
-                # will save incorrect values for other extension triggers
-                # making them to fire again just after reloading
-                # writer extensions are executed right away as they
-                # will report values that might be needed by other triggers
-                # i.e. trigger based on evaluator reported value
+                # Execution of snapshot extensions are deferred until all the
+                # triggers are evaluated.
+                # If we don't do this, when two (or more) snapshot extensions
+                # are registered and triggers for them are stateful, the first
+                # snapshot extension will save the state of the second trigger
+                # before invoking it although it will be executed later in this
+                # iteration, making them to fire again just after resuming from
+                # the snaphsot saved by the first snapshot extension.
+                # Non-snapshot extensions are executed right away (note that
+                # the order is already sorted by the priority) as they will
+                # report values that might be needed by other triggers, i.e.,
+                # trigger based on evaluator reported value.
                 if entry.priority == extension_module.PRIORITY_SNAPSHOT:
                     to_run.append(entry.extension)
                 else:
