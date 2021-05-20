@@ -265,7 +265,7 @@ class _BaseExtensionsManager:
 
         if priority is None:
             priority = getattr(
-                extension, 'priority', extension_module.PRIORITY_READER)
+                extension, 'priority', extension_module.PRIORITY_SNAPSHOT)
 
         modified_name = name
         ordinal = 0
