@@ -113,12 +113,14 @@ def main():
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
     model = Net(args.lazy)
+    model.to(device)
     if args.lazy:
         # You need to run a dummy forward to initialize parameters.
         # This should be done before passing parameter list to optimizers.
-        dummy_input = train_loader.dataset[0][0].unsqueeze(0)
+        # The dummy input can be generated from the loader's first batch
+        # (trim off the data to batch size = 1 for performance).
+        dummy_input = train_loader.dataset[0][0].unsqueeze(0).to(device)
         model(dummy_input)
-    model.to(device)
     optimizer = optim.SGD(
         model.parameters(), lr=args.lr, momentum=args.momentum)
 
