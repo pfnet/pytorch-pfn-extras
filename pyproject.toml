@@ -1,0 +1,13 @@
+[tool.pysen]
+version = "0.9"
+
+[tool.pysen.lint]
+enable_black = false
+enable_flake8 = false
+enable_isort = false
+enable_mypy = true
+mypy_preset = "strict"
+line_length = 80
+
+[[tool.pysen.lint.mypy_targets]]
+  paths = ["pytorch_pfn_extras", "example"]
