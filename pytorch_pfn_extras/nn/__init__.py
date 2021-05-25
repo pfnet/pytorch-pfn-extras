@@ -1,6 +1,6 @@
 from pytorch_pfn_extras.nn import parallel  # NOQA
-from pytorch_pfn_extras.nn.modules.extended_sequential import (
-    ExtendedSequential,  # NOQA
+from pytorch_pfn_extras.nn.modules.extended_sequential import (  # NOQA
+    ExtendedSequential,
 )
 from pytorch_pfn_extras.nn.modules.lazy_batchnorm import LazyBatchNorm1d  # NOQA
 from pytorch_pfn_extras.nn.modules.lazy_batchnorm import LazyBatchNorm2d  # NOQA

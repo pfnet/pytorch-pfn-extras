@@ -117,7 +117,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(json.loads(config["/bar"]), pre_eval_config)
 
     def test_config_load_path(self):
-        with tempfile.TemporaryDirectory() as temp0, tempfile.TemporaryDirectory() as temp1:
+        with tempfile.TemporaryDirectory() as temp0, tempfile.TemporaryDirectory() as temp1:  # NOQA
             with open(os.path.join(temp0, "foo.json"), mode="w") as f:
                 json.dump(
                     {

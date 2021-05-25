@@ -141,8 +141,9 @@ class UninitializedParameter(torch.nn.Parameter):
         frame = inspect.currentframe()
         if frame.f_back.f_globals["__package__"].startswith("torch.optim"):
             warnings.warn(
-                """
-    Use of uninitialized lazy parameter in Optimizer has been detected.
-    Maybe you forgot to run forward before passing `module.parameters()` to the optimizer?"""
+                "Use of uninitialized lazy parameter in Optimizer "
+                "has been detected.\n"
+                "Maybe you forgot to run forward before passing "
+                "`module.parameters()` to the optimizer?"
             )  # NOQA
         return True
