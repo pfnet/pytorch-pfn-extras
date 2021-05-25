@@ -20,6 +20,5 @@ setuptools.setup(
         'onnx': ['onnx'],
     },
     python_requires='>=3.6.0',
-    package_data={'pytorch_pfn_extras': ['py.typed']},
     packages=setuptools.find_packages(exclude=['tests']),
 )
