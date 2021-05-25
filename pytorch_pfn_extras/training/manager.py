@@ -18,7 +18,7 @@ try:
     _get_time = time.perf_counter
 except AttributeError:
     if os.name == 'nt':
-        _get_time = time.clock
+        _get_time = time.clock  # type: ignore
     else:
         _get_time = time.time
 
