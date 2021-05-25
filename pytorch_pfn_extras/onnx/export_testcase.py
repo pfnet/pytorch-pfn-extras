@@ -171,7 +171,7 @@ def export_testcase(
         model, args, out_dir, *, output_grad=False, metadata=True,
         model_overwrite=True, strip_large_tensor_data=False,
         large_tensor_threshold=LARGE_TENSOR_DATA_THRESHOLD,
-        return_output=False, user_meta={}, **kwargs):
+        return_output=False, user_meta=None, **kwargs):
     """Export model and I/O tensors of the model in protobuf format.
 
     Args:
@@ -229,8 +229,8 @@ def export_testcase(
         array = tensor.detach().cpu().numpy()
         with open(f, 'wb') as fp:
             t = onnx.numpy_helper.from_array(array, name)
-            if (strip_large_tensor_data and
-                    is_large_tensor(t, large_tensor_threshold)):
+            if (strip_large_tensor_data
+                    and is_large_tensor(t, large_tensor_threshold)):
                 _strip_raw_data(t)
             fp.write(t.SerializeToString())
 
@@ -290,6 +290,9 @@ def export_testcase(
                     'Parameter `{}` does not have gradient value'.format(name))
             else:
                 write_to_pb(f, param.grad, name)
+
+    if user_meta is None:
+        user_meta = {}
 
     if metadata:
         with open(os.path.join(out_dir, 'meta.json'), 'w') as f:

@@ -71,8 +71,8 @@ def test_statistician_percentile():
     percentile_sigmas = (0., 100.)  # min, max
     statistician = (
         ppe.training.extensions.variable_statistics_plot.Statistician(
-                collect_mean=True, collect_std=True,
-                percentile_sigmas=percentile_sigmas))
+            collect_mean=True, collect_std=True,
+            percentile_sigmas=percentile_sigmas))
     stat = statistician(x, axis=None, dtype=x.dtype)
 
     for s in stat.values():

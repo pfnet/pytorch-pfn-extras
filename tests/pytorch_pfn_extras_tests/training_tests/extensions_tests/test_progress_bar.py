@@ -19,7 +19,7 @@ def test_run():
     manager.extend(extension)
 
     for epoch in range(max_epochs):
-        for batch_idx in range(iters_per_epoch):
+        for _ in range(iters_per_epoch):
             with manager.run_iteration():
                 if manager.iteration < 2:
                     continue

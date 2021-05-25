@@ -108,12 +108,17 @@ def _run(init_file, input, module, rank, args, step, device_type):
 
 
 def _launch(inputs,
-            modules=[MyModule(), MyModule()],
-            args={},
+            modules=None,
+            args=None,
             step=Steps._step,
             device_type="cpu"):
     procs = []
     with tempfile.TemporaryDirectory() as tmpdir, context.Pool(2) as pool:
+        if modules is None:
+            modules = [MyModule(), MyModule()]
+        if args is None:
+            args = {}
+
         file = os.path.join(tmpdir, "init")
         for i, (input, module) in enumerate(zip(inputs, modules)):
             p = pool.apply_async(

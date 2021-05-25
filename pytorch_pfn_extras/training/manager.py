@@ -132,7 +132,7 @@ class _BaseExtensionsManager:
     @property
     def elapsed_time(self):
         # Unavailable until the initial run_iteration call
-        return _get_time()-self._start_time
+        return _get_time() - self._start_time
 
     @property
     def is_before_training(self):
@@ -203,7 +203,7 @@ class _BaseExtensionsManager:
         # call extensions before training loop
         self.observation = {}
         with self.reporter.scope(self.observation):
-            for name, entry in self.extensions:
+            for _, entry in self.extensions:
                 if entry.call_before_training:
                     entry.extension(self)
 
@@ -295,7 +295,7 @@ class _BaseExtensionsManager:
 
     def run_extensions(self):
         to_run = []
-        for name, entry in self.extensions:
+        for _, entry in self.extensions:
             if entry.trigger(self):
                 # Execution of snapshot extensions are deferred until all the
                 # triggers are evaluated.
@@ -321,7 +321,7 @@ class _BaseExtensionsManager:
             # Some mock objects for tests give errors
             # if we use `getattr`
             try:
-                if getattr(entry.extension, 'finalize'):
+                if entry.extension.finalize:
                     entry.extension.finalize()
             except AttributeError:
                 pass

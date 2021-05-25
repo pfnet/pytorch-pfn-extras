@@ -47,8 +47,8 @@ if os.name == 'nt':
         cur_pos = csbi.dwCursorPosition
         wr = ctypes.c_ulong()
         if mode == 0:
-            num = csbi.srWindow.Right * (csbi.srWindow.Bottom -
-                                         cur_pos.Y) - cur_pos.X
+            num = csbi.srWindow.Right * (
+                csbi.srWindow.Bottom - cur_pos.Y) - cur_pos.X
             ctypes.windll.kernel32.FillConsoleOutputCharacterA(
                 whnd, ord(' '), num, cur_pos, ctypes.byref(wr))
         elif mode == 1:

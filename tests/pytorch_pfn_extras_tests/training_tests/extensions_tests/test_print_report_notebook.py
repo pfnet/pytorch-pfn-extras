@@ -24,8 +24,8 @@ def test_run_print_report_notebook():
     extension = ppe.training.extensions.PrintReportNotebook(out=out)
     manager.extend(extension)
 
-    for epoch in range(max_epochs):
-        for batch_idx in range(iters_per_epoch):
+    for _ in range(max_epochs):
+        for _ in range(iters_per_epoch):
             with manager.run_iteration():
                 # Only test it runs without fail
                 # The value is not tested now...

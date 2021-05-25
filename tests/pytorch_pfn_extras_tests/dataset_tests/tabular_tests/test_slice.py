@@ -66,10 +66,10 @@ def _filter_params(params):
         # To reduce the number of tests,
         # drop combinations of indices and keys.
         # (check only `slice[indices]` and `slice[:, keys]`)
-        if not (param['indices'] == slice(None) and
-                param['get_examples_indices'] is None) and \
-           not (param['keys'] is None and
-                param['get_examples_key_indices'] is None):
+        if (not (param['indices'] == slice(None)
+                 and param['get_examples_indices'] is None)
+                and not (param['keys'] is None
+                         and param['get_examples_key_indices'] is None)):
             continue
 
         yield param
@@ -91,9 +91,9 @@ params = _filter_params(product_dict(
             {'keys': (-1, 'a'), 'expected_keys': ('c', 'a')},
             {'keys': (), 'expected_keys': ()},
         ],
-    ) +
-    product_dict(
-        [{'mode': None}],
+    )
+    + product_dict(
+
         [
             {'keys': None, 'expected_keys': ('a',)},
             {'keys': 0, 'expected_keys': ('a',)},

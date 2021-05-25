@@ -118,7 +118,7 @@ class _Transform(_TransformBase):
                             "transform must not change its return type"
                         )
                     self._mode = dict
-                    for col_index, key_index in enumerate(t_res_idx):
+                    for _, key_index in enumerate(t_res_idx):
                         if key_index is None:
                             continue
                         key = self._keys[key_index]
@@ -202,7 +202,7 @@ class _TransformBatch(_TransformBase):
                     raise ValueError(
                         "transform_batch must not change the length of data"
                     )
-                for col_index, key_index in enumerate(t_res_idx):
+                for _, key_index in enumerate(t_res_idx):
                     if key_index is None:
                         continue
                     key = self._keys[key_index]

@@ -44,7 +44,7 @@ def _get_bn_stats_test_checkpoint(cp_type):
 
     bn = net.part1.bn1
 
-    for epoch in range(2):
+    for _ in range(2):
         x = torch.arange(2 * h * w).reshape((2, 1, h, w)).float()
 
         opt.zero_grad()

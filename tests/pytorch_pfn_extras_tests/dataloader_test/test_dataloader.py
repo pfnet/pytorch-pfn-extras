@@ -31,7 +31,7 @@ def test_data_loader_persistent():
     )
     dataset.start = 0
     for i in range(10):
-        for x in dataloader:
+        for _ in dataloader:
             pass
         # Changing the start value here doesn't have any effect in the dataset
         # cached by the workers. since they are not recreated between epochs

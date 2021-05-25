@@ -104,7 +104,7 @@ def test_distributed_snapshot(path):
 
     trainer = get_trainer(path)
     trainer.extend(snapshot, trigger=(1, 'iteration'), priority=2)
-    for i in range(1):
+    for _ in range(1):
         with trainer.run_iteration():
             pass
     assert 1 == trainer.iteration

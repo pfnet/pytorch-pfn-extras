@@ -102,7 +102,7 @@ class LazyInitializationMixin:
             if key in state_dict:
                 # The model was serialized after initialization.
                 self.register_parameter(
-                     name, torch.nn.Parameter(state_dict[key]))
+                    name, torch.nn.Parameter(state_dict[key]))
             else:
                 # The model was serialized before initialization.
                 param = UninitializedParameter()

@@ -150,7 +150,7 @@ class TestFromData:
 
     def test_tuple_array_callable_unary(self):
         dataset = tabular.from_data(
-             (np.arange(10), ('key_b', lambda i: i * i)))
+            (np.arange(10), ('key_b', lambda i: i * i)))
 
         assert isinstance(dataset, ppe.dataset.TabularDataset)
         assert len(dataset) == 10
