@@ -20,13 +20,13 @@ def _filter_params(params):
 
 
 @pytest.mark.parametrize(
-     'in_mode, out_mode, indices, key_indices, with_batch',
-     _filter_params(itertools.product(
-         [tuple, dict, None],
-         [tuple, dict, None],
-         [None, [1, 3], slice(None, 2)],
-         [None, (0,), (1,), (1, 0)],
-         [False, True]))
+    'in_mode, out_mode, indices, key_indices, with_batch',
+    _filter_params(itertools.product(
+        [tuple, dict, None],
+        [tuple, dict, None],
+        [None, [1, 3], slice(None, 2)],
+        [None, (0,), (1,), (1, 0)],
+        [False, True]))
 )
 def test_transform(in_mode, out_mode, indices, key_indices, with_batch):
     dataset = dummy_dataset.DummyDataset(

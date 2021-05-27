@@ -28,7 +28,7 @@ def _patch_bn_momentum(module):
             # Set momentum so that two forward passes will produce the same
             # EMA as one forward pass.
             module.momentum = 1 - (1 - module.momentum) ** 0.5
-        for name, child in module.named_children():
+        for _, child in module.named_children():
             _patch_bn_momentum(child)
     module._bn_momentum_patched = True
 

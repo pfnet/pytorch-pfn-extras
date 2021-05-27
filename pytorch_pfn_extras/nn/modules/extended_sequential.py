@@ -17,8 +17,8 @@ def _reset_parameters(model):
         elif hasattr(model, '_reset_parameters'):
             model._reset_parameters()
         else:
-            if (len(list(model.parameters())) != 0 or
-                    len(list(model.buffers())) != 0):
+            if (len(list(model.parameters())) != 0
+                    or len(list(model.buffers())) != 0):
                 warnings.warn('Cannot reset the parameters of module {}. '
                               'Consider adding `reset_parameters` or '
                               '`_reset_parameters` '

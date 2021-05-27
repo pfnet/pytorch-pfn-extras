@@ -62,7 +62,7 @@ def test_call():
 def test_savefun_and_writer_exclusive():
     # savefun and writer arguments cannot be specified together.
     def savefun(*args, **kwargs):
-        assert False
+        pytest.fail('never reach')
     writer = writing.SimpleWriter()
     with pytest.raises(TypeError):
         extensions.snapshot(savefun=savefun, writer=writer)
@@ -241,7 +241,7 @@ def test_find_latest_snapshot(fmt, path):
     'snapshot_iter_{}.{}',
 ])
 def test_find_snapshot_files2(fmt, path):
-    files = (fmt.format(i*10, j*10) for i, j
+    files = (fmt.format(i * 10, j * 10) for i, j
              in itertools.product(range(0, 10), range(0, 10)))
     noise = ('tmpsnapshot_iter_{}.{}'.format(i, j)
              for i, j in zip(range(10, 304), range(10, 200)))
@@ -253,7 +253,7 @@ def test_find_snapshot_files2(fmt, path):
     writer = ppe.writing.SimpleWriter()
     snapshot_files = _find_snapshot_files(fmt, path, writer.fs)
 
-    expected = [fmt.format(i*10, j*10)
+    expected = [fmt.format(i * 10, j * 10)
                 for i, j in itertools.product(range(0, 10), range(0, 10))]
 
     timestamps, snapshot_files = zip(*snapshot_files)
@@ -282,8 +282,8 @@ def test_find_stale_snapshot(length_retain, path):
 
     writer = ppe.writing.SimpleWriter()
     stale = list(_find_stale_snapshots(fmt, path, retain, writer.fs))
-    assert max(length-retain, 0) == len(stale)
-    expected = [fmt.format(i) for i in range(0, max(length-retain, 0))]
+    assert max(length - retain, 0) == len(stale)
+    expected = [fmt.format(i) for i in range(0, max(length - retain, 0))]
     assert expected == stale
 
 
@@ -375,7 +375,7 @@ def test_snapshot_autoload_twice(path):
         epoch_indices = []
         while not manager.stop_trigger:
             epoch_indices.append(manager.epoch)
-            for it in range(iters_per_epoch):
+            for _ in range(iters_per_epoch):
                 with manager.run_iteration():
                     time.sleep(0.01)
         return epoch_indices

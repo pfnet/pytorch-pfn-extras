@@ -49,8 +49,8 @@ class _ApexWrapper:
 
         dtype = src[0].dtype
         device = src[0].device
-        if (dtype == torch.float or dtype == torch.float16 or
-                dtype == torch.float64) and device.type == "cuda":
+        if (dtype == torch.float or dtype == torch.float16
+                or dtype == torch.float64) and device.type == "cuda":
             self._multi_tensor_scale_apex(src, dst, scale)
         else:
             self._multi_tensor_scale(src, dst, scale)

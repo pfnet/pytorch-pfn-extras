@@ -20,7 +20,7 @@ class Net(nn.Module):
         else:
             self.conv1 = nn.Conv2d(1, 20, 5, 1)
             self.conv2 = nn.Conv2d(20, 50, 5, 1)
-            self.fc1 = nn.Linear(4*4*50, 500)
+            self.fc1 = nn.Linear(4 * 4 * 50, 500)
             self.fc2 = nn.Linear(500, 10)
 
     def forward(self, x):
@@ -37,7 +37,7 @@ class Net(nn.Module):
 def train(manager, args, model, device, train_loader):
     while not manager.stop_trigger:
         model.train()
-        for batch_idx, (data, target) in enumerate(train_loader):
+        for _, (data, target) in enumerate(train_loader):
             with manager.run_iteration(step_optimizers=['main']):
                 data, target = data.to(device), target.to(device)
                 output = model(data)
@@ -61,7 +61,7 @@ def test(args, model, device, data, target):
     ppe.reporting.report({'val/loss': test_loss})
     pred = output.argmax(dim=1, keepdim=True)
     correct += pred.eq(target.view_as(pred)).sum().item()
-    ppe.reporting.report({'val/acc': correct/len(data)})
+    ppe.reporting.report({'val/acc': correct / len(data)})
 
 
 def main():
@@ -107,9 +107,9 @@ def main():
         batch_size=args.batch_size, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../data', train=False, transform=transforms.Compose([
-                           transforms.ToTensor(),
-                           transforms.Normalize((0.1307,), (0.3081,))
-                       ])),
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])),
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
     model = Net(args.lazy)

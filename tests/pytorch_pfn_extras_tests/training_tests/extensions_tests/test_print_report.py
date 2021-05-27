@@ -16,8 +16,8 @@ def test_run_print_report():
     extension = extensions.PrintReport(out=out)
     manager.extend(extension)
 
-    for epoch in range(max_epochs):
-        for batch_idx in range(iters_per_epoch):
+    for _ in range(max_epochs):
+        for _ in range(iters_per_epoch):
             with manager.run_iteration():
                 pass
         assert "epoch       elapsed_time" in out.getvalue()

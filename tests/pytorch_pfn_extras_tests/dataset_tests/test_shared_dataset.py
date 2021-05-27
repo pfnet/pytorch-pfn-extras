@@ -28,7 +28,7 @@ def test_empty_shared_dataset():
 def test_shared_dataset():
     dataset = DummySharedDataset()
     dataloader = torch.utils.data.DataLoader(dataset, num_workers=0)
-    for x in dataloader:
+    for _ in dataloader:
         pass
     for i in range(100):
         assert dataset.is_cached(i)

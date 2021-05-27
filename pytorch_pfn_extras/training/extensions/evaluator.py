@@ -252,14 +252,14 @@ class IterationStatus:
 
     @property
     def epoch_detail(self):
-        return self.current_position/self._size
+        return self.current_position / self._size
 
 
 class _IteratorProgressBar(util.ProgressBar):
 
     def __init__(self, iterator, bar_length=50, out=None):
-        if not (hasattr(iterator, 'current_position') and
-                hasattr(iterator, 'epoch_detail')):
+        if not (hasattr(iterator, 'current_position')
+                and hasattr(iterator, 'epoch_detail')):
             raise TypeError('Iterator must have the following attributes '
                             'to enable a progress bar: '
                             'current_position, epoch_detail')

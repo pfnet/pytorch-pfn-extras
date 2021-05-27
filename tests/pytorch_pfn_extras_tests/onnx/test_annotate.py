@@ -228,7 +228,7 @@ def test_scoped_anchor():
     # node is expected computational order by ONNX spec
     named_nodes = OrderedDict()
     previous_node = None
-    for i, node in enumerate(actual_onnx.graph.node):
+    for _, node in enumerate(actual_onnx.graph.node):
         if previous_node is not None:
             named_nodes[previous_node.name] += (node,)
         named_nodes[node.name] = node, previous_node
@@ -302,7 +302,7 @@ def test_scoped_anchor_multiple_inout():
     # node is expected computational order by ONNX spec
     named_nodes = OrderedDict()
     previous_node = None
-    for i, node in enumerate(actual_onnx.graph.node):
+    for _, node in enumerate(actual_onnx.graph.node):
         if previous_node is not None:
             named_nodes[previous_node.name] += (node,)
         named_nodes[node.name] = node, previous_node

@@ -11,23 +11,23 @@ mode_a = [tuple, dict, None]
 mode_b = [tuple, dict, None]
 return_array = [True, False]
 parameter_set = [
-        {'indices': None,
-         'expected_indices_a': None,
-         'expected_indices_b': None},
-        {'indices': [3, 1, 4, 12, 14, 13, 7, 5],
-         'expected_indices_a': [3, 1, 4, 7, 5],
-         'expected_indices_b': [2, 4, 3]},
-        {'indices': [3, 1, 4],
-         'expected_indices_a': [3, 1, 4]},
-        {'indices': slice(13, 6, -2),
-         'expected_indices_a': slice(9, 6, -2),
-         'expected_indices_b': slice(3, None, -2)},
-        {'indices': slice(9, None, -2),
-         'expected_indices_a': slice(9, None, -2)},
-        {'indices': [1, 2, 1],
-         'expected_indices_a': [1, 2, 1]},
-        {'indices': []},
-    ]
+    {'indices': None,
+     'expected_indices_a': None,
+     'expected_indices_b': None},
+    {'indices': [3, 1, 4, 12, 14, 13, 7, 5],
+     'expected_indices_a': [3, 1, 4, 7, 5],
+     'expected_indices_b': [2, 4, 3]},
+    {'indices': [3, 1, 4],
+     'expected_indices_a': [3, 1, 4]},
+    {'indices': slice(13, 6, -2),
+     'expected_indices_a': slice(9, 6, -2),
+     'expected_indices_b': slice(3, None, -2)},
+    {'indices': slice(9, None, -2),
+     'expected_indices_a': slice(9, None, -2)},
+    {'indices': [1, 2, 1],
+     'expected_indices_a': [1, 2, 1]},
+    {'indices': []},
+]
 
 
 @pytest.mark.parametrize(

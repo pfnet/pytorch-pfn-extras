@@ -47,7 +47,7 @@ class _AnnotationInit(object):
     def _edit_attr(self, node, found_idx):
         start_idx = found_idx + self.len_wrap_func_name
         next_ub_idx = node.doc_string[start_idx:].find('_')
-        tracked_id = node.doc_string[start_idx:start_idx+next_ub_idx]
+        tracked_id = node.doc_string[start_idx:start_idx + next_ub_idx]
         assert tracked_id.isdigit()
 
         attrs = [onnx.helper.make_attribute(k, v) for k, v in
@@ -102,7 +102,7 @@ class _AnnotationInit(object):
 
         start_idx = found_idx + self.len_anchor_func_name
         end_idx = node.doc_string[start_idx:].find('__')
-        track_info = node.doc_string[start_idx:start_idx+end_idx].split('_')
+        track_info = node.doc_string[start_idx:start_idx + end_idx].split('_')
         assert len(track_info) == 3
         start_end, tracked_id, node_num = track_info
 
@@ -253,7 +253,7 @@ def apply_annotation(fn, *args, **attrs):
 
 class _Anchor(_Annotation):
 
-    def __init__(self,  **attrs):
+    def __init__(self, **attrs):
         super(_Anchor, self).__init__(**attrs)
         self.called_count = -1
         self.started = False

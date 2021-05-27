@@ -46,7 +46,7 @@ def test_output(format, append):
             filename='out', format=format, append=append)
         manager.extend(log_report)
         for epoch_idx in range(max_epochs):
-            for batch_idx in range(iters_per_epoch):
+            for _ in range(iters_per_epoch):
                 with manager.run_iteration():
                     pass
             with open(os.path.join(tmpdir, 'out')) as f:
@@ -79,8 +79,8 @@ def test_tensorboard_writer():
             {}, {}, max_epochs=max_epochs, iters_per_epoch=iters_per_epoch,
             out_dir=tmpdir)
         manager.extend(log_report)
-        for epoch_idx in range(max_epochs):
-            for batch_idx in range(iters_per_epoch):
+        for _ in range(max_epochs):
+            for _ in range(iters_per_epoch):
                 with manager.run_iteration():
                     pass
         writer.finalize()

@@ -158,7 +158,7 @@ def test_extensions_manager_state_dict():
         _StateDictExtension(
             state_dict=extension_state_dict), name='extension_name')
 
-    for it in range(passed_iteration):
+    for _ in range(passed_iteration):
         with manager.run_iteration():
             pass
 

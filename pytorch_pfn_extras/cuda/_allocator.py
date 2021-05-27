@@ -61,7 +61,7 @@ def _torch_alloc(size, device_id):
             ' Use `pytorch_pfn_extras.cuda.stream` instead of'
             ' `torch.cuda.stream`.')
     return torch.cuda.caching_allocator_alloc(
-            size, device_id, torch_stream_ptr)
+        size, device_id, torch_stream_ptr)
 
 
 def _torch_free(mem_ptr, device_id):
