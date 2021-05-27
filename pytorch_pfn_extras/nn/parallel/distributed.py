@@ -1,15 +1,14 @@
 import logging
-
-from contextlib import contextmanager
+import threading
 from collections import OrderedDict
+from contextlib import contextmanager
 
 import torch
-from torch import nn
 from torch import distributed as dist
-from torch.utils import hooks
+from torch import nn
 from torch.autograd import Variable
 from torch.autograd.profiler import record_function
-import threading
+from torch.utils import hooks
 
 logger = logging.getLogger(__name__)
 
@@ -21,25 +20,30 @@ class _ApexWrapper:
     not install apex.
     This class provides fallback functions to handle such cases.
     """
+
     def __init__(self):
         try:
             import apex_C
+
             self.flatten = apex_C.flatten
             self.unflatten = apex_C.unflatten
         except ImportError:
             logger.warning(
                 "fail to import apex_C: "
-                "apex was not installed or installed without --cpp_ext.")
+                "apex was not installed or installed without --cpp_ext."
+            )
             self.flatten = torch._utils._flatten_dense_tensors
             self.unflatten = torch._utils._unflatten_dense_tensors
 
         try:
             import amp_C
+
             self._amp_C_multi_tensor_scale = amp_C.multi_tensor_scale
         except ImportError:
             logger.warning(
                 "fail to import amp_C: "
-                "apex was not installed or installed without --cpp_ext.")
+                "apex was not installed or installed without --cpp_ext."
+            )
             self._amp_C_multi_tensor_scale = None
 
     def multi_tensor_scale(self, src, dst, scale):
@@ -49,16 +53,18 @@ class _ApexWrapper:
 
         dtype = src[0].dtype
         device = src[0].device
-        if (dtype == torch.float or dtype == torch.float16
-                or dtype == torch.float64) and device.type == "cuda":
+        if (
+            dtype == torch.float
+            or dtype == torch.float16
+            or dtype == torch.float64
+        ) and device.type == "cuda":
             self._multi_tensor_scale_apex(src, dst, scale)
         else:
             self._multi_tensor_scale(src, dst, scale)
 
     def _multi_tensor_scale_apex(self, src, dst, scale):
         overflow_buf = torch.tensor([0], device=src[0].device).int()
-        self._amp_C_multi_tensor_scale(65536, overflow_buf, [src, dst],
-                                       scale)
+        self._amp_C_multi_tensor_scale(65536, overflow_buf, [src, dst], scale)
 
     def _multi_tensor_scale(self, src, dst, scale):
         with torch.no_grad():
@@ -83,8 +89,9 @@ def _reduce(values, group):
     size = sum([v.numel() for v in values])
 
     # flatten values to improve the runtime perfomance of all-reduce
-    coalesced = torch.empty(size, device=values[0].device,
-                            dtype=values[0].dtype)
+    coalesced = torch.empty(
+        size, device=values[0].device, dtype=values[0].dtype
+    )
     coalesced_views = get_apex_wrapper().unflatten(coalesced, values)
     get_apex_wrapper().multi_tensor_scale(values, coalesced_views, 1.0)
 
@@ -93,8 +100,7 @@ def _reduce(values, group):
 
     # unflatten values
     get_apex_wrapper().multi_tensor_scale(
-        coalesced_views, values,
-        1.0 / dist.get_world_size(group)
+        coalesced_views, values, 1.0 / dist.get_world_size(group)
     )
 
 
@@ -104,8 +110,7 @@ def _broadcast(values, group):
         with record_function("torch.distributed.broadcast"):
             dist.broadcast(coalesced, 0, group=group)
         get_apex_wrapper().multi_tensor_scale(
-            get_apex_wrapper().unflatten(coalesced, values),
-            values, 1.0
+            get_apex_wrapper().unflatten(coalesced, values), values, 1.0
         )
 
 
@@ -143,17 +148,25 @@ class DistributedDataParallel(nn.Module):
         broadcast_function: Broadcast function
     """
 
-    _unused_parameters = ["device_ids", "output_device", "dim",
-                          "find_unused_parameters", "check_reduction",
-                          "gradient_as_bucket_view"]
+    _unused_parameters = [
+        "device_ids",
+        "output_device",
+        "dim",
+        "find_unused_parameters",
+        "check_reduction",
+        "gradient_as_bucket_view",
+    ]
 
-    def __init__(self, module,
-                 broadcast_buffers=True,
-                 negotiate_grads=True,
-                 process_group=None,
-                 reduce_function=None,
-                 broadcast_function=None,
-                 **kwargs):
+    def __init__(
+        self,
+        module,
+        broadcast_buffers=True,
+        negotiate_grads=True,
+        process_group=None,
+        reduce_function=None,
+        broadcast_function=None,
+        **kwargs,
+    ):
         super().__init__()
 
         """
@@ -193,9 +206,9 @@ class DistributedDataParallel(nn.Module):
         # synchronize initial parameters and buffers
         params = dict(self.named_parameters())
         buffers = dict(self.named_buffers())
-        values = \
-            [params[name] for name in self._sorted_param_keys] + \
-            [buffers[name] for name in self._sorted_buffer_keys]
+        values = [params[name] for name in self._sorted_param_keys] + [
+            buffers[name] for name in self._sorted_buffer_keys
+        ]
         if dist.is_initialized():
             groups = _group_by_type(values)
             for group in groups:
@@ -208,8 +221,7 @@ class DistributedDataParallel(nn.Module):
 
     @contextmanager
     def no_sync(self):
-        """A context manager to disable synchronization after backward
-        """
+        """A context manager to disable synchronization after backward"""
         prev = self._require_sync
         self._require_sync = False
         try:
@@ -248,31 +260,39 @@ class DistributedDataParallel(nn.Module):
                 hook(self)
 
             with record_function(
-                    "ppe.nn.parallel.DistributedDataParallel.synchronize"):
+                "ppe.nn.parallel.DistributedDataParallel.synchronize"
+            ):
                 params = dict(self.named_parameters())
                 if self._negotiate_grads:
                     # find parameters that have gradients
                     has_grads = torch.tensor(
-                        [params[name].grad is not None
-                         for name in self._sorted_param_keys],
-                        device=self._device
+                        [
+                            params[name].grad is not None
+                            for name in self._sorted_param_keys
+                        ],
+                        device=self._device,
                     )
 
                     # cast to long because bool may not be used in all_reduce
                     has_grads = has_grads.long()
                     dist.all_reduce(has_grads, op=dist.ReduceOp.MAX)
 
-                    for name, has_grad in zip(self._sorted_param_keys,
-                                              has_grads.bool().cpu()):
+                    for name, has_grad in zip(
+                        self._sorted_param_keys, has_grads.bool().cpu()
+                    ):
                         # create zero tensor as a gradient if a parameter
                         # does not have the gradient and other processes
                         # require to synchronize this parameter.
                         if has_grad and params[name].grad is None:
-                            params[name].grad = \
-                                torch.zeros_like(params[name].data)
+                            params[name].grad = torch.zeros_like(
+                                params[name].data
+                            )
 
-                grads = [params[name].grad for name in self._sorted_param_keys
-                         if params[name].grad is not None]
+                grads = [
+                    params[name].grad
+                    for name in self._sorted_param_keys
+                    if params[name].grad is not None
+                ]
                 groups = _group_by_type(grads)
                 for group in groups:
                     self._reduce_function(group, self._process_group)
@@ -305,6 +325,7 @@ class DistributedDataParallel(nn.Module):
         if isinstance(obj, list) and len(obj) > 0:
             return [self._input_to_device(x) for x in obj]
         if isinstance(obj, dict) and len(obj) > 0:
-            return {key: self._input_to_device(value)
-                    for key, value in obj.items()}
+            return {
+                key: self._input_to_device(value) for key, value in obj.items()
+            }
         return obj

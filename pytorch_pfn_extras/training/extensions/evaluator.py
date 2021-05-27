@@ -72,23 +72,25 @@ class Evaluator(extension.Extension):
         eval_func: Evaluation function called at each iteration.
 
     """
-    trigger = 1, 'epoch'
-    default_name = 'validation'
+
+    trigger = 1, "epoch"
+    default_name = "validation"
     priority = extension.PRIORITY_WRITER
 
     name = None
 
     def __init__(
-            self, iterator, target, eval_hook=None, eval_func=None, **kwargs):
-        progress_bar = kwargs.get('progress_bar', False)
-        metrics = kwargs.get('metrics', [])
+        self, iterator, target, eval_hook=None, eval_func=None, **kwargs
+    ):
+        progress_bar = kwargs.get("progress_bar", False)
+        metrics = kwargs.get("metrics", [])
 
         if isinstance(iterator, torch.utils.data.DataLoader):
-            iterator = {'main': iterator}
+            iterator = {"main": iterator}
         self._iterators = iterator
 
         if isinstance(target, torch.nn.Module):
-            target = {'main': target}
+            target = {"main": target}
         self._targets = target
 
         self.eval_hook = eval_hook
@@ -100,7 +102,7 @@ class Evaluator(extension.Extension):
         if self._eval_func:
             func = self._eval_func
         else:
-            func = self._targets['main']
+            func = self._targets["main"]
         return func(*args, **kwargs)
 
     def get_iterator(self, name):
@@ -155,13 +157,12 @@ class Evaluator(extension.Extension):
         # set up a reporter
         reporter = reporting.Reporter()
         if self.name is not None:
-            prefix = self.name + '/'
+            prefix = self.name + "/"
         else:
-            prefix = ''
+            prefix = ""
         for name, target in self._targets.items():
             reporter.add_observer(prefix + name, target)
-            reporter.add_observers(prefix + name,
-                                   target.named_modules())
+            reporter.add_observers(prefix + name, target.named_modules())
 
         with reporter:
             with torch.no_grad():
@@ -184,7 +185,7 @@ class Evaluator(extension.Extension):
             :func:`~pytorch_pfn_extras.report` without specifying any observer.
 
         """
-        iterator = self._iterators['main']
+        iterator = self._iterators["main"]
 
         if self.eval_hook:
             self.eval_hook(self)
@@ -256,13 +257,16 @@ class IterationStatus:
 
 
 class _IteratorProgressBar(util.ProgressBar):
-
     def __init__(self, iterator, bar_length=50, out=None):
-        if not (hasattr(iterator, 'current_position')
-                and hasattr(iterator, 'epoch_detail')):
-            raise TypeError('Iterator must have the following attributes '
-                            'to enable a progress bar: '
-                            'current_position, epoch_detail')
+        if not (
+            hasattr(iterator, "current_position")
+            and hasattr(iterator, "epoch_detail")
+        ):
+            raise TypeError(
+                "Iterator must have the following attributes "
+                "to enable a progress bar: "
+                "current_position, epoch_detail"
+            )
         self._iterator = iterator
         self._bar_length = bar_length
 
@@ -271,26 +275,32 @@ class _IteratorProgressBar(util.ProgressBar):
     def get_lines(self):
         iteration = self._iterator.current_position
         epoch_detail = self._iterator.epoch_detail
-        epoch_size = getattr(self._iterator, '_epoch_size', None)
+        epoch_size = getattr(self._iterator, "_epoch_size", None)
 
         lines = []
 
         rate = epoch_detail
-        marks = '#' * int(rate * self._bar_length)
-        lines.append('validation [{}{}] {:6.2%}\n'.format(
-                     marks, '.' * (self._bar_length - len(marks)), rate))
+        marks = "#" * int(rate * self._bar_length)
+        lines.append(
+            "validation [{}{}] {:6.2%}\n".format(
+                marks, "." * (self._bar_length - len(marks)), rate
+            )
+        )
 
         if epoch_size:
-            lines.append('{:10} / {} iterations\n'
-                         .format(iteration, epoch_size))
+            lines.append(
+                "{:10} / {} iterations\n".format(iteration, epoch_size)
+            )
         else:
-            lines.append('{:10} iterations\n'.format(iteration))
+            lines.append("{:10} iterations\n".format(iteration))
 
         speed_t, speed_e = self.update_speed(iteration, epoch_detail)
         estimated_time = (1.0 - epoch_detail) / speed_e
-        lines.append('{:10.5g} iters/sec. Estimated time to finish: {}.\n'
-                     .format(speed_t,
-                             datetime.timedelta(seconds=estimated_time)))
+        lines.append(
+            "{:10.5g} iters/sec. Estimated time to finish: {}.\n".format(
+                speed_t, datetime.timedelta(seconds=estimated_time)
+            )
+        )
         return lines
 
 
@@ -311,6 +321,7 @@ class IgniteEvaluator(Evaluator):
             self.cm.__enter__()
 
         if self._progress_bar:
+
             @self.evaluator.on(Events.ITERATION_STARTED)
             def update_progress_bar(engine):
                 self.progress.current_position = engine.state.iteration
@@ -327,12 +338,11 @@ class IgniteEvaluator(Evaluator):
             with reporting.report_scope(ignite_metrics):
                 metrics = self.evaluator.state.metrics
                 for metric in metrics:
-                    reporting.report(
-                        {'val/{}'.format(metric): metrics[metric]})
+                    reporting.report({"val/{}".format(metric): metrics[metric]})
                 self.summary.add(ignite_metrics)
 
     def evaluate(self):
-        iterator = self._iterators['main']
+        iterator = self._iterators["main"]
         self.summary = reporting.DictSummary()
         self.progress = IterationStatus(len(iterator))
         if self._progress_bar:

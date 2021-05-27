@@ -1,5 +1,6 @@
-import pytorch_pfn_extras as ppe
 import torch
+
+import pytorch_pfn_extras as ppe
 
 
 class DummySharedDataset(ppe.dataset.SharedDataset):

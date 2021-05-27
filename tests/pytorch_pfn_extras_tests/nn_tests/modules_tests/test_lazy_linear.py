@@ -1,14 +1,13 @@
 import torch
+from tests.pytorch_pfn_extras_tests.nn_tests.modules_tests.test_lazy import (
+    LazyTestBase,
+)
 from torch import nn
 
 from pytorch_pfn_extras.nn import LazyLinear
 
-from tests.pytorch_pfn_extras_tests.nn_tests.modules_tests.test_lazy import \
-    LazyTestBase
-
 
 class TestLazyLinear(LazyTestBase):
-
     def get_original_module(self):
         return nn.Linear(10, 20)
 

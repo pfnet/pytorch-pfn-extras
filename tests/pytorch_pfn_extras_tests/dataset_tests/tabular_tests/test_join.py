@@ -2,9 +2,11 @@ import itertools
 
 import numpy as np
 import pytest
+from tests.pytorch_pfn_extras_tests.dataset_tests.tabular_tests import (
+    dummy_dataset,  # NOQA
+)
 
 import pytorch_pfn_extras as ppe
-from tests.pytorch_pfn_extras_tests.dataset_tests.tabular_tests import dummy_dataset  # NOQA
 
 
 def _filter_params(params):
@@ -13,20 +15,22 @@ def _filter_params(params):
         key_size += 3 if param[0] else 1
         key_size += 2 if param[1] else 1
 
-        if param[3] and \
-           any(key_size <= key_index for key_index in param[3]):
+        if param[3] and any(key_size <= key_index for key_index in param[3]):
             continue
 
         yield param
 
 
 @pytest.mark.parametrize(
-    'mode_a, mode_b, return_array, key_indices',
-    _filter_params(itertools.product(
-        [tuple, dict, None],
-        [tuple, dict, None],
-        [True, False],
-        [None, (0, 4, 1), (0, 2), (1, 0), ()]))
+    "mode_a, mode_b, return_array, key_indices",
+    _filter_params(
+        itertools.product(
+            [tuple, dict, None],
+            [tuple, dict, None],
+            [True, False],
+            [None, (0, 4, 1), (0, 2), (1, 0), ()],
+        )
+    ),
 )
 def test_join(mode_a, mode_b, return_array, key_indices):
     if key_indices is None:
@@ -37,13 +41,13 @@ def test_join(mode_a, mode_b, return_array, key_indices):
     key_size_a = 3 if mode_a else 1
 
     key_indices_a = tuple(
-        key_index
-        for key_index in key_indices
-        if key_index < key_size_a)
+        key_index for key_index in key_indices if key_index < key_size_a
+    )
     key_indices_b = tuple(
         key_index - key_size_a
         for key_index in key_indices
-        if key_size_a <= key_index)
+        if key_size_a <= key_index
+    )
 
     if key_indices_a:
         expected_key_indices_a = key_indices_a
@@ -56,16 +60,21 @@ def test_join(mode_a, mode_b, return_array, key_indices):
 
     dataset_a = dummy_dataset.DummyDataset(
         mode=mode_a,
-        return_array=return_array, callback=callback_a,
-        convert=True)
+        return_array=return_array,
+        callback=callback_a,
+        convert=True,
+    )
 
     def callback_b(indices, key_indices):
         assert indices is None
         assert key_indices == expected_key_indices_b
 
-    dataset_b = dummy_dataset. DummyDataset(
-        keys=('d', 'e'), mode=mode_b,
-        return_array=return_array, callback=callback_b)
+    dataset_b = dummy_dataset.DummyDataset(
+        keys=("d", "e"),
+        mode=mode_b,
+        return_array=return_array,
+        callback=callback_b,
+    )
 
     view = dataset_a.join(dataset_b)
     assert isinstance(view, ppe.dataset.TabularDataset)
@@ -86,12 +95,12 @@ def test_join(mode_a, mode_b, return_array, key_indices):
         else:
             assert isinstance(out, list)
 
-    assert view.convert(output) == 'converted'
+    assert view.convert(output) == "converted"
 
 
 def test_join_length():
     dataset_a = dummy_dataset.DummyDataset()
-    dataset_b = dummy_dataset.DummyDataset(size=5, keys=('d', 'e'))
+    dataset_b = dummy_dataset.DummyDataset(size=5, keys=("d", "e"))
 
     with pytest.raises(ValueError):
         dataset_a.join(dataset_b)
@@ -99,7 +108,7 @@ def test_join_length():
 
 def test_join_conflict_key():
     dataset_a = dummy_dataset.DummyDataset()
-    dataset_b = dummy_dataset.DummyDataset(keys=('a', 'd'))
+    dataset_b = dummy_dataset.DummyDataset(keys=("a", "d"))
 
     with pytest.raises(ValueError):
         dataset_a.join(dataset_b)

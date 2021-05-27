@@ -18,14 +18,17 @@ def observe_value(observation_key, target_func):
            .ExtensionsManager>` method.
 
     """
+
     @extension.make_extension(
-        trigger=(1, 'epoch'), priority=extension.PRIORITY_WRITER)
+        trigger=(1, "epoch"), priority=extension.PRIORITY_WRITER
+    )
     def _observe_value(manager):
         manager.observation[observation_key] = target_func(manager)
+
     return _observe_value
 
 
-def observe_lr(optimizer, param_group=0, observation_key='lr'):
+def observe_lr(optimizer, param_group=0, observation_key="lr"):
     """Returns an extension to record the learning rate.
 
     Args:
@@ -45,4 +48,5 @@ def observe_lr(optimizer, param_group=0, observation_key='lr'):
     """
     return observe_value(
         observation_key,
-        lambda manager: optimizer.param_groups[param_group]['lr'])
+        lambda manager: optimizer.param_groups[param_group]["lr"],
+    )

@@ -5,7 +5,7 @@ import pytorch_pfn_extras as ppe
 
 
 def test_stream():
-    cupy = pytest.importorskip('cupy')
+    cupy = pytest.importorskip("cupy")
 
     assert 0 == cupy.cuda.get_current_stream().ptr
     assert 0 == torch.cuda.current_stream().cuda_stream
@@ -40,7 +40,7 @@ def test_stream_none():
 class TestMemoryPool:
     @pytest.fixture
     def cupy(self):
-        cupy = pytest.importorskip('cupy')
+        cupy = pytest.importorskip("cupy")
         mempool = cupy.get_default_memory_pool()
         yield cupy
         mempool.free_all_blocks()
@@ -96,7 +96,8 @@ class TestMemoryPool:
         try:
             stream.use()
             with pytest.raises(
-                    RuntimeError, match='pytorch_pfn_extras.cuda.stream'):
+                RuntimeError, match="pytorch_pfn_extras.cuda.stream"
+            ):
                 arr = cupy.arange(10)
                 del arr
         finally:

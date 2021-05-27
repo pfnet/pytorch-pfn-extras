@@ -1,5 +1,4 @@
-from pytorch_pfn_extras.dataset.tabular import tabular_dataset
-from pytorch_pfn_extras.dataset.tabular import _utils
+from pytorch_pfn_extras.dataset.tabular import _utils, tabular_dataset
 
 
 class _TransformBase(tabular_dataset.TabularDataset):
@@ -10,14 +9,15 @@ class _TransformBase(tabular_dataset.TabularDataset):
         self._transforms = []
         for s, t in transforms:
             if any(k in key_set for k in s[1]):
-                raise ValueError('Transformations must be disjoint')
+                raise ValueError("Transformations must be disjoint")
             key_set.update(s[1])
             ops_idx = _utils._as_key_indices(s[0], self._dataset.keys)
             res_idx = _utils._as_key_indices(s[1], keys)
             self._transforms.append(((ops_idx, res_idx), t))
         if key_set != set(keys):
             raise ValueError(
-                'Transformations must produce only all specified keys')
+                "Transformations must produce only all specified keys"
+            )
 
         self._keys = keys
 
@@ -68,7 +68,6 @@ class _TransformBase(tabular_dataset.TabularDataset):
 
 
 class _Transform(_TransformBase):
-
     def get_examples(self, indices, key_indices):
         if key_indices is None:
             key_indices = range(len(self._keys))
@@ -92,9 +91,7 @@ class _Transform(_TransformBase):
                     out_example = transform(*inputs)
                 elif self._dataset.mode is dict:
                     keys = [self._dataset.keys[i] for i in ops_idx]
-                    out_example = transform(
-                        **dict(zip(keys, inputs))
-                    )
+                    out_example = transform(**dict(zip(keys, inputs)))
                 elif self._dataset.mode is None:
                     out_example = transform(*inputs)
                 if isinstance(out_example, tuple):
@@ -111,7 +108,8 @@ class _Transform(_TransformBase):
                         # we are slicing the outputs using key_indices
                         # the result key index needs to be recalculated
                         out_examples[key_indices.index(key_index)].append(
-                            out_example[col_index])
+                            out_example[col_index]
+                        )
                 elif isinstance(out_example, dict):
                     if hasattr(self, "_mode") and self._mode is not dict:
                         raise ValueError(
@@ -136,7 +134,8 @@ class _Transform(_TransformBase):
                         if key_index is None:
                             continue
                         out_examples[key_indices.index(key_index)].append(
-                            out_example[col_index])
+                            out_example[col_index]
+                        )
 
         return out_examples
 
@@ -145,7 +144,6 @@ class _Transform(_TransformBase):
 
 
 class _TransformBatch(_TransformBase):
-
     def get_examples(self, indices, key_indices):
         if indices is None:
             len_ = len(self)
@@ -167,9 +165,7 @@ class _TransformBatch(_TransformBase):
                 out_example = transform(*inputs)
             elif self._dataset.mode is dict:
                 keys = [self._dataset.keys[i] for i in ops_idx]
-                out_example = transform(
-                    **dict(zip(keys, inputs))
-                )
+                out_example = transform(**dict(zip(keys, inputs)))
             elif self._dataset.mode is None:
                 out_example = transform(*inputs)
 
@@ -190,8 +186,9 @@ class _TransformBatch(_TransformBase):
                     # all the outputs are covered this works but when
                     # we are slicing the outputs using key_indices
                     # the result key index needs to be recalculated
-                    out_examples[key_indices.index(key_index)] = (
-                        out_example[col_index])
+                    out_examples[key_indices.index(key_index)] = out_example[
+                        col_index
+                    ]
             elif isinstance(out_example, dict):
                 if hasattr(self, "_mode") and self._mode is not dict:
                     raise ValueError(
@@ -206,8 +203,9 @@ class _TransformBatch(_TransformBase):
                     if key_index is None:
                         continue
                     key = self._keys[key_index]
-                    out_examples[key_indices.index(key_index)] = (
-                        out_example[key])
+                    out_examples[key_indices.index(key_index)] = out_example[
+                        key
+                    ]
             else:
                 if hasattr(self, "_mode") and self._mode is not None:
                     raise ValueError(
@@ -222,6 +220,7 @@ class _TransformBatch(_TransformBase):
                 for col_index, key_index in enumerate(t_res_idx):
                     if key_index is None:
                         continue
-                    out_examples[key_indices.index(key_index)] = (
-                        out_example[col_index])
+                    out_examples[key_indices.index(key_index)] = out_example[
+                        col_index
+                    ]
         return tuple(out_examples)

@@ -1,14 +1,19 @@
-import torch
-import random
 import os
-from collections import namedtuple
 import queue
+import random
+from collections import namedtuple
+
+import torch
 from torch._utils import ExceptionWrapper
-from torch.utils.data._utils import signal_handling, MP_STATUS_CHECK_INTERVAL, IS_WINDOWS  # NOQA
+from torch.utils.data._utils import (  # NOQA
+    IS_WINDOWS,
+    MP_STATUS_CHECK_INTERVAL,
+    signal_handling,
+)
 
 if IS_WINDOWS:
     import ctypes
-    from ctypes.wintypes import DWORD, BOOL, HANDLE
+    from ctypes.wintypes import BOOL, DWORD, HANDLE
 
     class ManagerWatchdog(object):
         def __init__(self):

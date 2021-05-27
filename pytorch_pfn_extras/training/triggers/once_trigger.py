@@ -32,8 +32,8 @@ class OnceTrigger:
         return fire
 
     def state_dict(self):
-        state = {'_flag_first': self._flag_first}
+        state = {"_flag_first": self._flag_first}
         return state
 
     def load_state_dict(self, to_load):
-        self._flag_first = to_load['_flag_first']
+        self._flag_first = to_load["_flag_first"]

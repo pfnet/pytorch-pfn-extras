@@ -12,7 +12,7 @@ _available = None
 
 def matplotlib_savefun(target, file_o):
     fig, leg, plt = target
-    fig.savefig(file_o, bbox_extra_artists=(leg,), bbox_inches='tight')
+    fig.savefig(file_o, bbox_extra_artists=(leg,), bbox_inches="tight")
     plt.close()
 
 
@@ -20,6 +20,7 @@ def _try_import_matplotlib():
     global matplotlib, _available
     try:
         import matplotlib  # NOQA
+
         _available = True
     except (ImportError, TypeError):
         _available = False
@@ -30,10 +31,12 @@ def _check_available():
         _try_import_matplotlib()
 
     if not _available:
-        warnings.warn('matplotlib is not installed on your environment, '
-                      'so nothing will be plotted at this time. '
-                      'Please install matplotlib to plot figures.\n\n'
-                      '  $ pip install matplotlib\n')
+        warnings.warn(
+            "matplotlib is not installed on your environment, "
+            "so nothing will be plotted at this time. "
+            "Please install matplotlib to plot figures.\n\n"
+            "  $ pip install matplotlib\n"
+        )
 
 
 class PlotReport(extension.Extension):
@@ -110,11 +113,19 @@ filename='plot.png', marker='x', grid=True)
 
     """
 
-    def __init__(self, y_keys, x_key='iteration', trigger=(1, 'epoch'),
-                 postprocess=None, filename=None, marker='x',
-                 grid=True, **kwargs):
+    def __init__(
+        self,
+        y_keys,
+        x_key="iteration",
+        trigger=(1, "epoch"),
+        postprocess=None,
+        filename=None,
+        marker="x",
+        grid=True,
+        **kwargs,
+    ):
 
-        file_name = kwargs.get('file_name', 'plot.png')
+        file_name = kwargs.get("file_name", "plot.png")
         if filename is None:
             filename = file_name
         del file_name  # avoid accidental use
@@ -133,7 +144,7 @@ filename='plot.png', marker='x', grid=True)
         self._postprocess = postprocess
         self._init_summary()
         self._data = {k: [] for k in y_keys}
-        self._writer = kwargs.get('writer', None)
+        self._writer = kwargs.get("writer", None)
 
     @staticmethod
     def available():
@@ -165,8 +176,8 @@ filename='plot.png', marker='x', grid=True)
             for name, value in stats.items():
                 stats_cpu[name] = float(value)  # copy to CPU
 
-            stats_cpu['epoch'] = manager.epoch
-            stats_cpu['iteration'] = manager.iteration
+            stats_cpu["epoch"] = manager.epoch
+            stats_cpu["iteration"] = manager.iteration
             x = stats_cpu[self._x_key]
             data = self._data
 
@@ -192,18 +203,23 @@ filename='plot.png', marker='x', grid=True)
                 if self._postprocess is not None:
                     self._postprocess(f, a, summary)
                 leg = a.legend(
-                    bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-                writer(self._file_name, manager.out, (f, leg, plt),
-                       savefun=matplotlib_savefun)
+                    bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0
+                )
+                writer(
+                    self._file_name,
+                    manager.out,
+                    (f, leg, plt),
+                    savefun=matplotlib_savefun,
+                )
 
             self._init_summary()
 
     def state_dict(self):
-        state = {'_plot_{}'.format(self._file_name): json.dumps(self._data)}
+        state = {"_plot_{}".format(self._file_name): json.dumps(self._data)}
         return state
 
     def load_state_dict(self, to_load):
-        key = '_plot_{}'.format(self._file_name)
+        key = "_plot_{}".format(self._file_name)
         self._data = json.loads(to_load[key])
 
     def _init_summary(self):

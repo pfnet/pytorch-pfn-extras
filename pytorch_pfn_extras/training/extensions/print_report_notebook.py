@@ -26,7 +26,7 @@ class PrintReportNotebook(PrintReport):
 
     """
 
-    def __init__(self, entries=None, log_report='LogReport', out=sys.stdout):
+    def __init__(self, entries=None, log_report="LogReport", out=sys.stdout):
         super(PrintReportNotebook, self).__init__(
             entries=entries, log_report=log_report, out=out
         )
@@ -45,4 +45,4 @@ class PrintReportNotebook(PrintReport):
         if self._infer_entries:
             # --- update entries ---
             self._update_entries(log_report)
-        self._widget.value = df[self._entries].to_html(index=False, na_rep='')
+        self._widget.value = df[self._entries].to_html(index=False, na_rep="")

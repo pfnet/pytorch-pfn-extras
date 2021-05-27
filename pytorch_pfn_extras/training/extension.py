@@ -35,7 +35,8 @@ class Extension:
             :meth:`pytorch_pfn_extras.ExtensionsManager.extend` for details.
 
     """
-    trigger = 1, 'iteration'
+
+    trigger = 1, "iteration"
     priority = PRIORITY_READER
     name = None
 
@@ -61,15 +62,18 @@ class Extension:
 
         """
         raise NotImplementedError(
-            'Extension implementation must override __call__.')
+            "Extension implementation must override __call__."
+        )
 
     def __getattr__(self, name):
-        if name == 'invoke_before_training':
+        if name == "invoke_before_training":
             raise AttributeError(
-                'invoke_before_training has been removed since Chainer '
-                'v2.0.0. Use Extension.initialize instead.')
-        raise AttributeError('{} object has no attribute {}'.format(
-            type(self).__name__, name))
+                "invoke_before_training has been removed since Chainer "
+                "v2.0.0. Use Extension.initialize instead."
+            )
+        raise AttributeError(
+            "{} object has no attribute {}".format(type(self).__name__, name)
+        )
 
     def finalize(self):
         """Finalizes the extension.
@@ -126,8 +130,14 @@ class Extension:
         pass
 
 
-def make_extension(trigger=None, default_name=None, priority=None,
-                   finalizer=None, initializer=None, on_error=None):
+def make_extension(
+    trigger=None,
+    default_name=None,
+    priority=None,
+    finalizer=None,
+    initializer=None,
+    on_error=None,
+):
     """Decorator to make given functions into extensions.
 
     This decorator just adds some attributes to a given function. The value of

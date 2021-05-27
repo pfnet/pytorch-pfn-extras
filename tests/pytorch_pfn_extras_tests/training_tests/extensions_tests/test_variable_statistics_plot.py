@@ -11,23 +11,23 @@ import pytorch_pfn_extras as ppe
 def matplotlib():
     try:
         import matplotlib
-        matplotlib.use('Agg')
+
+        matplotlib.use("Agg")
         return matplotlib
     except ImportError:
-        pytest.skip('matplotlib is not installed')
+        pytest.skip("matplotlib is not installed")
 
 
 def test_run_and_save_plot(matplotlib):
-    filename = 'variable_statistics_plot_test.png'
+    filename = "variable_statistics_plot_test.png"
     iterations = 2
-    extension_trigger = (1, 'iteration')
-    manager = ppe.training.ExtensionsManager(
-        {}, [], 2,
-        iters_per_epoch=1)
+    extension_trigger = (1, "iteration")
+    manager = ppe.training.ExtensionsManager({}, [], 2, iters_per_epoch=1)
 
     x = torch.rand(1, 2, 3)
     extension = ppe.training.extensions.VariableStatisticsPlot(
-        x, trigger=extension_trigger, filename=filename)
+        x, trigger=extension_trigger, filename=filename
+    )
     manager.extend(extension, extension_trigger)
 
     # In the following we explicitly use plot_report._available instead of
@@ -47,12 +47,11 @@ def test_reservoir_size():
     shape = (2, 7, 3)
     n = 5
     reservoir_size = 3
-    xs = [
-        2 * torch.rand(shape) - 1 for i in range(n)]
+    xs = [2 * torch.rand(shape) - 1 for i in range(n)]
 
-    reservoir = (
-        ppe.training.extensions.variable_statistics_plot.Reservoir(
-            size=reservoir_size, data_shape=shape))
+    reservoir = ppe.training.extensions.variable_statistics_plot.Reservoir(
+        size=reservoir_size, data_shape=shape
+    )
     for x in xs:
         reservoir.add(x)
     idxs, data = reservoir.get_data()
@@ -68,20 +67,23 @@ def test_statistician_percentile():
     shape = (2, 7, 3)
     x = 2 * torch.rand(shape) - 1
 
-    percentile_sigmas = (0., 100.)  # min, max
+    percentile_sigmas = (0.0, 100.0)  # min, max
     statistician = (
         ppe.training.extensions.variable_statistics_plot.Statistician(
-            collect_mean=True, collect_std=True,
-            percentile_sigmas=percentile_sigmas))
+            collect_mean=True,
+            collect_std=True,
+            percentile_sigmas=percentile_sigmas,
+        )
+    )
     stat = statistician(x, axis=None, dtype=x.dtype)
 
     for s in stat.values():
         assert s.dtype == x.dtype
 
-    assert torch.allclose(stat['mean'], torch.mean(x))
-    assert torch.allclose(stat['std'], torch.std(x))
+    assert torch.allclose(stat["mean"], torch.mean(x))
+    assert torch.allclose(stat["std"], torch.std(x))
 
-    percentile = stat['percentile']
+    percentile = stat["percentile"]
     assert len(percentile) == 2
 
     assert torch.allclose(percentile[0], torch.min(x))

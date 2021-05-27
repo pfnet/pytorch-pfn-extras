@@ -23,16 +23,17 @@ class ManualScheduleTrigger:
     """
 
     def __init__(self, points, unit):
-        if unit not in ('epoch', 'iteration'):
+        if unit not in ("epoch", "iteration"):
             raise ValueError(
-                'Trigger unit must be either \'epoch\' or \'iteration\'.')
+                "Trigger unit must be either 'epoch' or 'iteration'."
+            )
 
-        self.points = (points if isinstance(points, list) else [points])
+        self.points = points if isinstance(points, list) else [points]
         self.unit = unit
         self.finished = False
 
         self._previous_iteration = 0
-        self._previous_epoch_detail = 0.
+        self._previous_epoch_detail = 0.0
 
     def __call__(self, manager):
         """Decides whether the extension should be called on this iteration.
@@ -48,7 +49,7 @@ class ManualScheduleTrigger:
             iteration.
 
         """
-        if self.unit == 'epoch':
+        if self.unit == "epoch":
             epoch_detail = manager.epoch_detail
             previous_epoch_detail = self._previous_epoch_detail
 
@@ -58,10 +59,10 @@ class ManualScheduleTrigger:
                 previous_epoch_detail = manager.previous_epoch_detail
 
             fire = any(
-                previous_epoch_detail < p <= epoch_detail
-                for p in self.points)
+                previous_epoch_detail < p <= epoch_detail for p in self.points
+            )
 
-            if hasattr(self, '_finished_is_tmp'):
+            if hasattr(self, "_finished_is_tmp"):
                 del self._finished_is_tmp
                 if epoch_detail >= max(self.points):
                     self.finished = True
@@ -76,11 +77,9 @@ class ManualScheduleTrigger:
             if previous_iteration < 0:
                 previous_iteration = iteration - 1
 
-            fire = any(
-                previous_iteration < p <= iteration
-                for p in self.points)
+            fire = any(previous_iteration < p <= iteration for p in self.points)
 
-            if hasattr(self, '_finished_is_tmp'):
+            if hasattr(self, "_finished_is_tmp"):
                 del self._finished_is_tmp
                 if iteration >= max(self.points):
                     self.finished = True
@@ -89,19 +88,19 @@ class ManualScheduleTrigger:
 
         # save current values
         self._previous_iteration = manager.iteration
-        if hasattr(manager, 'epoch_detail'):
+        if hasattr(manager, "epoch_detail"):
             self._previous_epoch_detail = manager.epoch_detail
 
         return fire
 
     def state_dict(self):
         state = {}
-        state['_previous_iteration'] = self._previous_iteration
-        state['_previous_epoch_detail'] = self._previous_epoch_detail
-        state['finished'] = self.finished
+        state["_previous_iteration"] = self._previous_iteration
+        state["_previous_epoch_detail"] = self._previous_epoch_detail
+        state["finished"] = self.finished
         return state
 
     def load_state_dict(self, to_load):
-        self._previous_iteration = to_load['_previous_iteration']
-        self._previous_epoch_detail = to_load['_previous_epoch_detail']
-        self.finished = to_load['finished']
+        self._previous_iteration = to_load["_previous_iteration"]
+        self._previous_epoch_detail = to_load["_previous_epoch_detail"]
+        self.finished = to_load["finished"]

@@ -1,19 +1,18 @@
 import os
 import sys
-import urllib.request
 import tempfile
+import urllib.request
 
 import numpy as np
-from packaging import version
 import pytest
 import torch
-from torch import multiprocessing as mp
+from packaging import version
 from torch import distributed as dist
+from torch import multiprocessing as mp
 from torch import nn
 from torch.utils.checkpoint import checkpoint
 
 from pytorch_pfn_extras.nn.parallel import DistributedDataParallel
-
 
 torch_version = version.Version(torch.__version__)
 context = mp.get_context("spawn")
@@ -58,8 +57,8 @@ class Collectives:
 class MyModule(nn.Module):
     def __init__(self):
         super().__init__()
-        self.param0 = nn.Parameter(torch.tensor(-1.))
-        self.param1 = nn.Parameter(torch.tensor(1.))
+        self.param0 = nn.Parameter(torch.tensor(-1.0))
+        self.param1 = nn.Parameter(torch.tensor(1.0))
         buf = torch.zeros(1)
         self.register_buffer("buffer", buf)
 
@@ -88,9 +87,9 @@ class MyModuleWithCheckpoint(nn.Module):
 
 def _run(init_file, input, module, rank, args, step, device_type):
     init_method = "file://{}".format(urllib.request.pathname2url(init_file))
-    dist.init_process_group(backend="gloo",
-                            init_method=init_method,
-                            world_size=2, rank=rank)
+    dist.init_process_group(
+        backend="gloo", init_method=init_method, world_size=2, rank=rank
+    )
     if device_type == "cpu":
         device = torch.device(device_type)
     elif device_type == "cuda":
@@ -107,11 +106,9 @@ def _run(init_file, input, module, rank, args, step, device_type):
     return output.detach(), module.state_dict(), grads
 
 
-def _launch(inputs,
-            modules=None,
-            args=None,
-            step=Steps._step,
-            device_type="cpu"):
+def _launch(
+    inputs, modules=None, args=None, step=Steps._step, device_type="cpu"
+):
     procs = []
     with tempfile.TemporaryDirectory() as tmpdir, context.Pool(2) as pool:
         if modules is None:
@@ -122,9 +119,8 @@ def _launch(inputs,
         file = os.path.join(tmpdir, "init")
         for i, (input, module) in enumerate(zip(inputs, modules)):
             p = pool.apply_async(
-                _run,
-                args=(file, input, module, i, args, step,
-                      device_type))
+                _run, args=(file, input, module, i, args, step, device_type)
+            )
             procs.append(p)
         return [p.get() for p in procs]
 
@@ -137,39 +133,44 @@ def _device_types():
 
 
 @pytest.mark.skipif(
-    sys.platform == 'win32',
-    reason='DDP not fully supported on Windows')
+    sys.platform == "win32", reason="DDP not fully supported on Windows"
+)
 class TestDistributedDataParallel:
     def test_save_load(self):
         module = MyModule()
         with_ddp = DistributedDataParallel(module)
         assert module.state_dict().keys() == with_ddp.state_dict().keys()
         module.load_state_dict(with_ddp.state_dict())
-        assert np.array_equal(module.state_dict()["param0"],
-                              with_ddp.state_dict()["param0"])
-        assert np.array_equal(module.state_dict()["param1"],
-                              with_ddp.state_dict()["param1"])
-        assert np.array_equal(module.state_dict()["buffer"],
-                              with_ddp.state_dict()["buffer"])
+        assert np.array_equal(
+            module.state_dict()["param0"], with_ddp.state_dict()["param0"]
+        )
+        assert np.array_equal(
+            module.state_dict()["param1"], with_ddp.state_dict()["param1"]
+        )
+        assert np.array_equal(
+            module.state_dict()["buffer"], with_ddp.state_dict()["buffer"]
+        )
 
-    @pytest.mark.parametrize('device_type', _device_types())
+    @pytest.mark.parametrize("device_type", _device_types())
     def test_sync_init_params(self, device_type):
         module0 = MyModule()
-        module0.param0.data = torch.tensor([1.])
+        module0.param0.data = torch.tensor([1.0])
         r0, r1 = _launch(
-            inputs=[torch.tensor([1.]), torch.tensor([2.])],
+            inputs=[torch.tensor([1.0]), torch.tensor([2.0])],
             modules=[module0, MyModule()],
-            device_type=device_type)
+            device_type=device_type,
+        )
         assert r0[0].item() == 1
         assert r1[0].item() == 2
         assert r0[1]["param0"].item() == 1.0
         assert r1[1]["param0"].item() == 1.0
 
-    @pytest.mark.parametrize('device_type', _device_types())
+    @pytest.mark.parametrize("device_type", _device_types())
     def test_all_reduce(self, device_type):
         r0, r1 = _launch(
-            inputs=[torch.tensor([1.]), torch.tensor([2.])],
-            device_type=device_type)
+            inputs=[torch.tensor([1.0]), torch.tensor([2.0])],
+            device_type=device_type,
+        )
         assert r0[0].item() == -1
         assert r1[0].item() == -2
         assert r0[2]["module.param0"].item() == 1.5
@@ -177,52 +178,59 @@ class TestDistributedDataParallel:
         assert r0[2]["module.param1"] is None
         assert r1[2]["module.param1"] is None
 
-    @pytest.mark.parametrize('device_type', _device_types())
+    @pytest.mark.parametrize("device_type", _device_types())
     def test_specific_reduce(self, device_type):
         r0, r1 = _launch(
-            inputs=[torch.tensor([1.]), torch.tensor([2.])],
+            inputs=[torch.tensor([1.0]), torch.tensor([2.0])],
             args={"reduce_function": Collectives._to_zero},
-            device_type=device_type)
+            device_type=device_type,
+        )
         assert r0[2]["module.param0"].item() == 0.0
         assert r1[2]["module.param0"].item() == 0.0
 
-    @pytest.mark.parametrize('device_type', _device_types())
+    @pytest.mark.parametrize("device_type", _device_types())
     def test_nosync_buffer(self, device_type):
         r0, r1 = _launch(
-            inputs=[torch.tensor([1.]), torch.tensor([2.])],
+            inputs=[torch.tensor([1.0]), torch.tensor([2.0])],
             args={"broadcast_buffers": False},
-            device_type=device_type)
+            device_type=device_type,
+        )
         assert r0[0].item() == -1
         assert r1[0].item() == -2
         assert r0[1]["buffer"].item() == 1
         assert r1[1]["buffer"].item() == 2
 
-    @pytest.mark.parametrize('device_type', _device_types())
+    @pytest.mark.parametrize("device_type", _device_types())
     def test_sync_buffer(self, device_type):
         r0, r1 = _launch(
-            inputs=[torch.tensor([1.]), torch.tensor([2.])],
+            inputs=[torch.tensor([1.0]), torch.tensor([2.0])],
             args={"broadcast_buffers": True},
-            device_type=device_type)
+            device_type=device_type,
+        )
         assert r0[0].item() == -1
         assert r1[0].item() == -2
         assert r0[1]["buffer"].item() == 1
         assert r1[1]["buffer"].item() == 1
 
-    @pytest.mark.parametrize('device_type', _device_types())
+    @pytest.mark.parametrize("device_type", _device_types())
     def test_specific_broadcast(self, device_type):
         r0, r1 = _launch(
-            inputs=[torch.tensor([1.]), torch.tensor([2.])],
-            args={"broadcast_function": Collectives._to_zero,
-                  "broadcast_buffers": True},
-            device_type=device_type)
+            inputs=[torch.tensor([1.0]), torch.tensor([2.0])],
+            args={
+                "broadcast_function": Collectives._to_zero,
+                "broadcast_buffers": True,
+            },
+            device_type=device_type,
+        )
         assert r0[1]["buffer"].item() == 0.0
         assert r1[1]["buffer"].item() == 0.0
 
-    @pytest.mark.parametrize('device_type', _device_types())
+    @pytest.mark.parametrize("device_type", _device_types())
     def test_define_by_run(self, device_type):
         r0, r1 = _launch(
-            inputs=[torch.tensor([1.]), torch.tensor([-1])],
-            device_type=device_type)
+            inputs=[torch.tensor([1.0]), torch.tensor([-1])],
+            device_type=device_type,
+        )
         assert r0[0].item() == -1
         assert r1[0].item() == 1
         assert r0[2]["module.param0"].item() == 0.5
@@ -230,12 +238,13 @@ class TestDistributedDataParallel:
         assert r0[2]["module.param1"].item() == 0.5
         assert r1[2]["module.param1"].item() == 0.5
 
-    @pytest.mark.parametrize('device_type', _device_types())
+    @pytest.mark.parametrize("device_type", _device_types())
     def test_no_sync(self, device_type):
         r0, r1 = _launch(
-            inputs=[torch.tensor([1.]), torch.tensor([2.])],
+            inputs=[torch.tensor([1.0]), torch.tensor([2.0])],
             step=Steps._step_with_no_sync,
-            device_type=device_type)
+            device_type=device_type,
+        )
         assert r0[0].item() == -1
         assert r1[0].item() == -2
         assert r0[2]["module.param0"].item() == 1
@@ -243,12 +252,13 @@ class TestDistributedDataParallel:
         assert r0[2]["module.param1"] is None
         assert r1[2]["module.param1"] is None
 
-    @pytest.mark.parametrize('device_type', _device_types())
+    @pytest.mark.parametrize("device_type", _device_types())
     def test_hook(self, device_type):
         r0, r1 = _launch(
-            inputs=[torch.tensor([1.]), torch.tensor([2.])],
+            inputs=[torch.tensor([1.0]), torch.tensor([2.0])],
             step=Steps._step_with_hook,
-            device_type=device_type)
+            device_type=device_type,
+        )
         assert r0[0].item() == -1
         assert r1[0].item() == -2
         assert r0[2]["module.param0"].item() == 0
@@ -256,19 +266,22 @@ class TestDistributedDataParallel:
         assert r0[2]["module.param1"].item() == 0
         assert r1[2]["module.param1"].item() == 0
 
-    @pytest.mark.parametrize('device_type', _device_types())
+    @pytest.mark.parametrize("device_type", _device_types())
     @pytest.mark.skipif(
-        torch_version < version.Version('1.6.0'),
+        torch_version < version.Version("1.6.0"),
         reason="Variable._execution_engine.queue_callback does not work "
-               "with checkpointing when torch < 1.6.0")
+        "with checkpointing when torch < 1.6.0",
+    )
     def test_checkpoint(self, device_type):
         r0, r1 = _launch(
-            inputs=[torch.tensor([[1.]]), torch.tensor([[2.]])],
+            inputs=[torch.tensor([[1.0]]), torch.tensor([[2.0]])],
             modules=[MyModuleWithCheckpoint(), MyModuleWithCheckpoint()],
             step=Steps._step_with_hook,
-            device_type=device_type)
+            device_type=device_type,
+        )
         grad0 = r0[2]
         grad1 = r1[2]
         for key in grad0.keys():
-            assert np.array_equal(grad0[key].cpu().numpy(),
-                                  grad1[key].cpu().numpy())
+            assert np.array_equal(
+                grad0[key].cpu().numpy(), grad1[key].cpu().numpy()
+            )

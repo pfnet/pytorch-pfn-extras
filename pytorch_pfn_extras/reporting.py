@@ -7,7 +7,6 @@ import warnings
 import numpy
 import torch
 
-
 _thread_local = threading.local()
 
 
@@ -158,10 +157,11 @@ class Reporter:
             observer_id = id(observer)
             if observer_id not in self._observer_names:
                 raise KeyError(
-                    'Given observer is not registered to the reporter.')
+                    "Given observer is not registered to the reporter."
+                )
             observer_name = self._observer_names[observer_id]
             for key, value in values.items():
-                name = '%s/%s' % (observer_name, key)
+                name = "%s/%s" % (observer_name, key)
                 self.observation[name] = value
         else:
             self.observation.update(values)
@@ -299,19 +299,21 @@ class Summary:
         try:
             # Save the stats as python scalars in order to avoid
             # different device errors when loading them back
-            state = {'_x': float(self._x),
-                     '_x2': float(self._x2),
-                     '_n': int(self._n)}
+            state = {
+                "_x": float(self._x),
+                "_x2": float(self._x2),
+                "_n": int(self._n),
+            }
         except KeyError:
-            warnings.warn('The previous statistics are not saved.')
+            warnings.warn("The previous statistics are not saved.")
         return state
 
     def load_state_dict(self, to_load):
         # Casting here is because of backward compatibility
         # Restore previously taken snapshots with autoload
-        self._x = float(_nograd(to_load['_x']))
-        self._x2 = float(_nograd(to_load['_x2']))
-        self._n = int(_nograd(to_load['_n']))
+        self._x = float(_nograd(to_load["_x"]))
+        self._x2 = float(_nograd(to_load["_x2"]))
+        self._n = int(_nograd(to_load["_n"]))
 
 
 class DictSummary:
@@ -343,10 +345,11 @@ class DictSummary:
             if isinstance(v, tuple):
                 w = v[1]
                 v = v[0]
-                if not numpy.isscalar(w) and not getattr(w, 'ndim', -1) == 0:
+                if not numpy.isscalar(w) and not getattr(w, "ndim", -1) == 0:
                     raise ValueError(
-                        'Given weight to {} was not scalar.'.format(k))
-            if numpy.isscalar(v) or getattr(v, 'ndim', -1) == 0:
+                        "Given weight to {} was not scalar.".format(k)
+                    )
+            if numpy.isscalar(v) or getattr(v, "ndim", -1) == 0:
                 summaries[k].add(v, weight=w)
 
     def compute_mean(self):
@@ -359,8 +362,10 @@ class DictSummary:
             dict: Dictionary of mean values.
 
         """
-        return {name: summary.compute_mean()
-                for name, summary in self._summaries.items()}
+        return {
+            name: summary.compute_mean()
+            for name, summary in self._summaries.items()
+        }
 
     def make_statistics(self):
         """Creates a dictionary of statistics.
@@ -378,13 +383,14 @@ class DictSummary:
         for name, summary in self._summaries.items():
             mean, std = summary.make_statistics()
             stats[name] = mean
-            stats[name + '.std'] = std
+            stats[name + ".std"] = std
 
         return stats
 
     def state_dict(self):
         return {
-            name: summ.state_dict() for name, summ in self._summaries.items()}
+            name: summ.state_dict() for name, summ in self._summaries.items()
+        }
 
     def load_state_dict(self, to_load):
         self._summaries.clear()

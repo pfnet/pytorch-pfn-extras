@@ -1,14 +1,13 @@
 import torch
+from tests.pytorch_pfn_extras_tests.nn_tests.modules_tests.test_lazy import (
+    LazyTestBase,
+)
 from torch import nn
 
 from pytorch_pfn_extras.nn import LazyConv1d, LazyConv2d, LazyConv3d
 
-from tests.pytorch_pfn_extras_tests.nn_tests.modules_tests.test_lazy import \
-    LazyTestBase
-
 
 class TestLazyConv1d(LazyTestBase):
-
     def get_original_module(self):
         return nn.Conv1d(3, 4, 2)
 
@@ -20,7 +19,6 @@ class TestLazyConv1d(LazyTestBase):
 
 
 class TestLazyConv2d(LazyTestBase):
-
     def get_original_module(self):
         return nn.Conv2d(3, 4, 2)
 
@@ -32,7 +30,6 @@ class TestLazyConv2d(LazyTestBase):
 
 
 class TestLazyConv3d(LazyTestBase):
-
     def get_original_module(self):
         return nn.Conv3d(3, 4, 2)
 

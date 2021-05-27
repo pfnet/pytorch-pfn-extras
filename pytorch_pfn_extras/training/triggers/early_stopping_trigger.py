@@ -42,12 +42,19 @@ class EarlyStoppingTrigger:
        historical reason.
     """
 
-    def __init__(self, check_trigger=(1, 'epoch'), monitor='main/loss',
-                 patience=None, mode='auto', verbose=False,
-                 max_trigger=(100, 'epoch'), **kwargs):
+    def __init__(
+        self,
+        check_trigger=(1, "epoch"),
+        monitor="main/loss",
+        patience=None,
+        mode="auto",
+        verbose=False,
+        max_trigger=(100, "epoch"),
+        **kwargs,
+    ):
 
         # `patients` as an alias of `patience`
-        patients = kwargs.get('patients', None)
+        patients = kwargs.get("patients", None)
         if patients is None:
             if patience is None:
                 patience = 3
@@ -58,9 +65,10 @@ class EarlyStoppingTrigger:
                 patience = patients
             else:
                 raise TypeError(
-                    'Both \'patience\' and \'patients\' arguments are '
-                    'specified. \'patients\' is an alias of the former. '
-                    'Specify only \'patience\'.')
+                    "Both 'patience' and 'patients' arguments are "
+                    "specified. 'patients' is an alias of the former. "
+                    "Specify only 'patience'."
+                )
 
         self.count = 0
         self.patience = patience
@@ -72,14 +80,14 @@ class EarlyStoppingTrigger:
 
         self._init_summary()
 
-        if mode == 'max':
+        if mode == "max":
             self._compare = operator.gt
 
-        elif mode == 'min':
+        elif mode == "min":
             self._compare = operator.lt
 
         else:
-            if 'accuracy' in monitor:
+            if "accuracy" in monitor:
                 self._compare = operator.gt
 
             else:
@@ -87,13 +95,13 @@ class EarlyStoppingTrigger:
 
         if self._compare == operator.gt:
             if verbose:
-                print('early stopping: operator is greater')
-            self.best = float('-inf')
+                print("early stopping: operator is greater")
+            self.best = float("-inf")
 
         else:
             if verbose:
-                print('early stopping: operator is less')
-            self.best = float('inf')
+                print("early stopping: operator is less")
+            self.best = float("inf")
 
     def __call__(self, manager):
         """Decides whether the training loop should be stopped.
@@ -122,7 +130,7 @@ class EarlyStoppingTrigger:
             return False
 
         if self.monitor not in observation.keys():
-            warnings.warn('{} is not in observation'.format(self.monitor))
+            warnings.warn("{} is not in observation".format(self.monitor))
             return False
 
         stat = self._summary.compute_mean()
@@ -138,7 +146,7 @@ class EarlyStoppingTrigger:
 
         if self._stop_condition():
             if self.verbose:
-                print('Epoch {}: early stopping'.format(manager.epoch))
+                print("Epoch {}: early stopping".format(manager.epoch))
             return True
 
         return False

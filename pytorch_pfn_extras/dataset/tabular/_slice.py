@@ -1,9 +1,7 @@
-from pytorch_pfn_extras.dataset.tabular import tabular_dataset
-from pytorch_pfn_extras.dataset.tabular import _utils
+from pytorch_pfn_extras.dataset.tabular import _utils, tabular_dataset
 
 
 class _Slice(tabular_dataset.TabularDataset):
-
     def __init__(self, dataset, indices, keys):
         if keys is None:
             self._unary = None
@@ -11,7 +9,7 @@ class _Slice(tabular_dataset.TabularDataset):
             self._unary = False
         else:
             self._unary = True
-            keys = keys,
+            keys = (keys,)
 
         self._dataset = dataset
         self._indices = _utils._as_indices(indices, len(dataset))
@@ -31,8 +29,9 @@ class _Slice(tabular_dataset.TabularDataset):
         if self._key_indices is None:
             return self._dataset.keys
         else:
-            return tuple(self._dataset.keys[key_index]
-                         for key_index in self._key_indices)
+            return tuple(
+                self._dataset.keys[key_index] for key_index in self._key_indices
+            )
 
     @property
     def mode(self):
@@ -45,7 +44,8 @@ class _Slice(tabular_dataset.TabularDataset):
 
     def get_examples(self, indices, key_indices):
         indices = _utils._merge_indices(
-            self._indices, indices, len(self._dataset), len(self))
+            self._indices, indices, len(self._dataset), len(self)
+        )
         key_indices = _utils._merge_key_indices(self._key_indices, key_indices)
         return self._dataset.get_examples(indices, key_indices)
 
@@ -54,7 +54,6 @@ class _Slice(tabular_dataset.TabularDataset):
 
 
 class _SliceHelper(object):
-
     def __init__(self, dataset):
         self._dataset = dataset
 

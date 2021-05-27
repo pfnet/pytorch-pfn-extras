@@ -9,8 +9,10 @@ def _as_indices(indices, len_):
 
     if all(isinstance(index, (bool, np.bool_)) for index in indices):
         if not len(indices) == len_:
-            raise ValueError('The number of booleans is '
-                             'different from the length of dataset')
+            raise ValueError(
+                "The number of booleans is "
+                "different from the length of dataset"
+            )
         return [i for i, index in enumerate(indices) if index]
     else:
         checked_indices = []
@@ -20,8 +22,10 @@ def _as_indices(indices, len_):
                 index += len_
             if index < 0 or len_ <= index:
                 raise IndexError(
-                    'index {} is out of bounds for dataset with size {}'
-                    .format(index, len_))
+                    "index {} is out of bounds for dataset with size {}".format(
+                        index, len_
+                    )
+                )
             checked_indices.append(index)
         return checked_indices
 
@@ -38,13 +42,15 @@ def _as_key_indices(keys, key_names):
                 key_index += len(key_names)
             if key_index < 0 or len(key_names) <= key_index:
                 raise IndexError(
-                    'index {} is out of bounds for keys with size {}'.format(
-                        key, len(key_names)))
+                    "index {} is out of bounds for keys with size {}".format(
+                        key, len(key_names)
+                    )
+                )
         else:
             try:
                 key_index = key_names.index(key)
             except ValueError:
-                raise KeyError('{} does not exists'.format(key))
+                raise KeyError("{} does not exists".format(key))
         key_indices.append(key_index)
     return tuple(key_indices)
 

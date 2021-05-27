@@ -21,15 +21,16 @@ class IntervalTrigger:
     """
 
     def __init__(self, period, unit):
-        if unit not in ('epoch', 'iteration'):
+        if unit not in ("epoch", "iteration"):
             raise ValueError(
-                'Trigger unit must be either \'epoch\' or \'iteration\'.')
+                "Trigger unit must be either 'epoch' or 'iteration'."
+            )
 
         self.period = period
         self.unit = unit
 
         self._previous_iteration = 0
-        self._previous_epoch_detail = 0.
+        self._previous_epoch_detail = 0.0
 
         # count is kept for backward compatibility
         self.count = 0
@@ -48,7 +49,7 @@ class IntervalTrigger:
             iteration.
 
         """
-        if self.unit == 'epoch':
+        if self.unit == "epoch":
             epoch_detail = manager.epoch_detail
             previous_epoch_detail = self._previous_epoch_detail
 
@@ -60,8 +61,10 @@ class IntervalTrigger:
             # count is kept for backward compatibility
             self.count = epoch_detail // self.period
 
-            fire = previous_epoch_detail // self.period != \
-                epoch_detail // self.period
+            fire = (
+                previous_epoch_detail // self.period
+                != epoch_detail // self.period
+            )
         else:
             iteration = manager.iteration
             previous_iteration = self._previous_iteration
@@ -71,25 +74,24 @@ class IntervalTrigger:
             if previous_iteration < 0:
                 previous_iteration = iteration - 1
 
-            fire = previous_iteration // self.period != \
-                iteration // self.period
+            fire = previous_iteration // self.period != iteration // self.period
 
         # save current values
         self._previous_iteration = manager.iteration
-        if hasattr(manager, 'epoch_detail'):
+        if hasattr(manager, "epoch_detail"):
             self._previous_epoch_detail = manager.epoch_detail
 
         return fire
 
     def state_dict(self):
         state = {}
-        state['_previous_iteration'] = self._previous_iteration
-        state['_previous_epoch_detail'] = self._previous_epoch_detail
+        state["_previous_iteration"] = self._previous_iteration
+        state["_previous_epoch_detail"] = self._previous_epoch_detail
         return state
 
     def load_state_dict(self, to_load):
-        self._previous_iteration = to_load['_previous_iteration']
-        self._previous_epoch_detail = to_load['_previous_epoch_detail']
+        self._previous_iteration = to_load["_previous_iteration"]
+        self._previous_epoch_detail = to_load["_previous_epoch_detail"]
 
     def get_training_length(self):
         return (self.period, self.unit)
@@ -100,6 +102,6 @@ class IntervalTrigger:
         Returns:
             str: IntervalTrigger(<period>, '<unit>')
         """
-        return '{}({}, \'{}\')'.format(
+        return "{}({}, '{}')".format(
             self.__class__.__name__, self.period, self.unit
         )

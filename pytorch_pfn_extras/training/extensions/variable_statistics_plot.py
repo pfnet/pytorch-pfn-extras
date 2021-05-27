@@ -6,14 +6,12 @@ import torch
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 
-
 _available = None
 
 
 def percentile(a, q, axis):
     # fallback to numpy
-    return torch.Tensor(
-        numpy.percentile(a.cpu().numpy(), q, axis))
+    return torch.Tensor(numpy.percentile(a.cpu().numpy(), q, axis))
 
 
 def matplotlib_savefun(target, file_o):
@@ -27,20 +25,24 @@ def _try_import_matplotlib():
     global _plot_color, _plot_color_trans, _plot_common_kwargs
     try:
         import matplotlib
+
         _available = True
     except ImportError:
         _available = False
 
     if _available:
-        if hasattr(matplotlib.colors, 'to_rgba'):
+        if hasattr(matplotlib.colors, "to_rgba"):
             _to_rgba = matplotlib.colors.to_rgba
         else:
             # For matplotlib 1.x
             _to_rgba = matplotlib.colors.ColorConverter().to_rgba
-        _plot_color = _to_rgba('#1f77b4')  # C0 color
+        _plot_color = _to_rgba("#1f77b4")  # C0 color
         _plot_color_trans = _plot_color[:3] + (0.2,)  # apply alpha
         _plot_common_kwargs = {
-            'alpha': 0.2, 'linewidth': 0, 'color': _plot_color_trans}
+            "alpha": 0.2,
+            "linewidth": 0,
+            "color": _plot_color_trans,
+        }
 
 
 def _check_available():
@@ -48,10 +50,12 @@ def _check_available():
         _try_import_matplotlib()
 
     if not _available:
-        warnings.warn('matplotlib is not installed on your environment, '
-                      'so nothing will be plotted at this time. '
-                      'Please install matplotlib to plot figures.\n\n'
-                      '  $ pip install matplotlib\n')
+        warnings.warn(
+            "matplotlib is not installed on your environment, "
+            "so nothing will be plotted at this time. "
+            "Please install matplotlib to plot figures.\n\n"
+            "  $ pip install matplotlib\n"
+        )
 
 
 def _unpack_variables(x, memo=None):
@@ -81,15 +85,17 @@ class Reservoir:
         if self.counter < self.size:
             self.data[self.counter] = x
             self.idxs[self.counter] = idx or self.counter
-        elif self.counter >= self.size and \
-                numpy.random.random() < self.size / float(self.counter + 1):
+        elif (
+            self.counter >= self.size
+            and numpy.random.random() < self.size / float(self.counter + 1)
+        ):
             i = numpy.random.randint(self.size)
             self.data[i] = x
             self.idxs[i] = idx or self.counter
         self.counter += 1
 
     def get_data(self):
-        idxs = self.idxs[:min(self.counter, self.size)]
+        idxs = self.idxs[: min(self.counter, self.size)]
         sorted_args = numpy.argsort(idxs)
         return idxs[sorted_args], self.data[sorted_args]
 
@@ -107,7 +113,7 @@ class Statistician:
         if axis is None:
             axis = tuple(range(x.ndim))
         elif not isinstance(axis, (tuple, list)):
-            axis = axis,
+            axis = (axis,)
 
         return self.collect(x, axis)
 
@@ -115,14 +121,14 @@ class Statistician:
         out = dict()
 
         if self.collect_mean:
-            out['mean'] = x.mean(axis=axis)
+            out["mean"] = x.mean(axis=axis)
 
         if self.collect_std:
-            out['std'] = x.std(axis=axis)
+            out["std"] = x.std(axis=axis)
 
         if self.percentile_sigmas:
             p = percentile(x, self.percentile_sigmas, axis=axis)
-            out['percentile'] = p
+            out["percentile"] = p
 
         return out
 
@@ -197,17 +203,26 @@ grid=True)
             the :class:`pytorch_pfn_extras.training.ExtensionsManager` object
     """
 
-    def __init__(self, targets, max_sample_size=1000,
-                 report_data=True, report_grad=True,
-                 plot_mean=True, plot_std=True,
-                 percentile_sigmas=(
-                     0, 0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87, 100),
-                 trigger=(1, 'epoch'), filename=None,
-                 figsize=None, marker=None, grid=True, **kwargs):
+    def __init__(
+        self,
+        targets,
+        max_sample_size=1000,
+        report_data=True,
+        report_grad=True,
+        plot_mean=True,
+        plot_std=True,
+        percentile_sigmas=(0, 0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87, 100),
+        trigger=(1, "epoch"),
+        filename=None,
+        figsize=None,
+        marker=None,
+        grid=True,
+        **kwargs,
+    ):
 
         _check_available()
 
-        file_name = kwargs.get('file_name', 'statistics.png')
+        file_name = kwargs.get("file_name", "statistics.png")
         if filename is None:
             filename = file_name
         del file_name  # avoid accidental use
@@ -215,24 +230,27 @@ grid=True)
         self._vars = _unpack_variables(targets)
         if not self._vars:
             raise ValueError(
-                'Need at least one variables for which to collect statistics.'
-                '\nActual: 0 <= 0')
+                "Need at least one variables for which to collect statistics."
+                "\nActual: 0 <= 0"
+            )
 
         if not any((plot_mean, plot_std, bool(percentile_sigmas))):
-            raise ValueError('Nothing to plot')
+            raise ValueError("Nothing to plot")
 
         self._keys = []
         if report_data:
-            self._keys.append('data')
+            self._keys.append("data")
         if report_grad:
-            self._keys.append('grad')
+            self._keys.append("grad")
 
         self._report_data = report_data
         self._report_grad = report_grad
 
         self._statistician = Statistician(
-            collect_mean=plot_mean, collect_std=plot_std,
-            percentile_sigmas=percentile_sigmas)
+            collect_mean=plot_mean,
+            collect_std=plot_std,
+            percentile_sigmas=percentile_sigmas,
+        )
 
         self._plot_mean = plot_mean
         self._plot_std = plot_std
@@ -243,7 +261,7 @@ grid=True)
         self._figsize = figsize
         self._marker = marker
         self._grid = grid
-        self._writer = kwargs.get('writer', None)
+        self._writer = kwargs.get("writer", None)
 
         if not self._plot_percentile:
             n_percentile = 0
@@ -253,7 +271,9 @@ grid=True)
             else:
                 n_percentile = len(percentile_sigmas)
         self._data_shape = (
-            len(self._keys), int(plot_mean) + int(plot_std) + n_percentile)
+            len(self._keys),
+            int(plot_mean) + int(plot_std) + n_percentile,
+        )
         self._samples = Reservoir(max_sample_size, data_shape=self._data_shape)
 
     @staticmethod
@@ -281,13 +301,14 @@ grid=True)
                 stat_list = []
                 if self._plot_mean:
                     stat_list.append(
-                        numpy.atleast_1d(stat_dict['mean'].cpu().numpy()))
+                        numpy.atleast_1d(stat_dict["mean"].cpu().numpy())
+                    )
                 if self._plot_std:
                     stat_list.append(
-                        numpy.atleast_1d(stat_dict['std'].cpu().numpy()))
+                        numpy.atleast_1d(stat_dict["std"].cpu().numpy())
+                    )
                 if self._plot_percentile:
-                    stat_list.append(
-                        numpy.atleast_1d(stat_dict['percentile']))
+                    stat_list.append(numpy.atleast_1d(stat_dict["percentile"]))
                 stats[i] = numpy.concatenate(stat_list, axis=0)
 
         self._samples.add(stats, idx=manager.iteration)
@@ -296,12 +317,14 @@ grid=True)
             self.save_plot_using_module(plt, manager)
 
     def save_plot_using_module(self, plt, manager):
-        nrows = int(self._plot_mean or self._plot_std) \
-            + int(self._plot_percentile)
+        nrows = int(self._plot_mean or self._plot_std) + int(
+            self._plot_percentile
+        )
         ncols = len(self._keys)
 
         fig, axes = plt.subplots(
-            nrows, ncols, figsize=self._figsize, sharex=True)
+            nrows, ncols, figsize=self._figsize, sharex=True
+        )
 
         if not isinstance(axes, numpy.ndarray):  # single subplot
             axes = numpy.asarray([axes])
@@ -329,17 +352,26 @@ grid=True)
             if self._plot_mean or self._plot_std:
                 if self._plot_mean and self._plot_std:
                     ax.errorbar(
-                        idxs, data[:, col, 0], data[:, col, 1],
-                        color=_plot_color, ecolor=_plot_color_trans,
-                        label='mean, std', marker=self._marker)
+                        idxs,
+                        data[:, col, 0],
+                        data[:, col, 1],
+                        color=_plot_color,
+                        ecolor=_plot_color_trans,
+                        label="mean, std",
+                        marker=self._marker,
+                    )
                 else:
                     if self._plot_mean:
-                        label = 'mean'
+                        label = "mean"
                     elif self._plot_std:
-                        label = 'std'
+                        label = "std"
                     ax.plot(
-                        idxs, data[:, col, 0], color=_plot_color, label=label,
-                        marker=self._marker)
+                        idxs,
+                        data[:, col, 0],
+                        color=_plot_color,
+                        label=label,
+                        marker=self._marker,
+                    )
                 row += 1
 
             if self._plot_percentile:
@@ -351,22 +383,27 @@ grid=True)
                         # percentile is the mid percentile and the number of
                         # percentiles are odd
                         ax.plot(
-                            idxs, data[:, col, offset + i], color=_plot_color,
-                            label='percentile', marker=self._marker)
+                            idxs,
+                            data[:, col, offset + i],
+                            color=_plot_color,
+                            label="percentile",
+                            marker=self._marker,
+                        )
                     else:
                         if i == n_percentile_mid_floor:
                             # Last percentiles and the number of all
                             # percentiles are even
-                            label = 'percentile'
+                            label = "percentile"
                         else:
-                            label = '_nolegend_'
+                            label = "_nolegend_"
                         ax.fill_between(
                             idxs,
                             data[:, col, offset + i],
                             data[:, col, -i - 1],
                             label=label,
-                            **_plot_common_kwargs)
-                    ax.set_xlabel('iteration')
+                            **_plot_common_kwargs,
+                        )
+                    ax.set_xlabel("iteration")
 
         for ax in axes.ravel():
             ax.legend()
@@ -374,5 +411,6 @@ grid=True)
                 ax.grid()
                 ax.set_axisbelow(True)
 
-        writer(self._filename, manager.out, (fig, plt),
-               savefun=matplotlib_savefun)
+        writer(
+            self._filename, manager.out, (fig, plt), savefun=matplotlib_savefun
+        )

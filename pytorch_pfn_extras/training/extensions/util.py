@@ -2,7 +2,8 @@ import collections
 import os
 import sys
 import time
-if os.name == 'nt':
+
+if os.name == "nt":
     import ctypes
 
     _STD_OUTPUT_HANDLE = -11
@@ -10,18 +11,22 @@ if os.name == 'nt':
     _COORD = ctypes.wintypes._COORD
 
     class _CONSOLE_SCREEN_BUFFER_INFO(ctypes.Structure):
-        _fields_ = [('dwSize', _COORD), ('dwCursorPosition', _COORD),
-                    ('wAttributes', ctypes.c_ushort),
-                    ('srWindow', ctypes.wintypes.SMALL_RECT),
-                    ('dwMaximumWindowSize', _COORD)]
+        _fields_ = [
+            ("dwSize", _COORD),
+            ("dwCursorPosition", _COORD),
+            ("wAttributes", ctypes.c_ushort),
+            ("srWindow", ctypes.wintypes.SMALL_RECT),
+            ("dwMaximumWindowSize", _COORD),
+        ]
 
     def set_console_cursor_position(x, y):
         """Set relative cursor position from current position to (x,y)"""
 
         whnd = ctypes.windll.kernel32.GetStdHandle(_STD_OUTPUT_HANDLE)
         csbi = _CONSOLE_SCREEN_BUFFER_INFO()
-        ctypes.windll.kernel32.GetConsoleScreenBufferInfo(whnd,
-                                                          ctypes.byref(csbi))
+        ctypes.windll.kernel32.GetConsoleScreenBufferInfo(
+            whnd, ctypes.byref(csbi)
+        )
         cur_pos = csbi.dwCursorPosition
         pos = _COORD(cur_pos.X + x, cur_pos.Y + y)
 
@@ -42,25 +47,29 @@ if os.name == 'nt':
 
         whnd = ctypes.windll.kernel32.GetStdHandle(_STD_OUTPUT_HANDLE)
         csbi = _CONSOLE_SCREEN_BUFFER_INFO()
-        ctypes.windll.kernel32.GetConsoleScreenBufferInfo(whnd,
-                                                          ctypes.byref(csbi))
+        ctypes.windll.kernel32.GetConsoleScreenBufferInfo(
+            whnd, ctypes.byref(csbi)
+        )
         cur_pos = csbi.dwCursorPosition
         wr = ctypes.c_ulong()
         if mode == 0:
-            num = csbi.srWindow.Right * (
-                csbi.srWindow.Bottom - cur_pos.Y) - cur_pos.X
+            num = (
+                csbi.srWindow.Right * (csbi.srWindow.Bottom - cur_pos.Y)
+                - cur_pos.X
+            )
             ctypes.windll.kernel32.FillConsoleOutputCharacterA(
-                whnd, ord(' '), num, cur_pos, ctypes.byref(wr))
+                whnd, ord(" "), num, cur_pos, ctypes.byref(wr)
+            )
         elif mode == 1:
             num = cur_pos.X
             ctypes.windll.kernel32.FillConsoleOutputCharacterA(
-                whnd, ord(' '), num, _COORD(0, cur_pos.Y), ctypes.byref(wr))
+                whnd, ord(" "), num, _COORD(0, cur_pos.Y), ctypes.byref(wr)
+            )
         elif mode == 2:
-            os.system('cls')
+            os.system("cls")
 
 
 class ProgressBar:
-
     def __init__(self, out=None):
         self._out = sys.stdout if out is None else out
         self._recent_timing = collections.deque([], maxlen=100)
@@ -74,8 +83,8 @@ class ProgressBar:
             speed_t = (iteration - old_t) / span
             speed_e = (epoch_detail - old_e) / span
         else:
-            speed_t = float('inf')
-            speed_e = float('inf')
+            speed_t = float("inf")
+            speed_e = float("inf")
         return speed_t, speed_e
 
     def get_lines(self):
@@ -96,18 +105,18 @@ class ProgressBar:
         self.flush()
 
     def erase_console(self):
-        if os.name == 'nt':
+        if os.name == "nt":
             erase_console(0, 0)
         else:
-            self._out.write('\033[J')
+            self._out.write("\033[J")
 
     def move_cursor_up(self, n):
         # move the cursor to the head of the progress bar
-        if os.name == 'nt':
-            set_console_cursor_position(0, - n)
+        if os.name == "nt":
+            set_console_cursor_position(0, -n)
         else:
-            self._out.write('\033[{:d}A'.format(n))
+            self._out.write("\033[{:d}A".format(n))
 
     def flush(self):
-        if hasattr(self._out, 'flush'):
+        if hasattr(self._out, "flush"):
             self._out.flush()

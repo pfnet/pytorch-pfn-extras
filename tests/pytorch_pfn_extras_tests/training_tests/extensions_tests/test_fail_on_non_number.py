@@ -1,14 +1,12 @@
-import pytest
 import numpy
+import pytest
 import torch
 
 from pytorch_pfn_extras import training
-
 from pytorch_pfn_extras.training.extensions import FailOnNonNumber
 
 
 class Dataset(torch.utils.data.Dataset):
-
     def __init__(self, n_data):
         self.values = [i for i in range(n_data)]
         self.n_data = n_data
@@ -17,19 +15,20 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.values)
 
     def __getitem__(self, idx):
-        return numpy.array(
-            [self.values[idx]], numpy.float32), numpy.int64(idx % 2)
+        return numpy.array([self.values[idx]], numpy.float32), numpy.int64(
+            idx % 2
+        )
 
 
 def get_manager_model_optimizer():
     epochs = 3
     model = torch.nn.Linear(1, 3)
     optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
-    optimizers = {'main': optimizer}
-    models = {'main': model}
+    optimizers = {"main": optimizer}
+    models = {"main": model}
     manager = training.ExtensionsManager(
-        models, optimizers, epochs,
-        iters_per_epoch=4)
+        models, optimizers, epochs, iters_per_epoch=4
+    )
     manager.extend(FailOnNonNumber())
     return manager, model, optimizer
 
@@ -56,7 +55,7 @@ def test_valid():
 def test_nan():
     manager, model, optimizer = get_manager_model_optimizer()
     with torch.no_grad():
-        model.weight[1, 0] = float('NaN')
+        model.weight[1, 0] = float("NaN")
     with pytest.raises(RuntimeError):
         run_train(manager, model, optimizer)
 
@@ -64,6 +63,6 @@ def test_nan():
 def test_inf():
     manager, model, optimizer = get_manager_model_optimizer()
     with torch.no_grad():
-        model.weight[2, 0] = float('inf')
+        model.weight[2, 0] = float("inf")
     with pytest.raises(RuntimeError):
         run_train(manager, model, optimizer)

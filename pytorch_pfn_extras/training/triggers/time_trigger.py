@@ -21,8 +21,8 @@ class TimeTrigger:
             return False
 
     def state_dict(self):
-        state = {'next_time': self._next_time}
+        state = {"next_time": self._next_time}
         return state
 
     def load_state_dict(self, to_load):
-        self._next_time = to_load['next_time']
+        self._next_time = to_load["next_time"]

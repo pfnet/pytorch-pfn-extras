@@ -1,6 +1,6 @@
 import inspect
-from typing import Tuple
 import warnings
+from typing import Tuple
 
 import torch
 
@@ -55,9 +55,12 @@ class LazyInitializationMixin:
         parameters are determined.  Note that this may be called during
         ``__init__``.
         """
-        return self._lazy_ready and all([
-            not isinstance(getattr(self, x), UninitializedParameter)
-            for x in self.lazy_parameter_names])
+        return self._lazy_ready and all(
+            [
+                not isinstance(getattr(self, x), UninitializedParameter)
+                for x in self.lazy_parameter_names
+            ]
+        )
 
     def state_dict(self, *args, **kwargs):
         """Returns a dictionary containing a whole state of the module.
@@ -77,8 +80,15 @@ class LazyInitializationMixin:
         return destination
 
     def _lazy_load_hook(
-            self, state_dict, prefix, local_metadata, strict,
-            missing_keys, unexpected_keys, error_msgs):
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
         """load_state_dict pre-hook function for lazy buffers and parameters.
 
         The purpose of this hook is to adjust the current state and/or
@@ -102,7 +112,8 @@ class LazyInitializationMixin:
             if key in state_dict:
                 # The model was serialized after initialization.
                 self.register_parameter(
-                    name, torch.nn.Parameter(state_dict[key]))
+                    name, torch.nn.Parameter(state_dict[key])
+                )
             else:
                 # The model was serialized before initialization.
                 param = UninitializedParameter()
@@ -111,15 +122,15 @@ class LazyInitializationMixin:
 
 
 class UninitializedParameter(torch.nn.Parameter):
-
     def __repr__(self):
-        return 'Uninitialized lazy parameter'
+        return "Uninitialized lazy parameter"
 
     def share_memory_(self):
         raise RuntimeError(
-            'Can\'t share memory on an unitialized parameter. '
-            'Run forward to initialize the network before calling '
-            '`module.share_memory()`.')
+            "Can't share memory on an unitialized parameter. "
+            "Run forward to initialize the network before calling "
+            "`module.share_memory()`."
+        )
 
     @property
     def is_leaf(self):
@@ -128,8 +139,10 @@ class UninitializedParameter(torch.nn.Parameter):
         # for parameters; optimizers check for this attribute and raise an
         # error if non-leaf tensors are detected.
         frame = inspect.currentframe()
-        if frame.f_back.f_globals['__package__'].startswith('torch.optim'):
-            warnings.warn('''
+        if frame.f_back.f_globals["__package__"].startswith("torch.optim"):
+            warnings.warn(
+                """
     Use of uninitialized lazy parameter in Optimizer has been detected.
-    Maybe you forgot to run forward before passing `module.parameters()` to the optimizer?''')  # NOQA
+    Maybe you forgot to run forward before passing `module.parameters()` to the optimizer?"""
+            )  # NOQA
         return True

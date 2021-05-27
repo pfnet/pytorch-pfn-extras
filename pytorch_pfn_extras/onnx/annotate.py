@@ -7,23 +7,22 @@ import torch.onnx.symbolic_registry as sym_reg
 
 
 class _AnnotationInit(object):
-
     def __init__(self):
-        self.wrap_func_name = 'tou_wrapped_forward_'
+        self.wrap_func_name = "tou_wrapped_forward_"
         self.len_wrap_func_name = len(self.wrap_func_name)
-        self.opname_suffix = '_tou'
+        self.opname_suffix = "_tou"
 
         self.attrs_map = {}  # k=tracked_id, v=annotated attrs
         self.counter = 0  # global counter for each annotation
 
-        self.anchor_func_name = 'tou_anchor_'
+        self.anchor_func_name = "tou_anchor_"
         self.len_anchor_func_name = len(self.anchor_func_name)
         self.anchored_node_count = {}  # k=global count, v=number of node
 
     def setup(self, model, opset_ver):
         self.model = model
         # dryrun to register every aten ops
-        sym_reg.register_version('', opset_ver)
+        sym_reg.register_version("", opset_ver)
         self.opset_ver = opset_ver
 
     def __enter__(self):
@@ -46,12 +45,14 @@ class _AnnotationInit(object):
 
     def _edit_attr(self, node, found_idx):
         start_idx = found_idx + self.len_wrap_func_name
-        next_ub_idx = node.doc_string[start_idx:].find('_')
-        tracked_id = node.doc_string[start_idx:start_idx + next_ub_idx]
+        next_ub_idx = node.doc_string[start_idx:].find("_")
+        tracked_id = node.doc_string[start_idx : start_idx + next_ub_idx]
         assert tracked_id.isdigit()
 
-        attrs = [onnx.helper.make_attribute(k, v) for k, v in
-                 self.attrs_map[tracked_id].items()]
+        attrs = [
+            onnx.helper.make_attribute(k, v)
+            for k, v in self.attrs_map[tracked_id].items()
+        ]
         node.attribute.extend(attrs)
 
     def reorg_anchor(self, onnx_graph):
@@ -71,7 +72,7 @@ class _AnnotationInit(object):
         # cleanup anchor node
         reorged_nodes = []
         for node in onnx_graph.graph.node:
-            if node.op_type == 'Constant':
+            if node.op_type == "Constant":
                 if node.output[0] not in dummy_constant_ids:
                     reorged_nodes.append(node)
                 continue
@@ -98,24 +99,27 @@ class _AnnotationInit(object):
 
     def _edit_anchor(self, node, found_idx):
         # return enable to delete or not
-        assert node.op_type == 'Add'
+        assert node.op_type == "Add"
 
         start_idx = found_idx + self.len_anchor_func_name
-        end_idx = node.doc_string[start_idx:].find('__')
-        track_info = node.doc_string[start_idx:start_idx + end_idx].split('_')
+        end_idx = node.doc_string[start_idx:].find("__")
+        track_info = node.doc_string[start_idx : start_idx + end_idx].split("_")
         assert len(track_info) == 3
         start_end, tracked_id, node_num = track_info
 
         node_total = self.anchored_node_count[tracked_id]
-        if start_end == 'e' and node_total != node_num:
+        if start_end == "e" and node_total != node_num:
             return True
 
-        attrs = [onnx.helper.make_attribute(k, v) for k, v in
-                 self.attrs_map[tracked_id].items()]
+        attrs = [
+            onnx.helper.make_attribute(k, v)
+            for k, v in self.attrs_map[tracked_id].items()
+        ]
         node.attribute.extend(attrs)
-        node.op_type = 'Identity'
-        node.name = 'Anchor_{}_{}'.format(
-            tracked_id, 'start' if start_end == 's' else 'end')
+        node.op_type = "Identity"
+        node.name = "Anchor_{}_{}".format(
+            tracked_id, "start" if start_end == "s" else "end"
+        )
         del node.input[1]
         return False
 
@@ -129,7 +133,6 @@ def init_annotate(model, opset_ver):
 
 
 class _Annotation(object):
-
     def __init__(self, **attrs):
         self.attrs = attrs
         self.hook_count = _annotation_init.counter
@@ -144,18 +147,22 @@ class _Annotation(object):
         # By calling this wrapped forward, PyTorch's tracer tracked
         # this function in source history and enable to judge annotated or not.
         created_func = {}
-        fn_name = '{}{}_'.format(
-            _annotation_init.wrap_func_name, self.hook_count)
+        fn_name = "{}{}_".format(
+            _annotation_init.wrap_func_name, self.hook_count
+        )
         wrapped_forward_code = """def {}(fn, *args, **kwargs):
             ret = fn(*args, **kwargs)
-            return ret""".format(fn_name)
+            return ret""".format(
+            fn_name
+        )
         exec(wrapped_forward_code, {}, created_func)
 
         for name, child_module in _annotation_init.model.named_children():
             original_forward = child_module.forward
             self.original_forwards[name] = original_forward
             wrapped_forward = functools.partial(
-                created_func[fn_name], original_forward)
+                created_func[fn_name], original_forward
+            )
             child_module.forward = wrapped_forward
 
     def __exit__(self, type, value, traceback):
@@ -231,7 +238,6 @@ def apply_annotation(fn, *args, **attrs):
     """
 
     class _DoFunction(nn.Module):
-
         def __init__(self, fn, *args):
             super(_DoFunction, self).__init__()
             self.fn = fn
@@ -252,22 +258,26 @@ def apply_annotation(fn, *args, **attrs):
 
 
 class _Anchor(_Annotation):
-
     def __init__(self, **attrs):
         super(_Anchor, self).__init__(**attrs)
         self.called_count = -1
         self.started = False
 
-    def _get_anchor_func(self, start_end='s'):
+    def _get_anchor_func(self, start_end="s"):
         self.called_count += 1
         created_func = {}
 
         # wrapped name + start/end + global count + internal count
-        fn_name = '{}{}_{}_{}__'.format(
-            _annotation_init.anchor_func_name, start_end,
-            self.hook_count, self.called_count)
+        fn_name = "{}{}_{}_{}__".format(
+            _annotation_init.anchor_func_name,
+            start_end,
+            self.hook_count,
+            self.called_count,
+        )
         wrapped_anchor_code = """def {}(x, y):
-            return x + y""".format(fn_name)
+            return x + y""".format(
+            fn_name
+        )
         exec(wrapped_anchor_code, {}, created_func)
 
         return created_func[fn_name]
@@ -276,7 +286,6 @@ class _Anchor(_Annotation):
         _annotation_init.attrs_map[str(self.hook_count)] = self.attrs
 
         def do_forward(fn, *args, **kwargs):
-
             def dummy_anchor(fn, x):
                 zero = torch.zeros((1,), dtype=x.dtype)
                 return fn(x, zero)
@@ -298,14 +307,16 @@ class _Anchor(_Annotation):
                         arg0 = (arg00,) + arg0[1:]
                 else:
                     raise RuntimeError(
-                        'type {} is not supported for anchor input'.format(
-                            type(arg0)))
+                        "type {} is not supported for anchor input".format(
+                            type(arg0)
+                        )
+                    )
                 args = (arg0,) + args[1:]
                 self.started = True
 
             out = fn(*args, **kwargs)
 
-            dfunc = self._get_anchor_func(start_end='e')
+            dfunc = self._get_anchor_func(start_end="e")
             if isinstance(out, torch.Tensor):
                 return dummy_anchor(dfunc, out)
             elif isinstance(out, (list, tuple)):
@@ -317,8 +328,10 @@ class _Anchor(_Annotation):
                     return (out0,) + out[1:]
             else:
                 raise RuntimeError(
-                    'type {} is not supported for anchor output'.format(
-                        type(out)))
+                    "type {} is not supported for anchor output".format(
+                        type(out)
+                    )
+                )
 
         for name, child_module in _annotation_init.model.named_children():
             original_forward = child_module.forward
@@ -331,8 +344,9 @@ class _Anchor(_Annotation):
         for name, child_module in _annotation_init.model.named_children():
             child_module.forward = self.original_forwards[name]
 
-        _annotation_init.anchored_node_count[str(self.hook_count)] = \
-            str(self.called_count)
+        _annotation_init.anchored_node_count[str(self.hook_count)] = str(
+            self.called_count
+        )
 
 
 def scoped_anchor(**attrs):

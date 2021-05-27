@@ -13,30 +13,31 @@ except ImportError:
 
 
 class LogWriterSaveFunc:
-
     def __init__(self, format, append):
         self._format = format
         self._append = append
 
     def __call__(self, target, file_o):
-        if self._format == 'json':
+        if self._format == "json":
             if self._append:
                 raise ValueError(
-                    'LogReport does not support json format with append mode.')
+                    "LogReport does not support json format with append mode."
+                )
             log = json.dumps(target, indent=4)
-        elif self._format == 'json-lines':
+        elif self._format == "json-lines":
             if self._append:
                 target = [target[-1]]
             # Add a new line at the end for subsequent appends
-            log = '\n'.join([json.dumps(x) for x in target]) + '\n'
-        elif self._format == 'yaml':
+            log = "\n".join([json.dumps(x) for x in target]) + "\n"
+        elif self._format == "yaml":
             if self._append:
                 target = [target[-1]]
             import yaml
+
             log = yaml.dump(target)
         else:
-            raise ValueError('Unknown format: {}'.format(self._format))
-        file_o.write(bytes(log.encode('ascii')))
+            raise ValueError("Unknown format: {}".format(self._format))
+        file_o.write(bytes(log.encode("ascii")))
 
 
 class LogReport(extension.Extension):
@@ -91,29 +92,37 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
 
     """
 
-    def __init__(self, keys=None, trigger=(1, 'epoch'), postprocess=None,
-                 filename=None, append=False, format=None, **kwargs):
+    def __init__(
+        self,
+        keys=None,
+        trigger=(1, "epoch"),
+        postprocess=None,
+        filename=None,
+        append=False,
+        format=None,
+        **kwargs,
+    ):
         self._keys = keys
         self._trigger = trigger_module.get_trigger(trigger)
         self._postprocess = postprocess
         self._log = []
         # When using a writer, it needs to have a savefun defined
         # to deal with a string.
-        self._writer = kwargs.get('writer', None)
+        self._writer = kwargs.get("writer", None)
 
-        log_name = kwargs.get('log_name', 'log')
+        log_name = kwargs.get("log_name", "log")
         if filename is None:
             filename = log_name
         del log_name  # avoid accidental use
         self._log_name = filename
 
         if format is None and filename is not None:
-            if filename.endswith('.jsonl'):
-                format = 'json-lines'
-            elif filename.endswith('.yaml'):
-                format = 'yaml'
+            if filename.endswith(".jsonl"):
+                format = "json-lines"
+            elif filename.endswith(".yaml"):
+                format = "yaml"
             else:
-                format = 'json'
+                format = "json"
 
         self._append = append
         self._format = format
@@ -139,9 +148,9 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
             for name, value in stats.items():
                 stats_cpu[name] = float(value)  # copy to CPU
 
-            stats_cpu['epoch'] = manager.epoch
-            stats_cpu['iteration'] = manager.iteration
-            stats_cpu['elapsed_time'] = manager.elapsed_time
+            stats_cpu["epoch"] = manager.epoch
+            stats_cpu["iteration"] = manager.iteration
+            stats_cpu["elapsed_time"] = manager.elapsed_time
 
             if self._postprocess is not None:
                 self._postprocess(stats_cpu)
@@ -153,8 +162,13 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
                 log_name = self._log_name.format(**stats_cpu)
                 out = manager.out
                 savefun = LogWriterSaveFunc(self._format, self._append)
-                writer(log_name, out, self._log,
-                       savefun=savefun, append=self._append)
+                writer(
+                    log_name,
+                    out,
+                    self._log,
+                    savefun=savefun,
+                    append=self._append,
+                )
 
             # reset the summary for the next output
             self._init_summary()
@@ -166,21 +180,21 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
 
     def state_dict(self):
         state = {}
-        if hasattr(self._trigger, 'state_dict'):
-            state['_trigger'] = self._trigger.state_dict()
+        if hasattr(self._trigger, "state_dict"):
+            state["_trigger"] = self._trigger.state_dict()
 
         try:
-            state['_summary'] = self._summary.state_dict()
+            state["_summary"] = self._summary.state_dict()
         except KeyError:
             pass
-        state['_log'] = json.dumps(self._log)
+        state["_log"] = json.dumps(self._log)
         return state
 
     def load_state_dict(self, to_load):
-        if hasattr(self._trigger, 'load_state_dict'):
-            self._trigger.load_state_dict(to_load['_trigger'])
-        self._summary.load_state_dict(to_load['_summary'])
-        self._log = json.loads(to_load['_log'])
+        if hasattr(self._trigger, "load_state_dict"):
+            self._trigger.load_state_dict(to_load["_trigger"])
+        self._summary.load_state_dict(to_load["_summary"])
+        self._log = json.loads(to_load["_log"])
 
     def _init_summary(self):
         self._summary = reporting.DictSummary()

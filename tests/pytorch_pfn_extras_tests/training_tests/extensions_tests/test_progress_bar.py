@@ -7,7 +7,8 @@ def test_run():
     max_epochs = 5
     iters_per_epoch = 5
     manager = ppe.training.ExtensionsManager(
-        {}, {}, max_epochs, iters_per_epoch=iters_per_epoch)
+        {}, {}, max_epochs, iters_per_epoch=iters_per_epoch
+    )
 
     out = io.StringIO()
     extension = ppe.training.extensions.ProgressBar(
@@ -23,6 +24,7 @@ def test_run():
             with manager.run_iteration():
                 if manager.iteration < 2:
                     continue
-                status = '{} iter, {} epoch / {} epochs'.format(
-                    manager.iteration, epoch, max_epochs)
+                status = "{} iter, {} epoch / {} epochs".format(
+                    manager.iteration, epoch, max_epochs
+                )
                 assert status in out.getvalue()

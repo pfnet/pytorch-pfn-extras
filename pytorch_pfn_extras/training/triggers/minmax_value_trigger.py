@@ -18,7 +18,7 @@ class BestValueTrigger:
 
     """
 
-    def __init__(self, key, compare, trigger=(1, 'epoch')):
+    def __init__(self, key, compare, trigger=(1, "epoch")):
         self._key = key
         self._best_value = None
         self._interval_trigger = trigger_util.get_trigger(trigger)
@@ -62,15 +62,17 @@ class BestValueTrigger:
         self._summary = reporting.DictSummary()
 
     def state_dict(self):
-        state = {'interval_trigger': self._interval_trigger.state_dict(),
-                 '_summary': self._summary.state_dict(),
-                 '_best_value': self._best_value}
+        state = {
+            "interval_trigger": self._interval_trigger.state_dict(),
+            "_summary": self._summary.state_dict(),
+            "_best_value": self._best_value,
+        }
         return state
 
     def load_state_dict(self, to_load):
-        self._interval_trigger.load_state_dict(to_load['interval_trigger'])
-        self._summary.load_state_dict(to_load['_summary'])
-        self._best_value = to_load['_best_value']
+        self._interval_trigger.load_state_dict(to_load["interval_trigger"])
+        self._summary.load_state_dict(to_load["_summary"])
+        self._best_value = to_load["_best_value"]
 
 
 class MaxValueTrigger(BestValueTrigger):
@@ -90,10 +92,10 @@ class MaxValueTrigger(BestValueTrigger):
 
     """
 
-    def __init__(self, key, trigger=(1, 'epoch')):
+    def __init__(self, key, trigger=(1, "epoch")):
         super().__init__(
-            key,
-            lambda max_value, new_value: new_value > max_value, trigger)
+            key, lambda max_value, new_value: new_value > max_value, trigger
+        )
 
 
 class MinValueTrigger(BestValueTrigger):
@@ -113,7 +115,7 @@ class MinValueTrigger(BestValueTrigger):
 
     """
 
-    def __init__(self, key, trigger=(1, 'epoch')):
+    def __init__(self, key, trigger=(1, "epoch")):
         super().__init__(
-            key,
-            lambda min_value, new_value: new_value < min_value, trigger)
+            key, lambda min_value, new_value: new_value < min_value, trigger
+        )

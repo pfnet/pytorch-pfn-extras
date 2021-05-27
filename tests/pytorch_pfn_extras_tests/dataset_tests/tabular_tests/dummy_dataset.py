@@ -4,12 +4,17 @@ import pytorch_pfn_extras as ppe
 
 
 class DummyDataset(ppe.dataset.TabularDataset):
-
     def __init__(
-            self, size=10, keys=('a', 'b', 'c'), mode=tuple,
-            return_array=False, callback=None, convert=False):
+        self,
+        size=10,
+        keys=("a", "b", "c"),
+        mode=tuple,
+        return_array=False,
+        callback=None,
+        convert=False,
+    ):
         if mode is None:
-            keys = keys[0],
+            keys = (keys[0],)
 
         self._keys = keys
         self._mode = mode
@@ -47,6 +52,6 @@ class DummyDataset(ppe.dataset.TabularDataset):
 
     def convert(self, data):
         if self._convert:
-            return 'converted'
+            return "converted"
         else:
             return super(DummyDataset, self).convert(data)

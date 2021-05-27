@@ -25,14 +25,20 @@ class ProgressBar(extension.Extension):
 
     """
 
-    def __init__(self, training_length=None, update_interval=100,
-                 bar_length=50, out=sys.stdout):
+    def __init__(
+        self,
+        training_length=None,
+        update_interval=100,
+        bar_length=50,
+        out=sys.stdout,
+    ):
         self._training_length = training_length
         self._update_interval = update_interval
         self._bar_length = bar_length
         self._out = out
         self._pbar = _ManagerProgressBar(
-            self._training_length, self._bar_length, self._out)
+            self._training_length, self._bar_length, self._out
+        )
 
     def __call__(self, manager):
         if self._pbar.manager is None:
@@ -48,7 +54,6 @@ class ProgressBar(extension.Extension):
 
 
 class _ManagerProgressBar(util.ProgressBar):
-
     def __init__(self, training_length, bar_length, out):
         super().__init__(out)
         self.training_length = training_length
@@ -68,37 +73,46 @@ class _ManagerProgressBar(util.ProgressBar):
             self.training_length = t.get_training_length()
         length, unit = self.training_length
 
-        if unit == 'iteration':
+        if unit == "iteration":
             rate = iteration / length
         else:
             rate = epoch / length
         rate = min(rate, 1.0)
 
         bar_length = self.bar_length
-        marks = '#' * int(rate * bar_length)
-        lines.append('     total [{}{}] {:6.2%}\n'.format(
-            marks, '.' * (bar_length - len(marks)), rate))
+        marks = "#" * int(rate * bar_length)
+        lines.append(
+            "     total [{}{}] {:6.2%}\n".format(
+                marks, "." * (bar_length - len(marks)), rate
+            )
+        )
 
         epoch_rate = epoch - int(epoch)
-        marks = '#' * int(epoch_rate * bar_length)
-        lines.append('this epoch [{}{}] {:6.2%}\n'.format(
-            marks, '.' * (bar_length - len(marks)), epoch_rate))
+        marks = "#" * int(epoch_rate * bar_length)
+        lines.append(
+            "this epoch [{}{}] {:6.2%}\n".format(
+                marks, "." * (bar_length - len(marks)), epoch_rate
+            )
+        )
 
         if self.progress_template is None:
             self.progress_template = (
-                '{0.iteration:10} iter, {0.epoch} epoch / %s %ss\n' %
-                self.training_length)
+                "{0.iteration:10} iter, {0.epoch} epoch / %s %ss\n"
+                % self.training_length
+            )
         progress = self.progress_template.format(self.manager)
         lines.append(progress)
 
         speed_t, speed_e = self.update_speed(iteration, epoch)
-        if unit == 'iteration':
+        if unit == "iteration":
             estimated_time = (length - iteration) / speed_t
         else:
             estimated_time = (length - epoch) / speed_e
         estimated_time = max(estimated_time, 0.0)
-        lines.append('{:10.5g} iters/sec. Estimated time to finish: {}.\n'
-                     .format(speed_t,
-                             datetime.timedelta(seconds=estimated_time)))
+        lines.append(
+            "{:10.5g} iters/sec. Estimated time to finish: {}.\n".format(
+                speed_t, datetime.timedelta(seconds=estimated_time)
+            )
+        )
 
         return lines

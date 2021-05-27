@@ -1,5 +1,6 @@
 import numpy
 import torch
+
 from pytorch_pfn_extras.dataset.tabular import tabular_dataset
 
 
@@ -91,20 +92,20 @@ def from_data(data, *, size=None):
 def _make_dataset(key, data, size):
     if isinstance(data, (numpy.ndarray, torch.Tensor)):
         if key is None:
-            key = '_{}'.format(id(data))
+            key = "_{}".format(id(data))
         return _Array(key, data)
     elif isinstance(data, list):
         if key is None:
-            key = '_{}'.format(id(data))
+            key = "_{}".format(id(data))
         return _List(key, data)
     elif callable(data):
         if key is None:
-            raise ValueError('key(s) must be specified for callable')
+            raise ValueError("key(s) must be specified for callable")
         if size is None:
-            raise ValueError('size must be specified for callable')
+            raise ValueError("size must be specified for callable")
         dataset = _Index(size)
         if isinstance(key, str):
-            key = key,
+            key = (key,)
         if not isinstance(key, tuple):
             key = tuple(key)
         data = [((dataset.keys, key), data)]
@@ -112,7 +113,6 @@ def _make_dataset(key, data, size):
 
 
 class _Array(tabular_dataset.TabularDataset):
-
     def __init__(self, key, data):
         self._key = key
         self._data = data
@@ -122,7 +122,7 @@ class _Array(tabular_dataset.TabularDataset):
 
     @property
     def keys(self):
-        return self._key,
+        return (self._key,)
 
     @property
     def mode(self):
@@ -130,7 +130,7 @@ class _Array(tabular_dataset.TabularDataset):
 
     def get_examples(self, indices, key_indices):
         if key_indices is None:
-            key_indices = 0,
+            key_indices = (0,)
 
         if indices is None:
             return (self._data,) * len(key_indices)
@@ -139,7 +139,6 @@ class _Array(tabular_dataset.TabularDataset):
 
 
 class _List(tabular_dataset.TabularDataset):
-
     def __init__(self, key, data):
         self._key = key
         self._data = data
@@ -149,7 +148,7 @@ class _List(tabular_dataset.TabularDataset):
 
     @property
     def keys(self):
-        return self._key,
+        return (self._key,)
 
     @property
     def mode(self):
@@ -157,19 +156,19 @@ class _List(tabular_dataset.TabularDataset):
 
     def get_examples(self, indices, key_indices):
         if key_indices is None:
-            key_indices = 0,
+            key_indices = (0,)
 
         if indices is None:
             return (self._data,) * len(key_indices)
         elif isinstance(indices, slice):
             return (self._data[indices],) * len(key_indices)
         else:
-            return ([self._data[index] for index in indices],) \
-                * len(key_indices)
+            return ([self._data[index] for index in indices],) * len(
+                key_indices
+            )
 
 
 class _Index(tabular_dataset.TabularDataset):
-
     def __init__(self, size):
         self._len = size
 
@@ -178,7 +177,7 @@ class _Index(tabular_dataset.TabularDataset):
 
     @property
     def keys(self):
-        return 'index',
+        return ("index",)
 
     @property
     def mode(self):
@@ -192,6 +191,6 @@ class _Index(tabular_dataset.TabularDataset):
             indices = list(range(start, stop, step))
 
         if key_indices is None:
-            key_indices = 0,
+            key_indices = (0,)
 
         return (indices,) * len(key_indices)

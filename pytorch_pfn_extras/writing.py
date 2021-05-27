@@ -1,5 +1,5 @@
-import multiprocessing
 import io
+import multiprocessing
 import os
 import queue
 import shutil
@@ -11,16 +11,40 @@ import torch
 
 
 def open_wrapper(func):
-    def wrapper(self, file_path, mode='rb',
-                buffering=-1, encoding=None,
-                errors=None, newline=None,
-                closefd=True,
-                opener=None):
-        file_obj = func(self, file_path, mode, buffering, encoding,
-                        errors, newline, closefd, opener)
+    def wrapper(
+        self,
+        file_path,
+        mode="rb",
+        buffering=-1,
+        encoding=None,
+        errors=None,
+        newline=None,
+        closefd=True,
+        opener=None,
+    ):
+        file_obj = func(
+            self,
+            file_path,
+            mode,
+            buffering,
+            encoding,
+            errors,
+            newline,
+            closefd,
+            opener,
+        )
         return self._wrap_fileobject(
-            file_obj, file_path, mode, buffering, encoding,
-            errors, newline, closefd, opener)
+            file_obj,
+            file_path,
+            mode,
+            buffering,
+            encoding,
+            errors,
+            newline,
+            closefd,
+            opener,
+        )
+
     return wrapper
 
 
@@ -43,6 +67,7 @@ class _PosixFileSystem(object):
 
     This class currently abstracts POSIX
     """
+
     def __init__(self):
         pass
 
@@ -61,19 +86,35 @@ class _PosixFileSystem(object):
         self._root = root
 
     @open_wrapper
-    def open(self, file_path, mode='r',
-             buffering=-1, encoding=None, errors=None,
-             newline=None, closefd=True, opener=None):
+    def open(
+        self,
+        file_path,
+        mode="r",
+        buffering=-1,
+        encoding=None,
+        errors=None,
+        newline=None,
+        closefd=True,
+        opener=None,
+    ):
 
-        return io.open(file_path, mode,
-                       buffering, encoding, errors,
-                       newline, closefd, opener)
+        return io.open(
+            file_path,
+            mode,
+            buffering,
+            encoding,
+            errors,
+            newline,
+            closefd,
+            opener,
+        )
 
     def list(self, path_or_prefix: Optional[str] = None, recursive=False):
         if recursive:
             if path_or_prefix is None:
                 raise ValueError(
-                    "'path_or_prefix' must not be None in recursive mode.")
+                    "'path_or_prefix' must not be None in recursive mode."
+                )
             path_or_prefix = path_or_prefix.rstrip("/")
             # plus 1 to include the trailing slash
             prefix_end_index = len(path_or_prefix) + 1
@@ -87,8 +128,7 @@ class _PosixFileSystem(object):
             yield file.path[prefix_end_index:]
 
             if file.is_dir():
-                yield from self._recursive_list(prefix_end_index,
-                                                file.path)
+                yield from self._recursive_list(prefix_end_index, file.path)
 
     def stat(self, path):
         return _PosixFileStat(os.stat(path), path)
@@ -118,9 +158,11 @@ class _PosixFileSystem(object):
         try:
             return os.replace(src, dst)
         except OSError:
-            print('Destination {} is a directory '
-                  'but source is not'.format(src),
-                  file=sys.stderr)
+            print(
+                "Destination {} is a directory "
+                "but source is not".format(src),
+                file=sys.stderr,
+            )
             raise
 
     def remove(self, file_path, recursive=False):
@@ -160,8 +202,9 @@ class Writer:
 
         self._initialized = False
 
-    def __call__(self, filename, out_dir, target, *,
-                 savefun=None, append=False):
+    def __call__(
+        self, filename, out_dir, target, *, savefun=None, append=False
+    ):
         """Invokes the actual snapshot function.
 
         This method is invoked by a
@@ -196,8 +239,9 @@ class Writer:
         """Finalizes the writer."""
         pass
 
-    def save(self, filename, out_dir, target,
-             savefun, append, **savefun_kwargs):
+    def save(
+        self, filename, out_dir, target, savefun, append, **savefun_kwargs
+    ):
         if self.out_dir is not None:
             out_dir = self.out_dir
         if not self._initialized:
@@ -206,19 +250,19 @@ class Writer:
         dest = os.path.join(out_dir, filename)
 
         if append:
-            with self.fs.open(dest, 'ab') as f:
+            with self.fs.open(dest, "ab") as f:
                 # HDFS does not support overwrite
                 savefun(target, f, **savefun_kwargs)
         else:
             # Some filesystems are not compatible with temp folders, etc
             # so we rely on raw temp files
-            prefix = 'tmp_{}'.format(filename)
+            prefix = "tmp_{}".format(filename)
             tmppath = os.path.join(out_dir, prefix)
             make_backup = self.fs.exists(dest)
             if make_backup:
-                bak = '{}.bak'.format(dest)
+                bak = "{}.bak".format(dest)
                 self.fs.rename(dest, bak)
-            with self.fs.open(tmppath, 'wb') as f:
+            with self.fs.open(tmppath, "wb") as f:
                 savefun(target, f, **savefun_kwargs)
             self.fs.rename(tmppath, dest)
             if make_backup:
@@ -270,8 +314,9 @@ class SimpleWriter(Writer):
         self._savefun = savefun
         self._kwds = kwds
 
-    def __call__(self, filename, out_dir, target, *,
-                 savefun=None, append=False):
+    def __call__(
+        self, filename, out_dir, target, *, savefun=None, append=False
+    ):
         if savefun is None:
             savefun = self._savefun
         self.save(filename, out_dir, target, savefun, append, **self._kwds)
@@ -310,8 +355,9 @@ class StandardWriter(Writer):
         self._started = False
         self._finalized = False
 
-    def __call__(self, filename, out_dir, target, *,
-                 savefun=None, append=False):
+    def __call__(
+        self, filename, out_dir, target, *, savefun=None, append=False
+    ):
         if savefun is None:
             savefun = self._savefun
         if self._started:
@@ -319,14 +365,26 @@ class StandardWriter(Writer):
             self._started = False
         self._filename = filename
         self._worker = self.create_worker(
-            filename, out_dir, target,
-            savefun=savefun, append=append, **self._kwds)
+            filename,
+            out_dir,
+            target,
+            savefun=savefun,
+            append=append,
+            **self._kwds,
+        )
         self._worker.start()
         self._started = True
 
     def create_worker(
-            self, filename, out_dir, target, *,
-            savefun=None, append=False, **savefun_kwargs):
+        self,
+        filename,
+        out_dir,
+        target,
+        *,
+        savefun=None,
+        append=False,
+        **savefun_kwargs,
+    ):
         """Creates a worker for the snapshot.
 
         This method creates a thread or a process to take a snapshot. The
@@ -357,12 +415,20 @@ class ThreadWriter(StandardWriter):
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
     def create_worker(
-            self, filename, out_dir, target, *,
-            savefun=None, append=False, **savefun_kwargs):
+        self,
+        filename,
+        out_dir,
+        target,
+        *,
+        savefun=None,
+        append=False,
+        **savefun_kwargs,
+    ):
         return threading.Thread(
             target=self.save,
             args=(filename, out_dir, target, savefun, append),
-            kwargs=savefun_kwargs)
+            kwargs=savefun_kwargs,
+        )
 
 
 class ProcessWriter(StandardWriter):
@@ -384,12 +450,20 @@ class ProcessWriter(StandardWriter):
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
     def create_worker(
-            self, filename, out_dir, target, *,
-            savefun=None, append=False, **savefun_kwargs):
+        self,
+        filename,
+        out_dir,
+        target,
+        *,
+        savefun=None,
+        append=False,
+        **savefun_kwargs,
+    ):
         return multiprocessing.Process(
             target=self.save,
             args=(filename, out_dir, target, savefun, append),
-            kwargs=savefun_kwargs)
+            kwargs=savefun_kwargs,
+        )
 
 
 class QueueWriter(Writer):
@@ -435,9 +509,11 @@ class QueueWriter(Writer):
         self._finalized = False
 
     def __call__(
-            self, filename, out_dir, target, *, savefun=None, append=False):
+        self, filename, out_dir, target, *, savefun=None, append=False
+    ):
         self._queue.put(
-            [self._task, filename, out_dir, target, savefun, append])
+            [self._task, filename, out_dir, target, savefun, append]
+        )
 
     def create_task(self, savefun):
         return SimpleWriter(savefun=savefun)
@@ -456,7 +532,8 @@ class QueueWriter(Writer):
                 return
             else:
                 task[0](
-                    task[1], task[2], task[3], savefun=task[4], append=task[5])
+                    task[1], task[2], task[3], savefun=task[4], append=task[5]
+                )
                 q.task_done()
 
     def finalize(self):
@@ -520,7 +597,7 @@ class ProcessQueueWriter(QueueWriter):
 
 
 class TensorBoardWriter(object):
-    """ Writer that sends statistics to TensorBoard.
+    """Writer that sends statistics to TensorBoard.
 
     This class contains a `torch.utils.tensorboard.SummaryWriter`
     object that is used to send the collected statistics to TensorBoard.
@@ -533,18 +610,21 @@ class TensorBoardWriter(object):
         stats (list): List of statistic keys.
         kwds: Passed as an additional arguments to SummaryWriter.
     """
-    def __init__(
-            self, savefun=None, fs=None, out_dir=None, stats=None, **kwds):
+
+    def __init__(self, savefun=None, fs=None, out_dir=None, stats=None, **kwds):
         import torch.utils.tensorboard
+
         self._stats = stats
         self._writer = torch.utils.tensorboard.SummaryWriter(
-            log_dir=out_dir, **kwds)
+            log_dir=out_dir, **kwds
+        )
 
     def __del__(self):
         self.finalize()
 
     def __call__(
-            self, filename, out_dir, target, *, savefun=None, append=False):
+        self, filename, out_dir, target, *, savefun=None, append=False
+    ):
         """Sends the statistics to the TensorBoard.
 
         Args:
@@ -561,13 +641,13 @@ class TensorBoardWriter(object):
             stats_cpu = target[-1]
 
         if not isinstance(stats_cpu, dict):
-            raise TypeError('target must be dict or list of dicts')
+            raise TypeError("target must be dict or list of dicts")
         keys = stats_cpu.keys()
         if self._stats is not None:
             keys = self._stats
         for key in keys:
             value = stats_cpu[key]
-            self._writer.add_scalar(key, value, stats_cpu['iteration'])
+            self._writer.add_scalar(key, value, stats_cpu["iteration"])
 
     def finalize(self):
         self._writer.close()

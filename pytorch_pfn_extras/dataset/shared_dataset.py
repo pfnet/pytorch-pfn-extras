@@ -50,10 +50,11 @@ class ItemNotFoundException(Exception):
 
 
 class SharedDataset(torch.utils.data.Dataset):
-    """ Dataset that caches the load samples in shared memory
+    """Dataset that caches the load samples in shared memory
 
     Args
     """
+
     def __init__(self, sm_size, cache_type=InfiniteCache):
         super().__init__()
         self.cache = cache_type(sm_size)
@@ -62,7 +63,8 @@ class SharedDataset(torch.utils.data.Dataset):
         x = self.cache.get_value(idx)
         if x is None:
             raise ItemNotFoundException(
-                'Item {} is not in the cache'.format(idx))
+                "Item {} is not in the cache".format(idx)
+            )
         return x
 
     def is_cached(self, idx):

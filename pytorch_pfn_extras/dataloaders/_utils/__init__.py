@@ -7,9 +7,8 @@ Therefore, for code tidiness we put these functions into different files in
 this folder.
 """
 
-import sys
 import atexit
-
+import sys
 
 IS_WINDOWS = sys.platform == "win32"
 

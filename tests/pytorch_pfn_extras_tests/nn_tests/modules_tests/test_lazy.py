@@ -5,18 +5,19 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from pytorch_pfn_extras.nn.modules.lazy import LazyInitializationMixin
-from pytorch_pfn_extras.nn.modules.lazy import UninitializedParameter
+from pytorch_pfn_extras.nn.modules.lazy import (
+    LazyInitializationMixin,
+    UninitializedParameter,
+)
 
 
 class _MyFunc(torch.nn.Module):
-
     def __init__(self, in_features, out_features):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.weight = nn.Parameter(torch.Tensor(out_features, in_features))
-        self.register_buffer('const', torch.full((in_features,), 1.0))
+        self.register_buffer("const", torch.full((in_features,), 1.0))
         self._reset_params()
 
     def forward(self, input):
@@ -28,8 +29,8 @@ class _MyFunc(torch.nn.Module):
 
 class _LazyMyFunc(LazyInitializationMixin, _MyFunc):
 
-    lazy_parameter_names = ('weight',)
-    lazy_buffer_names = ('const',)
+    lazy_parameter_names = ("weight",)
+    lazy_buffer_names = ("const",)
 
     def __init__(self, in_features, out_features):
         super().__init__(in_features or 0, out_features)
@@ -41,7 +42,8 @@ class _LazyMyFunc(LazyInitializationMixin, _MyFunc):
         if isinstance(self.weight, UninitializedParameter):
             self.in_features = input.shape[-1]
             self.weight = torch.nn.Parameter(
-                self.weight.new_empty((self.out_features, self.in_features)))
+                self.weight.new_empty((self.out_features, self.in_features))
+            )
             self.const = self.const.new_full((self.in_features,), 1)
             self._reset_params()
             self.to(input.device)
@@ -53,7 +55,6 @@ class _LazyMyFunc(LazyInitializationMixin, _MyFunc):
 
 
 class LazyTestBase:
-
     def get_original_module(self):
         raise NotImplementedError
 
@@ -122,15 +123,20 @@ class LazyTestBase:
         m = self.get_lazy_module()
         with pytest.warns(UserWarning) as record:
             torch.optim.SGD(m.parameters(), lr=0.1)
-        assert ('Use of uninitialized lazy parameter in Optimizer '
-                'has been detected' in record[0].message.args[0])
+        assert (
+            "Use of uninitialized lazy parameter in Optimizer "
+            "has been detected" in record[0].message.args[0]
+        )
 
-    @pytest.mark.parametrize('init_src, init_dst', [
-        (True, True),
-        (True, False),
-        (False, True),
-        (False, False),
-    ])
+    @pytest.mark.parametrize(
+        "init_src, init_dst",
+        [
+            (True, True),
+            (True, False),
+            (False, True),
+            (False, False),
+        ],
+    )
     def test_save_load(self, init_src, init_dst):
         torch.manual_seed(0)
         input = self.get_input()
@@ -157,7 +163,6 @@ class LazyTestBase:
 
 
 class TestLazyMyFunc(LazyTestBase):
-
     def get_original_module(self):
         return _MyFunc(10, 20)
 
