@@ -93,7 +93,7 @@ params = _filter_params(product_dict(
         ],
     )
     + product_dict(
-
+        [{'mode': None}],
         [
             {'keys': None, 'expected_keys': ('a',)},
             {'keys': 0, 'expected_keys': ('a',)},
