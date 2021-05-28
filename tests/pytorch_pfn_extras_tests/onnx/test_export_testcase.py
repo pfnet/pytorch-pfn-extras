@@ -383,3 +383,20 @@ def test_user_meta():
                              metadata=False,
                              user_meta={"user_key": "user_value"})
         assert not os.path.exists(os.path.join(output_dir, 'meta.json'))
+
+
+def test_export_pt():
+    model = nn.Sequential(nn.Linear(5, 10, bias=False))
+    x = torch.ones((2, 5))
+
+    output_dir = _helper(model, x, 'export_script_pt',
+                         export_torch_script=True,
+                         export_torch_trace=False)
+    assert os.path.exists(os.path.join(output_dir, 'model_script.pt'))
+    assert not os.path.exists(os.path.join(output_dir, 'model_trace.pt'))
+
+    output_dir = _helper(model, x, 'export_trace_pt',
+                         export_torch_script=False,
+                         export_torch_trace=True)
+    assert not os.path.exists(os.path.join(output_dir, 'model_script.pt'))
+    assert os.path.exists(os.path.join(output_dir, 'model_trace.pt'))

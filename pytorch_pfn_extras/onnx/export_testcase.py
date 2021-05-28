@@ -171,7 +171,8 @@ def export_testcase(
         model, args, out_dir, *, output_grad=False, metadata=True,
         model_overwrite=True, strip_large_tensor_data=False,
         large_tensor_threshold=LARGE_TENSOR_DATA_THRESHOLD,
-        return_output=False, user_meta=None, **kwargs):
+        return_output=False, user_meta=None,
+        export_torch_script=False, export_torch_trace=False, **kwargs):
     """Export model and I/O tensors of the model in protobuf format.
 
     Args:
@@ -187,6 +188,11 @@ def export_testcase(
         large_tensor_threshold (int): If number of elements of tensor is
             larger than this value, the tensor is stripped when
             *strip_large_tensor_data* is True
+        return_output (bool): If True, return output values come from the
+            model.
+        export_torch_script (bool): Output model_script.pt using
+            torch.jit.script
+        export_torch_trace (bool): Output model_trace.pt using torch.jit.trace
 
     .. warning:: This function is not thread safe.
 
@@ -233,6 +239,16 @@ def export_testcase(
                     and is_large_tensor(t, large_tensor_threshold)):
                 _strip_raw_data(t)
             fp.write(t.SerializeToString())
+
+    if export_torch_script:
+        pt_script_path = os.path.join(out_dir, 'model_script.pt')
+        if model_overwrite or (not os.path.isfile(pt_script_path)):
+            torch.jit.script(model).save(pt_script_path)
+
+    if export_torch_trace:
+        pt_trace_path = os.path.join(out_dir, 'model_trace.pt')
+        if model_overwrite or (not os.path.isfile(pt_trace_path)):
+            torch.jit.trace(model, args).save(pt_trace_path)
 
     data_set_path = os.path.join(out_dir, 'test_data_set_0')
     seq_id = 0
