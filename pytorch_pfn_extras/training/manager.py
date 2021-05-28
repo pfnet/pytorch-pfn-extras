@@ -1,7 +1,6 @@
 import collections
 import contextlib
 import copy
-import os
 import time
 import warnings
 
@@ -13,14 +12,7 @@ from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training import util as util_module
 
-# Select the best-resolution timer function
-try:
-    _get_time = time.perf_counter
-except AttributeError:
-    if os.name == 'nt':
-        _get_time = time.clock  # type: ignore
-    else:
-        _get_time = time.time
+_get_time = time.perf_counter
 
 
 class _ExtensionEntry:
