@@ -1,9 +1,13 @@
+import logging
 import os
 
 import torch
 import torch.distributed
 
 from pytorch_pfn_extras.training import extension
+
+
+logger = logging.getLogger(__name__)
 
 
 def _find_snapshot_files(fmt, path, fs):
@@ -35,7 +39,6 @@ def _find_snapshot_files(fmt, path, fs):
     def _prepend_mtime(f):
         t = fs.stat(os.path.join(path, f)).last_modified
         return (t, f)
-
     return sorted(_prepend_mtime(file) for file in matched_files)
 
 
@@ -56,11 +59,10 @@ def _find_latest_snapshot(fmt, path, fs):
 
     """
     snapshot_files = _find_snapshot_files(fmt, path, fs)
-
+    logger.log(logging.DEBUG, 'found snapshot files {}'.format(snapshot_files))
     if len(snapshot_files) > 0:
         _, filename = snapshot_files[-1]
         return filename
-
     return None
 
 
