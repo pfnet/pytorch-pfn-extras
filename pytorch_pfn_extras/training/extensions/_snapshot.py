@@ -7,7 +7,7 @@ import torch.distributed
 from pytorch_pfn_extras.training import extension
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('ppe')
 
 
 def _find_snapshot_files(fmt, path, fs):
