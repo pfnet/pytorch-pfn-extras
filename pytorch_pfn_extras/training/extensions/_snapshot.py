@@ -59,7 +59,7 @@ def _find_latest_snapshot(fmt, path, fs):
 
     """
     snapshot_files = _find_snapshot_files(fmt, path, fs)
-    logger.log(logging.DEBUG, 'found snapshot files {}'.format(snapshot_files))
+    logger.debug('found snapshot files {}'.format(snapshot_files))
     if len(snapshot_files) > 0:
         _, filename = snapshot_files[-1]
         return filename

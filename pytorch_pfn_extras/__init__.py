@@ -20,16 +20,24 @@ from pytorch_pfn_extras._version import __version__  # NOQA
 
 
 def configureLogging(filename=None, level=logging.ERROR):
-    filename = os.environ.get('PPE_LOGGING_FILENAME', filename)
+    filename = os.environ.get('PPE_LOG_FILENAME', filename)
     if filename is None:
         handler = logging.StreamHandler()
     else:
         handler = logging.FileHandler(filename)
     # To dynamically change the level if needed
     # basicConfig does not allow to change the level right after
-    level = os.environ.get('PPE_LOGGING_LEVEL', level)
-    handler.setLevel(level)
-    logging.getLogger('ppe').addHandler(handler)
+    logger = logging.getLogger('ppe')
+    level = os.environ.get('PPE_LOG_LEVEL', level)
+    for lvl in (logging.DEBUG, logging.INFO,
+                logging.WARNING, logging.ERROR, logging.CRITICAL):
+        if logging.getLevelName(lvl) == level:
+            handler.setLevel(lvl)
+            break
+    else:
+        logger.warning('invalid PPE_LOG_LEVEL (%s); continue with INFO', level)
+        handler.setLevel(logging.INFO)
+    logger.addHandler(handler)
 
 
 configureLogging()
