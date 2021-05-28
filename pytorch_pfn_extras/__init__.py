@@ -28,7 +28,7 @@ def configureLogging(filename=None, level=logging.ERROR):
     # To dynamically change the level if needed
     # basicConfig does not allow to change the level right after
     level = os.environ.get('PPE_LOGGING_LEVEL', level)
-    handler.setLevel(logging.INFO)
+    handler.setLevel(level)
     logging.getLogger('ppe').addHandler(handler)
 
 
