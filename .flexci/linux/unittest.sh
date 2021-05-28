@@ -23,5 +23,4 @@ python example/ignite-mnist.py --batch_size 2048 --val_batch_size 2048 --epochs 
 pysen run lint || true
 
 # Run flake8
-pysen generate .
 flake8 .
