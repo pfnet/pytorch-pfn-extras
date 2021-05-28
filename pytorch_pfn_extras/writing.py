@@ -119,7 +119,7 @@ class _PosixFileSystem(object):
             return os.replace(src, dst)
         except OSError:
             print('Destination {} is a directory '
-                  'but source is not'.format(src),
+                  'but source is not'.format(dst),
                   file=sys.stderr)
             raise
 
