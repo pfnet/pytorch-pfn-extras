@@ -5,7 +5,7 @@ from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import trigger_util
 
 
-class EarlyStoppingTrigger:
+class EarlyStoppingTrigger(trigger_util.Trigger):
     """__init__(\
         self, check_trigger=(1, 'epoch'), monitor='main/loss', \
         patience=3, mode='auto', verbose=False, \

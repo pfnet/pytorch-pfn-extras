@@ -1,4 +1,7 @@
-class OnceTrigger:
+from pytorch_pfn_extras.training import trigger_util
+
+
+class OnceTrigger(trigger_util.Trigger):
 
     """Trigger based on the starting point of the iteration.
 

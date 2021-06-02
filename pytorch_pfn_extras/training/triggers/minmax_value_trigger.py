@@ -2,7 +2,7 @@ from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import trigger_util
 
 
-class BestValueTrigger:
+class BestValueTrigger(trigger_util.Trigger):
 
     """Trigger invoked when specific value becomes best.
 
