@@ -1,19 +1,23 @@
 import numpy
 import torch
 import torch.utils.dlpack
+from typing import Any, Dict, TypeVar, Union
 
 from pytorch_pfn_extras._cupy import cupy
 from pytorch_pfn_extras._cupy import ensure_cupy
 
 
-def from_ndarray(ndarray):
+_NDArray = TypeVar("_NDArray", numpy.ndarray, cupy.ndarray)
+
+
+def from_ndarray(ndarray: _NDArray) -> torch.Tensor:
     """Creates a `torch.Tensor` from a `numpy.ndarray` or `cupy.ndarray`.
 
     Unlike `torch.from_numpy`, this method may make a copy when needed, e.g.
     when the given `ndarray` contains the negative strides which is not
     supported by PyTorch.
     """
-    if cupy is not None and isinstance(ndarray, cupy.ndarray):
+    if isinstance(ndarray, cupy.ndarray):
         pack = _copy_if_negative_strides(ndarray).toDlpack()
         try:
             return torch.utils.dlpack.from_dlpack(pack)
@@ -22,7 +26,7 @@ def from_ndarray(ndarray):
             # https://github.com/pytorch/pytorch/pull/56789
             # This mitigates a bug above by deferring the destruction of the
             # capsule so that users can see the exception.
-            e._dlpack = pack
+            e._dlpack = pack  # type: ignore
             raise
     elif isinstance(ndarray, numpy.ndarray):
         return torch.from_numpy(_copy_if_negative_strides(ndarray))
@@ -31,14 +35,14 @@ def from_ndarray(ndarray):
         f'(got {type(ndarray).__name__})')
 
 
-def _copy_if_negative_strides(ndarray):
+def _copy_if_negative_strides(ndarray: _NDArray) -> _NDArray:
     # Torch does not support negative strides, make a copy in that case.
     if any(s < 0 for s in ndarray.strides):
         return ndarray.copy()
     return ndarray
 
 
-def as_ndarray(tensor):
+def as_ndarray(tensor: torch.Tensor) -> _NDArray:
     """Creates a `numpy.ndarray` or `cupy.ndarray` from `torch.Tensor`.
 
     This method returns a tensor as a NumPy or CuPy ndarray depending on where
@@ -56,7 +60,7 @@ def as_ndarray(tensor):
     raise ValueError(f'Tensor is on unsupported device: {devtype}')
 
 
-def get_xp(obj):
+def get_xp(obj: Union[_NDArray, torch.Tensor]) -> Any:
     """Returns a module of ndarray implementation (`numpy` or `cupy`) for the
     given `obj`.
 
@@ -68,7 +72,7 @@ def get_xp(obj):
         devtype = obj.type
     elif isinstance(obj, numpy.ndarray):
         devtype = 'cpu'
-    elif cupy is not None and isinstance(obj, cupy.ndarray):
+    elif isinstance(obj, cupy.ndarray):
         devtype = 'cuda'
     else:
         raise TypeError(
@@ -84,7 +88,7 @@ def get_xp(obj):
     raise ValueError(f'unsupported device type: {devtype}')
 
 
-def as_numpy_dtype(torch_dtype):
+def as_numpy_dtype(torch_dtype: torch.dtype) -> numpy.dtype:
     """Returns NumPy dtype for the given PyTorch dtype.
 
     Args:
@@ -100,7 +104,7 @@ def as_numpy_dtype(torch_dtype):
     return numpy_dtype
 
 
-def from_numpy_dtype(numpy_dtype):
+def from_numpy_dtype(numpy_dtype: numpy.dtype) -> torch.dtype:
     """Returns PyTorch dtype for the given NumPy dtype.
 
     Args:
@@ -116,7 +120,7 @@ def from_numpy_dtype(numpy_dtype):
     return torch_dtype
 
 
-_torch_dtype_mapping = {
+_torch_dtype_mapping: Dict[torch.dtype, numpy.dtype] = {
     # https://pytorch.org/docs/stable/tensors.html
     # https://numpy.org/doc/stable/user/basics.types.html
 
@@ -135,4 +139,6 @@ _torch_dtype_mapping = {
     torch.bool: numpy.dtype('bool'),
 }
 
-_numpy_dtype_mapping = {v: k for k, v in _torch_dtype_mapping.items()}
+_numpy_dtype_mapping: Dict[numpy.dtype, torch.dtype] = {
+    v: k for k, v in _torch_dtype_mapping.items()
+}
