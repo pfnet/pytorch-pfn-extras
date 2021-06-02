@@ -11,6 +11,7 @@ from pytorch_pfn_extras.reporting import Reporter
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training import util as util_module
+from pytorch_pfn_extras._stub import ignite, ensure_ignite
 
 _get_time = time.perf_counter
 
@@ -468,7 +469,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             extensions=None,
             out_dir='result',
             writer=None):
-        import ignite
+        ensure_ignite()
         if (util_module._get_ignite_version(ignite.__version__)
                 < util_module._get_ignite_version('0.3.0')):
             raise ImportError('Ignite version found {}. '
@@ -480,16 +481,14 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
         self.set_ignite_handlers()
 
     def set_ignite_handlers(self):
-        from ignite.engine import Events
-
         # Set a handler that sets the reporter scope on every iteration
-        @self.engine.on(Events.ITERATION_STARTED)
+        @self.engine.on(ignite.engine.Events.ITERATION_STARTED)
         def set_reporter_on_iter(engine):
             self.observation = {}
             self.cm = self.reporter.scope(self.observation)
             self.cm.__enter__()
 
-        @self.engine.on(Events.STARTED)
+        @self.engine.on(ignite.engine.Events.STARTED)
         def set_training_started(engine):
             iters_per_epoch = len(engine.state.dataloader)
             # Initialize manager once before extensions' `initialize` call
@@ -504,17 +503,17 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
 
             # Make all the next
             # handlers to be executed after user defined ones
-            @self.engine.on(Events.ITERATION_COMPLETED)
+            @self.engine.on(ignite.engine.Events.ITERATION_COMPLETED)
             def run_extensions_on_iter(engine):
                 self.iteration = engine.state.iteration
                 self.run_extensions()
 
             # This should be the last extension to be run
-            @self.engine.on(Events.ITERATION_COMPLETED)
+            @self.engine.on(ignite.engine.Events.ITERATION_COMPLETED)
             def close_reporter_on_iter(engine):
                 self.cm.__exit__(None, None, None)
 
-        @self.engine.on(Events.COMPLETED)
+        @self.engine.on(ignite.engine.Events.COMPLETED)
         def set_extensions_cleanup(engine):
             self._finalize_extensions()
 

@@ -2,8 +2,8 @@ import contextlib
 
 import torch
 
-from pytorch_pfn_extras._cupy import cupy
-from pytorch_pfn_extras._cupy import is_available, ensure_cupy
+from pytorch_pfn_extras._stub import cupy
+from pytorch_pfn_extras._stub import is_cupy_available, ensure_cupy
 
 
 _allocator = None
@@ -23,7 +23,7 @@ def stream(stream):
         return
 
     with torch.cuda.stream(stream):
-        if is_available():
+        if is_cupy_available():
             cupy_stream = cupy.cuda.ExternalStream(stream.cuda_stream)
             with cupy_stream:
                 yield

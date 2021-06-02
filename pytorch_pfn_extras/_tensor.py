@@ -3,8 +3,8 @@ import torch
 import torch.utils.dlpack
 from typing import Any, Dict, TypeVar, Union
 
-from pytorch_pfn_extras._cupy import cupy
-from pytorch_pfn_extras._cupy import ensure_cupy
+from pytorch_pfn_extras._stub import cupy
+from pytorch_pfn_extras._stub import ensure_cupy
 
 
 _NDArray = TypeVar("_NDArray", numpy.ndarray, cupy.ndarray)
