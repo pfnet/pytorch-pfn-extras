@@ -1,4 +1,13 @@
-from pytorch_pfn_extras.training.triggers import interval_trigger
+class Trigger:
+    """Base class for triggers."""
+    def load_state_dict(self, state):
+        pass
+
+    def state_dict(self):
+        return {}
+
+    def __call__(self, manager):
+        raise NotImplementedError
 
 
 def get_trigger(trigger):
@@ -31,6 +40,8 @@ def get_trigger(trigger):
         object made from ``trigger``.
 
     """
+    from pytorch_pfn_extras.training.triggers import interval_trigger
+
     if callable(trigger):
         return trigger
     elif trigger is None:
