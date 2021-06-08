@@ -558,8 +558,13 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
         def set_extensions_cleanup(engine: Engine) -> None:
             self._finalize_extensions()
 
-    def state_dict(self, *, transform_models=None) -> Dict[str, Any]:
-        to_save = super().state_dict()
+    def state_dict(
+            self,
+            *,
+            transform_models: Callable[
+                [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
+    ) -> Dict[str, Any]:
+        to_save = super().state_dict(transform_models=transform_models)
         to_save['_epoch_length'] = self.engine.state.epoch_length
         to_save['_start_iteration'] = self.engine.state.iteration
         return to_save
@@ -568,7 +573,8 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             self,
             to_load: Dict[str, Any],
             *,
-            transform_models=None
+            transform_models: Callable[
+                [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
     ) -> None:
-        super().load_state_dict(to_load)
+        super().load_state_dict(to_load, transform_models=transform_models)
         self._start_epoch = self._start_iteration // to_load['_epoch_length']
