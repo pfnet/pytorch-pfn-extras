@@ -385,3 +385,35 @@ def test_snapshot_autoload_twice(path):
 
     epoch_indices = get_epoch_indices()
     assert len(epoch_indices) == 0
+
+
+def test_snapshot_autoload_temp(path):
+    max_epochs = 10
+    iters_per_epoch = 10
+    fmt = 'snapshot_iter'
+
+    def run():
+        manager = get_trainer(out_dir=path, epochs=max_epochs)
+        snapshot = extensions.snapshot(filename=fmt, autoload=True)
+        manager.extend(snapshot)
+
+        epoch_indices = []
+        while not manager.stop_trigger:
+            epoch_indices.append(manager.epoch)
+            for _ in range(iters_per_epoch):
+                with manager.run_iteration():
+                    time.sleep(0.01)
+
+    run()
+    # Move the snapshot file to be a tmp_ one
+    src = os.path.join(path, fmt)
+    dst = os.path.join(path, 'tmp_' + fmt)
+    os.replace(src, dst)
+    with pytest.warns(UserWarning):
+        run()
+    # Move the snapshot file to be .bak one
+    src = dst
+    dst = os.path.join(path, fmt + '.bak')
+    os.replace(src, dst)
+    with pytest.warns(UserWarning):
+        run()

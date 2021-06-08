@@ -1,9 +1,15 @@
 import os
+import warnings
 
 import torch
 import torch.distributed
 
 from pytorch_pfn_extras.training import extension
+
+
+def _match_files(prefix, suffix, path, fs):
+    return [file for file in fs.list(path)
+            if file.startswith(prefix) and file.endswith(suffix)]
 
 
 def _find_snapshot_files(fmt, path, fs):
@@ -29,8 +35,14 @@ def _find_snapshot_files(fmt, path, fs):
     prefix = fmt.split('{')[0]
     suffix = fmt.split('}')[-1]
 
-    matched_files = (file for file in fs.list(path)
-                     if file.startswith(prefix) and file.endswith(suffix))
+    matched_files = _match_files(prefix, suffix, path, fs)
+    if len(matched_files) == 0:
+        # Some error when saving the last snapshot could have left a valid
+        # snapshot with .bak suffix or tmp_
+        matched_files = _match_files('tmp_'+prefix, suffix, path, fs)
+        matched_files += _match_files(prefix, suffix+'.bak', path, fs)
+        if len(matched_files) > 0:
+            warnings.warn('Didn\'t find a valid snapshot but temporal ones')
 
     def _prepend_mtime(f):
         t = fs.stat(os.path.join(path, f)).last_modified
