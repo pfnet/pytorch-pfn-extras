@@ -1,3 +1,6 @@
+from typing import Callable, Union, Tuple, TYPE_CHECKING
+
+
 class Trigger:
     """Base class for triggers."""
     def load_state_dict(self, state):
@@ -10,7 +13,21 @@ class Trigger:
         raise NotImplementedError
 
 
-def get_trigger(trigger):
+class _CallableTrigger(Trigger):
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, manager):
+        return self.func(manager)
+
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+    TriggerFunc = Callable[['_BaseExtensionsManager'], bool]
+    TriggerLike = Union[Trigger, TriggerFunc, Tuple[int, str], None]
+
+
+def get_trigger(trigger: 'TriggerLike') -> Trigger:
     """Gets a trigger object.
 
     Trigger object is a callable that accepts a
@@ -42,10 +59,12 @@ def get_trigger(trigger):
     """
     from pytorch_pfn_extras.training.triggers import interval_trigger
 
-    if callable(trigger):
+    if isinstance(trigger, Trigger):
         return trigger
+    elif callable(trigger):
+        return _CallableTrigger(trigger)
     elif trigger is None:
-        return _never_fire_trigger
+        return _CallableTrigger(_never_fire_trigger)
     else:
         return interval_trigger.IntervalTrigger(*trigger)
 
