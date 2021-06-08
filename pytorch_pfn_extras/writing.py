@@ -215,11 +215,16 @@ class Writer:
             prefix = 'tmp_{}'.format(filename)
             tmppath = os.path.join(out_dir, prefix)
             make_backup = self.fs.exists(dest)
-            if make_backup:
-                bak = '{}.bak'.format(dest)
-                self.fs.rename(dest, bak)
             with self.fs.open(tmppath, 'wb') as f:
                 savefun(target, f, **savefun_kwargs)
+            if make_backup:
+                bak = '{}.bak'.format(dest)
+                # Check if another backup file exists
+                # due to some unexpected termination of an earlier
+                # process
+                if self.fs.exists(bak):
+                    self.fs.remove(bak)
+                self.fs.rename(dest, bak)
             self.fs.rename(tmppath, dest)
             if make_backup:
                 self.fs.remove(bak)
