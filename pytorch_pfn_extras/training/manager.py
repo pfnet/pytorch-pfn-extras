@@ -2,6 +2,7 @@ import collections
 import contextlib
 import copy
 import time
+from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 import warnings
 
 import torch
@@ -10,6 +11,7 @@ from pytorch_pfn_extras import writing
 from pytorch_pfn_extras.reporting import Reporter
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training import trigger_util
 from pytorch_pfn_extras.training import util as util_module
 
 _get_time = time.perf_counter
@@ -17,21 +19,25 @@ _get_time = time.perf_counter
 
 class _ExtensionEntry:
 
-    def __init__(self, extension, priority, trigger, call_before_training):
+    def __init__(
+            self,
+            extension: extension_module.Extension,
+            priority: int,
+            trigger: trigger_util.Trigger,
+            call_before_training: bool
+    ) -> None:
         self.extension = extension
         self.trigger = trigger
         self.priority = priority
         self.call_before_training = call_before_training
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         state = {}
-        if hasattr(self.extension, 'state_dict'):
-            state['extension'] = self.extension.state_dict()
-        if hasattr(self.trigger, 'state_dict'):
-            state['trigger'] = self.trigger.state_dict()
+        state['extension'] = self.extension.state_dict()
+        state['trigger'] = self.trigger.state_dict()
         return state
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         if 'extension' in to_load:
             self.extension.load_state_dict(to_load['extension'])
         if 'trigger' in to_load:
@@ -45,13 +51,14 @@ class _BaseExtensionsManager:
 
     def __init__(
             self,
-            models,
-            optimizers,
-            max_epochs,
-            extensions,
-            out_dir,
-            writer,
-            stop_trigger=None):
+            models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+            optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
+            max_epochs: int,
+            extensions: Optional[List[extension_module.Extension]],
+            out_dir: str,
+            writer: Optional[writing.Writer],
+            stop_trigger: 'trigger_util.TriggerLike' = None
+    ) -> None:
         if extensions is None:
             extensions = []
         if stop_trigger is None:
@@ -64,7 +71,7 @@ class _BaseExtensionsManager:
             writer = writing.SimpleWriter(out_dir=out_dir)
         # triggers are stateful, so we need to make a copy for internal use
         self._internal_stop_trigger = copy.deepcopy(self._stop_trigger)
-        self.observation = {}
+        self.observation: Dict[str, torch.Tensor] = {}
         self._out = out_dir
         self.writer = writer
         self.reporter = Reporter()
@@ -91,8 +98,9 @@ class _BaseExtensionsManager:
         self.max_epochs = max_epochs
         self._start_iteration = 0
         # Defer!
-        self._start_time = None
-        self._extensions = collections.OrderedDict()
+        self._start_time: Optional[float] = None
+        self._iters_per_epoch: Optional[int] = None
+        self._extensions: Dict[str, _ExtensionEntry] = collections.OrderedDict()
         for ext in extensions:
             self.extend(ext)
 
@@ -103,60 +111,64 @@ class _BaseExtensionsManager:
     # the snapshot extension must run first to restore the training state.
 
     @property
-    def iteration(self):
+    def iteration(self) -> int:
         self.start_extensions()
         return self._iteration
 
     @iteration.setter
-    def iteration(self, value):
+    def iteration(self, value: int) -> None:
         self._iteration = value
 
     @property
-    def models(self):
+    def models(self) -> Dict[str, torch.nn.Module]:
         self.start_extensions()
         return self._models
 
     @property
-    def optimizers(self):
+    def optimizers(self) -> Dict[str, torch.optim.Optimizer]:
         self.start_extensions()
         return self._optimizers
 
     @property
-    def elapsed_time(self):
-        # Unavailable until the initial run_iteration call
+    def elapsed_time(self) -> float:
+        if self._start_time is None:
+            raise RuntimeError(
+                'Unavailable until the initial run_iteration call.')
         return _get_time() - self._start_time
 
     @property
-    def is_before_training(self):
+    def is_before_training(self) -> bool:
         # Extensions will start via self.iteration
         return self.iteration == 0
 
     @property
-    def epoch(self):
+    def epoch(self) -> int:
         # Extensions will start via self.iteration
+        assert self._iters_per_epoch is not None
         return self.iteration // self._iters_per_epoch
 
     @property
-    def epoch_detail(self):
+    def epoch_detail(self) -> float:
         # Extensions will start via self.iteration
+        assert self._iters_per_epoch is not None
         return self.iteration / self._iters_per_epoch
 
     @property
-    def stop_trigger(self):
+    def stop_trigger(self) -> bool:
         self.start_extensions()
         # Trigger is stateful, we close the extensions the first time
         # it evaluates to True, as it won't do it again
         return self._stop_trigger(self)
 
     @property
-    def out(self):
+    def out(self) -> str:
         if self.writer.out_dir is not None:
             return self.writer.out_dir
         else:
             return self._out
 
     @property
-    def updater(self):
+    def updater(self) -> Any:
         warnings.warn(
             'The `updater` attribute has been deprecated in v0.3.0.'
             ' Use `iteration`, `epoch`, and `epoch_detail` attributes in'
@@ -167,11 +179,15 @@ class _BaseExtensionsManager:
             ' `snapshot_iter_{.iteration}`).', DeprecationWarning)
         return self
 
-    def _prepare_for_training(self, start_iteration, iters_per_epoch):
+    def _prepare_for_training(
+            self,
+            start_iteration: int,
+            iters_per_epoch: int
+    ) -> None:
         self.iteration = start_iteration
         self._iters_per_epoch = iters_per_epoch
 
-    def start_extensions(self):
+    def start_extensions(self) -> None:
         if self._start_extensions_called:
             # This method must not be called twice or more.
             return
@@ -199,8 +215,16 @@ class _BaseExtensionsManager:
                 if entry.call_before_training:
                     entry.extension(self)
 
-    def extend(self, extension, name=None, trigger=None, priority=None,
-               *, call_before_training=False, **kwargs):
+    def extend(
+            self,
+            extension: extension_module.Extension,
+            name: Optional[str] = None,
+            trigger: 'trigger_util.TriggerLike' = None,
+            priority: Optional[int] = None,
+            *,
+            call_before_training: bool = False,
+            **kwargs: Dict[str, Any],
+    ) -> None:
         """Registers an extension to the manager.
 
         :class:`Extension` is a callable object which is called after each
@@ -265,7 +289,7 @@ class _BaseExtensionsManager:
         self._extensions[modified_name] = _ExtensionEntry(
             extension, priority, trigger, call_before_training)
 
-    def get_extension(self, name):
+    def get_extension(self, name: str) -> extension_module.Extension:
         """Returns the extension of a given name.
 
         Args:
@@ -281,7 +305,7 @@ class _BaseExtensionsManager:
         else:
             raise ValueError('extension %s not found' % name)
 
-    def run_extensions(self):
+    def run_extensions(self) -> None:
         to_run = []
         for _, entry in self.extensions:
             if entry.trigger(self):
@@ -304,7 +328,7 @@ class _BaseExtensionsManager:
         for extension in to_run:
             extension(self)
 
-    def _finalize_extensions(self):
+    def _finalize_extensions(self) -> None:
         for _, entry in self.extensions:
             # Some mock objects for tests give errors
             # if we use `getattr`
@@ -314,7 +338,12 @@ class _BaseExtensionsManager:
             except AttributeError:
                 pass
 
-    def state_dict(self, *, transform_models=lambda n, x: x):
+    def state_dict(
+            self,
+            *,
+            transform_models: Callable[
+                [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
+    ) -> Dict[str, Any]:
         """
         transform_models is a function that apply a transformation
         to a model.
@@ -324,7 +353,7 @@ class _BaseExtensionsManager:
         called as follows
         state_dict(transform_models=lambda n, x: x.module)
         """
-        to_save = {}
+        to_save: Dict[str, Any] = {}
         to_save['_start_iteration'] = self.iteration
         # Save manager status ?
         to_save['models'] = {
@@ -336,7 +365,13 @@ class _BaseExtensionsManager:
                                  for name in self._extensions}
         return to_save
 
-    def load_state_dict(self, to_load, *, transform_models=lambda n, x: x):
+    def load_state_dict(
+            self,
+            to_load: Dict[str, Any],
+            *,
+            transform_models: Callable[
+                [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
+    ) -> Any:
         """
         transform_models is a function that apply a transformation
         to a model before loading its state
@@ -385,15 +420,16 @@ class ExtensionsManager(_BaseExtensionsManager):
 
     def __init__(
             self,
-            models,
-            optimizers,
-            max_epochs,
+            models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+            optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
+            max_epochs: int,
             *,
-            iters_per_epoch,
-            extensions=None,
-            out_dir='result',
-            stop_trigger=None,
-            writer=None):
+            iters_per_epoch: Optional[int],
+            extensions: Optional[List[extension_module.Extension]] = None,
+            out_dir: str = 'result',
+            stop_trigger: 'trigger_util.TriggerLike' = None,
+            writer: Optional[writing.Writer] = None
+    ) -> None:
         super().__init__(
             models, optimizers, max_epochs, extensions,
             out_dir, writer, stop_trigger)
@@ -404,7 +440,11 @@ class ExtensionsManager(_BaseExtensionsManager):
         self._prepare_for_training(0, iters_per_epoch)
 
     @contextlib.contextmanager
-    def run_iteration(self, *, step_optimizers=None):
+    def run_iteration(
+            self,
+            *,
+            step_optimizers: Optional[List[str]] = None
+    ) -> Iterator[None]:
         """ Context manager to run an iteration.
 
         This manager can additionally run a step in the
@@ -443,7 +483,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
     """Manages extensions and the current status in Ignite training loop.
 
     Args:
-        engine (ignite.Engine): Ignite trainer engine
+        engine (ignite.engine.Engine): Ignite trainer engine
         models (dict or torch.nn.Module): Map of string to Module
             or an actual Module
         optimizers (dict or torch.Optimizer): Map of string to Optimizer
@@ -456,15 +496,18 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
     """
     def __init__(
             self,
-            engine,
-            models,
-            optimizers,
-            max_epochs,
+            engine: Any,
+            models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+            optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
+            max_epochs: int,
             *,
-            extensions=None,
-            out_dir='result',
-            writer=None):
+            extensions: Optional[List[extension_module.Extension]] = None,
+            out_dir: str = 'result',
+            writer: Optional[writing.Writer] = None
+    ) -> None:
         import ignite
+        if not isinstance(engine, ignite.engine.Engine):
+            raise TypeError("Argument 'engine' must be of ignite.Engine type.")
         if (util_module._get_ignite_version(ignite.__version__)
                 < util_module._get_ignite_version('0.3.0')):
             raise ImportError('Ignite version found {}. '
@@ -475,18 +518,19 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
         self._start_epoch = 0  # Used to correctly restore snapshots
         self.set_ignite_handlers()
 
-    def set_ignite_handlers(self):
+    def set_ignite_handlers(self) -> None:
+        from ignite.engine import Engine
         from ignite.engine import Events
 
         # Set a handler that sets the reporter scope on every iteration
         @self.engine.on(Events.ITERATION_STARTED)
-        def set_reporter_on_iter(engine):
+        def set_reporter_on_iter(engine: Engine) -> None:
             self.observation = {}
             self.cm = self.reporter.scope(self.observation)
             self.cm.__enter__()
 
         @self.engine.on(Events.STARTED)
-        def set_training_started(engine):
+        def set_training_started(engine: Engine) -> None:
             iters_per_epoch = len(engine.state.dataloader)
             # Initialize manager once before extensions' `initialize` call
             self._prepare_for_training(0, iters_per_epoch)
@@ -501,25 +545,30 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             # Make all the next
             # handlers to be executed after user defined ones
             @self.engine.on(Events.ITERATION_COMPLETED)
-            def run_extensions_on_iter(engine):
+            def run_extensions_on_iter(engine: Engine) -> None:
                 self.iteration = engine.state.iteration
                 self.run_extensions()
 
             # This should be the last extension to be run
             @self.engine.on(Events.ITERATION_COMPLETED)
-            def close_reporter_on_iter(engine):
+            def close_reporter_on_iter(engine: Engine) -> None:
                 self.cm.__exit__(None, None, None)
 
         @self.engine.on(Events.COMPLETED)
-        def set_extensions_cleanup(engine):
+        def set_extensions_cleanup(engine: Engine) -> None:
             self._finalize_extensions()
 
-    def state_dict(self):
+    def state_dict(self, *, transform_models=None) -> Dict[str, Any]:
         to_save = super().state_dict()
         to_save['_epoch_length'] = self.engine.state.epoch_length
         to_save['_start_iteration'] = self.engine.state.iteration
         return to_save
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(
+            self,
+            to_load: Dict[str, Any],
+            *,
+            transform_models=None
+    ) -> None:
         super().load_state_dict(to_load)
         self._start_epoch = self._start_iteration // to_load['_epoch_length']
