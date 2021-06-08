@@ -220,7 +220,7 @@ class Writer:
             if make_backup:
                 bak = '{}.bak'.format(dest)
                 # Check if another backup file exists
-                # due to some unexpected termination of an older
+                # due to some unexpected termination of an earlier
                 # process
                 if self.fs.exists(bak):
                     self.fs.remove(bak)
