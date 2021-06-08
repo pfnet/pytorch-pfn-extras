@@ -101,8 +101,8 @@ class LazyInitializationMixin:
             key = prefix + name
             if key in state_dict:
                 # The model was serialized after initialization.
-                self.register_parameter(
-                    name, torch.nn.Parameter(state_dict[key]))
+                if isinstance(getattr(self, name), UninitializedParameter):
+                    raise RuntimeError('Cant load an uninitialized parameter')
             else:
                 # The model was serialized before initialization.
                 param = UninitializedParameter()
