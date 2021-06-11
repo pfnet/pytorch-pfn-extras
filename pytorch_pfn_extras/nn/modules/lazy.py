@@ -74,9 +74,6 @@ class LazyInitializationMixin:
         for name in self.lazy_parameter_names:
             if isinstance(getattr(self, name), UninitializedParameter):
                 del destination[name]
-        for name in self.lazy_buffer_names:
-            if getattr(self, name).shape == (0,):
-                del destination[name]
         return destination
 
     def _lazy_load_hook(
@@ -94,28 +91,35 @@ class LazyInitializationMixin:
         """
         for name in self.lazy_buffer_names:
             key = prefix + name
-            if key not in state_dict:
-                buffer = torch.Tensor([])
-                state_dict[key] = buffer
+            module_initialized = getattr(self, name).shape != (0,)
+            state_initialized = (
+                 key in state_dict and (state_dict[key].shape != (0,)))
+            if module_initialized != state_initialized:
+                raise RuntimeError(
+                    'Can\'t load initialized buffers in non-initialized '
+                    'modules and vice versa')
+            else:
+                # For compatibility with older snapshots
+                if key not in state_dict and not module_initialized:
+                    buffer = torch.Tensor([])
+                    state_dict[key] = buffer
 
         for name in self.lazy_parameter_names:
             # The parameter may not exist in the loaded ``state_dict`` if the
             # original module was serialized before initializing lazy
             # parameters (see comments of ``state_dict``).
             key = prefix + name
-            if key in state_dict:
-                if isinstance(getattr(self, name), UninitializedParameter):
-                    raise RuntimeError(
-                        'Can\'t load an already initialized '
-                        'parameter into a non initialized one')
+            module_initialized = not isinstance(
+                getattr(self, name), UninitializedParameter)
+            state_initialized = key in state_dict
+            if module_initialized != state_initialized:
+                raise RuntimeError(
+                    'Can\'t load initialized parameters in non-initialized '
+                    'modules and vice versa')
             else:
-                if not isinstance(getattr(self, name), UninitializedParameter):
-                    raise RuntimeError(
-                        'Can\'t replace a already initialized '
-                        'parameter with a non initialized one')
-
-                param = UninitializedParameter()
-                state_dict[key] = param
+                if key not in state_dict and not module_initialized:
+                    param = UninitializedParameter()
+                    state_dict[key] = param
 
 
 class UninitializedParameter(torch.nn.Parameter):
