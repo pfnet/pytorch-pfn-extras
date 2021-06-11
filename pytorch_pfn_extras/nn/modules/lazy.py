@@ -74,6 +74,9 @@ class LazyInitializationMixin:
         for name in self.lazy_parameter_names:
             if isinstance(getattr(self, name), UninitializedParameter):
                 del destination[name]
+        for name in self.lazy_buffer_names:
+            if getattr(self, name).shape == (0,):
+                del destination[name]
         return destination
 
     def _lazy_load_hook(
@@ -92,7 +95,20 @@ class LazyInitializationMixin:
         for name in self.lazy_buffer_names:
             # Avoid shape mismatch error when loading an initialized buffer
             # onto an uninitialized module instance.
-            self.register_buffer(name, state_dict[prefix + name])
+            key = prefix + name
+            if key in state_dict:
+                # The model was serialized after initialization.
+                if getattr(self, name).shape == (0,):
+                    raise RuntimeError(
+                        'Can\'t load an already initialized '
+                        'buffer into a non initialized one')
+            else:
+                if getattr(self, name).shape != (0,):
+                    raise RuntimeError(
+                        'Can\'t replace a already initialized '
+                        'buffer with a non initialized one')
+                buffer = torch.Tensor([])
+                state_dict[key] = buffer
 
         for name in self.lazy_parameter_names:
             # The parameter may not exist in the loaded ``state_dict`` if the
@@ -100,13 +116,17 @@ class LazyInitializationMixin:
             # parameters (see comments of ``state_dict``).
             key = prefix + name
             if key in state_dict:
-                # The model was serialized after initialization.
                 if isinstance(getattr(self, name), UninitializedParameter):
-                    raise RuntimeError('Cant load an uninitialized parameter')
+                    raise RuntimeError(
+                        'Can\'t load an already initialized '
+                        'parameter into a non initialized one')
             else:
-                # The model was serialized before initialization.
+                if not isinstance(getattr(self, name), UninitializedParameter):
+                    raise RuntimeError(
+                        'Can\'t replace a already initialized '
+                        'parameter with a non initialized one')
+
                 param = UninitializedParameter()
-                self.register_parameter(name, param)
                 state_dict[key] = param
 
 
