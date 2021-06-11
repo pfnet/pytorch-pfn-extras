@@ -93,20 +93,8 @@ class LazyInitializationMixin:
         for the details of the hook specification.
         """
         for name in self.lazy_buffer_names:
-            # Avoid shape mismatch error when loading an initialized buffer
-            # onto an uninitialized module instance.
             key = prefix + name
-            if key in state_dict:
-                # The model was serialized after initialization.
-                if getattr(self, name).shape == (0,):
-                    raise RuntimeError(
-                        'Can\'t load an already initialized '
-                        'buffer into a non initialized one')
-            else:
-                if getattr(self, name).shape != (0,):
-                    raise RuntimeError(
-                        'Can\'t replace a already initialized '
-                        'buffer with a non initialized one')
+            if key not in state_dict:
                 buffer = torch.Tensor([])
                 state_dict[key] = buffer
 
