@@ -1,4 +1,9 @@
-from typing import Optional
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+import types
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras import training
+    from pytorch_pfn_extras.training import trigger_util
 
 
 PRIORITY_WRITER = 300
@@ -38,12 +43,12 @@ class Extension:
             :meth:`pytorch_pfn_extras.ExtensionsManager.extend` for details.
 
     """
-    trigger = 1, 'iteration'
-    priority = PRIORITY_READER
+    trigger: 'trigger_util.TriggerLike' = 1, 'iteration'
+    priority: Optional[int] = PRIORITY_READER
     name: Optional[str] = None
 
     @property
-    def default_name(self):
+    def default_name(self) -> str:
         """Default name of the extension.
 
         It is the name of the class by default. Implementation can override
@@ -52,7 +57,7 @@ class Extension:
         """
         return type(self).__name__
 
-    def __call__(self, manager):
+    def __call__(self, manager: 'training.ExtensionsManager') -> None:
         """Invokes the extension.
 
         Implementations should override this operator. This method is called
@@ -66,7 +71,7 @@ class Extension:
         raise NotImplementedError(
             'Extension implementation must override __call__.')
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         if name == 'invoke_before_training':
             raise AttributeError(
                 'invoke_before_training has been removed since Chainer '
@@ -74,7 +79,7 @@ class Extension:
         raise AttributeError('{} object has no attribute {}'.format(
             type(self).__name__, name))
 
-    def finalize(self):
+    def finalize(self) -> None:
         """Finalizes the extension.
 
         This method is called at the end of the training loop.
@@ -82,7 +87,7 @@ class Extension:
         """
         pass
 
-    def initialize(self, manager):
+    def initialize(self, manager: 'training.ExtensionsManager') -> None:
         """Initializes up the manager state.
 
         This method is called before entering the training loop. An extension
@@ -99,7 +104,12 @@ class Extension:
         """
         pass
 
-    def on_error(self, manager, exc, tb):
+    def on_error(
+            self,
+            manager: 'training.ExtensionsManager',
+            exc: Exception,
+            tb: types.TracebackType
+    ) -> None:
         """Handles the error raised during training before finalization.
 
         This method is called when an exception is thrown during the
@@ -116,7 +126,7 @@ class Extension:
         """
         pass
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         """Serializes the extension state.
 
         It is called when a manager that owns this extension is serialized. It
@@ -125,7 +135,7 @@ class Extension:
         """
         pass
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         pass
 
 
@@ -189,7 +199,7 @@ def make_extension(
     if priority is None:
         priority = Extension.priority
 
-    def decorator(ext):
+    def decorator(ext: Extension) -> Extension:
         ext.trigger = trigger
         ext.default_name = default_name or ext.__name__
         ext.priority = priority
