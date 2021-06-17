@@ -33,6 +33,13 @@ if ($test -eq "torch15") {
     ActivatePython 3.8
     RunOrDie python -m pip install torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu111/torch_stable.html
 
+} elseif ($test -eq "torch19") {
+    # PyTorch 1.9 + Python 3.8
+    # TODO(kmaehashi): Bump to Python 3.9 once ONNX wheel for Python 3.9 is released.
+    ActivateCUDA 11.1
+    ActivatePython 3.8
+    RunOrDie python -m pip install torch==1.9.* torchvision==0.10.* -f https://download.pytorch.org/whl/cu111/torch_stable.html
+
 } else {
     throw "Unsupported test variant: $test"
 }
