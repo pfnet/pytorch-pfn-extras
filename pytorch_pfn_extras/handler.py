@@ -27,6 +27,9 @@ def torch_autocast(enabled=True):
         yield
 
 
+_is_torch_17 = torch.__version__.split('.')[1] == '7'
+
+
 class BaseHandler:
 
     def __init__(self, logic, options, *args, **kwargs):
@@ -215,7 +218,6 @@ class Handler(BaseHandler):
 
     def consume_options(self, options):
         super().consume_options(options)
-        self._autocast = options.pop('autocast', False)
         self._eval_report_keys = options.pop('eval_report_keys', [])
         self._train_report_keys = options.pop('train_report_keys', [])
         self._async = options.pop('async', False)
@@ -358,9 +360,8 @@ class Handler(BaseHandler):
 
         batch = self._entry_runtime.convert_batch(batch)
 
-        with torch.cuda.amp.autocast(enabled=self._autocast):
-            outs = self._logic.train_step(
-                trainer.models, trainer.optimizers, batch_idx, batch)
+        outs = self._logic.train_step(
+            trainer.models, trainer.optimizers, batch_idx, batch)
 
         if self._async:
             # async returns inmediately
@@ -594,11 +595,14 @@ class Logic(BaseLogic):
 
         self.backward_outputs = options.pop('backward_outputs', None)
         self._grad_scaler = options.pop('grad_scaler', None)
+        self._autocast = options.pop('autocast', False)
 
-        if self._grad_scaler is not None:
-            if not _amp_enabled:
+        if not _amp_enabled:
+            if self._grad_scaler is not None or not self._autocast:
                 raise RuntimeError('Requested AMP features but torch.cuda.amp'
                                    ' is not enabled')
+
+        if self._grad_scaler is not None:
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
                 raise RuntimeError('grad_scaler should be a '
                                    'torch.cuda.amp.GradScaler object')
@@ -672,17 +676,18 @@ class Logic(BaseLogic):
             batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
                 Input tensors feeded to the model of the current step.
         """
-        optimizers[self.model_name].zero_grad()
-        outs = self._forward(models[self.model_name], batch)
-        to_back_outs = outs
-        if self._grad_scaler is not None:
-            to_back_outs = self._normalize_outputs(outs)
-            if not isinstance(outs, torch.Tensor):
+        with torch_autocast(enabled=self._autocast):
+            optimizers[self.model_name].zero_grad()
+            outs = self._forward(models[self.model_name], batch)
+            to_back_outs = outs
+            if self._grad_scaler is not None:
+                to_back_outs = self._normalize_outputs(outs)
                 assert (
                     len(outs) == 1
                 ), "loss scaling with multiple outputs is not supported"
-            to_back_outs = {
-                k: self._grad_scaler.scale(v) for k, v in to_back_outs.items()}
+                to_back_outs = {
+                    k: self._grad_scaler.scale(v)
+                    for k, v in to_back_outs.items()}
         self._backward(to_back_outs)
         return outs
 
