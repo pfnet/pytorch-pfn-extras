@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from contextlib import suppress
 import os
+from packaging import version
 
 import numpy as np
 import onnx
@@ -18,8 +19,14 @@ from pytorch_pfn_extras.onnx import scoped_anchor
 from tests.pytorch_pfn_extras_tests.onnx.test_export_testcase import _helper
 
 
+torch_version = version.Version(torch.__version__)
+
+
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_annotate():
+    if torch_version < version.Version('1.8.0'):
+        pytest.skip('skip for PyTorch 1.7 or earlier')
+
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -74,6 +81,9 @@ def test_annotate():
 
 
 def test_apply_annotation():
+    if torch_version < version.Version('1.8.0'):
+        pytest.skip('skip for PyTorch 1.7 or earlier')
+
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
