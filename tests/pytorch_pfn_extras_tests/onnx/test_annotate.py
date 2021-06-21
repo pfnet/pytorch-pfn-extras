@@ -153,6 +153,7 @@ def test_apply_annotation():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.filterwarnings("ignore::torch.jit.TracerWarning")
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_scoped_anchor():
     class Net(nn.Module):
         def __init__(self, anchor_mode='on'):
