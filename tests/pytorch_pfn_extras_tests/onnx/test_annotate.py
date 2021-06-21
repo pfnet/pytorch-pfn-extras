@@ -47,7 +47,9 @@ def test_annotate():
     assert 'Conv_1' in named_nodes
 
     assert 'MatMul_3' in named_nodes
+    assert 'Add_4' in named_nodes
     assert 'MatMul_6' in named_nodes
+    assert 'Add_7' in named_nodes
 
     node_conv_0_attrs = [a.name for a in named_nodes['Conv_0'].attribute]
     assert 'aaa' in node_conv_0_attrs
@@ -59,12 +61,12 @@ def test_annotate():
     assert 'bbb' not in node_conv_1_attrs
     assert 'zzz' not in node_conv_1_attrs
     assert 'yyy' not in node_conv_1_attrs
-    node_matmul_2_attrs = [a.name for a in named_nodes['MatMul_3'].attribute]
+    node_matmul_2_attrs = [a.name for a in named_nodes['Add_4'].attribute]
     assert 'aaa' not in node_matmul_2_attrs
     assert 'bbb' not in node_matmul_2_attrs
     assert 'zzz' in node_matmul_2_attrs
     assert 'yyy' in node_matmul_2_attrs
-    node_matmul_4_attrs = [a.name for a in named_nodes['MatMul_6'].attribute]
+    node_matmul_4_attrs = [a.name for a in named_nodes['Add_7'].attribute]
     assert 'aaa' not in node_matmul_4_attrs
     assert 'bbb' not in node_matmul_4_attrs
     assert 'zzz' in node_matmul_4_attrs
@@ -106,7 +108,9 @@ def test_apply_annotation():
     assert 'Relu_1' in named_nodes
     assert 'Conv_2' in named_nodes
     assert 'MatMul_4' in named_nodes
+    assert 'Add_5' in named_nodes
     assert 'MatMul_7' in named_nodes
+    assert 'Add_8' in named_nodes
     assert 'Elu_9' in named_nodes
 
     node_attrs = [a.name for a in named_nodes['Conv_0'].attribute]
@@ -124,12 +128,12 @@ def test_apply_annotation():
     assert 'bbb' not in node_attrs
     assert 'zzz' not in node_attrs
     assert 'yyy' not in node_attrs
-    node_attrs = [a.name for a in named_nodes['MatMul_4'].attribute]
+    node_attrs = [a.name for a in named_nodes['Add_5'].attribute]
     assert 'aaa' not in node_attrs
     assert 'bbb' not in node_attrs
     assert 'zzz' in node_attrs
     assert 'yyy' in node_attrs
-    node_attrs = [a.name for a in named_nodes['MatMul_7'].attribute]
+    node_attrs = [a.name for a in named_nodes['Add_8'].attribute]
     assert 'aaa' not in node_attrs
     assert 'bbb' not in node_attrs
     assert 'zzz' in node_attrs
