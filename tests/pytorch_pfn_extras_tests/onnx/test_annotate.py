@@ -155,6 +155,7 @@ def test_apply_annotation():
     assert 'yyy' in node_attrs
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.filterwarnings("ignore::torch.jit.TracerWarning")
 def test_scoped_anchor():
     class Net(nn.Module):
