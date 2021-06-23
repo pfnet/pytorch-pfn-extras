@@ -32,8 +32,8 @@ def test_annotate():
             super(Net, self).__init__()
             self.conv = nn.Conv2d(1, 6, 3)
             self.conv2 = nn.Conv2d(6, 12, 3)
-            self.linear = nn.Linear(28, 10)
-            self.linear2 = nn.Linear(10, 5)
+            self.linear = nn.Linear(28, 10, bias=False)
+            self.linear2 = nn.Linear(10, 5, bias=False)
 
         def forward(self, x):
             with annotate(aaa='a', bbb=['b', 'c']):
@@ -54,9 +54,7 @@ def test_annotate():
     assert 'Conv_1' in named_nodes
 
     assert 'MatMul_3' in named_nodes
-    assert 'Add_4' in named_nodes
-    assert 'MatMul_6' in named_nodes
-    assert 'Add_7' in named_nodes
+    assert 'MatMul_5' in named_nodes
 
     node_conv_0_attrs = [a.name for a in named_nodes['Conv_0'].attribute]
     assert 'aaa' in node_conv_0_attrs
@@ -68,16 +66,16 @@ def test_annotate():
     assert 'bbb' not in node_conv_1_attrs
     assert 'zzz' not in node_conv_1_attrs
     assert 'yyy' not in node_conv_1_attrs
-    node_matmul_2_attrs = [a.name for a in named_nodes['Add_4'].attribute]
+    node_matmul_2_attrs = [a.name for a in named_nodes['MatMul_3'].attribute]
     assert 'aaa' not in node_matmul_2_attrs
     assert 'bbb' not in node_matmul_2_attrs
     assert 'zzz' in node_matmul_2_attrs
     assert 'yyy' in node_matmul_2_attrs
-    node_matmul_4_attrs = [a.name for a in named_nodes['Add_7'].attribute]
-    assert 'aaa' not in node_matmul_4_attrs
-    assert 'bbb' not in node_matmul_4_attrs
-    assert 'zzz' in node_matmul_4_attrs
-    assert 'yyy' in node_matmul_4_attrs
+    node_matmul_5_attrs = [a.name for a in named_nodes['MatMul_5'].attribute]
+    assert 'aaa' not in node_matmul_5_attrs
+    assert 'bbb' not in node_matmul_5_attrs
+    assert 'zzz' in node_matmul_5_attrs
+    assert 'yyy' in node_matmul_5_attrs
 
 
 def test_apply_annotation():
@@ -89,8 +87,8 @@ def test_apply_annotation():
             super(Net, self).__init__()
             self.conv = nn.Conv2d(1, 6, 3)
             self.conv2 = nn.Conv2d(6, 12, 3)
-            self.linear = nn.Linear(28, 10)
-            self.linear2 = nn.Linear(10, 5)
+            self.linear = nn.Linear(28, 10, bias=False)
+            self.linear2 = nn.Linear(10, 5, bias=False)
 
         def forward(self, x):
             def _fn1():
@@ -118,10 +116,8 @@ def test_apply_annotation():
     assert 'Relu_1' in named_nodes
     assert 'Conv_2' in named_nodes
     assert 'MatMul_4' in named_nodes
-    assert 'Add_5' in named_nodes
-    assert 'MatMul_7' in named_nodes
-    assert 'Add_8' in named_nodes
-    assert 'Elu_9' in named_nodes
+    assert 'MatMul_6' in named_nodes
+    assert 'Elu_7' in named_nodes
 
     node_attrs = [a.name for a in named_nodes['Conv_0'].attribute]
     assert 'aaa' in node_attrs
@@ -138,17 +134,17 @@ def test_apply_annotation():
     assert 'bbb' not in node_attrs
     assert 'zzz' not in node_attrs
     assert 'yyy' not in node_attrs
-    node_attrs = [a.name for a in named_nodes['Add_5'].attribute]
+    node_attrs = [a.name for a in named_nodes['MatMul_4'].attribute]
     assert 'aaa' not in node_attrs
     assert 'bbb' not in node_attrs
     assert 'zzz' in node_attrs
     assert 'yyy' in node_attrs
-    node_attrs = [a.name for a in named_nodes['Add_8'].attribute]
+    node_attrs = [a.name for a in named_nodes['MatMul_6'].attribute]
     assert 'aaa' not in node_attrs
     assert 'bbb' not in node_attrs
     assert 'zzz' in node_attrs
     assert 'yyy' in node_attrs
-    node_attrs = [a.name for a in named_nodes['Elu_9'].attribute]
+    node_attrs = [a.name for a in named_nodes['Elu_7'].attribute]
     assert 'aaa' not in node_attrs
     assert 'bbb' not in node_attrs
     assert 'zzz' in node_attrs
