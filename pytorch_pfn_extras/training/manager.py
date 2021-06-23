@@ -8,7 +8,7 @@ import warnings
 import torch
 
 from pytorch_pfn_extras import writing
-from pytorch_pfn_extras.reporting import Reporter
+from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training import trigger_util
@@ -71,10 +71,10 @@ class _BaseExtensionsManager:
             writer = writing.SimpleWriter(out_dir=out_dir)
         # triggers are stateful, so we need to make a copy for internal use
         self._internal_stop_trigger = copy.deepcopy(self._stop_trigger)
-        self.observation: Dict[str, torch.Tensor] = {}
+        self.observation: Dict[str, reporting.ReportValue] = {}
         self._out = out_dir
         self.writer = writer
-        self.reporter = Reporter()
+        self.reporter = reporting.Reporter()
         self._start_extensions_called = False
 
         if not isinstance(models, dict):

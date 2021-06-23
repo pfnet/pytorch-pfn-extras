@@ -1,11 +1,15 @@
 import collections
 import contextlib
 import threading
-import typing as tp  # NOQA
+from typing import Union, TYPE_CHECKING
 import warnings
 
 import numpy
 import torch
+
+
+if TYPE_CHECKING:
+    ReportValue = Union[torch.Tensor, int, float, numpy.generic, numpy.ndarray]
 
 
 _thread_local = threading.local()
