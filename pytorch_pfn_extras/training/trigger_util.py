@@ -1,4 +1,4 @@
-from typing import Callable, Union, Tuple, TYPE_CHECKING
+from typing import Callable, Union, Optional, Tuple, TYPE_CHECKING
 
 
 class Trigger:
@@ -24,7 +24,7 @@ class _CallableTrigger(Trigger):
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
     TriggerFunc = Callable[['_BaseExtensionsManager'], bool]
-    TriggerLike = Union[Trigger, TriggerFunc, Tuple[int, str], None]
+    TriggerLike = Optional[Union[Trigger, TriggerFunc, Tuple[int, str]]]
 
 
 def get_trigger(trigger: 'TriggerLike') -> Trigger:
