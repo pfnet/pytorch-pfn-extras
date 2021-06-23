@@ -168,7 +168,7 @@ class _BaseExtensionsManager:
             return self._out
 
     @property
-    def updater(self) -> Any:
+    def updater(self) -> '_BaseExtensionsManager':
         warnings.warn(
             'The `updater` attribute has been deprecated in v0.3.0.'
             ' Use `iteration`, `epoch`, and `epoch_detail` attributes in'
