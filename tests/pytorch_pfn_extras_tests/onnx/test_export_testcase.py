@@ -62,7 +62,7 @@ def _helper(model, args, d, **kwargs):
     return output_dir
 
 
-@pytest.mark.filterwarnings("ignore::UserWarning")
+@pytest.mark.filterwarnings("ignore:Named tensors .* experimental:UserWarning")
 def test_export_testcase():
     model = Net().to('cpu')
     x = torch.zeros((1, 1, 28, 28))
