@@ -151,8 +151,11 @@ def test_apply_annotation():
     assert 'yyy' in node_attrs
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
-@pytest.mark.filterwarnings("ignore::torch.jit.TracerWarning")
+@pytest.mark.filterwarnings(
+    "ignore::torch.jit.TracerWarning",
+    "ignore:floor_divide is deprecated:UserWarning",
+    "ignore:Using or importing the ABCs:DeprecationWarning",
+)
 def test_scoped_anchor():
     class Net(nn.Module):
         def __init__(self, anchor_mode='on'):
