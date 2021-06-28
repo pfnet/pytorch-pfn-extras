@@ -296,7 +296,7 @@ def test_remove_stale_snapshots(path):
     trainer = get_trainer(out_dir=path)
     trainer.extend(snapshot, trigger=(1, 'iteration'), priority=2)
 
-    class TimeStampUpdater():
+    class TimeStampUpdater(training.Extension):
         t = time.time() - 100
         name = 'ts_updater'
         priority = 1  # This must be called after snapshot taken
