@@ -28,7 +28,7 @@ def test_run_and_save_plot(matplotlib):
     x = torch.rand(1, 2, 3)
     extension = ppe.training.extensions.VariableStatisticsPlot(
         x, trigger=extension_trigger, filename=filename)
-    manager.extend(extension, extension_trigger)
+    manager.extend(extension, trigger=extension_trigger)
 
     # In the following we explicitly use plot_report._available instead of
     # PlotReport.available() because in some cases `test_available()` fails
