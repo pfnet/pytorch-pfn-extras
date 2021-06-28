@@ -126,8 +126,44 @@ class Extension:
         pass
 
 
-def make_extension(trigger=None, default_name=None, priority=None,
-                   finalizer=None, initializer=None, on_error=None):
+class _CustomExtension(Extension):
+
+    def __init__(self, func, trigger, default_name, priority,
+                 finalizer, initializer, on_error):
+        self._func = func
+        self.trigger = trigger
+        self._default_name = default_name
+        self.priority = priority
+        self._finalizer = finalizer
+        self._initializer = initializer
+        self._on_error = on_error
+        super().__init__()
+
+    @property
+    def default_name(self):
+        return self._default_name
+
+    def __call__(self, manager):
+        return self._func(manager)
+
+    def finalize(self):
+        return self._finalizer()
+
+    def initialize(self, manager):
+        return self._initializer(manager)
+
+    def on_error(self, manager, exc, tb):
+        return self._on_error(manager, exc, tb)
+
+
+def make_extension(
+        trigger=(1, 'iteration'),
+        default_name=None,
+        priority=PRIORITY_READER,
+        finalizer=lambda: None,
+        initializer=lambda manager: None,
+        on_error=lambda manager, exc, tb: None,
+):
     """Decorator to make given functions into extensions.
 
     This decorator just adds some attributes to a given function. The value of
@@ -156,12 +192,14 @@ def make_extension(trigger=None, default_name=None, priority=None,
         priority = Extension.priority
 
     def decorator(ext):
-        ext.trigger = trigger
-        ext.default_name = default_name or ext.__name__
-        ext.priority = priority
-        ext.finalize = finalizer
-        ext.on_error = on_error
-        ext.initialize = initializer
-        return ext
+        return _CustomExtension(
+            ext,
+            trigger,
+            default_name or ext.__name__,
+            priority,
+            finalizer,
+            initializer,
+            on_error
+        )
 
     return decorator

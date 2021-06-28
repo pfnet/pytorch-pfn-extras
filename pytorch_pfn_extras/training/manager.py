@@ -239,6 +239,9 @@ class _BaseExtensionsManager:
                 instead.
 
         """
+        if not isinstance(extension, extension_module.Extension):
+            raise TypeError(
+                f"'{type(extension)}' cannot be interpreted as an extension")
         if name is None:
             name = getattr(extension, 'name', None)
             if name is None:
