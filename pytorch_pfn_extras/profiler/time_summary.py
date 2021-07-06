@@ -13,7 +13,7 @@ Events = Tuple[torch.cuda.Event, torch.cuda.Event]
 
 
 class _CPUWorker(object):
-    def __init__(self, add, max_queue_size: int = 1000):
+    def __init__(self, add, max_queue_size: int):
         self._add = add
         self._queue = mp.JoinableQueue(max_queue_size)
         self._thread = Thread(target=self._worker)
@@ -31,25 +31,21 @@ class _CPUWorker(object):
         self._queue.join()
 
     def _worker(self):
-        while True:
-            v = self._queue.get()
-            if v is None:
-                self._queue.task_done()
-                break
-            name, value = v
+        while not self._queue.empty():
+            name, value = self._queue.get()
             self._add(name, value)
             self._queue.task_done()
 
 
 class _CUDAWorker(object):
-    def __init__(self, add, max_queue_size: int = 1000):
+    def __init__(self, add, max_queue_size: int):
         self._add = add
         self._queue = Queue(max_queue_size)
         self._thread = Thread(target=self._worker)
         self._thread.setDaemon(True)
         self._thread.start()
         self._event_lock = Lock()
-        self._events = []
+        self._events = Queue(max_queue_size)
 
     def close(self):
         self.wait()
@@ -60,26 +56,22 @@ class _CUDAWorker(object):
         self._queue.join()
 
     def _worker(self):
-        while True:
-            v = self._queue.get()
-            if v is None:
-                self._queue.task_done()
-                break
-            name, value = v
+        while not self._queue.empty():
+            name, value = self._queue.get()
             begin, end = value
             end.synchronize()
             t_ms = begin.elapsed_time(end)
             self._add(name, t_ms / 1000)
             with self._event_lock:
-                self._events.append(begin)
-                self._events.append(end)
+                self._events.put(begin)
+                self._events.put(end)
             self._queue.task_done()
 
     def _get_cuda_event(self) -> torch.cuda.Event:
         with self._event_lock:
-            if len(self._events) == 0:
-                self._events.append(torch.cuda.Event(enable_timing=True))
-            return self._events.pop(0)
+            if self._events.empty():
+                self._events.put(torch.cuda.Event(enable_timing=True))
+            return self._events.get()
 
 
 class TimeSummary(object):
@@ -131,7 +123,8 @@ class TimeSummary(object):
             if use_cuda:
                 end_event = self._cuda_worker._get_cuda_event()
                 end_event.record()
-                self._cuda_worker._queue.put((f"{tag}.cuda", (begin_event, end_event)))
+                self._cuda_worker._queue.put(
+                    (f"{tag}.cuda", (begin_event, end_event)))
 
 
 time_summary = TimeSummary()

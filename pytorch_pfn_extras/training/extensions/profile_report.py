@@ -4,7 +4,7 @@ from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training.extensions import log_report
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.profiler.time_summary import time_summary
+from pytorch_pfn_extras.profiler import time_summary
 
 
 class ProfileReport(extension.Extension):
@@ -73,12 +73,7 @@ class ProfileReport(extension.Extension):
             stats_cpu["iteration"] = manager.iteration
             stats_cpu["elapsed_time"] = manager.elapsed_time
             # Recreate dict to fix order of logs
-            out = {}
-            keys = list(stats_cpu.keys())
-            keys.sort()
-            for key in keys:
-                out[key] = stats_cpu[key]
-
+            out = {k: stats_cpu[k] for k in sorted(stats_cpu.keys())}
             self._log.append(out)
 
             # write to the log file
