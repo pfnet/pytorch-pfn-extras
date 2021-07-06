@@ -154,12 +154,11 @@ class LazyTestBase:
 
         with tempfile.NamedTemporaryFile(delete=False) as f:
             torch.save(model_src.state_dict(), f.name)
-            if init_src != init_dst:
+            if not init_src and init_dst:
                 with pytest.raises(RuntimeError):
                     model_dst.load_state_dict(torch.load(f.name))
             else:
                 model_dst.load_state_dict(torch.load(f.name))
-            print(torch.load(f.name))
 
         # Ensure that if the model was initialized, the parameters are the same
         # after loading a state dict

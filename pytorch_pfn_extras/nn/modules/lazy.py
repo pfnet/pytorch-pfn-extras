@@ -88,6 +88,26 @@ class LazyInitializationMixin:
         See comment in ``torch.nn.Module._register_load_state_dict_pre_hook``
         for the details of the hook specification.
         """
+        for name in self.lazy_buffer_names:
+            key = prefix + name
+            module_initialized = getattr(self, name).shape != (0,)
+            state_initialized = (
+                 key in state_dict and (state_dict[key].shape != (0,)))
+            if module_initialized and not state_initialized:
+                raise RuntimeError(
+                    'Can\'t load non-initialized buffers in already '
+                    'initialized modules')
+            elif not module_initialized and state_initialized:
+                # Here we need to avoid a tensor size missmatch
+                # this is a regular tensor without a materialize
+                # method, so we can just resize for the load logic to copy
+                # the contents later to the correct device the module
+                # was moved to
+                getattr(self, name).resize_(state_dict[key].size())
+            elif key not in state_dict and not module_initialized:
+                buffer = torch.Tensor([])
+                state_dict[key] = buffer
+
         for name in self.lazy_parameter_names:
             # The parameter does not exist in the loaded ``state_dict`` if the
             # original module was serialized before initializing lazy
@@ -100,6 +120,8 @@ class LazyInitializationMixin:
                 raise RuntimeError(
                     'Can\'t load uninitialized parameters in already '
                     'initialized modules')
+            elif not module_initialized and state_initialized:
+                getattr(self, name).materialize(state_dict[key].shape)
             elif key not in state_dict and not module_initialized:
                 param = UninitializedParameter()
                 state_dict[key] = param
@@ -128,3 +150,25 @@ class UninitializedParameter(torch.nn.Parameter):
     Use of uninitialized lazy parameter in Optimizer has been detected.
     Maybe you forgot to run forward before passing `module.parameters()` to the optimizer?''')  # NOQA
         return True
+
+    def materialize(self, shape, device=None, dtype=None):
+        r"""Create a Parameter with the same properties of the uninitialized
+        one. Given a shape, it materializes a parameter in the same device
+        and with the same `dtype` as the current one or the specified ones in
+        the arguments.
+
+        Args:
+            shape : (tuple): the shape for the materialized tensor.
+            device (:class:`torch.device`): the desired device of the
+                parameters
+                and buffers in this module. Optional.
+            dtype (:class:`torch.dtype`): the desired floating point type of
+                the floating point parameters and buffers in this module.
+                Optional.
+        """
+        if device is None:
+            device = self.data.device
+        if dtype is None:
+            dtype = self.data.dtype
+        self.data = torch.empty(shape, device=device, dtype=dtype)
+        self.__class__ = torch.nn.Parameter
