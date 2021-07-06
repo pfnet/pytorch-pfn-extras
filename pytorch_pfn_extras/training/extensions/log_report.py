@@ -1,3 +1,4 @@
+import collections
 import json
 
 from pytorch_pfn_extras import reporting
@@ -33,6 +34,12 @@ class LogWriterSaveFunc:
             if self._append:
                 target = [target[-1]]
             import yaml
+
+            # This is to dump ordered dicts as regular dicts
+            def dict_representer(dumper, data):
+                return dumper.represent_dict(data.items())
+            yaml.add_representer(collections.OrderedDict, dict_representer)
+            # yaml.add_constructor(_mapping_tag, dict_constructor)
             log = yaml.dump(target)
         else:
             raise ValueError('Unknown format: {}'.format(self._format))

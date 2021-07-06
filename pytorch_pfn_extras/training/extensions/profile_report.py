@@ -1,4 +1,5 @@
 import json
+from collections import OrderedDict
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
@@ -14,7 +15,7 @@ class ProfileReport(extension.Extension):
         report_keys=None,
         trigger=(1, "epoch"),
         filename=None,
-        append=True,
+        append=False,
         format=None,
         **kwargs,
     ):
@@ -35,7 +36,7 @@ class ProfileReport(extension.Extension):
         self._log_name = filename
         self._writer = kwargs.get('writer', None)
 
-        if filename is not None:
+        if format is None and filename is not None:
             if filename.endswith('.jsonl'):
                 format = 'json-lines'
             elif filename.endswith('.yaml'):
@@ -65,15 +66,15 @@ class ProfileReport(extension.Extension):
                 stats = {
                     k: v for k, v in stats.items() if k in self._store_keys
                 }
-            stats_cpu = {}
-            for name, value in stats.items():
-                stats_cpu[name] = float(value)  # copy to CPU
+            stats_cpu = {k: float(v) for k, v in stats.items()}
 
             stats_cpu["epoch"] = manager.epoch
             stats_cpu["iteration"] = manager.iteration
             stats_cpu["elapsed_time"] = manager.elapsed_time
             # Recreate dict to fix order of logs
-            out = {k: stats_cpu[k] for k in sorted(stats_cpu.keys())}
+            out = OrderedDict(
+                [(k, stats_cpu[k]) for k in sorted(stats_cpu.keys())])
+
             self._log.append(out)
 
             # write to the log file

@@ -31,8 +31,12 @@ class _CPUWorker(object):
         self._queue.join()
 
     def _worker(self):
-        while not self._queue.empty():
-            name, value = self._queue.get()
+        while True:
+            v = self._queue.get()
+            if v is None:
+                self._queue.task_done()
+                break
+            name, value = v
             self._add(name, value)
             self._queue.task_done()
 
@@ -56,8 +60,12 @@ class _CUDAWorker(object):
         self._queue.join()
 
     def _worker(self):
-        while not self._queue.empty():
-            name, value = self._queue.get()
+        while True:
+            v = self._queue.get()
+            if v is None:
+                self._queue.task_done()
+                break
+            name, value = v
             begin, end = value
             end.synchronize()
             t_ms = begin.elapsed_time(end)
