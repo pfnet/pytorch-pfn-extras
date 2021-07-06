@@ -104,9 +104,6 @@ class LazyInitializationMixin:
                 # the contents later to the correct device the module
                 # was moved to
                 getattr(self, name).resize_(state_dict[key].size())
-            elif key not in state_dict and not module_initialized:
-                buffer = torch.Tensor([])
-                state_dict[key] = buffer
 
         for name in self.lazy_parameter_names:
             # The parameter does not exist in the loaded ``state_dict`` if the
