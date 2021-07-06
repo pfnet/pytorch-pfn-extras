@@ -136,17 +136,41 @@ class LazyTestBase:
         input = self.get_input()
         model_src = self.get_lazy_module()
         model_dst = self.get_lazy_module()
-
         if init_src:
             torch.manual_seed(0)
             model_src(input)
+
         if init_dst:
             torch.manual_seed(0)
             model_dst(input)
+            module_params = [
+                getattr(model_dst, name)
+                for name in model_dst.lazy_parameter_names
+            ]
+            module_buffers = [
+                getattr(model_dst, name)
+                for name in model_dst.lazy_buffer_names
+            ]
 
         with tempfile.NamedTemporaryFile(delete=False) as f:
             torch.save(model_src.state_dict(), f.name)
-            model_dst.load_state_dict(torch.load(f.name))
+            if not init_src and init_dst:
+                with pytest.raises(RuntimeError):
+                    model_dst.load_state_dict(torch.load(f.name))
+            else:
+                model_dst.load_state_dict(torch.load(f.name))
+
+        # Ensure that if the model was initialized, the parameters are the same
+        # after loading a state dict
+        if init_dst:
+            for name, param in zip(
+                model_dst.lazy_parameter_names, module_params
+            ):
+                assert getattr(model_dst, name).data_ptr() == param.data_ptr()
+            for name, buffer in zip(
+                model_dst.lazy_buffer_names, module_buffers
+            ):
+                assert getattr(model_dst, name).data_ptr() == buffer.data_ptr()
 
         torch.manual_seed(0)
         expected = model_src(input)
