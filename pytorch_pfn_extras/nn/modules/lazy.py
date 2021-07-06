@@ -91,14 +91,13 @@ class LazyInitializationMixin:
         for name in self.lazy_buffer_names:
             key = prefix + name
             module_initialized = getattr(self, name).shape != (0,)
-            state_initialized = (
-                 key in state_dict and (state_dict[key].shape != (0,)))
+            state_initialized = state_dict[key].shape != (0,)
             if module_initialized and not state_initialized:
                 raise RuntimeError(
                     'Can\'t load non-initialized buffers in already '
                     'initialized modules')
             elif not module_initialized and state_initialized:
-                # Here we need to avoid a tensor size missmatch
+                # Here we need to avoid a tensor size mismatch
                 # this is a regular tensor without a materialize
                 # method, so we can just resize for the load logic to copy
                 # the contents later to the correct device the module
