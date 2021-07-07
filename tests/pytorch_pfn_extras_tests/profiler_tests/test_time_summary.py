@@ -1,4 +1,8 @@
 import multiprocessing as mp
+import sys
+
+import pytest
+
 from pytorch_pfn_extras.profiler.time_summary import TimeSummary, time_summary
 
 
@@ -17,6 +21,9 @@ def worker(summary):
         pass
 
 
+@pytest.mark.skipif(
+    sys.platform == 'win32',
+    reason='Multiprocessing not fully supported on Windows')
 def test_report_from_other_process():
     summary = TimeSummary()
     p = mp.Process(target=worker, args=(summary,))
@@ -33,6 +40,9 @@ def worker1():
         pass
 
 
+@pytest.mark.skipif(
+    sys.platform == 'win32',
+    reason='Multiprocessing not fully supported on Windows')
 def test_global_summary():
     p = mp.Process(target=worker1)
     p.start()
