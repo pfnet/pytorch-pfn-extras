@@ -5,16 +5,13 @@ set -uex
 # Install
 pip install .
 
-# Show shared memory
-df -h | grep shm
-
 # Show packages
 pip list
 
 # Run unit tests
 python -m pytest tests/ -k 'not TestDistributedDataParallel'
 # Do it in two steps to avoid flakiness
-python -m pytest tests/tests/pytorch_pfn_extras_tests/nn_tests/parallel_tests/test_distributed.py
+python -m pytest tests/pytorch_pfn_extras_tests/nn_tests/parallel_tests/test_distributed.py
 
 # Run examples
 if [ -d mnist_raw ]; then
