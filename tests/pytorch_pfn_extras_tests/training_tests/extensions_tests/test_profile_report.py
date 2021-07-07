@@ -10,7 +10,7 @@ import pytorch_pfn_extras as ppe
 
 
 def _body():
-    with ppe.profiler.time_summary.report("foo"):
+    with ppe.profiler.time_summary.report("iter-time"):
         time.sleep(0.1)
 
 
@@ -28,7 +28,7 @@ def test_profile_report(format, append):
     ext = ppe.training.extensions.ProfileReport(format=format, append=append)
     max_epochs = 3
     iters_per_epoch = 5
-
+    # ppe.profiler.time_summary.clear()
     with tempfile.TemporaryDirectory() as tmpdir:
         manager = ppe.training.ExtensionsManager(
             {}, {}, max_epochs=max_epochs, iters_per_epoch=iters_per_epoch,
@@ -49,4 +49,4 @@ def test_profile_report(format, append):
             assert len(values) == epoch_idx + 1
 
             for value in values:
-                assert value['foo'] == pytest.approx(0.1, 1e-2)
+                assert value['iter-time'] == pytest.approx(0.1, 1e-2)
