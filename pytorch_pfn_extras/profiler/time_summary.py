@@ -21,8 +21,8 @@ class _CPUWorker(object):
         self._thread.start()
 
     def close(self):
-        self.wait()
         self._queue.put(None)
+        self.wait()
         self._thread.join()
         self._queue.close()
         self._queue.join_thread()
@@ -52,8 +52,8 @@ class _CUDAWorker(object):
         self._events = Queue(max_queue_size)
 
     def close(self):
-        self.wait()
         self._queue.put(None)
+        self.wait()
         self._thread.join()
 
     def wait(self):
