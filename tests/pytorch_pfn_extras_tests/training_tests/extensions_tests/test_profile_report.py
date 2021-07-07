@@ -34,7 +34,7 @@ def test_profile_report(format, append):
             {}, {}, max_epochs=max_epochs, iters_per_epoch=iters_per_epoch,
             out_dir=tmpdir)
         manager.extend(ext)
-        for epoch_idx in range(max_epochs):
+        for _epoch_idx in range(max_epochs):
             for _ in range(iters_per_epoch):
                 with manager.run_iteration():
                     _body()
@@ -46,7 +46,7 @@ def test_profile_report(format, append):
                 values = [json.loads(x) for x in data.splitlines()]
             elif format == 'yaml':
                 values = yaml.load(data, Loader=yaml.SafeLoader)
-            assert len(values) == epoch_idx + 1
+            assert len(values) == _epoch_idx + 1
 
             for value in values:
                 assert value['iter-time'] == pytest.approx(0.1, 1e-2)
