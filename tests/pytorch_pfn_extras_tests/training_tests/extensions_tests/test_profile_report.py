@@ -49,4 +49,4 @@ def test_profile_report(format, append):
             assert len(values) == _epoch_idx + 1
 
             for value in values:
-                assert value['iter-time'] == pytest.approx(0.1, 1e-2)
+                assert abs(value['iter-time'] - 0.1) < 1e-2
