@@ -1,33 +1,35 @@
-from typing import Callable, Union, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Dict, Union, Optional, Tuple, TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training.manager import ExtensionsManager
 
 
 class Trigger:
     """Base class for triggers."""
-    def load_state_dict(self, state):
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
         pass
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         return {}
 
-    def __call__(self, manager):
+    def __call__(self, manager: 'ExtensionsManager') -> bool:
         raise NotImplementedError
 
 
 class _CallableTrigger(Trigger):
-    def __init__(self, func):
+    def __init__(self, func: Callable[['ExtensionsManager'], bool]) -> None:
         self.func = func
 
-    def __call__(self, manager):
+    def __call__(self, manager: 'ExtensionsManager') -> bool:
         return self.func(manager)
 
 
-if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
-    TriggerFunc = Callable[['_BaseExtensionsManager'], bool]
-    TriggerLike = Optional[Union[Trigger, TriggerFunc, Tuple[int, str]]]
+TriggerFunc = Callable[['ExtensionsManager'], bool]
+TriggerLike = Optional[Union[Trigger, TriggerFunc, Tuple[int, str]]]
 
 
-def get_trigger(trigger: 'TriggerLike') -> Trigger:
+def get_trigger(trigger: TriggerLike) -> Trigger:
     """Gets a trigger object.
 
     Trigger object is a callable that accepts a
@@ -69,5 +71,5 @@ def get_trigger(trigger: 'TriggerLike') -> Trigger:
         return interval_trigger.IntervalTrigger(*trigger)
 
 
-def _never_fire_trigger(manager):
+def _never_fire_trigger(manager: 'ExtensionsManager') -> bool:
     return False
