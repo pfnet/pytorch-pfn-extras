@@ -1,8 +1,10 @@
+import contextlib
 import functools
 
 import onnx.helper
 import torch
 import torch.nn as nn
+import torch.onnx
 import torch.onnx.symbolic_registry as sym_reg
 
 
@@ -191,7 +193,9 @@ def annotate(**attrs):
     Args:
         attrs (dict): annotation parameters
     """
-    return _Annotation(**attrs)
+    if torch.onnx.is_in_onnx_export():
+        return _Annotation(**attrs)
+    return contextlib.nullcontext()
 
 
 def apply_annotation(fn, *args, **attrs):
@@ -364,4 +368,6 @@ def scoped_anchor(**attrs):
     Args:
         attrs (dict): annotation parameters
     """
-    return _Anchor(**attrs)
+    if torch.onnx.is_in_onnx_export():
+        return _Anchor(**attrs)
+    return contextlib.nullcontext()
