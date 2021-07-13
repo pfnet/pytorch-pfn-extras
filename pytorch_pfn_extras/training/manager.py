@@ -240,8 +240,7 @@ class _BaseExtensionsManager:
 
         """
         if not isinstance(extension, extension_module.Extension):
-            raise TypeError(
-                f"'{type(extension)}' cannot be interpreted as an extension")
+            extension = extension_module.make_extension()(extension)
         if name is None:
             name = extension.name or extension.default_name
         if name == 'training':
