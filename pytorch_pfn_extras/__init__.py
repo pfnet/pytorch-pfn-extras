@@ -3,6 +3,7 @@ from pytorch_pfn_extras import cuda  # NOQA
 from pytorch_pfn_extras import dataset  # NOQA
 from pytorch_pfn_extras import dataloaders  # NOQA
 from pytorch_pfn_extras import nn  # NOQA
+from pytorch_pfn_extras import profiler  # NOQA
 from pytorch_pfn_extras import reporting  # NOQA
 from pytorch_pfn_extras import training  # NOQA
 from pytorch_pfn_extras import utils  # NOQA
