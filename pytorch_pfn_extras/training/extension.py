@@ -126,7 +126,7 @@ class Extension:
         pass
 
 
-class _CustomExtension(Extension):
+class _CallableExtension(Extension):
 
     def __init__(self, func, trigger, default_name, priority,
                  finalizer, initializer, on_error):
@@ -157,9 +157,9 @@ class _CustomExtension(Extension):
 
 
 def make_extension(
-        trigger=(1, 'iteration'),
+        trigger=Extension.trigger,
         default_name=None,
-        priority=PRIORITY_READER,
+        priority=Extension.priority,
         finalizer=lambda: None,
         initializer=lambda manager: None,
         on_error=lambda manager, exc, tb: None,
@@ -192,7 +192,7 @@ def make_extension(
         priority = Extension.priority
 
     def decorator(ext):
-        return _CustomExtension(
+        return _CallableExtension(
             ext,
             trigger,
             default_name or ext.__name__,
