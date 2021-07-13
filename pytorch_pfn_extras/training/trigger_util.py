@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, Union, Optional, Tuple, TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import ExtensionsManager
+    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
 
 
 class Trigger:
@@ -13,19 +13,19 @@ class Trigger:
     def state_dict(self) -> Dict[str, Any]:
         return {}
 
-    def __call__(self, manager: 'ExtensionsManager') -> bool:
+    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
         raise NotImplementedError
 
 
 class _CallableTrigger(Trigger):
-    def __init__(self, func: Callable[['ExtensionsManager'], bool]) -> None:
+    def __init__(self, func: Callable[['_BaseExtensionsManager'], bool]) -> None:
         self.func = func
 
-    def __call__(self, manager: 'ExtensionsManager') -> bool:
+    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
         return self.func(manager)
 
 
-TriggerFunc = Callable[['ExtensionsManager'], bool]
+TriggerFunc = Callable[['_BaseExtensionsManager'], bool]
 TriggerLike = Optional[Union[Trigger, TriggerFunc, Tuple[int, str]]]
 
 
@@ -71,5 +71,5 @@ def get_trigger(trigger: TriggerLike) -> Trigger:
         return interval_trigger.IntervalTrigger(*trigger)
 
 
-def _never_fire_trigger(manager: 'ExtensionsManager') -> bool:
+def _never_fire_trigger(manager: '_BaseExtensionsManager') -> bool:
     return False
