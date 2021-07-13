@@ -164,10 +164,7 @@ def make_extension(
         initializer=lambda manager: None,
         on_error=lambda manager, exc, tb: None,
 ):
-    """Decorator to make given functions into extensions.
-
-    This decorator just adds some attributes to a given function. The value of
-    the attributes are given by the arguments of this decorator.
+    """Decorator to make given functions into Extension object.
 
     See :class:`Extension` for details of extensions. Most of the
     default values of arguments also follow those for this class.
