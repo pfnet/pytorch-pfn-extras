@@ -23,7 +23,7 @@ def test_manager_status_info():
     assert manager.epoch_detail == 3.75
 
 
-class _DummyExtension(object):
+class _DummyExtension(training.Extension):
 
     def __init__(self, extension_id, call_record, init_record):
         self.extension_id = extension_id
@@ -129,7 +129,7 @@ class _StateDictOptimizer(_StateDictObj):
         pass
 
 
-class _StateDictExtension(_StateDictObj):
+class _StateDictExtension(_StateDictObj, training.Extension):
 
     def __call__(self, manager):
         pass

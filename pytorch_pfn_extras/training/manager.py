@@ -187,9 +187,9 @@ class _BaseExtensionsManager:
 
         # invoke initializer of each extension
         for _, entry in self.extensions:
-            initializer = getattr(entry.extension, 'initialize', None)
+            initializer = entry.extension.initialize
             finished = getattr(entry.trigger, 'finished', False)
-            if initializer and not finished:
+            if not finished:
                 initializer(self)
 
         # call extensions before training loop
@@ -239,25 +239,21 @@ class _BaseExtensionsManager:
                 instead.
 
         """
+        if not isinstance(extension, extension_module.Extension):
+            raise TypeError(
+                f"'{type(extension)}' cannot be interpreted as an extension")
         if name is None:
-            name = getattr(extension, 'name', None)
-            if name is None:
-                name = getattr(extension, 'default_name', None)
-                if name is None:
-                    name = getattr(extension, '__name__', None)
-                    if name is None:
-                        raise TypeError('name is not given for the extension')
+            name = extension.name or extension.default_name
         if name == 'training':
             raise ValueError(
                 'the name "training" is prohibited as an extension name')
 
         if trigger is None:
-            trigger = getattr(extension, 'trigger', (1, 'iteration'))
+            trigger = extension.trigger
         trigger = trigger_module.get_trigger(trigger)
 
         if priority is None:
-            priority = getattr(
-                extension, 'priority', extension_module.PRIORITY_READER)
+            priority = extension.priority
 
         modified_name = name
         ordinal = 0
