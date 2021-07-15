@@ -6,6 +6,7 @@ from pytorch_pfn_extras import logging
 def test_file_output():
     try:
         with tempfile.NamedTemporaryFile() as logfile:
+            logfile.close()  # this is needed for Windows
             logging._configure_logging(filename=logfile.name, level='DEBUG')
             logger = logging._get_root_logger()
             logger.info('TEST LOG MESSAGE')
