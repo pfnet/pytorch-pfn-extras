@@ -272,8 +272,7 @@ def test_export_testcase_strip_large_tensor_data():
         metaj = json.load(metaf)
         assert metaj['strip_large_tensor_data']
 
-    def check_tensor(tensor):
-        is_stripped = False
+    def is_stripped_with_check(tensor):
         if is_large_tensor(tensor, LARGE_TENSOR_DATA_THRESHOLD):
             assert tensor.data_location == onnx.TensorProto.EXTERNAL
             assert tensor.external_data[0].key == 'location'
@@ -281,16 +280,15 @@ def test_export_testcase_strip_large_tensor_data():
             assert meta['type'] == 'stripped'
             assert type(meta['average']) == float
             assert type(meta['variance']) == float
-            is_stripped = True
-        else:
-            assert len(tensor.external_data) == 0
-        return is_stripped
+            return True
+        assert len(tensor.external_data) == 0
+        return False
 
     onnx_model = onnx.load(os.path.join(
         output_dir, 'model.onnx'), load_external_data=False)
 
     check_stripped = [
-        check_tensor(init) for init in onnx_model.graph.initializer]
+        is_stripped_with_check(init) for init in onnx_model.graph.initializer]
     # this testcase tests strip, so output mode is no stripped, test is failed
     assert any(check_stripped)
 
@@ -298,7 +296,7 @@ def test_export_testcase_strip_large_tensor_data():
         with open(os.path.join(test_data_set_dir, pb_filepath), 'rb') as f:
             tensor = onnx.TensorProto()
             tensor.ParseFromString(f.read())
-            check_tensor(tensor)
+            is_stripped_with_check(tensor)
 
     # check re-load stripped onnx
     _strip_large_tensor_tool_impl(
@@ -306,6 +304,9 @@ def test_export_testcase_strip_large_tensor_data():
         os.path.join(output_dir, 'model_re.onnx'),
         LARGE_TENSOR_DATA_THRESHOLD)
     assert os.path.isfile(os.path.join(output_dir, 'model_re.onnx'))
+    # loading check
+    onnx.load(
+        os.path.join(output_dir, 'model_re.onnx'), load_external_data=False)
 
 
 def test_export_testcase_options():
