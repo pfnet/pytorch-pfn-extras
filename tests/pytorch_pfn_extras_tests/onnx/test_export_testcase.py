@@ -16,6 +16,7 @@ from pytorch_pfn_extras.onnx import export
 from pytorch_pfn_extras.onnx import export_testcase
 from pytorch_pfn_extras.onnx import is_large_tensor
 from pytorch_pfn_extras.onnx import LARGE_TENSOR_DATA_THRESHOLD
+from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_large_tensor_tool_impl
 
 
 output_dir = 'out'
@@ -242,6 +243,8 @@ def test_backward_multiple_input():
         np.testing.assert_allclose(param.grad, actual_grad)
 
 
+@pytest.mark.filterwarnings(
+    "ignore::torch.jit.TracerWarning", "ignore::UserWarning")
 def test_export_testcase_strip_large_tensor_data():
     if torch_version < version.Version('1.6.0'):
         pytest.skip('skip for PyTorch 1.5 or earlier')
@@ -270,6 +273,7 @@ def test_export_testcase_strip_large_tensor_data():
         assert metaj['strip_large_tensor_data']
 
     def check_tensor(tensor):
+        is_stripped = False
         if is_large_tensor(tensor, LARGE_TENSOR_DATA_THRESHOLD):
             assert tensor.data_location == onnx.TensorProto.EXTERNAL
             assert tensor.external_data[0].key == 'location'
@@ -277,19 +281,31 @@ def test_export_testcase_strip_large_tensor_data():
             assert meta['type'] == 'stripped'
             assert type(meta['average']) == float
             assert type(meta['variance']) == float
+            is_stripped = True
         else:
             assert len(tensor.external_data) == 0
+        return is_stripped
 
     onnx_model = onnx.load(os.path.join(
         output_dir, 'model.onnx'), load_external_data=False)
-    for init in onnx_model.graph.initializer:
-        check_tensor(init)
+
+    check_stripped = [
+        check_tensor(init) for init in onnx_model.graph.initializer]
+    # this testcase tests strip, so output mode is no stripped, test is failed
+    assert any(check_stripped)
 
     for pb_filepath in ('input_0.pb', 'output_0.pb'):
         with open(os.path.join(test_data_set_dir, pb_filepath), 'rb') as f:
             tensor = onnx.TensorProto()
             tensor.ParseFromString(f.read())
             check_tensor(tensor)
+
+    # check re-load stripped onnx
+    _strip_large_tensor_tool_impl(
+        os.path.join(output_dir, 'model.onnx'),
+        os.path.join(output_dir, 'model_re.onnx'),
+        LARGE_TENSOR_DATA_THRESHOLD)
+    assert os.path.isfile(os.path.join(output_dir, 'model_re.onnx'))
 
 
 def test_export_testcase_options():
