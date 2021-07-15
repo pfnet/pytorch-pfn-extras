@@ -126,34 +126,29 @@ class Extension:
         pass
 
 
-class _CallableExtension(Extension):
+class _WrappedExtension(Extension):
 
-    def __init__(self, func, trigger, default_name, priority,
-                 finalizer, initializer, on_error):
-        self._func = func
-        self.trigger = trigger
-        self._default_name = default_name
-        self.priority = priority
-        self._finalizer = finalizer
-        self._initializer = initializer
-        self._on_error = on_error
+    def __init__(self, ext):
+        self._ext = ext
+        self.trigger = getattr(self._ext, 'trigger', Extension.trigger)
+        self.priority = getattr(self._ext, 'priority', Extension.priority)
         super().__init__()
 
     @property
     def default_name(self):
-        return self._default_name
+        return getattr(self._ext, 'default_name', None) or super().default_name
 
     def __call__(self, manager):
-        return self._func(manager)
+        return self._ext(manager)
 
     def finalize(self):
-        return self._finalizer()
+        getattr(self._ext, 'finalize', super().finalize)()
 
     def initialize(self, manager):
-        return self._initializer(manager)
+        getattr(self._ext, 'initialize', super().initialize)(manager)
 
     def on_error(self, manager, exc, tb):
-        return self._on_error(manager, exc, tb)
+        getattr(self._ext, 'on_error', super().on_error)(manager, exc, tb)
 
 
 def make_extension(
@@ -164,7 +159,7 @@ def make_extension(
         initializer=lambda manager: None,
         on_error=lambda manager, exc, tb: None,
 ):
-    """Decorator to make given functions into extensions.
+    """Decorator to make given function into an extension.
 
     This decorator just adds some attributes to a given function. The value of
     the attributes are given by the arguments of this decorator.
@@ -192,14 +187,16 @@ def make_extension(
         priority = Extension.priority
 
     def decorator(ext):
-        return _CallableExtension(
-            ext,
-            trigger,
-            default_name or ext.__name__,
-            priority,
-            finalizer,
-            initializer,
-            on_error
-        )
+        ext.trigger = trigger
+        ext.default_name = default_name or ext.__name__
+        ext.priority = priority
+        ext.finalize = finalizer
+        ext.on_error = on_error
+        ext.initialize = initializer
+        return ext
 
     return decorator
+
+
+def _as_extension(ext) -> Extension:
+    return ext if isinstance(ext, Extension) else _WrappedExtension(ext)

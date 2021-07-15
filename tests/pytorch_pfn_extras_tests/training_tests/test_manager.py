@@ -55,12 +55,14 @@ def test_extensions_manager_extensions():
     call_record = []
     init_record = []
 
+    dummy5 = _DummyExtension(5, call_record, init_record)
     exts = [
         _DummyExtension(0, call_record, init_record),
         _DummyExtensionInitialize(1, call_record, init_record),
         _DummyExtension(2, call_record, init_record),
         _DummyExtensionInitialize(3, call_record, init_record),
         _DummyExtensionInitialize(4, call_record, init_record),
+        lambda manager: dummy5(manager),
     ]
 
     manager.extend(exts[0], 'ext0', priority=2, call_before_training=True)
@@ -68,6 +70,7 @@ def test_extensions_manager_extensions():
     manager.extend(exts[2], 'ext2', priority=3, call_before_training=False)
     manager.extend(exts[3], 'ext3', priority=0, call_before_training=True)
     manager.extend(exts[4], 'ext4', priority=4, call_before_training=True)
+    manager.extend(exts[5], 'ext5', priority=-1, call_before_training=True)
 
     assert manager.get_extension('ext0') is exts[0]
     assert manager.get_extension('ext1') is exts[1]
@@ -86,7 +89,7 @@ def test_extensions_manager_extensions():
             assert manager.iteration == it
 
             if it == 0:
-                assert call_record == [4, 0, 3]
+                assert call_record == [4, 0, 3, 5]
                 assert init_record == [4, 1, 3]
             else:
                 assert call_record == []
@@ -95,7 +98,7 @@ def test_extensions_manager_extensions():
             call_record.clear()
             init_record.clear()
 
-        assert call_record == [4, 2, 0, 1, 3]
+        assert call_record == [4, 2, 0, 1, 3, 5]
         assert init_record == []
 
 
