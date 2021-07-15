@@ -32,6 +32,7 @@ main() {
     docker run --rm --ipc=host --privileged --runtime=nvidia
     --env CUDA_VISIBLE_DEVICES
     --volume="${SRC_ROOT}:/src"
+    --volume="/tmp/output:/output"
     --workdir="/src"
   )
 
@@ -43,6 +44,8 @@ main() {
       run "${docker_args[@]}" \
           "${PPE_FLEXCI_IMAGE_NAME}:${TARGET}" \
           /src/.flexci/linux/unittest.sh "${TARGET}"
+      gsutil -m -q cp /tmp/output/pysen.txt gs://chainer-artifacts-pfn-public-ci/pytorch-pfn-extras/pysen/${CI_JOB_ID}/pysen.txt
+      echo "pysen output: https://storage.googleapis.com/chainer-artifacts-pfn-public-ci/pytorch-pfn-extras/pysen/${CI_JOB_ID}/pysen.txt"
       ;;
     prep )
       # Build and push docker images for unit tests.
