@@ -23,6 +23,29 @@ torch_version = version.Version(torch.__version__)
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_annotate_no_export():
+    if torch_version < version.Version('1.8.0'):
+        pytest.skip('skip for PyTorch 1.7 or earlier')
+
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.conv = nn.Conv2d(1, 6, 3)
+            self.linear = nn.Linear(30, 20, bias=False)
+
+        def forward(self, x):
+            with annotate(aaa='a'):
+                h = self.conv(x)
+            h = self.linear(h)
+            return h
+
+    model = Net()
+    x = torch.ones((1, 1, 32, 32))
+    y = model(x)
+    assert y.shape == (1, 6, 30, 20)
+
+
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_annotate():
     if torch_version < version.Version('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
@@ -151,6 +174,26 @@ def test_apply_annotation():
     assert 'yyy' in node_attrs
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_scoped_anchor_no_export():
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.conv = nn.Conv2d(1, 6, 3)
+            self.linear = nn.Linear(30, 20, bias=False)
+
+        def forward(self, x):
+            h = self.conv(x)
+            with scoped_anchor(aaa='a'):
+                h = self.linear(h)
+            return h
+
+    model = Net()
+    x = torch.ones((1, 1, 32, 32))
+    y = model(x)
+    assert y.shape == (1, 6, 30, 20)
+
+
 @pytest.mark.filterwarnings(
     "ignore::torch.jit.TracerWarning",
     "ignore:floor_divide is deprecated:UserWarning",
@@ -160,6 +203,7 @@ def test_scoped_anchor():
     class Net(nn.Module):
         def __init__(self, anchor_mode='on'):
             super(Net, self).__init__()
+            self.anchor_mode = anchor_mode
 
             self.conv = nn.Conv2d(6, 9, 3)
             self.conv2 = nn.Conv2d(9, 12, 3)
@@ -180,10 +224,12 @@ def test_scoped_anchor():
             nn.init.constant_(self.linear3.weight, 0.1)
             nn.init.constant_(self.linear3.bias, 0.1)
 
-            if anchor_mode == 'on':
+        def set_anchor(self):
+            # required to setup in forwarding phase
+            if self.anchor_mode == 'on':
                 self.anchor1 = scoped_anchor(aaa='a', bbb=['b', 'c'])
                 self.anchor2 = scoped_anchor(ccc=[1, 2])
-            elif anchor_mode == 'no_param':
+            elif self.anchor_mode == 'no_param':
                 self.anchor1 = scoped_anchor()
                 self.anchor2 = scoped_anchor()
             else:
@@ -191,6 +237,7 @@ def test_scoped_anchor():
                 self.anchor2 = suppress()
 
         def forward(self, x):
+            self.set_anchor()
             h = self.conv(x)
             with self.anchor1:
                 h = self.conv2(h)
