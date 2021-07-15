@@ -240,6 +240,14 @@ class _BaseExtensionsManager:
 
         """
         if not isinstance(extension, extension_module.Extension):
+            if getattr(extension, '__name__', None) != '<lambda>':
+                raise TypeError(
+                    "`extension` must be an Extension or a lambda function.\n"
+                    "1: Use `ppe.training.make_extension` which converts "
+                    "user-defined function to an Extension object, or\n"
+                    "2: Define custom extension class that overrides "
+                    "`ppe.training.Extension` class."
+                )
             extension = extension_module.make_extension()(extension)
         if name is None:
             name = extension.name or extension.default_name
