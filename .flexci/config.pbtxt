@@ -19,7 +19,7 @@ configs {
     requirement {
       cpu: 4
       gpu: 2
-      memory: 16
+      memory: 32
       disk: 10
     }
     time_limit: {
@@ -35,7 +35,7 @@ configs {
     requirement {
       cpu: 4
       gpu: 2
-      memory: 16
+      memory: 32
       disk: 10
     }
     time_limit: {
@@ -51,7 +51,7 @@ configs {
     requirement {
       cpu: 4
       gpu: 2
-      memory: 16
+      memory: 32
       disk: 10
     }
     time_limit: {
@@ -67,7 +67,7 @@ configs {
     requirement {
       cpu: 4
       gpu: 2
-      memory: 16
+      memory: 24
       disk: 10
       image: "windows"
     }
