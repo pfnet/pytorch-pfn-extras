@@ -17,19 +17,17 @@ def is_large_tensor(tensor, threshold):
 
 
 def _is_stripped(tensor):
-    if len(tensor.external_data) == 0:
-        return False
-    external_value = None
     for external_data in tensor.external_data:
-        if external_data.key == 'location':
-            external_value = external_data.value
-    if not external_value:
-        return False
-    try:
-        external_value_dict = json.loads(external_value)
-        return external_value_dict.get('type', '') == 'stripped'
-    except Exception:
-        return False
+        if external_data.key != 'location':
+            continue
+        try:
+            external_value_dict = json.loads(external_data.value)
+            return external_value_dict.get('type', '') == 'stripped'
+        except ValueError:
+            # Invalid JSON, indicating `external_data.value` contains
+            # a file path
+            continue
+    return False
 
 
 def _strip_raw_data(tensor):
