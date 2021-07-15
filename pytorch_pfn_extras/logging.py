@@ -1,6 +1,8 @@
 import logging
 import os
 
+from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL  # NOQA
+
 _logger_name = 'ppe'
 _logger_format = '[%(name)s] %(asctime)s: (%(levelname)s) %(message)s'
 _logger = None
