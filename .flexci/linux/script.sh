@@ -12,9 +12,10 @@
 # Fail immedeately on error or unbound variables.
 set -eu
 
-# note: Docker image names can be overridden per project using secret environment
+# note: These values can be overridden per project using secret environment
 # variables of FlexCI.
 PPE_FLEXCI_IMAGE_NAME=${PPE_FLEXCI_IMAGE_NAME:-asia.gcr.io/pfn-public-ci/pytorch-pfn-extras-ci}
+PPE_FLEXCI_GCS_BUCKET=${PPE_FLEXCI_GCS_BUCKET:-chainer-artifacts-pfn-public-ci}
 
 ################################################################################
 # Main function
@@ -32,6 +33,7 @@ main() {
     docker run --rm --ipc=host --privileged --runtime=nvidia
     --env CUDA_VISIBLE_DEVICES
     --volume="${SRC_ROOT}:/src"
+    --volume="/tmp/output:/output"
     --workdir="/src"
   )
 
@@ -43,6 +45,8 @@ main() {
       run "${docker_args[@]}" \
           "${PPE_FLEXCI_IMAGE_NAME}:${TARGET}" \
           /src/.flexci/linux/unittest.sh "${TARGET}"
+      gsutil -m -q cp /tmp/output/pysen.txt gs://${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pysen/${CI_JOB_ID}/pysen.txt
+      echo "pysen output: https://storage.cloud.google.com/${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pysen/${CI_JOB_ID}/pysen.txt"
       ;;
     prep )
       # Build and push docker images for unit tests.
