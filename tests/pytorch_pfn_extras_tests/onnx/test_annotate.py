@@ -22,7 +22,6 @@ from tests.pytorch_pfn_extras_tests.onnx.test_export_testcase import _helper
 torch_version = version.Version(torch.__version__)
 
 
-
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_annotate_no_export():
     if torch_version < version.Version('1.8.0'):
