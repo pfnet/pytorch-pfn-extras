@@ -8,7 +8,6 @@ from pytorch_pfn_extras.training import extension
 
 
 logger = logging.get_logger()
-print(logger)
 
 
 def _find_snapshot_files(fmt, path, fs):
