@@ -245,7 +245,7 @@ class _BaseExtensionsManager:
                     "`extension` must be an Extension or a lambda function.\n"
                     "1: Use `ppe.training.make_extension` which converts "
                     "user-defined function to an Extension object, or\n"
-                    "2: Define custom extension class that overrides "
+                    "2: Define custom extension class that inherits "
                     "`ppe.training.Extension` class."
                 )
             extension = extension_module.make_extension()(extension)
