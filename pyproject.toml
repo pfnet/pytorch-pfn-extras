@@ -5,7 +5,7 @@ version = "0.9"
 enable_black = false
 enable_flake8 = true
 enable_isort = false
-enable_mypy = true
+enable_mypy = false
 mypy_preset = "strict"
 line_length = 80
 
