@@ -7,7 +7,7 @@ from pytorch_pfn_extras import logging
 from pytorch_pfn_extras.training import extension
 
 
-logger = logging.get_logger()
+logger = logging._get_root_logger()
 
 
 def _find_snapshot_files(fmt, path, fs):
