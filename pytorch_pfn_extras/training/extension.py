@@ -126,7 +126,7 @@ class Extension:
         pass
 
 
-class _CallableExtension(Extension):
+class _WrappedExtension(Extension):
 
     def __init__(self, ext):
         self._ext = ext
@@ -159,7 +159,7 @@ def make_extension(
         initializer=lambda manager: None,
         on_error=lambda manager, exc, tb: None,
 ):
-    """Decorator to make given functions into Extension object.
+    """Decorator to make given function into an extension.
 
     This decorator just adds some attributes to a given function. The value of
     the attributes are given by the arguments of this decorator.
@@ -198,5 +198,5 @@ def make_extension(
     return decorator
 
 
-def _get_extension(ext) -> Extension:
-    return ext if isinstance(ext, Extension) else _CallableExtension(ext)
+def _as_extension(ext) -> Extension:
+    return ext if isinstance(ext, Extension) else _WrappedExtension(ext)

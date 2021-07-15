@@ -239,7 +239,7 @@ class _BaseExtensionsManager:
                 instead.
 
         """
-        extension = extension_module._get_extension(extension)
+        extension = extension_module._as_extension(extension)
         if name is None:
             name = extension.name or extension.default_name
         if name == 'training':
