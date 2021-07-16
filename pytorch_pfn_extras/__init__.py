@@ -1,3 +1,7 @@
+# Configure the logging before instantiating anything else
+from pytorch_pfn_extras import logging  # NOQA
+logging._configure_logging()
+
 from pytorch_pfn_extras import config  # NOQA
 from pytorch_pfn_extras import cuda  # NOQA
 from pytorch_pfn_extras import dataset  # NOQA
