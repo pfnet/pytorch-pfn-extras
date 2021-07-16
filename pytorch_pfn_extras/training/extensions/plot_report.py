@@ -13,7 +13,8 @@ _available = None
 def matplotlib_savefun(target, file_o):
     fig, leg, plt = target
     fig.savefig(file_o, bbox_extra_artists=(leg,), bbox_inches='tight')
-    plt.close()
+    fig.clf()
+    plt.close(fig)
 
 
 def _try_import_matplotlib():
