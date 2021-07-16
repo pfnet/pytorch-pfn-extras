@@ -9,9 +9,7 @@ pip install .
 pip list
 
 # Run unit tests
-python -m pytest tests/ -k 'not TestDistributedDataParallel'
-# Do it in two steps to avoid flakiness
-python -m pytest tests/pytorch_pfn_extras_tests/nn_tests/parallel_tests/test_distributed.py
+python -m pytest --cov-report=html --cov tests/
 
 # Run examples
 if [ -d mnist_raw ]; then
@@ -27,3 +25,5 @@ pysen run lint 2> /output/pysen.txt || true
 # Run flake8
 pysen generate .
 flake8 .
+
+mv htmlcov /output/htmlcov
