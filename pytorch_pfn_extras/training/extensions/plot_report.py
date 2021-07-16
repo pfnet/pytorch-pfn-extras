@@ -196,6 +196,11 @@ filename='plot.png', marker='x', grid=True)
                     bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
                 writer(self._file_name, manager.out, (f, leg, plt),
                        savefun=matplotlib_savefun)
+            else:
+                print(f"[WARNING] No data found for key {self._y_keys}, {self._file_name} not written.")
+                # Finalize figure
+                f.clf()
+                plt.close(f)
 
             self._init_summary()
 
