@@ -197,7 +197,10 @@ filename='plot.png', marker='x', grid=True)
                 writer(self._file_name, manager.out, (f, leg, plt),
                        savefun=matplotlib_savefun)
             else:
-                print(f"[WARNING] No data found for key {self._y_keys}, {self._file_name} not written.")
+                print(
+                    f"[WARNING] No data found for key {self._y_keys}, "
+                    f"{self._file_name} not written."
+                )
                 # Finalize figure
                 f.clf()
                 plt.close(f)
