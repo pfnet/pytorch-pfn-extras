@@ -16,6 +16,20 @@ def is_large_tensor(tensor, threshold):
     return size > threshold
 
 
+def _is_stripped(tensor):
+    for external_data in tensor.external_data:
+        if external_data.key != 'location':
+            continue
+        try:
+            external_value_dict = json.loads(external_data.value)
+            return external_value_dict.get('type', '') == 'stripped'
+        except ValueError:
+            # Invalid JSON, indicating `external_data.value` contains
+            # a file path
+            continue
+    return False
+
+
 def _strip_raw_data(tensor):
     arr = onnx.numpy_helper.to_array(tensor)
     meta_dict = {}
@@ -33,13 +47,15 @@ def _strip_raw_data(tensor):
 
 def _strip_large_initializer_raw_data(onnx_model, large_tensor_threshold):
     for init in onnx_model.graph.initializer:
+        if _is_stripped(init):
+            continue
         if is_large_tensor(init, large_tensor_threshold):
             _strip_raw_data(init)
 
 
 def _strip_large_tensor_tool_impl(onnx_path, out_onnx_path,
                                   large_tensor_threshold):
-    onnx_model = onnx.load(onnx_path)
+    onnx_model = onnx.load(onnx_path, load_external_data=False)
     _strip_large_initializer_raw_data(onnx_model, large_tensor_threshold)
     with open(out_onnx_path, 'wb') as fp:
         fp.write(onnx_model.SerializeToString())

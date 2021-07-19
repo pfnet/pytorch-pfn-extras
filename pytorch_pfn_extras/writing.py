@@ -304,14 +304,11 @@ class StandardWriter(Writer):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    _started = False
-    _finalized = False
-    _worker = None
-
     def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
         super().__init__(fs=fs, out_dir=out_dir)
         self._savefun = savefun
         self._kwds = kwds
+        self._worker = None
         self._started = False
         self._finalized = False
 
@@ -320,14 +317,14 @@ class StandardWriter(Writer):
         if savefun is None:
             savefun = self._savefun
         if self._started:
-            self._worker.join()
-            self._started = False
+            self.finalize()
         self._filename = filename
         self._worker = self.create_worker(
             filename, out_dir, target,
             savefun=savefun, append=append, **self._kwds)
         self._worker.start()
         self._started = True
+        self._finalized = False
 
     def create_worker(
             self, filename, out_dir, target, *,
@@ -336,16 +333,21 @@ class StandardWriter(Writer):
 
         This method creates a thread or a process to take a snapshot. The
         created worker must have :meth:`start` and :meth:`join` methods.
-
+        If the worker has an ``exitcode`` attribute (e.g.,
+        ``multiprocessing.Process``), the value will be tested.
         """
         raise NotImplementedError
 
     def finalize(self):
-        if self._started:
-            if not self._finalized:
+        try:
+            if self._started and not self._finalized:
                 self._worker.join()
+                exitcode = getattr(self._worker, 'exitcode', 0)
+                if exitcode != 0:
+                    raise RuntimeError(f'exit code is non-zero: {exitcode}')
+        finally:
             self._started = False
-        self._finalized = True
+            self._finalized = True
 
 
 class ThreadWriter(StandardWriter):
@@ -361,11 +363,21 @@ class ThreadWriter(StandardWriter):
     def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
+    def _save_with_exitcode(self, *args, **kwargs):
+        try:
+            self.save(*args, **kwargs)
+        except Exception as e:
+            thread = threading.current_thread()
+            thread.exitcode = -1
+            print(
+                f'Error: ThreadWriter failed in thread "{thread.name}": '
+                f'{type(e).__name__}: {str(e)}', file=sys.stderr)
+
     def create_worker(
             self, filename, out_dir, target, *,
             savefun=None, append=False, **savefun_kwargs):
         return threading.Thread(
-            target=self.save,
+            target=self._save_with_exitcode,
             args=(filename, out_dir, target, savefun, append),
             kwargs=savefun_kwargs)
 

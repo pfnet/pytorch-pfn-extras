@@ -3,6 +3,8 @@ import threading
 import tempfile
 from unittest import mock
 
+import pytest
+
 from pytorch_pfn_extras import writing
 
 
@@ -24,6 +26,7 @@ def test_standard_writer():
     target = mock.MagicMock()
     w = writing.StandardWriter()
     worker = mock.MagicMock()
+    worker.exitcode = 0
     name = spshot_writers_path + '.StandardWriter.create_worker'
     with mock.patch(name, return_value=worker):
         with tempfile.TemporaryDirectory() as tempd:
@@ -45,6 +48,14 @@ def test_thread_writer_create_worker():
         w.finalize()
 
 
+def test_thread_writer_fail():
+    w = writing.ThreadWriter(savefun=None)
+    with tempfile.TemporaryDirectory() as tempd:
+        w('myfile2.dat', tempd, 'test')
+        with pytest.raises(RuntimeError):
+            w.finalize()
+
+
 def test_process_writer_create_worker():
     target = mock.MagicMock()
     w = writing.ProcessWriter()
@@ -53,6 +64,14 @@ def test_process_writer_create_worker():
         assert isinstance(worker, multiprocessing.Process)
         w('myfile2.dat', tempd, 'test')
         w.finalize()
+
+
+def test_process_writer_fail():
+    w = writing.ProcessWriter(savefun=None)
+    with tempfile.TemporaryDirectory() as tempd:
+        w('myfile2.dat', tempd, 'test')
+        with pytest.raises(RuntimeError):
+            w.finalize()
 
 
 def test_queue_writer():

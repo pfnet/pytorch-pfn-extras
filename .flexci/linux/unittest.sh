@@ -9,9 +9,7 @@ pip install .
 pip list
 
 # Run unit tests
-python -m pytest tests/ -k 'not TestDistributedDataParallel'
-# Do it in two steps to avoid flakiness
-python -m pytest tests/pytorch_pfn_extras_tests/nn_tests/parallel_tests/test_distributed.py
+python -m pytest --cov-report=html --cov tests/
 
 # Run examples
 if [ -d mnist_raw ]; then
@@ -22,8 +20,10 @@ python example/mnist.py --batch-size 2048 --test-batch-size 2048 --epochs 1 --sa
 python example/ignite-mnist.py --batch_size 2048 --val_batch_size 2048 --epochs 1
 
 # Run pysen
-pysen run lint || true
+pysen run lint 2> /output/pysen.txt || true
 
 # Run flake8
 pysen generate .
 flake8 .
+
+mv htmlcov /output/htmlcov

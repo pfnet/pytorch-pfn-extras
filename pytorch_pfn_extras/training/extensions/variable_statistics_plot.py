@@ -19,7 +19,8 @@ def percentile(a, q, axis):
 def matplotlib_savefun(target, file_o):
     fig, plt = target
     fig.savefig(file_o)
-    plt.close()
+    fig.clf()
+    plt.close(fig)
 
 
 def _try_import_matplotlib():
