@@ -217,7 +217,7 @@ class _BaseExtensionsManager:
 
     def extend(
             self,
-            extension: extension_module.Extension,
+            extension: Callable[['_BaseExtensionsManager'], None],
             name: Optional[str] = None,
             trigger: 'trigger_util.TriggerLike' = None,
             priority: Optional[int] = None,
@@ -263,19 +263,19 @@ class _BaseExtensionsManager:
                 instead.
 
         """
-        extension = extension_module._as_extension(extension)
+        ext = extension_module._as_extension(extension)
         if name is None:
-            name = extension.name or extension.default_name
+            name = ext.name or ext.default_name
         if name == 'training':
             raise ValueError(
                 'the name "training" is prohibited as an extension name')
 
         if trigger is None:
-            trigger = extension.trigger
+            trigger = ext.trigger
         trigger = trigger_module.get_trigger(trigger)
 
         if priority is None:
-            priority = extension.priority
+            priority = ext.priority
 
         modified_name = name
         ordinal = 0
@@ -283,9 +283,9 @@ class _BaseExtensionsManager:
             ordinal += 1
             modified_name = '%s_%d' % (name, ordinal)
 
-        extension.name = modified_name
+        ext.name = modified_name
         self._extensions[modified_name] = _ExtensionEntry(
-            extension, priority, trigger, call_before_training)
+            ext, priority, trigger, call_before_training)
 
     def get_extension(self, name: str) -> extension_module.Extension:
         """Returns the extension of a given name.
