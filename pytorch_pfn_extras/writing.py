@@ -371,7 +371,7 @@ class ThreadWriter(StandardWriter):
             thread.exitcode = -1
             print(
                 f'Error: ThreadWriter failed in thread "{thread.name}": '
-                f'{type(e).__name__}: {str(e)}')
+                f'{type(e).__name__}: {str(e)}', file=sys.stderr)
 
     def create_worker(
             self, filename, out_dir, target, *,
