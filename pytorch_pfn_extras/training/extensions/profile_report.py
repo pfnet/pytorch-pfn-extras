@@ -83,7 +83,9 @@ class ProfileReport(extension.Extension):
     def __call__(self, manager):
         if manager.is_before_training or self._trigger(manager):
             with time_summary.summary(clear=True) as s:
-                stats = s.make_statistics()
+                st, additional = s
+                stats = st.make_statistics()
+                stats.update(additional)
             writer = manager.writer if self._writer is None else self._writer
             # report
             if self._report_keys is not None:

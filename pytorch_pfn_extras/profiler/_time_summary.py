@@ -93,6 +93,7 @@ class TimeSummary(object):
     def __init__(self, max_queue_size: int = 1000):
         self._summary_lock = Lock()
         self._summary = DictSummary()
+        self._additional_stats = {}
 
         self._cpu_worker = _CPUWorker(self._add, max_queue_size)
         if torch.cuda.is_available():
@@ -109,6 +110,20 @@ class TimeSummary(object):
     def _add(self, name, value):
         with self._summary_lock:
             self._summary.add({name: value})
+            if f"{name}.min" not in self._additional_stats:
+                self._additional_stats[f"{name}.min"] = value
+            else:
+                self._additional_stats[f"{name}.min"] = min(
+                    value,
+                    self._additional_stats[f"{name}.min"]
+                )
+            if f"{name}.max" not in self._additional_stats:
+                self._additional_stats[f"{name}.max"] = value
+            else:
+                self._additional_stats[f"{name}.max"] = max(
+                    value,
+                    self._additional_stats[f"{name}.max"]
+                )
 
     def wait(self):
         self._cpu_worker.wait()
@@ -119,10 +134,11 @@ class TimeSummary(object):
     def summary(self, clear: bool = False):
         try:
             with self._summary_lock:
-                yield self._summary
+                yield self._summary, self._additional_stats
         finally:
             if clear:
                 self._summary = DictSummary()
+                self._additional_stats = {}
 
     @contextmanager
     def report(self, tag: str, use_cuda: bool = False) -> None:
