@@ -13,7 +13,8 @@ _available = None
 def matplotlib_savefun(target, file_o):
     fig, leg, plt = target
     fig.savefig(file_o, bbox_extra_artists=(leg,), bbox_inches='tight')
-    plt.close()
+    fig.clf()
+    plt.close(fig)
 
 
 def _try_import_matplotlib():
@@ -195,6 +196,14 @@ filename='plot.png', marker='x', grid=True)
                     bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
                 writer(self._file_name, manager.out, (f, leg, plt),
                        savefun=matplotlib_savefun)
+            else:
+                print(
+                    f"[WARNING] No data found for key {self._y_keys}, "
+                    f"{self._file_name} not written."
+                )
+                # Finalize figure
+                f.clf()
+                plt.close(f)
 
             self._init_summary()
 
