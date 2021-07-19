@@ -110,20 +110,10 @@ class TimeSummary(object):
     def _add(self, name, value):
         with self._summary_lock:
             self._summary.add({name: value})
-            if f"{name}.min" not in self._additional_stats:
-                self._additional_stats[f"{name}.min"] = value
-            else:
-                self._additional_stats[f"{name}.min"] = min(
-                    value,
-                    self._additional_stats[f"{name}.min"]
-                )
-            if f"{name}.max" not in self._additional_stats:
-                self._additional_stats[f"{name}.max"] = value
-            else:
-                self._additional_stats[f"{name}.max"] = max(
-                    value,
-                    self._additional_stats[f"{name}.max"]
-                )
+            min_value = self._additional_stats.get(f"{name}.min", value)
+            self._additional_stats[f"{name}.min"] = min(value, min_value)
+            max_value = self._additional_stats.get(f"{name}.max", value)
+            self._additional_stats[f"{name}.max"] = min(value, max_value)
 
     def wait(self):
         self._cpu_worker.wait()
