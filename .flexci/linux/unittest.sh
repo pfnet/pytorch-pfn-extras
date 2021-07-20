@@ -9,7 +9,7 @@ pip install .
 pip list
 
 # Run unit tests
-python -m pytest --cov-report=html --cov tests/
+python -m pytest --cov-report=html --cov pytorch_pfn_extras tests/
 
 # Run examples
 if [ -d mnist_raw ]; then
