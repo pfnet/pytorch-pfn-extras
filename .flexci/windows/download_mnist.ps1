@@ -9,5 +9,5 @@ Push-Location ../data/MNIST/raw
 #curl.exe -LO http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
 #curl.exe -LO http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz
 #curl.exe -LO http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
-gsutil -m cp -r "gs://chainer-artifacts-pfn-public-ci/pytorch-pfn-extras/mnist/*" .
+gsutil -m cp -r "gs://chainer-artifacts-pfn-public-ci/pytorch-pfn-extras-assets/mnist/*" .
 Pop-Location
