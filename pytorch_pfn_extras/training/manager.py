@@ -2,7 +2,8 @@ import collections
 import contextlib
 import copy
 import time
-from typing import Any, Callable, Dict, Iterator, List, Optional, Union
+from typing import Any, Callable, Dict, Generator, List, Optional, Union
+from typing import TYPE_CHECKING
 import warnings
 
 import torch
@@ -369,7 +370,7 @@ class _BaseExtensionsManager:
             *,
             transform_models: Callable[
                 [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
-    ) -> Any:
+    ) -> None:
         """
         transform_models is a function that apply a transformation
         to a model before loading its state
@@ -442,7 +443,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             self,
             *,
             step_optimizers: Optional[List[str]] = None
-    ) -> Iterator[None]:
+    ) -> Generator[None, None, None]:
         """ Context manager to run an iteration.
 
         This manager can additionally run a step in the
@@ -477,6 +478,10 @@ class ExtensionsManager(_BaseExtensionsManager):
             self._finalize_extensions()
 
 
+if TYPE_CHECKING:
+    import ignite
+
+
 class IgniteExtensionsManager(_BaseExtensionsManager):
     """Manages extensions and the current status in Ignite training loop.
 
@@ -494,7 +499,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
     """
     def __init__(
             self,
-            engine: Any,
+            engine: 'ignite.engine.Engine',
             models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
             optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
             max_epochs: int,
