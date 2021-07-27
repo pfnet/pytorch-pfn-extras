@@ -1,7 +1,7 @@
-from pytorch_pfn_extras.training import trigger_util
+from pytorch_pfn_extras.training import trigger
 
 
-class ManualScheduleTrigger(trigger_util.Trigger):
+class ManualScheduleTrigger(trigger.Trigger):
 
     """Trigger invoked at specified point(s) of iterations or epochs.
 

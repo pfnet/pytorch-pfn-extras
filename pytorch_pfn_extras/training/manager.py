@@ -12,7 +12,6 @@ from pytorch_pfn_extras import writing
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.training import trigger_util
 from pytorch_pfn_extras.training import util as util_module
 
 _get_time = time.perf_counter
@@ -24,7 +23,7 @@ class _ExtensionEntry:
             self,
             extension: extension_module.Extension,
             priority: int,
-            trigger: trigger_util.Trigger,
+            trigger: trigger_module.Trigger,
             call_before_training: bool
     ) -> None:
         self.extension = extension
@@ -58,7 +57,7 @@ class _BaseExtensionsManager:
             extensions: Optional[List[extension_module.Extension]],
             out_dir: str,
             writer: Optional[writing.Writer],
-            stop_trigger: 'trigger_util.TriggerLike' = None
+            stop_trigger: 'trigger_module.TriggerLike' = None
     ) -> None:
         if extensions is None:
             extensions = []
@@ -220,7 +219,7 @@ class _BaseExtensionsManager:
             self,
             extension: Callable[['_BaseExtensionsManager'], None],
             name: Optional[str] = None,
-            trigger: 'trigger_util.TriggerLike' = None,
+            trigger: 'trigger_module.TriggerLike' = None,
             priority: Optional[int] = None,
             *,
             call_before_training: bool = False,
@@ -426,7 +425,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             iters_per_epoch: Optional[int],
             extensions: Optional[List[extension_module.Extension]] = None,
             out_dir: str = 'result',
-            stop_trigger: 'trigger_util.TriggerLike' = None,
+            stop_trigger: 'trigger_module.TriggerLike' = None,
             writer: Optional[writing.Writer] = None
     ) -> None:
         super().__init__(
