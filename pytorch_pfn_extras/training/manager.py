@@ -190,7 +190,7 @@ class _BaseExtensionsManager:
 
     def start_extensions(self) -> None:
         if self._start_extensions_called:
-            # This method must not be called twice or more.
+            # Extensions are already started or during the initialization.
             return
         else:
             self._start_extensions_called = True
@@ -348,13 +348,13 @@ class _BaseExtensionsManager:
         to a model.
 
         When using a `torch.nn.DataParallel` model, if we want
-        to save only yhe `.module` object, state_dict can be
-        called as follows
-        state_dict(transform_models=lambda n, x: x.module)
+        to save only the `.module` object, state_dict can be
+        called as follows:
+
+        >>> manager.state_dict(transform_models=lambda n, x: x.module)
         """
         to_save: Dict[str, Any] = {}
         to_save['_start_iteration'] = self.iteration
-        # Save manager status ?
         to_save['models'] = {
             name: transform_models(name, self._models[name]).state_dict()
             for name in self._models}
@@ -373,14 +373,16 @@ class _BaseExtensionsManager:
     ) -> None:
         """
         transform_models is a function that apply a transformation
-        to a model before loading its state
+        to a model before loading its state.
 
         When using a `torch.nn.DataParallel` model, if we want
         to load the original state in a model with the
-        `torch.nn.DataParallel` applied
-        load_state_dict(
-            state, transform_models=(lambda n, x:
-                x.module if isinstance(x, torch.nn.DataParallel) else  x))
+        `torch.nn.DataParallel` applied:
+
+        >>> manager.load_state_dict(
+                state, transform_models=(
+                    lambda n, x: x.module
+                    if isinstance(x, torch.nn.DataParallel) else x))
         """
         self._start_iteration = to_load['_start_iteration']
         self.iteration = self._start_iteration
@@ -444,7 +446,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             *,
             step_optimizers: Optional[List[str]] = None
     ) -> Generator[None, None, None]:
-        """ Context manager to run an iteration.
+        """Context manager to run an iteration.
 
         This manager can additionally run a step in the
         specified optimizers names.
@@ -468,9 +470,8 @@ class ExtensionsManager(_BaseExtensionsManager):
                 for name in step_optimizers_names:
                     self._optimizers[name].step()
             finally:
-                # In chainer, the iteration count was increased
-                # just before calling the extensions, we need
-                # to keep the semantics
+                # The iteration count is increased just before calling the
+                # extensions.
                 self.iteration += 1
                 self.run_extensions()
 
