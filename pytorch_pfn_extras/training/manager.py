@@ -12,7 +12,7 @@ from pytorch_pfn_extras import writing
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.training import util as util_module
+from pytorch_pfn_extras.training import _util as util_module
 
 _get_time = time.perf_counter
 
