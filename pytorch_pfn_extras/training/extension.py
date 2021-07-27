@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 PRIORITY_WRITER = 300
 PRIORITY_EDITOR = 200
 PRIORITY_READER = 100
@@ -37,7 +40,7 @@ class Extension:
     """
     trigger = 1, 'iteration'
     priority = PRIORITY_READER
-    name = None
+    name: Optional[str] = None
 
     @property
     def default_name(self):

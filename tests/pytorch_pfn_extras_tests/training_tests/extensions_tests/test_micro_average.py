@@ -18,7 +18,7 @@ def test_run():
     extension = ppe.training.extensions.MicroAverage(
         'main/correct', 'main/total', 'main/accuracy',
         (trigger_iters, 'iteration'))
-    manager.extend(extension, (1, 'iteration'))
+    manager.extend(extension, trigger=(1, 'iteration'))
 
     for js in numpy.ndindex(data_shape):
         with manager.run_iteration():
