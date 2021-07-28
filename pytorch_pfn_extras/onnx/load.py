@@ -7,6 +7,9 @@ from pathlib import Path
 def load_model(f, format=None, load_external_data=True):
     """Load model from ONNX file.
 
+    This is a wrapper to `onnx.load_model` that automatically falls back to
+    `load_external_data=False` when tensors are stripped.
+
     Args:
         f: A file-like object or a string file path to be written to this
             file.
