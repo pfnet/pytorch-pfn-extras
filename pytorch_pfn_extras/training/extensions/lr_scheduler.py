@@ -23,16 +23,19 @@ def _default_stepper(manager, scheduler):
 
 
 class LRScheduler(extension.Extension):
-    """Wrapper extension for pytorch LR scheduler.
+    """Trainer extension to adjust the learning rate using PyTorch's learning
+    rate scheduler.
 
-     metrics should be reported inside
-     `ExtensionsManager.run_iteration` to use this extension
-     with `ReduceLROnPlateau`.
+    This extension calls `step()` method of the given LR scheduler.
+    (`torch.option.lr_scheduler.*`). When using `ReduceLROnPlateau`, the
+    latest reported `val/loss` value will be used. This behavior can be
+    customized by passing a custom `stepper` function.
 
     Args:
-        scheduler (_LRScheduler or ReduceLROnPlateau): Scheduler
+        scheduler (_LRScheduler or ReduceLROnPlateau): Any instance of
+            `torch.optim.lr_scheduler.*`.
         stepper (callable): Function that performs the step on
-            the scheduler
+            the scheduler.
         trigger: Frequency to call this extension.
     """
 
