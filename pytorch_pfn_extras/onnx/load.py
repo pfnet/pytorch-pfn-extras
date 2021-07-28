@@ -27,7 +27,6 @@ def load_model(f, format=None, load_external_data=True):
                     'Falling back to `load_external_data=False`.',
                     UserWarning)
                 return onnx.load_model(f, format=format, load_external_data=False)
-            else:
-                raise e
         except:
-            raise e
+            pass
+        raise
