@@ -2,10 +2,10 @@ import operator
 import warnings
 
 from pytorch_pfn_extras import reporting
-from pytorch_pfn_extras.training import trigger_util
+from pytorch_pfn_extras.training import trigger
 
 
-class EarlyStoppingTrigger(trigger_util.Trigger):
+class EarlyStoppingTrigger(trigger.Trigger):
     """__init__(\
         self, check_trigger=(1, 'epoch'), monitor='main/loss', \
         patience=3, mode='auto', verbose=False, \
@@ -67,8 +67,8 @@ class EarlyStoppingTrigger(trigger_util.Trigger):
         self.monitor = monitor
         self.verbose = verbose
         self.already_warning = False
-        self._max_trigger = trigger_util.get_trigger(max_trigger)
-        self._interval_trigger = trigger_util.get_trigger(check_trigger)
+        self._max_trigger = trigger.get_trigger(max_trigger)
+        self._interval_trigger = trigger.get_trigger(check_trigger)
 
         self._init_summary()
 

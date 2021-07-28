@@ -1,6 +1,6 @@
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
-from pytorch_pfn_extras.training import trigger_util
+from pytorch_pfn_extras.training import trigger as trigger_module
 
 
 class MicroAverage(extension.Extension):
@@ -63,7 +63,7 @@ class MicroAverage(extension.Extension):
     def __init__(
             self, numerator_key, denominator_key, result_key,
             trigger=(1, 'epoch')):
-        self._trigger = trigger_util.get_trigger(trigger)
+        self._trigger = trigger_module.get_trigger(trigger)
 
         self._numerator_key = numerator_key
         self._denominator_key = denominator_key

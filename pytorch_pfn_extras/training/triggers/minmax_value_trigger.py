@@ -1,8 +1,8 @@
 from pytorch_pfn_extras import reporting
-from pytorch_pfn_extras.training import trigger_util
+from pytorch_pfn_extras.training import trigger as trigger_module
 
 
-class BestValueTrigger(trigger_util.Trigger):
+class BestValueTrigger(trigger_module.Trigger):
 
     """Trigger invoked when specific value becomes best.
 
@@ -21,7 +21,7 @@ class BestValueTrigger(trigger_util.Trigger):
     def __init__(self, key, compare, trigger=(1, 'epoch')):
         self._key = key
         self._best_value = None
-        self._interval_trigger = trigger_util.get_trigger(trigger)
+        self._interval_trigger = trigger_module.get_trigger(trigger)
         self._init_summary()
         self._compare = compare
 

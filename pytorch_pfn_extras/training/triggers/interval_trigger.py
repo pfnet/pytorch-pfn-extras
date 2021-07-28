@@ -1,7 +1,7 @@
-from pytorch_pfn_extras.training import trigger_util
+from pytorch_pfn_extras.training import trigger
 
 
-class IntervalTrigger(trigger_util.Trigger):
+class IntervalTrigger(trigger.Trigger):
 
     """Trigger based on a fixed interval.
 
