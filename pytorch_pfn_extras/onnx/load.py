@@ -24,7 +24,8 @@ def load_model(f, format=None, load_external_data=True):
             if json.loads(Path(e.filename).name)["type"] == "stripped":
                 assert load_external_data
                 warnings.warn(
-                    'The specified ONNX is stripped large tensor. Set `load_external_data=False`.',
+                    'The specified ONNX contains stripped large tensors. '
+                    'Falling back to `load_external_data=False`.',
                     UserWarning)
                 return onnx.load_model(f, format=format, load_external_data=False)
             else:
