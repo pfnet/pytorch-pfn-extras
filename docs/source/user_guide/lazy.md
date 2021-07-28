@@ -14,6 +14,10 @@ Following modules are provided:
 
 * `ppe.nn.LazyBatchNorm1d`, `ppe.nn.LazyBatchNorm2d`, `ppe.nn.LazyBatchNorm3d`
     * Module that behaves as `torch.nn.BatchNorm[123]d` but `num_features` can be set to `None`.
+    * These modles are now included as a part of PyTorch 1.9 release ([torch.nn.LazyBatchNormXd](https://pytorch.org/docs/stable/generated/torch.nn.LazyBatchNorm1d.html), [pull-request](https://github.com/pytorch/pytorch/pull/51862)).
+
+Now that all lazy modules are merged to the upstream, we encourage you to migrate to PyTorch's lazy modules.
+We will keep these implementaions only for backward compatibility.
 
 Note that you need to run a "dummy" forward to initialize lazy parameters.
 See the example below:

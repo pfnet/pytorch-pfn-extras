@@ -1,5 +1,9 @@
 # pytorch-pfn-extras
 
+[![PyPI](https://img.shields.io/pypi/v/pytorch-pfn-extras)](https://pypi.python.org/pypi/pytorch-pfn-extras)
+[![Docs](https://img.shields.io/readthedocs/pytorch-pfn-extras)](https://pytorch-pfn-extras.readthedocs.io/)
+[![License](https://img.shields.io/github/license/pfnet/pytorch-pfn-extras)](https://github.com/pfnet/pytorch-pfn-extras/blob/master/LICENSE)
+
 Supplementary components to accelerate research and development in PyTorch.
 
 ## Installation

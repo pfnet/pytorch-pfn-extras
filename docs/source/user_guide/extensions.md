@@ -4,19 +4,7 @@ Extensions Manager provides an interface to extend your training loop, by integr
 
 ## Extensions
 
-Currently the following extensions are available:
-
-+ `Evaluator`
-+ `LogReport`
-+ `MicroAverage`
-+ `PrintReport`
-+ `ProgressBar`
-+ `ParameterStatistics`
-+ `PlotReport`
-+ `observe_lr`
-+ `observe_value`
-+ `snapshot`
-+ `VariableStatisticsPlot`
+See :doc:`../reference/index` for the list of built-in extensions.
 
 ## How to use
 
