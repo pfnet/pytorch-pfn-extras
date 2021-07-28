@@ -16,7 +16,7 @@ def test_onnx_load_model():
     tou.load_model(os.path.join(outdir, "model.onnx"))
 
 
-@pytest.mark.filterwarnings("ignore:.*ONNX is stripped .*:UserWarning")
+@pytest.mark.filterwarnings("ignore:.*ONNX contains stripped .*:UserWarning")
 def test_stripped_onnx_load_model():
     model = Net()
     outdir = "out/stripped_load_model_test"
