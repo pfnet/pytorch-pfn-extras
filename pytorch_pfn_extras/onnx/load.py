@@ -14,7 +14,7 @@ def load_model(f, format=None, load_external_data=True):
         f: A file-like object or a string file path to be written to this
             file.
         format: A reserved arg
-        load_external_data: If True and the external data under the same 
+        load_external_data: If True and the external data under the same
             directory of the model, load the external data
     """
     try:
