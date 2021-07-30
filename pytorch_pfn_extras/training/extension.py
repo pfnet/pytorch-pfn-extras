@@ -2,8 +2,9 @@ from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 import types
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras import training
-    from pytorch_pfn_extras.training import trigger_util
+    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+    from pytorch_pfn_extras.training._trigger_util import TriggerLike
+    ExtensionLike = Callable[[_BaseExtensionsManager], None]
 
 
 PRIORITY_WRITER = 300
@@ -43,8 +44,8 @@ class Extension:
             :meth:`pytorch_pfn_extras.ExtensionsManager.extend` for details.
 
     """
-    trigger: 'trigger_util.TriggerLike' = 1, 'iteration'
-    priority: Optional[int] = PRIORITY_READER
+    trigger: 'TriggerLike' = 1, 'iteration'
+    priority: int = PRIORITY_READER
     name: Optional[str] = None
 
     @property
@@ -57,7 +58,7 @@ class Extension:
         """
         return type(self).__name__
 
-    def __call__(self, manager: 'training.ExtensionsManager') -> None:
+    def __call__(self, manager: '_BaseExtensionsManager') -> None:
         """Invokes the extension.
 
         Implementations should override this operator. This method is called
@@ -87,7 +88,7 @@ class Extension:
         """
         pass
 
-    def initialize(self, manager: 'training.ExtensionsManager') -> None:
+    def initialize(self, manager: '_BaseExtensionsManager') -> None:
         """Initializes up the manager state.
 
         This method is called before entering the training loop. An extension
@@ -106,9 +107,9 @@ class Extension:
 
     def on_error(
             self,
-            manager: 'training.ExtensionsManager',
+            manager: '_BaseExtensionsManager',
             exc: Exception,
-            tb: types.TracebackType
+            tb: types.TracebackType,
     ) -> None:
         """Handles the error raised during training before finalization.
 
@@ -141,37 +142,46 @@ class Extension:
 
 class _WrappedExtension(Extension):
 
-    def __init__(self, ext):
+    def __init__(self, ext: 'ExtensionLike') -> None:
         self._ext = ext
         self.trigger = getattr(self._ext, 'trigger', Extension.trigger)
         self.priority = getattr(self._ext, 'priority', Extension.priority)
         super().__init__()
 
     @property
-    def default_name(self):
+    def default_name(self) -> str:
         return getattr(self._ext, 'default_name', None) or super().default_name
 
-    def __call__(self, manager):
-        return self._ext(manager)
+    def __call__(self, manager: '_BaseExtensionsManager') -> None:
+        self._ext(manager)
 
-    def finalize(self):
+    def finalize(self) -> None:
         getattr(self._ext, 'finalize', super().finalize)()
 
-    def initialize(self, manager):
+    def initialize(self, manager: '_BaseExtensionsManager') -> None:
         getattr(self._ext, 'initialize', super().initialize)(manager)
 
-    def on_error(self, manager, exc, tb):
+    def on_error(
+            self,
+            manager: '_BaseExtensionsManager',
+            exc: Exception,
+            tb: types.TracebackType,
+    ) -> None:
         getattr(self._ext, 'on_error', super().on_error)(manager, exc, tb)
 
 
+_OnErrorType = Callable[
+    ['_BaseExtensionsManager', Exception, types.TracebackType], None]
+
+
 def make_extension(
-        trigger=Extension.trigger,
-        default_name=None,
-        priority=Extension.priority,
-        finalizer=lambda: None,
-        initializer=lambda manager: None,
-        on_error=lambda manager, exc, tb: None,
-):
+        trigger: 'TriggerLike' = Extension.trigger,
+        default_name: Optional[str] = None,
+        priority: int = Extension.priority,
+        finalizer: Callable[[], None] = lambda: None,
+        initializer: 'ExtensionLike' = lambda manager: None,
+        on_error: _OnErrorType = lambda manager, exc, tb: None,
+) -> Callable[['ExtensionLike'], 'ExtensionLike']:
     """Decorator to make given function into an extension.
 
     This decorator just adds some attributes to a given function. The value of
@@ -193,23 +203,17 @@ def make_extension(
             called after an error is raised during the training loop.
 
     """
-
-    if trigger is None:
-        trigger = Extension.trigger
-    if priority is None:
-        priority = Extension.priority
-
-    def decorator(ext: Extension) -> Extension:
-        ext.trigger = trigger
-        ext.default_name = default_name or ext.__name__
-        ext.priority = priority
-        ext.finalize = finalizer
-        ext.on_error = on_error
-        ext.initialize = initializer
+    def decorator(ext: 'ExtensionLike') -> 'ExtensionLike':
+        ext.trigger = trigger  # type: ignore
+        ext.default_name = default_name or ext.__name__  # type: ignore
+        ext.priority = priority  # type: ignore
+        ext.finalize = finalizer  # type: ignore
+        ext.on_error = on_error  # type: ignore
+        ext.initialize = initializer  # type: ignore
         return ext
 
     return decorator
 
 
-def _as_extension(ext) -> Extension:
+def _as_extension(ext: 'ExtensionLike') -> Extension:
     return ext if isinstance(ext, Extension) else _WrappedExtension(ext)
