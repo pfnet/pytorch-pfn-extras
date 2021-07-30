@@ -20,13 +20,10 @@ def load_model(f, format=None, load_external_data=True):
     try:
         return onnx.load_model(f, format=format, load_external_data=load_external_data)
     except FileNotFoundError as e:  # The ONNX may contain stripped large tensors.
-        try:
-            if load_external_data and json.loads(Path(e.filename).name)["type"] == "stripped":
-                warnings.warn(
-                    'The specified ONNX contains stripped large tensors. '
-                    'Falling back to `load_external_data=False`.',
-                    UserWarning)
-                return onnx.load_model(f, format=format, load_external_data=False)
-        except:
-            pass
-        raise
+        if load_external_data and json.loads(Path(e.filename).name)["type"] != "stripped":
+            raise
+        warnings.warn(
+            'The specified ONNX contains stripped large tensors. '
+            'Falling back to `load_external_data=False`.',
+            UserWarning)
+        return onnx.load_model(f, format=format, load_external_data=False)
