@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from pytorch_pfn_extras.profiler.time_summary import TimeSummary, time_summary
+from pytorch_pfn_extras.profiler import TimeSummary, time_summary
 
 
 def test_report():
