@@ -18,8 +18,8 @@ def test_simple_writer():
     with tempfile.TemporaryDirectory() as tempd:
         w('myfile.dat', tempd, target, savefun=savefun)
     assert savefun.call_count == 1
-    assert savefun.call_args.args[0] == target
-    assert savefun.call_args.kwargs['foo'] is True
+    assert savefun.call_args[0][0] == target
+    assert savefun.call_args[1]['foo'] is True
 
 
 def test_standard_writer():
