@@ -165,6 +165,12 @@ class _Annotation(object):
             child_module.forward = self.original_forwards[name]
 
 
+@contextlib.contextmanager
+def _nullcontext():
+    # contextlib.nullcontext equivalent, needed for Python 3.6 support.
+    yield
+
+
 def annotate(**attrs):
     """Annotation parameters to the target function.
 
@@ -195,7 +201,7 @@ def annotate(**attrs):
     """
     if torch.onnx.is_in_onnx_export():
         return _Annotation(**attrs)
-    return contextlib.nullcontext()
+    return _nullcontext()
 
 
 def apply_annotation(fn, *args, **attrs):
@@ -370,4 +376,4 @@ def scoped_anchor(**attrs):
     """
     if torch.onnx.is_in_onnx_export():
         return _Anchor(**attrs)
-    return contextlib.nullcontext()
+    return _nullcontext()
