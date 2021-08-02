@@ -29,6 +29,7 @@ author = 'Preferred Networks, Inc.'
 # ones.
 extensions = [
     'sphinx.ext.autosummary',
+    'sphinx.ext.napoleon',
     'myst_parser',
 ]
 
