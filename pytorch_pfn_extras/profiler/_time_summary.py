@@ -134,8 +134,7 @@ class TimeSummary(object):
 
         Args:
             tag (str): A name to identify the section of code being profiled.
-            use_cuda (bool): Indicates if GPU time should also be profiled
-                or not.
+            use_cuda (bool): Indicates if GPU time should also be profiled.
         """
         if use_cuda:
             begin_event = self._cuda_worker._get_cuda_event()

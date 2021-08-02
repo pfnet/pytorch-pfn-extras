@@ -41,5 +41,8 @@ def get_logger(name):
 
     Args:
         name (str): Name used to register and retrieve the logger object.
+
+    Returns:
+        A logging.Logger object used to log in the application code.
     """
     return _logger.getChild(name)
