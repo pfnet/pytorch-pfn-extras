@@ -44,7 +44,7 @@ class Extension:
             :meth:`pytorch_pfn_extras.ExtensionsManager.extend` for details.
 
     """
-    trigger: 'TriggerLike' = 1, 'iteration'
+    trigger: 'TriggerLike' = (1, 'iteration')
     priority: int = PRIORITY_READER
     name: Optional[str] = None
 
