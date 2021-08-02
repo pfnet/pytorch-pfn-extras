@@ -36,13 +36,13 @@ Optional dependencies:
 
 ## Documentation
 
-* [Extensions Manager](docs/extensions.md)
-* [Reporting](docs/reporting.md)
-* [Lazy Modules](docs/lazy.md)
-* [Distributed Snapshot](docs/snapshot.md)
-* [Config System](docs/config.md)
-* [ONNX Utils](docs/onnx.md)
-* [CUDA Utils (CuPy Interoperability)](docs/cuda.md)
+* [Extensions Manager](docs/source/user_guide/extensions.md)
+* [Reporting](docs/source/user_guide/reporting.md)
+* [Lazy Modules](docs/source/user_guide/lazy.md)
+* [Distributed Snapshot](docs/source/user_guide/snapshot.md)
+* [Config System](docs/source/user_guide/config.md)
+* [ONNX Utils](docs/source/user_guide/onnx.md)
+* [CUDA Utils (CuPy Interoperability)](docs/source/user_guide/cuda.md)
 
 ## Examples
 
