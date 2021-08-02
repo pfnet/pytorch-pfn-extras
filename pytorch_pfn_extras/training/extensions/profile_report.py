@@ -11,7 +11,7 @@ from pytorch_pfn_extras.profiler import time_summary
 class ProfileReport(extension.Extension):
     """Writes the profile results to a file.
 
-    Times are reported by using the :meth:`pytorch_pfn_extras.profiler.time_summary.TimeSummary.report`
+    Times are reported by using the :meth:`pytorch_pfn_extras.profiler.TimeSummary.report`
     context manager.
 
     Args:
