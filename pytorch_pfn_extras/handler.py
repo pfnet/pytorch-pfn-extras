@@ -221,9 +221,6 @@ class Handler(BaseHandler):
         self._eval_report_keys = options.pop('eval_report_keys', [])
         self._train_report_keys = options.pop('train_report_keys', [])
         self._async = options.pop('async', False)
-        if self._autocast and not _amp_enabled:
-            raise RuntimeError('Requested AMP features but torch.cuda.amp'
-                               ' is not enabled')
 
     def _runtime_iterator(self, models):
         if not self._ppe_modules:
@@ -598,7 +595,7 @@ class Logic(BaseLogic):
         self._autocast = options.pop('autocast', False)
 
         if not _amp_enabled:
-            if self._grad_scaler is not None or not self._autocast:
+            if self._grad_scaler is not None or self._autocast:
                 raise RuntimeError('Requested AMP features but torch.cuda.amp'
                                    ' is not enabled')
 
