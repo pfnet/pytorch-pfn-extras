@@ -193,7 +193,8 @@ class Evaluator(extension.Extension):
 
         progress = IterationStatus(len(iterator))
         if self._progress_bar:
-            pbar = _IteratorProgressBar(iterator=progress)
+            name = self.name or self.default_name
+            pbar = _IteratorProgressBar(name=name, iterator=progress)
 
         last_iter = len(iterator) - 1
         with _in_eval_mode(self._targets.values()):
@@ -257,12 +258,13 @@ class IterationStatus:
 
 class _IteratorProgressBar(util.ProgressBar):
 
-    def __init__(self, iterator, bar_length=50, out=None):
+    def __init__(self, name, iterator, bar_length=50, out=None):
         if not (hasattr(iterator, 'current_position')
                 and hasattr(iterator, 'epoch_detail')):
             raise TypeError('Iterator must have the following attributes '
                             'to enable a progress bar: '
                             'current_position, epoch_detail')
+        self._name = name
         self._iterator = iterator
         self._bar_length = bar_length
 
@@ -277,8 +279,9 @@ class _IteratorProgressBar(util.ProgressBar):
 
         rate = epoch_detail
         marks = '#' * int(rate * self._bar_length)
-        lines.append('validation [{}{}] {:6.2%}\n'.format(
-                     marks, '.' * (self._bar_length - len(marks)), rate))
+        rest_marks = '.' * (self._bar_length - len(marks))
+        lines.append('{} [{}{}] {:6.2%}\n'.format(
+                     self._name, marks, rest_marks, rate))
 
         if epoch_size:
             lines.append('{:10} / {} iterations\n'
@@ -336,7 +339,8 @@ class IgniteEvaluator(Evaluator):
         self.summary = reporting.DictSummary()
         self.progress = IterationStatus(len(iterator))
         if self._progress_bar:
-            self.pbar = _IteratorProgressBar(iterator=self.progress)
+            name = self.name or self.default_name
+            self.pbar = _IteratorProgressBar(name=name, iterator=self.progress)
         self.evaluator.run(iterator)
         if self._progress_bar:
             self.pbar.close()
