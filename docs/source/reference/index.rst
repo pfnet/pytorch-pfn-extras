@@ -83,7 +83,7 @@ Profiler
 .. autosummary::
    :toctree: generated/
 
-   profiler.time_summary.TimeSummary.report
+   profiler.TimeSummary.report
 
 Distributed Training
 ---------------------
