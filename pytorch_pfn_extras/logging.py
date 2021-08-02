@@ -37,5 +37,12 @@ def _get_root_logger():
 
 
 def get_logger(name):
-    """Returns a child logger to be used by applications."""
+    """Returns a child logger to be used by applications.
+
+    Args:
+        name (str): Name used to register and retrieve the logger object.
+
+    Returns:
+        A logging.Logger object used to log in the application code.
+    """
     return _logger.getChild(name)

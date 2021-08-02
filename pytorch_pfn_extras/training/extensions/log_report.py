@@ -91,6 +91,10 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
             does not output the log to any file.
             For historical reasons ``log_name`` is also accepted as an alias
             of this argument.
+        append (bool, optionsl): If the file is JSON Lines or YAML, contents
+            will be appended instead of rewritting the file every call.
+        format (str, optional): accepted values are `'json'`, `'json-lines'`
+            and `'yaml'`.
         writer (writer object, optional): must be callable.
             object to dump the log to. If specified, it needs to have a correct
             `savefun` defined. The writer can override the save location in

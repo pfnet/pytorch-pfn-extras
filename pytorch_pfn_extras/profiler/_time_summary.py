@@ -83,6 +83,13 @@ class _CUDAWorker(object):
 
 
 class TimeSummary(object):
+    """Online summarization of execution times.
+
+    `TimeSummary` computes the average and standard deviation of exeuction
+    times in both cpu and gpu devices.
+
+    """
+
     def __init__(self, max_queue_size: int = 1000):
         self._summary_lock = Lock()
         self._summary = DictSummary()
@@ -119,6 +126,16 @@ class TimeSummary(object):
 
     @contextmanager
     def report(self, tag: str, use_cuda: bool = False) -> None:
+        """Context manager to automatically report execution times.
+
+        The start and completion times are obtained automatically,
+        the user only needs to provide a tag to identify the value
+        in the summary values.
+
+        Args:
+            tag (str): A name to identify the section of code being profiled.
+            use_cuda (bool): Indicates if GPU time should also be profiled.
+        """
         if use_cuda:
             begin_event = self._cuda_worker._get_cuda_event()
             begin_event.record()
