@@ -1,4 +1,10 @@
-from typing import Optional
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+import types
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+    from pytorch_pfn_extras.training._trigger_util import TriggerLike
+    ExtensionLike = Callable[[_BaseExtensionsManager], None]
 
 
 PRIORITY_WRITER = 300
@@ -38,12 +44,12 @@ class Extension:
             :meth:`pytorch_pfn_extras.ExtensionsManager.extend` for details.
 
     """
-    trigger = 1, 'iteration'
-    priority = PRIORITY_READER
+    trigger: 'TriggerLike' = 1, 'iteration'
+    priority: int = PRIORITY_READER
     name: Optional[str] = None
 
     @property
-    def default_name(self):
+    def default_name(self) -> str:
         """Default name of the extension.
 
         It is the name of the class by default. Implementation can override
@@ -52,7 +58,7 @@ class Extension:
         """
         return type(self).__name__
 
-    def __call__(self, manager):
+    def __call__(self, manager: '_BaseExtensionsManager') -> None:
         """Invokes the extension.
 
         Implementations should override this operator. This method is called
@@ -66,7 +72,7 @@ class Extension:
         raise NotImplementedError(
             'Extension implementation must override __call__.')
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         if name == 'invoke_before_training':
             raise AttributeError(
                 'invoke_before_training has been removed since Chainer '
@@ -74,7 +80,7 @@ class Extension:
         raise AttributeError('{} object has no attribute {}'.format(
             type(self).__name__, name))
 
-    def finalize(self):
+    def finalize(self) -> None:
         """Finalizes the extension.
 
         This method is called at the end of the training loop.
@@ -82,7 +88,7 @@ class Extension:
         """
         pass
 
-    def initialize(self, manager):
+    def initialize(self, manager: '_BaseExtensionsManager') -> None:
         """Initializes up the manager state.
 
         This method is called before entering the training loop. An extension
@@ -99,7 +105,12 @@ class Extension:
         """
         pass
 
-    def on_error(self, manager, exc, tb):
+    def on_error(
+            self,
+            manager: '_BaseExtensionsManager',
+            exc: Exception,
+            tb: types.TracebackType,
+    ) -> None:
         """Handles the error raised during training before finalization.
 
         This method is called when an exception is thrown during the
@@ -116,7 +127,7 @@ class Extension:
         """
         pass
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         """Serializes the extension state.
 
         It is called when a manager that owns this extension is serialized. It
@@ -125,43 +136,52 @@ class Extension:
         """
         pass
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         pass
 
 
 class _WrappedExtension(Extension):
 
-    def __init__(self, ext):
+    def __init__(self, ext: 'ExtensionLike') -> None:
         self._ext = ext
         self.trigger = getattr(self._ext, 'trigger', Extension.trigger)
         self.priority = getattr(self._ext, 'priority', Extension.priority)
         super().__init__()
 
     @property
-    def default_name(self):
+    def default_name(self) -> str:
         return getattr(self._ext, 'default_name', None) or super().default_name
 
-    def __call__(self, manager):
-        return self._ext(manager)
+    def __call__(self, manager: '_BaseExtensionsManager') -> None:
+        self._ext(manager)
 
-    def finalize(self):
+    def finalize(self) -> None:
         getattr(self._ext, 'finalize', super().finalize)()
 
-    def initialize(self, manager):
+    def initialize(self, manager: '_BaseExtensionsManager') -> None:
         getattr(self._ext, 'initialize', super().initialize)(manager)
 
-    def on_error(self, manager, exc, tb):
+    def on_error(
+            self,
+            manager: '_BaseExtensionsManager',
+            exc: Exception,
+            tb: types.TracebackType,
+    ) -> None:
         getattr(self._ext, 'on_error', super().on_error)(manager, exc, tb)
 
 
+_OnErrorType = Callable[
+    ['_BaseExtensionsManager', Exception, types.TracebackType], None]
+
+
 def make_extension(
-        trigger=Extension.trigger,
-        default_name=None,
-        priority=Extension.priority,
-        finalizer=lambda: None,
-        initializer=lambda manager: None,
-        on_error=lambda manager, exc, tb: None,
-):
+        trigger: 'TriggerLike' = Extension.trigger,
+        default_name: Optional[str] = None,
+        priority: int = Extension.priority,
+        finalizer: Callable[[], None] = lambda: None,
+        initializer: 'ExtensionLike' = lambda manager: None,
+        on_error: _OnErrorType = lambda manager, exc, tb: None,
+) -> Callable[['ExtensionLike'], 'ExtensionLike']:
     """Decorator to make given function into an extension.
 
     This decorator just adds some attributes to a given function. The value of
@@ -183,23 +203,17 @@ def make_extension(
             called after an error is raised during the training loop.
 
     """
-
-    if trigger is None:
-        trigger = Extension.trigger
-    if priority is None:
-        priority = Extension.priority
-
-    def decorator(ext):
-        ext.trigger = trigger
-        ext.default_name = default_name or ext.__name__
-        ext.priority = priority
-        ext.finalize = finalizer
-        ext.on_error = on_error
-        ext.initialize = initializer
+    def decorator(ext: 'ExtensionLike') -> 'ExtensionLike':
+        ext.trigger = trigger  # type: ignore
+        ext.default_name = default_name or ext.__name__  # type: ignore
+        ext.priority = priority  # type: ignore
+        ext.finalize = finalizer  # type: ignore
+        ext.on_error = on_error  # type: ignore
+        ext.initialize = initializer  # type: ignore
         return ext
 
     return decorator
 
 
-def _as_extension(ext) -> Extension:
+def _as_extension(ext: 'ExtensionLike') -> Extension:
     return ext if isinstance(ext, Extension) else _WrappedExtension(ext)

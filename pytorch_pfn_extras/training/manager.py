@@ -54,7 +54,7 @@ class _BaseExtensionsManager:
             models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
             optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
             max_epochs: int,
-            extensions: Optional[List[extension_module.Extension]],
+            extensions: Optional[List['extension_module.ExtensionLike']],
             out_dir: str,
             writer: Optional[writing.Writer],
             stop_trigger: 'trigger_module.TriggerLike' = None
@@ -217,7 +217,7 @@ class _BaseExtensionsManager:
 
     def extend(
             self,
-            extension: Callable[['_BaseExtensionsManager'], None],
+            extension: 'extension_module.ExtensionLike',
             name: Optional[str] = None,
             trigger: 'trigger_module.TriggerLike' = None,
             priority: Optional[int] = None,
@@ -425,7 +425,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             max_epochs: int,
             *,
             iters_per_epoch: Optional[int],
-            extensions: Optional[List[extension_module.Extension]] = None,
+            extensions: Optional[List['extension_module.ExtensionLike']] = None,
             out_dir: str = 'result',
             stop_trigger: 'trigger_module.TriggerLike' = None,
             writer: Optional[writing.Writer] = None
@@ -504,7 +504,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
             max_epochs: int,
             *,
-            extensions: Optional[List[extension_module.Extension]] = None,
+            extensions: Optional[List['extension_module.ExtensionLike']] = None,
             out_dir: str = 'result',
             writer: Optional[writing.Writer] = None
     ) -> None:
