@@ -1,7 +1,7 @@
 import torch
 from typing import Callable, Iterable, Optional
 from contextlib import contextmanager
-from pytorch_pfn_extras.profiler.time_summary import time_summary
+from pytorch_pfn_extras.profiler._time_summary import time_summary
 
 
 @contextmanager
