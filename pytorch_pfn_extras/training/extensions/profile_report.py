@@ -27,10 +27,8 @@ class ProfileReport(extension.Extension):
             formatting. For example, users can use '{iteration}' to separate
             the log files for different iterations. If the log name is None, it
             does not output the log to any file.
-            For historical reasons ``log_name`` is also accepted as an alias
-            of this argument.
         append (bool, optionsl): If the file is JSON Lines or YAML, contents
-            will be appended instead of rewritting the file every call.
+            will be appended instead of rewriting the file every call.
         format (str, optional): accepted values are `'json'`, `'json-lines'`
             and `'yaml'`.
         writer (writer object, optional): must be callable.
