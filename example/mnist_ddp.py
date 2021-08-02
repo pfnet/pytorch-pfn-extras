@@ -22,7 +22,7 @@ class Net(nn.Module):
         else:
             self.conv1 = nn.Conv2d(1, 20, 5, 1)
             self.conv2 = nn.Conv2d(20, 50, 5, 1)
-            self.fc1 = nn.Linear(4*4*50, 500)
+            self.fc1 = nn.Linear(4 * 4 * 50, 500)
             self.fc2 = nn.Linear(500, 10)
 
     def forward(self, x):
@@ -39,7 +39,7 @@ class Net(nn.Module):
 def train(manager, args, model, device, train_loader):
     while not manager.stop_trigger:
         model.train()
-        for batch_idx, (data, target) in enumerate(train_loader):
+        for _, (data, target) in enumerate(train_loader):
             with manager.run_iteration(step_optimizers=['main']):
                 data, target = data.to(device), target.to(device)
                 output = model(data)
@@ -63,7 +63,7 @@ def test(args, model, device, data, target):
     ppe.reporting.report({'val/loss': test_loss})
     pred = output.argmax(dim=1, keepdim=True)
     correct += pred.eq(target.view_as(pred)).sum().item()
-    ppe.reporting.report({'val/acc': correct/len(data)})
+    ppe.reporting.report({'val/acc': correct / len(data)})
 
 
 def init_distributed(use_cuda=True):
@@ -82,7 +82,8 @@ def init_distributed(use_cuda=True):
     torch.cuda.set_device(comm_local_rank)
     torch.distributed.init_process_group(backend='nccl', init_method='env://')
 
-    device = torch.device("cuda:{}".format(comm_local_rank) if use_cuda else "cpu")
+    device = torch.device(
+        "cuda:{}".format(comm_local_rank) if use_cuda else "cpu")
 
     return comm_world_size, comm_rank, comm_local_rank, device
 
@@ -116,8 +117,8 @@ def main():
     args = parser.parse_args()
     use_cuda = args.cuda and torch.cuda.is_available()
 
-    #torch.backends.cudnn.benchmark = False
-    #torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
+    # torch.backends.cudnn.deterministic = True
     torch.manual_seed(args.seed)
 
     comm_world_size, comm_rank, comm_local_rank, device = init_distributed(
@@ -135,19 +136,19 @@ def main():
     torch.distributed.barrier()
 
     train_dataset = datasets.MNIST(
-            dataset_root,
-            train=True,
-            transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),
-            ]))
+        dataset_root,
+        train=True,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)),
+        ]))
     test_dataset = datasets.MNIST(
-            dataset_root,
-            train=False,
-            transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize((0.1307,), (0.3081,)),
-            ]))
+        dataset_root,
+        train=False,
+        transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)),
+        ]))
 
     train_sampler = torch.utils.data.DistributedSampler(
         train_dataset, num_replicas=comm_world_size, rank=comm_rank)
@@ -193,7 +194,8 @@ def main():
             extensions.PlotReport(
                 ['train/loss', 'val/loss'], 'epoch', filename='loss.png'),
             extensions.PrintReport(['epoch', 'iteration',
-                                    'train/loss', 'lr', 'model/fc2.bias/grad/min',
+                                    'train/loss', 'lr',
+                                    'model/fc2.bias/grad/min',
                                     'val/loss', 'val/acc']),
             extensions.snapshot(),
         ]
@@ -224,7 +226,6 @@ def main():
 
     # Wait for all processes to finish to complete successfully
     torch.distributed.barrier()
-
 
 
 if __name__ == '__main__':
