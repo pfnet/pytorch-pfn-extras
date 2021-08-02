@@ -36,13 +36,17 @@ Optional dependencies:
 
 ## Documentation
 
-* [Extensions Manager](docs/source/user_guide/extensions.md)
-* [Reporting](docs/source/user_guide/reporting.md)
-* [Lazy Modules](docs/source/user_guide/lazy.md)
-* [Distributed Snapshot](docs/source/user_guide/snapshot.md)
-* [Config System](docs/source/user_guide/config.md)
-* [ONNX Utils](docs/source/user_guide/onnx.md)
-* [CUDA Utils (CuPy Interoperability)](docs/source/user_guide/cuda.md)
+Refer to [Read The Docs](https://pytorch-pfn-extras.readthedocs.io/) for the complete documentation.
+
+Below are some quick-links to the most important features of the library.
+
+* [Extensions Manager](https://pytorch-pfn-extras.readthedocs.io/en/latest/user_guide/extensions.html)
+* [Reporting](https://pytorch-pfn-extras.readthedocs.io/en/latest/user_guide/reporting.html)
+* [Lazy Modules](https://pytorch-pfn-extras.readthedocs.io/en/latest/user_guide/lazy.html)
+* [Distributed Snapshot](https://pytorch-pfn-extras.readthedocs.io/en/latest/user_guide/snapshot.html)
+* [Config System](https://pytorch-pfn-extras.readthedocs.io/en/latest/user_guide/config.html)
+* [ONNX Utils](https://pytorch-pfn-extras.readthedocs.io/en/latest/user_guide/onnx.html)
+* [CUDA Utils (CuPy Interoperability)](https://pytorch-pfn-extras.readthedocs.io/en/latest/user_guide/cuda.html)
 
 ## Examples
 
