@@ -32,12 +32,13 @@ Extensions
    training.extensions.Evaluator
    training.extensions.LogReport
    training.extensions.MicroAverage
-   training.extensions.PrintReport
-   training.extensions.ProgressBar
-   training.extensions.ParameterStatistics
-   training.extensions.PlotReport
    training.extensions.observe_lr
    training.extensions.observe_value
+   training.extensions.ParameterStatistics
+   training.extensions.PlotReport
+   training.extensions.PrintReport
+   training.extensions.ProgressBar
+   training.extensions.ProfileReport
    training.extensions.snapshot
    training.extensions.VariableStatisticsPlot
 
@@ -67,6 +68,22 @@ Reporting
    reporting.report
    reporting.report_scope
 
+
+Logging
+~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   logging.get_logger
+
+Profiler
+~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   profiler.time_summary.TimeSummary.report
 
 Distributed Training
 ---------------------

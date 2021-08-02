@@ -9,6 +9,41 @@ from pytorch_pfn_extras.profiler import time_summary
 
 
 class ProfileReport(extension.Extension):
+    """Writes the profile results to a file.
+
+    Times are reported by using the :ref:`profiler.time_summary.report`
+    context manager.
+
+    Args:
+        store_keys (iterable of strs): Keys of values to write to the profiler
+            report file.
+        report_keys (iterable of strs): Keys of values that will be reported.
+        trigger: Trigger that decides when to aggregate the result and output
+            the values. This is distinct from the trigger of this extension
+            itself. If it is a tuple in the form ``<int>, 'epoch'`` or
+            ``<int>, 'iteration'``, it is passed to :class:`IntervalTrigger`.
+        filename (str): Name of the log file under the output directory. It can
+            be a format string: the last result dictionary is passed for the
+            formatting. For example, users can use '{iteration}' to separate
+            the log files for different iterations. If the log name is None, it
+            does not output the log to any file.
+            For historical reasons ``log_name`` is also accepted as an alias
+            of this argument.
+        append (bool, optionsl): If the file is JSON Lines or YAML, contents
+            will be appended instead of rewritting the file every call.
+        format (str, optional): accepted values are `'json'`, `'json-lines'`
+            and `'yaml'`.
+        writer (writer object, optional): must be callable.
+            object to dump the log to. If specified, it needs to have a correct
+            `savefun` defined. The writer can override the save location in
+            the :class:`pytorch_pfn_extras.training.ExtensionsManager` object
+    Args:
+        entries (list): list of str
+
+    Returns:
+        header (str): header string
+        templates (str): template string for print values.
+    """
     def __init__(
         self,
         store_keys=None,
