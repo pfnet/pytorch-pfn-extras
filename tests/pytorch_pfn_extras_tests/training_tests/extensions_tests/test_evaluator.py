@@ -190,7 +190,7 @@ def test_evaluator_with_eval_func():
             _torch_batch_to_numpy(target.args[i]), data[i])
 
 
-def test_evaluator_progress_bar():
+def test_evaluator_progress_bar(capsys):
     data = [
         numpy.random.uniform(-1, 1, (3, 4)).astype('f') for _ in range(2)]
 
@@ -203,6 +203,26 @@ def test_evaluator_progress_bar():
     reporter.add_observer('target', target)
     with reporter:
         evaluator.evaluate()
+    captured = capsys.readouterr()
+    assert 'validation [####' in captured.out
+
+
+def test_evaluator_progress_bar_custom_label(capsys):
+    data = [
+        numpy.random.uniform(-1, 1, (3, 4)).astype('f') for _ in range(2)]
+
+    data_loader = torch.utils.data.DataLoader(data, batch_size=1)
+    target = DummyModel()
+    evaluator = ppe.training.extensions.Evaluator(
+        data_loader, {}, eval_func=target, progress_bar=True)
+    evaluator.name = 'my_evaluator'     # Set custom name to the evaluator
+
+    reporter = ppe.reporting.Reporter()
+    reporter.add_observer('target', target)
+    with reporter:
+        evaluator.evaluate()
+    captured = capsys.readouterr()
+    assert 'my_evaluator [####' in captured.out
 
 
 # Code excerpts to test IgniteEvaluator
