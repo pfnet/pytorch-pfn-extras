@@ -4,7 +4,7 @@ Extensions Manager provides an interface to extend your training loop, by integr
 
 ## Extensions
 
-See :doc:`../reference/index` for the list of built-in extensions.
+See the [API Reference](../reference/index) for the list of built-in extensions.
 
 ## How to use
 
