@@ -113,7 +113,7 @@ class TimeSummary(object):
             min_value = self._additional_stats.get(f"{name}.min", value)
             self._additional_stats[f"{name}.min"] = min(value, min_value)
             max_value = self._additional_stats.get(f"{name}.max", value)
-            self._additional_stats[f"{name}.max"] = min(value, max_value)
+            self._additional_stats[f"{name}.max"] = max(value, max_value)
 
     def wait(self):
         self._cpu_worker.wait()

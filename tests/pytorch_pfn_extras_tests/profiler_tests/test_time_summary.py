@@ -61,10 +61,12 @@ def test_global_summary():
 def test_clear():
     summary = TimeSummary()
     summary._add("foo", 10)
+    summary._add("foo", 5)
+    summary._add("foo", 15)
     summary.wait()
     with summary.summary(clear=True) as s:
         assert s[0].compute_mean() == {"foo": 10}
-        assert s[1] == {"foo.min": 10, "foo.max": 10}
+        assert s[1] == {"foo.min": 5, "foo.max": 15}
     with summary.summary(clear=True) as s:
         assert s[0].compute_mean() == {}
         assert s[1] == {}
