@@ -190,7 +190,8 @@ def test_evaluator_with_eval_func():
             _torch_batch_to_numpy(target.args[i]), data[i])
 
 
-def test_evaluator_progress_bar(capsys):
+@pytest.fixture(scope='function')
+def evaluator_with_progress():
     data = [
         numpy.random.uniform(-1, 1, (3, 4)).astype('f') for _ in range(2)]
 
@@ -198,31 +199,38 @@ def test_evaluator_progress_bar(capsys):
     target = DummyModel()
     evaluator = ppe.training.extensions.Evaluator(
         data_loader, {}, eval_func=target, progress_bar=True)
+    return evaluator, target
+
+
+def test_evaluator_progress_bar(capsys, evaluator_with_progress):
+    evaluator, target = evaluator_with_progress
 
     reporter = ppe.reporting.Reporter()
     reporter.add_observer('target', target)
     with reporter:
         evaluator.evaluate()
-    captured = capsys.readouterr()
-    assert 'validation [####' in captured.out
+    stdout = capsys.readouterr().out
+    assert 'validation [.........' in stdout
+    assert '         0 iterations' in stdout
+    assert '       inf iters/sec.' in stdout
+    assert 'validation [#########' in stdout
+    assert '         1 iterations' in stdout
 
 
-def test_evaluator_progress_bar_custom_label(capsys):
-    data = [
-        numpy.random.uniform(-1, 1, (3, 4)).astype('f') for _ in range(2)]
-
-    data_loader = torch.utils.data.DataLoader(data, batch_size=1)
-    target = DummyModel()
-    evaluator = ppe.training.extensions.Evaluator(
-        data_loader, {}, eval_func=target, progress_bar=True)
-    evaluator.name = 'my_evaluator'     # Set custom name to the evaluator
+def test_evaluator_progress_bar_custom_label(capsys, evaluator_with_progress):
+    evaluator, target = evaluator_with_progress
+    evaluator.name = 'my_own_evaluator'     # Set a (long) custom name
 
     reporter = ppe.reporting.Reporter()
     reporter.add_observer('target', target)
     with reporter:
         evaluator.evaluate()
-    captured = capsys.readouterr()
-    assert 'my_evaluator [####' in captured.out
+    stdout = capsys.readouterr().out
+    assert 'my_own_evaluator [.........' in stdout
+    assert '               0 iterations' in stdout
+    assert '             inf iters/sec.' in stdout
+    assert 'my_own_evaluator [#########' in stdout
+    assert '               1 iterations' in stdout
 
 
 # Code excerpts to test IgniteEvaluator

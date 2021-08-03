@@ -284,16 +284,18 @@ class _IteratorProgressBar(util.ProgressBar):
                      self._name, marks, rest_marks, rate))
 
         if epoch_size:
-            lines.append('{:10} / {} iterations\n'
+            lines.append(f'{{:{len(self._name)}}} / {{}} iterations\n'
                          .format(iteration, epoch_size))
         else:
-            lines.append('{:10} iterations\n'.format(iteration))
+            lines.append(f'{{:{len(self._name)}}} iterations\n'
+                         .format(iteration))
 
         speed_t, speed_e = self.update_speed(iteration, epoch_detail)
         estimated_time = (1.0 - epoch_detail) / speed_e
-        lines.append('{:10.5g} iters/sec. Estimated time to finish: {}.\n'
-                     .format(speed_t,
-                             datetime.timedelta(seconds=estimated_time)))
+        itps = f'{{:{len(self._name)}.5g}} iters/sec.'.format(speed_t)
+        eta = 'Estimated time to finish: {}.\n' \
+              .format(datetime.timedelta(seconds=estimated_time))
+        lines.append("{} {}".format(itps, eta))
         return lines
 
 
