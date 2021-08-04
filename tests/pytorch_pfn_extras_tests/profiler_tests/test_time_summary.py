@@ -6,6 +6,14 @@ import pytest
 from pytorch_pfn_extras.profiler import TimeSummary, time_summary
 
 
+def test_multiprocessing_start_method():
+    try:
+        mp.set_start_method('fork')
+    except RuntimeError:
+        pytest.fail("multiprocessing.set_start_method has to work "
+                    "even after importing ppe")
+
+
 def test_report():
     summary = TimeSummary()
     with summary.report("foo"):
