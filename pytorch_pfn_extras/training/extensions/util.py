@@ -1,8 +1,8 @@
-import collections
 import os
 import sys
+import queue
 import time
-from typing import Deque, Optional, Sequence, TextIO, Tuple, TYPE_CHECKING
+from typing import NamedTuple, Optional, Sequence, TextIO, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
@@ -64,11 +64,17 @@ if os.name == 'nt':
             os.system('cls')
 
 
+class _QueUnit(NamedTuple):
+    iteration: int
+    epoch_detail: float
+    time: float
+
+
 class ProgressBar:
 
     def __init__(self, out: Optional[TextIO] = None) -> None:
         self._out = sys.stdout if out is None else out
-        self._recent_timing: Deque[Tuple[int, float, float]] = collections.deque([], maxlen=100)
+        self._recent_timing: 'queue.Queue[_QueUnit]' = queue.Queue(maxsize=100)
 
     def update_speed(
             self,
@@ -76,12 +82,12 @@ class ProgressBar:
             epoch_detail: float
     ) -> Tuple[float, float]:
         now = time.time()
-        self._recent_timing.append((iteration, epoch_detail, now))
-        old_t, old_e, old_sec = self._recent_timing[0]
-        span = now - old_sec
+        self._recent_timing.put(_QueUnit(iteration, epoch_detail, now))
+        old = self._recent_timing.get()
+        span = now - old.time
         if span != 0:
-            speed_t = (iteration - old_t) / span
-            speed_e = (epoch_detail - old_e) / span
+            speed_t = (iteration - old.iteration) / span
+            speed_e = (epoch_detail - old.epoch_detail) / span
         else:
             speed_t = float('inf')
             speed_e = float('inf')
