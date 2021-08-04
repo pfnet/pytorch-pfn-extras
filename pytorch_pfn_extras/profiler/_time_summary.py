@@ -14,19 +14,11 @@ Events = Tuple[torch.cuda.Event, torch.cuda.Event]
 
 class _CPUWorker(object):
     def __init__(self, add, max_queue_size: int):
-        self._max_queue_size = max_queue_size
         self._add = add
+        self._queue = mp.JoinableQueue(max_queue_size)
         self._thread = Thread(target=self._worker)
         self._thread.setDaemon(True)
         self._thread.start()
-        self._q = None
-
-    @property
-    def _queue(self):
-        if self._q:
-            return self._q
-        self._q = mp.JoinableQueue(self._max_queue_size)
-        return self._q
 
     def close(self):
         self._queue.put(None)
