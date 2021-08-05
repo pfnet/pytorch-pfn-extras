@@ -27,7 +27,9 @@ class _CPUWorker(object):
     def _queue(self):
         if self._q:
             return self._q
-        assert self._pid == os.getpid(), "CPUWorker of pytorch_pfn_extras.profiler is initialized in subprocesses. Please call initialize method in main process."
+        assert self._pid == os.getpid(), \
+            "CPUWorker of pytorch_pfn_extras.profiler is initialized in a " \
+            "subprocess. Please call initialize() method in the main process."
         self._q = mp.JoinableQueue(self._max_queue_size)
         return self._q
 
@@ -106,9 +108,17 @@ class TimeSummary(object):
     `TimeSummary` computes the average and standard deviation of exeuction
     times in both cpu and gpu devices.
 
+    Args:
+        max_queue_size (int): Lengh limit of the internal queues that keep
+            reported time info until they are summarized.
+        initialize_in_constructor (bool): Whether to call initialize()
+            in the initializer.
+
     """
 
-    def __init__(self, max_queue_size: int = 1000, initialize_in_constructor: bool = True):
+    def __init__(self,
+                 max_queue_size: int = 1000,
+                 initialize_in_constructor: bool = True):
         self._summary_lock = Lock()
         self._summary = DictSummary()
 
@@ -136,6 +146,16 @@ class TimeSummary(object):
             self._cuda_worker.wait()
 
     def initialize(self) -> None:
+        """Initializes the queue
+
+        Time information reported by report() is once kept in internal queues
+        and then summarized.
+        initialize() is to prepare for the queues.
+        Usually you do not have to call it for yourself,
+        however in case you directly use ``time_summary`` without
+        :class:`pytorch_pfn_extras.training.extensions.ProfileReport`,
+        you have to explicitly call ``time_summary.initialize()`` in advance.
+        """
         self._cpu_worker.initialize()
 
     @contextmanager
