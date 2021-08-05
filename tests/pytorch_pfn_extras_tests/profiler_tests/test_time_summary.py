@@ -52,6 +52,7 @@ def worker1():
     sys.platform == 'win32',
     reason='Multiprocessing not fully supported on Windows')
 def test_global_summary():
+    time_summary.initialize()
     p = mp.Process(target=worker1)
     p.start()
     p.join()
