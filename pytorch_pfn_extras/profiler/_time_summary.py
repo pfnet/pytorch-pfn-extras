@@ -1,4 +1,5 @@
 import atexit
+import os
 from contextlib import contextmanager
 import time
 from typing import Tuple
@@ -14,11 +15,24 @@ Events = Tuple[torch.cuda.Event, torch.cuda.Event]
 
 class _CPUWorker(object):
     def __init__(self, add, max_queue_size: int):
+        self._max_queue_size = max_queue_size
         self._add = add
-        self._queue = mp.JoinableQueue(max_queue_size)
+        self._q = None
+        self._pid = os.getpid()
         self._thread = Thread(target=self._worker)
         self._thread.setDaemon(True)
         self._thread.start()
+
+    @property
+    def _queue(self):
+        if self._q:
+            return self._q
+        assert self._pid == os.getpid(), "CPUWorker of pytorch_pfn_extras.profiler is initialized in subprocesses. Please call initialize method in main process."
+        self._q = mp.JoinableQueue(self._max_queue_size)
+        return self._q
+
+    def initialize(self) -> None:
+        self._queue
 
     def close(self):
         self._queue.put(None)
@@ -32,6 +46,10 @@ class _CPUWorker(object):
 
     def _worker(self):
         while True:
+            if self._q is None:
+                # we should not initialize queue in this worker thread
+                time.sleep(1)
+                continue
             v = self._queue.get()
             if v is None:
                 self._queue.task_done()
@@ -90,11 +108,13 @@ class TimeSummary(object):
 
     """
 
-    def __init__(self, max_queue_size: int = 1000):
+    def __init__(self, max_queue_size: int = 1000, initialize_in_constructor: bool = True):
         self._summary_lock = Lock()
         self._summary = DictSummary()
 
         self._cpu_worker = _CPUWorker(self._add, max_queue_size)
+        if initialize_in_constructor:
+            self.initialize()
         if torch.cuda.is_available():
             self._cuda_worker = _CUDAWorker(self._add, max_queue_size)
         else:
@@ -114,6 +134,9 @@ class TimeSummary(object):
         self._cpu_worker.wait()
         if self._cuda_worker is not None:
             self._cuda_worker.wait()
+
+    def initialize(self) -> None:
+        self._cpu_worker.initialize()
 
     @contextmanager
     def summary(self, clear: bool = False):
@@ -152,5 +175,5 @@ class TimeSummary(object):
                     (f"{tag}.cuda", (begin_event, end_event)))
 
 
-time_summary = TimeSummary()
+time_summary = TimeSummary(initialize_in_constructor=False)
 atexit.register(time_summary.close)
