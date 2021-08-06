@@ -5,6 +5,7 @@ from pytorch_pfn_extras.training import trigger
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+    from pytorch_pfn_extras.training._trigger_util import UnitLiteral
 
 
 class IntervalTrigger(trigger.Trigger):
@@ -29,7 +30,7 @@ class IntervalTrigger(trigger.Trigger):
 
     """
 
-    def __init__(self, period: float, unit: str):
+    def __init__(self, period: float, unit: 'UnitLiteral'):
         if unit not in ('epoch', 'iteration'):
             raise ValueError(
                 'Trigger unit must be either \'epoch\' or \'iteration\'.')

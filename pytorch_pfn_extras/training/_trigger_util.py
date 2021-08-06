@@ -26,7 +26,10 @@ class _CallableTrigger(Trigger):
 
 
 TriggerFunc = Callable[['_BaseExtensionsManager'], bool]
-TriggerLike = Optional[Union[Trigger, TriggerFunc, Tuple[int, str]]]
+
+# TODO: Use `Literal['epoch', 'iteration']` after Py3.7 is dropped
+UnitLiteral = str
+TriggerLike = Optional[Union[Trigger, TriggerFunc, Tuple[int, UnitLiteral]]]
 
 
 def get_trigger(trigger: TriggerLike) -> Trigger:
