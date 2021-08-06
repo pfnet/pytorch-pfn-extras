@@ -1,4 +1,10 @@
+from typing import Any, Dict, Tuple, TYPE_CHECKING
+
 from pytorch_pfn_extras.training import trigger
+
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
 
 
 class IntervalTrigger(trigger.Trigger):
@@ -23,7 +29,7 @@ class IntervalTrigger(trigger.Trigger):
 
     """
 
-    def __init__(self, period, unit):
+    def __init__(self, period: float, unit: str):
         if unit not in ('epoch', 'iteration'):
             raise ValueError(
                 'Trigger unit must be either \'epoch\' or \'iteration\'.')
@@ -37,7 +43,7 @@ class IntervalTrigger(trigger.Trigger):
         # count is kept for backward compatibility
         self.count = 0
 
-    def __call__(self, manager):
+    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
         """Decides whether the extension should be called on this iteration.
 
         Args:
@@ -55,13 +61,8 @@ class IntervalTrigger(trigger.Trigger):
             epoch_detail = manager.epoch_detail
             previous_epoch_detail = self._previous_epoch_detail
 
-            # if previous_epoch_detail is invalid value,
-            # use the value of manager.
-            if previous_epoch_detail < 0:
-                previous_epoch_detail = manager.previous_epoch_detail
-
             # count is kept for backward compatibility
-            self.count = epoch_detail // self.period
+            self.count = int(epoch_detail // self.period)
 
             fire = previous_epoch_detail // self.period != \
                 epoch_detail // self.period
@@ -84,20 +85,20 @@ class IntervalTrigger(trigger.Trigger):
 
         return fire
 
-    def state_dict(self):
-        state = {}
-        state['_previous_iteration'] = self._previous_iteration
-        state['_previous_epoch_detail'] = self._previous_epoch_detail
-        return state
+    def state_dict(self) -> Dict[str, Any]:
+        return {
+            '_previous_iteration': self._previous_iteration,
+            '_previous_epoch_detail': self._previous_epoch_detail,
+        }
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         self._previous_iteration = to_load['_previous_iteration']
         self._previous_epoch_detail = to_load['_previous_epoch_detail']
 
-    def get_training_length(self):
+    def get_training_length(self) -> Tuple[float, str]:
         return (self.period, self.unit)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a string describing the class and interval
 
         Returns:
