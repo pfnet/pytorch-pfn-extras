@@ -2,13 +2,19 @@ import logging
 import os
 
 from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL  # NOQA
+from typing import Optional
 
 _logger_name = 'ppe'
 _logger_format = '[%(name)s] %(asctime)s: (%(levelname)s) %(message)s'
 _logger = None
 
 
-def _configure_logging(*, filename=None, level='ERROR', format=_logger_format):
+def _configure_logging(
+        *,
+        filename: Optional[str] = None,
+        level: str = 'ERROR',
+        format: str = _logger_format
+) -> None:
     global _logger
     filename = os.environ.get('PPE_LOG_FILENAME', filename)
     if filename is None:
@@ -31,12 +37,12 @@ def _configure_logging(*, filename=None, level='ERROR', format=_logger_format):
     _logger.addHandler(handler)
 
 
-def _get_root_logger():
+def _get_root_logger() -> Optional[logging.Logger]:
     """Returns a logger to be used by pytorch-pfn-extras."""
     return _logger
 
 
-def get_logger(name):
+def get_logger(name: str) -> Optional[logging.Logger]:
     """Returns a child logger to be used by applications.
 
     Args:
@@ -45,4 +51,6 @@ def get_logger(name):
     Returns:
         A logging.Logger object used to log in the application code.
     """
+    if _logger is None:
+        raise RuntimeError('')
     return _logger.getChild(name)
