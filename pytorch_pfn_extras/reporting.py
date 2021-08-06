@@ -9,7 +9,7 @@ import numpy
 import torch
 
 
-Scalar = Union[torch.Tensor, numpy.floating, float]
+Scalar = Union[torch.Tensor, numpy.ndarray, numpy.floating, float]
 Observation = Dict[str, Scalar]
 
 
@@ -83,8 +83,8 @@ class Reporter:
 
     def __exit__(
             self,
-            exc_type: Optional[Type[Exception]],
-            exc_value: Optional[Exception],
+            exc_type: Optional[Type[BaseException]],
+            exc_value: Optional[BaseException],
             traceback: Optional[types.TracebackType],
     ) -> None:
         """Recovers the previous reporter object to the current."""
