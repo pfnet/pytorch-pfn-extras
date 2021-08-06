@@ -14,7 +14,7 @@ setuptools.setup(
                 'development in PyTorch.',
     author='Preferred Networks, Inc.',
     license='MIT License',
-    install_requires=['numpy', 'torch'],
+    install_requires=['numpy', 'torch', 'ipython', 'ipywidgets'],
     extras_require={
         'test': ['pytest'],
         'onnx': ['onnx'],
