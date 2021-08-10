@@ -12,7 +12,9 @@ def test_report():
         pass
     summary.wait()
     with summary.summary() as s:
-        assert "foo" in s.compute_mean()
+        assert "foo" in s[0].compute_mean()
+        assert "foo.min" in s[1]
+        assert "foo.max" in s[1]
     summary.close()
 
 
@@ -31,7 +33,9 @@ def test_report_from_other_process():
     p.join()
     summary.wait()
     with summary.summary() as s:
-        assert "foo" in s.compute_mean()
+        assert "foo" in s[0].compute_mean()
+        assert "foo.min" in s[1]
+        assert "foo.max" in s[1]
     summary.close()
 
 
@@ -49,15 +53,21 @@ def test_global_summary():
     p.join()
     time_summary.wait()
     with time_summary.summary() as s:
-        assert "foo" in s.compute_mean()
+        assert "foo" in s[0].compute_mean()
+        assert "foo.min" in s[1]
+        assert "foo.max" in s[1]
 
 
 def test_clear():
     summary = TimeSummary()
-    summary._summary.add({"foo": 10})
+    summary._add("foo", 10)
+    summary._add("foo", 5)
+    summary._add("foo", 15)
     summary.wait()
     with summary.summary(clear=True) as s:
-        assert s.compute_mean() == {"foo": 10}
+        assert s[0].compute_mean() == {"foo": 10}
+        assert s[1] == {"foo.min": 5, "foo.max": 15}
     with summary.summary(clear=True) as s:
-        assert s.compute_mean() == {}
+        assert s[0].compute_mean() == {}
+        assert s[1] == {}
     summary.close()
