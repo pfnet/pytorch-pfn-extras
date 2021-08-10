@@ -1,5 +1,5 @@
 import operator
-from typing import Any, Dict, Tuple, TYPE_CHECKING
+from typing import Tuple, TYPE_CHECKING
 import warnings
 
 from pytorch_pfn_extras import reporting
@@ -47,12 +47,12 @@ class EarlyStoppingTrigger(trigger.Trigger):
 
     def __init__(
             self,
-            check_trigger: TriggerLike = (1, 'epoch'),
+            check_trigger: 'TriggerLike' = (1, 'epoch'),
             monitor: str = 'main/loss',
             patience: int = 3,
             mode: str = 'auto',
             verbose: bool = False,
-            max_trigger: Tuple[int, UnitLiteral] = (100, 'epoch'),
+            max_trigger: Tuple[int, 'UnitLiteral'] = (100, 'epoch'),
     ) -> None:
         self.count = 0
         self.patience = patience

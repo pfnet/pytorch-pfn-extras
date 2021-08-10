@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import trigger as trigger_module
@@ -7,7 +7,6 @@ from pytorch_pfn_extras.training import trigger as trigger_module
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
     from pytorch_pfn_extras.training._trigger_util import TriggerLike
-    from pytorch_pfn_extras.training._trigger_util import UnitLiteral
 
 
 class BestValueTrigger(trigger_module.Trigger):
