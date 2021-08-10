@@ -24,6 +24,7 @@ def test_trigger(iters_per_epoch, interval, expected, resume):
     for e in expected:
         with trainer.run_iteration():
             pass
+        assert trigger.may_fire(trainer.iteration, iters_per_epoch) == e
         assert trigger(trainer) == e
 
 
@@ -37,6 +38,7 @@ def test_resumed_trigger(iters_per_epoch, interval, expected, resume):
     for e in expected[:resume]:
         with trainer.run_iteration():
             pass
+        assert trigger.may_fire(trainer.iteration, iters_per_epoch) == e
         assert trigger(trainer) == e
 
     state = trigger.state_dict()
@@ -46,6 +48,7 @@ def test_resumed_trigger(iters_per_epoch, interval, expected, resume):
     for e in expected[resume:]:
         with trainer.run_iteration():
             pass
+        assert new_trigger.may_fire(trainer.iteration, iters_per_epoch) == e
         assert new_trigger(trainer) == e
 
 

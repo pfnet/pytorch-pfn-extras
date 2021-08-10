@@ -151,3 +151,6 @@ class EarlyStoppingTrigger(trigger.Trigger):
 
     def get_training_length(self):
         return self._max_trigger.get_training_length()
+
+    def may_fire(self, iteration, epoch_length):
+        return self._interval_trigger.may_fire(iteration, epoch_length)

@@ -12,6 +12,23 @@ from pytorch_pfn_extras.reporting import DictSummary
 Events = Tuple[torch.cuda.Event, torch.cuda.Event]
 
 
+class _ReportNotification:
+    def __init__(self, summary, tag, use_cuda, begin_event, begin):
+        self._is_completed = True
+        self._summary = summary
+        self._tag = tag
+        self._use_cuda = use_cuda
+        self._begin_event = begin_event
+        self._begin = begin
+
+    def defer(self):
+        self._is_completed = False
+
+    def complete(self):
+        self._summary.complete_report(
+            self._tag, self._use_cuda, self._begin_event, self._begin)
+
+
 class _CPUWorker(object):
     def __init__(self, add, max_queue_size: int):
         self._add = add
@@ -93,6 +110,7 @@ class TimeSummary(object):
     def __init__(self, max_queue_size: int = 1000):
         self._summary_lock = Lock()
         self._summary = DictSummary()
+        self._additional_stats = {}
 
         self._cpu_worker = _CPUWorker(self._add, max_queue_size)
         if torch.cuda.is_available():
@@ -109,6 +127,10 @@ class TimeSummary(object):
     def _add(self, name, value):
         with self._summary_lock:
             self._summary.add({name: value})
+            min_value = self._additional_stats.get(f"{name}.min", value)
+            self._additional_stats[f"{name}.min"] = min(value, min_value)
+            max_value = self._additional_stats.get(f"{name}.max", value)
+            self._additional_stats[f"{name}.max"] = min(value, max_value)
 
     def wait(self):
         self._cpu_worker.wait()
@@ -119,10 +141,20 @@ class TimeSummary(object):
     def summary(self, clear: bool = False):
         try:
             with self._summary_lock:
-                yield self._summary
+                yield self._summary, self._additional_stats
         finally:
             if clear:
                 self._summary = DictSummary()
+                self._additional_stats = {}
+
+    def complete_report(self, tag, use_cuda, begin_event, begin):
+        end = time.time()
+        self._cpu_worker._queue.put((tag, end - begin))
+        if use_cuda:
+            end_event = self._cuda_worker._get_cuda_event()
+            end_event.record()
+            self._cuda_worker._queue.put(
+                (f"{tag}.cuda", (begin_event, end_event)))
 
     @contextmanager
     def report(self, tag: str, use_cuda: bool = False) -> None:
@@ -136,20 +168,18 @@ class TimeSummary(object):
             tag (str): A name to identify the section of code being profiled.
             use_cuda (bool): Indicates if GPU time should also be profiled.
         """
+        begin_event = None
         if use_cuda:
             begin_event = self._cuda_worker._get_cuda_event()
             begin_event.record()
         try:
             begin = time.time()
-            yield
+            notification = _ReportNotification(
+                self, tag, use_cuda, begin_event, begin)
+            yield notification
         finally:
-            end = time.time()
-            self._cpu_worker._queue.put((tag, end - begin))
-            if use_cuda:
-                end_event = self._cuda_worker._get_cuda_event()
-                end_event.record()
-                self._cuda_worker._queue.put(
-                    (f"{tag}.cuda", (begin_event, end_event)))
+            if notification._is_completed:
+                self.complete_report(tag, use_cuda, begin_event, begin)
 
 
 time_summary = TimeSummary()

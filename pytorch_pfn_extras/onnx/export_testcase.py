@@ -198,6 +198,9 @@ def export_testcase(
 
     """
 
+    if user_meta is None:
+        user_meta = {}
+
     os.makedirs(out_dir, exist_ok=True)
     input_names = kwargs.pop(
         'input_names',

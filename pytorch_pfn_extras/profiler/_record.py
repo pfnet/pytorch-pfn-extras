@@ -13,8 +13,8 @@ def record(tag: str, metric: Optional[str] = None, use_cuda: bool = False):
         torch.cuda.nvtx.range_push(tag)
     try:
         with torch.autograd.profiler.record_function(tag):
-            with time_summary.report(metric, use_cuda):
-                yield
+            with time_summary.report(metric, use_cuda) as ntf:
+                yield ntf
     finally:
         if use_cuda:
             torch.cuda.nvtx.range_pop()
@@ -40,7 +40,7 @@ def record_iterable(
     def wrapped() -> Iterable:
         for i, x in enumerate(iter):
             name = f"{tag}-{i}"
-            metric = name if divide_metric else name
+            metric = name if divide_metric else tag
             with record(name, metric, use_cuda=use_cuda):
                 yield x
 

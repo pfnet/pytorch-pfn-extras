@@ -1,6 +1,7 @@
 import collections
 import contextlib
 import copy
+from pytorch_pfn_extras.profiler import record
 import time
 from typing import Any, Callable, Dict, Generator, List, Optional, Union
 from typing import TYPE_CHECKING
@@ -15,6 +16,14 @@ from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training import _util as util_module
 
 _get_time = time.perf_counter
+
+
+class IterationNotification:
+    def __init__(self):
+        self._is_completed = True
+
+    def defer(self):
+        self._is_completed = False
 
 
 class _ExtensionEntry:
@@ -44,6 +53,34 @@ class _ExtensionEntry:
             self.trigger.load_state_dict(to_load['trigger'])
 
 
+class _ManagerExecutionProxy:
+    """
+    Object that is passed to the triggers of extensions depending if they
+    require to measure executions when using async mode
+    Note that in sync mode execution == iteration
+    """
+    def __init__(self, manager):
+        self._manager = manager
+
+    @property
+    def iteration(self):
+        return self._manager.execution
+
+    @property
+    def epoch(self):
+        # Extensions will start via self.iteration
+        return self.iteration // self._iters_per_epoch
+
+    @property
+    def epoch_detail(self):
+        # Extensions will start via self.iteration
+        return self.iteration / self._iters_per_epoch
+
+    @property
+    def _iters_per_epoch(self):
+        return self._manager._iters_per_epoch
+
+
 class _BaseExtensionsManager:
     """
     Keeps track of the extensions and the current status
@@ -57,7 +94,8 @@ class _BaseExtensionsManager:
             extensions: Optional[List['extension_module.ExtensionLike']],
             out_dir: str,
             writer: Optional[writing.Writer],
-            stop_trigger: 'trigger_module.TriggerLike' = None
+            stop_trigger: 'trigger_module.TriggerLike' = None,
+            transform_model=lambda n, x: x,
     ) -> None:
         if extensions is None:
             extensions = []
@@ -75,7 +113,14 @@ class _BaseExtensionsManager:
         self._out = out_dir
         self.writer = writer
         self.reporter = reporting.Reporter()
+        self._transform_model = transform_model
         self._start_extensions_called = False
+
+        # Indicates whether models can be accessed from extensions in the
+        # current iteration.
+        # The defualt value (True) indicates that it is allowed to access
+        # models before starting a training loop.
+        self._model_available = True
 
         if not isinstance(models, dict):
             if not isinstance(models, torch.nn.Module):
@@ -92,6 +137,9 @@ class _BaseExtensionsManager:
             self._optimizers = optimizers
 
         for name, model in self._models.items():
+            # TODO we should not initialize extensions at this point
+            # so, we cannot use `self.models`
+            model = self._transform_model(name, model)
             self.reporter.add_observer(name, model)
             self.reporter.add_observers(
                 name, model.named_modules())
@@ -119,9 +167,26 @@ class _BaseExtensionsManager:
     def iteration(self, value: int) -> None:
         self._iteration = value
 
+    def _check_model_available(self):
+        if self._model_available:
+            return
+        raise RuntimeError(
+            'Models cannot be accessed from extensions in this iteration. '
+            'Extensions accessing models must declare '
+            '`needs_model_state = True` attribute.')
+
     @property
     def models(self) -> Dict[str, torch.nn.Module]:
         self.start_extensions()
+        self._check_model_available()
+        models = {k: self._transform_model(k, v)
+                  for k, v in self._models.items()}
+        return models
+
+    @property
+    def raw_models(self):
+        self.start_extensions()
+        self._check_model_available()
         return self._models
 
     @property
@@ -158,7 +223,8 @@ class _BaseExtensionsManager:
         self.start_extensions()
         # Trigger is stateful, we close the extensions the first time
         # it evaluates to True, as it won't do it again
-        return self._stop_trigger(self)
+        manager = self._get_proxy_for_trigger(self._stop_trigger)
+        return self._stop_trigger(manager)
 
     @property
     def out(self) -> str:
@@ -179,12 +245,19 @@ class _BaseExtensionsManager:
             ' `snapshot_iter_{.iteration}`).', DeprecationWarning)
         return self
 
+    def _get_proxy_for_trigger(self, trigger):
+        if isinstance(trigger, trigger_module.IntervalTrigger):
+            return _ManagerExecutionProxy(self)
+        return self
+
     def _prepare_for_training(
             self,
             start_iteration: int,
+            start_execution: int,
             iters_per_epoch: int
     ) -> None:
         self.iteration = start_iteration
+        self.execution = start_execution
         self._iters_per_epoch = iters_per_epoch
 
     def start_extensions(self) -> None:
@@ -263,6 +336,9 @@ class _BaseExtensionsManager:
                 instead.
 
         """
+        if self._start_extensions_called:
+            raise RuntimeError(
+                'extend called after the extensions were initialized')
         ext = extension_module._as_extension(extension)
         if name is None:
             name = ext.name or ext.default_name
@@ -303,10 +379,30 @@ class _BaseExtensionsManager:
         else:
             raise ValueError('extension %s not found' % name)
 
-    def run_extensions(self) -> None:
+    def run_extensions(self, *, completed=True, only_iterations=True) -> None:
+        if completed:
+            # Check if the model is available for the iteration just
+            # completed, i.e., the iteration number is already incremented.
+            self._model_available = self.needs_model_state(self.iteration)
+        else:
+            self._model_available = False
+
         to_run = []
-        for _, entry in self.extensions:
-            if entry.trigger(self):
+        for name, entry in self.extensions:
+            # When iterations are deferred we only
+            # launch the extensions that doesn't need
+            # the training status to advance
+            # those are extensions set to execute
+            # in a given interval of executions
+            is_async = (hasattr(entry.extension, 'is_async')
+                        and entry.extension.is_async)
+            if ((not completed and not is_async)
+                    or (completed and is_async and only_iterations)):
+                continue
+            manager = self
+            if is_async:
+                manager = self._get_proxy_for_trigger(entry.trigger)
+            if entry.trigger(manager):
                 # Execution of snapshot extensions are deferred until all the
                 # triggers are evaluated.
                 # If we don't do this, when two (or more) snapshot extensions
@@ -320,11 +416,36 @@ class _BaseExtensionsManager:
                 # report values that might be needed by other triggers, i.e.,
                 # trigger based on evaluator reported value.
                 if entry.priority == extension_module.PRIORITY_SNAPSHOT:
-                    to_run.append(entry.extension)
+                    to_run.append((name, entry.extension))
                 else:
-                    entry.extension(self)
-        for extension in to_run:
-            extension(self)
+                    with record(
+                        f'pytorch_pfn_extras.training.ExtensionsManager'
+                        f'.run_extensions:{name}'
+                    ):
+                        entry.extension(self)
+        for name, extension in to_run:
+            with record(
+                f'pytorch_pfn_extras.training.ExtensionsManager'
+                f'.run_extensions:{name}'
+            ):
+                extension(self)
+        self._model_available = True
+
+    def needs_state_this_iteration(self):
+        # TODO(kmaehashi) remove this interface after migration complete.
+        return self.needs_model_state(self.execution + 1)
+
+    def needs_model_state(self, iteration=None):
+        if iteration is None:
+            # Iteration is added one, because iteration count
+            # is increased just right before calling extensions
+            iteration = self.iteration + 1
+        for _, entry in self._extensions.items():
+            needs_state = getattr(entry.extension, 'needs_model_state', False)
+            if (needs_state and entry.trigger.may_fire(
+                    iteration, self._iters_per_epoch)):
+                return True
+        return False
 
     def _finalize_extensions(self) -> None:
         for _, entry in self.extensions:
@@ -354,9 +475,11 @@ class _BaseExtensionsManager:
         """
         to_save: Dict[str, Any] = {}
         to_save['_start_iteration'] = self.iteration
+        to_save['_start_execution'] = self.execution
+        # Use self.models to apply transform_model
         to_save['models'] = {
-            name: transform_models(name, self._models[name]).state_dict()
-            for name in self._models}
+            name: self.models[name].state_dict()
+            for name in self.models}
         to_save['optimizers'] = {name: self._optimizers[name].state_dict()
                                  for name in self._optimizers}
         to_save['extensions'] = {name: self._extensions[name].state_dict()
@@ -385,17 +508,18 @@ class _BaseExtensionsManager:
         """
         self._start_iteration = to_load['_start_iteration']
         self.iteration = self._start_iteration
-        for name in self._models:
+        self._start_execution = to_load.get('_start_execution', self.iteration)
+        self.execution = self._start_execution
+        for name in self.models:
             # TODO(ecastill) map_loc when loading the model and DDP check
-            transformed_model = transform_models(name, self._models[name])
-            transformed_model.load_state_dict(to_load['models'][name])
+            # Use self.models to apply transform_model
+            self.models[name].load_state_dict(to_load['models'][name])
 
         for name in self._optimizers:
             self._optimizers[name].load_state_dict(to_load['optimizers'][name])
 
         for name in self._extensions:
-            self._extensions[name].load_state_dict(
-                to_load['extensions'][name])
+            self._extensions[name].load_state_dict(to_load['extensions'][name])
 
 
 class ExtensionsManager(_BaseExtensionsManager):
@@ -428,16 +552,46 @@ class ExtensionsManager(_BaseExtensionsManager):
             extensions: Optional[List['extension_module.ExtensionLike']] = None,
             out_dir: str = 'result',
             stop_trigger: 'trigger_module.TriggerLike' = None,
-            writer: Optional[writing.Writer] = None
+            writer: Optional[writing.Writer] = None,
+            transform_model=lambda n, x: x,
     ) -> None:
         super().__init__(
             models, optimizers, max_epochs, extensions,
-            out_dir, writer, stop_trigger)
+            out_dir, writer, stop_trigger, transform_model)
         if not (isinstance(iters_per_epoch, int) and iters_per_epoch >= 1):
             raise ValueError(
                 'iters_per_epoch must be an integer >= 1 ({} given)'.format(
                     iters_per_epoch))
-        self._prepare_for_training(0, iters_per_epoch)
+        self._prepare_for_training(0, 0, iters_per_epoch)
+
+    @contextlib.contextmanager
+    def complete_iteration(self, *, observation=None, step_optimizers=None):
+        """ Context manager to complete deferred iterations.
+
+        Args:
+            step_optimizers (list or None): names of the optimizers
+            to call `zero_grad` and `step`
+        """
+
+        # This manager is needed because we need a reporting environment
+        # for extensions to work properly.
+
+        if observation is None:
+            observation = {}
+        step_optimizers_names = []
+        if step_optimizers is not None:
+            step_optimizers_names = step_optimizers
+        self.observation = observation
+        with self.reporter.scope(observation):
+            try:
+                for name in step_optimizers_names:
+                    self._optimizers[name].zero_grad()
+                yield
+                for name in step_optimizers_names:
+                    self._optimizers[name].step()
+            finally:
+                self.iteration += 1
+                self.run_extensions(completed=True, only_iterations=True)
 
     @contextlib.contextmanager
     def run_iteration(
@@ -457,6 +611,8 @@ class ExtensionsManager(_BaseExtensionsManager):
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
+
+        notification = IterationNotification()
         step_optimizers_names = []
         if step_optimizers is not None:
             step_optimizers_names = step_optimizers
@@ -465,14 +621,25 @@ class ExtensionsManager(_BaseExtensionsManager):
             try:
                 for name in step_optimizers_names:
                     self._optimizers[name].zero_grad()
-                yield
-                for name in step_optimizers_names:
-                    self._optimizers[name].step()
+                yield notification
+                if notification._is_completed:
+                    for name in step_optimizers_names:
+                        self._optimizers[name].step()
             finally:
                 # The iteration count is increased just before calling the
                 # extensions.
-                self.iteration += 1
-                self.run_extensions()
+                if notification._is_completed:
+                    self.iteration += 1
+                    self.execution += 1
+                    self.run_extensions(completed=True, only_iterations=False)
+                else:
+                    # execution is the number of times
+                    # a run_iteration event was not complete
+                    # but operations on the model were performed.
+                    # it is used to trigger extensions that
+                    # needs to run regardless of the training state
+                    self.execution += 1
+                    self.run_extensions(completed=False, only_iterations=False)
 
         if self._internal_stop_trigger(self):
             self._finalize_extensions()
@@ -536,20 +703,22 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
         def set_training_started(engine: Engine) -> None:
             iters_per_epoch = len(engine.state.dataloader)
             # Initialize manager once before extensions' `initialize` call
-            self._prepare_for_training(0, iters_per_epoch)
+            self._prepare_for_training(0, 0, iters_per_epoch)
             self.start_extensions()
             start_iteration = self._start_iteration
             self.engine.state.iteration = self._start_iteration
             self.engine.state.epoch = self._start_epoch
             self._start_time = _get_time()
             # Initialize manager again after all state is restored
-            self._prepare_for_training(start_iteration, iters_per_epoch)
+            self._prepare_for_training(
+                start_iteration, start_iteration, iters_per_epoch)
 
             # Make all the next
             # handlers to be executed after user defined ones
             @self.engine.on(Events.ITERATION_COMPLETED)
             def run_extensions_on_iter(engine: Engine) -> None:
                 self.iteration = engine.state.iteration
+                self.execution += 1
                 self.run_extensions()
 
             # This should be the last extension to be run

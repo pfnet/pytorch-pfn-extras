@@ -11,72 +11,54 @@ from torch.autograd import Variable
 from torch.autograd.profiler import record_function
 import threading
 
+from pytorch_pfn_extras.profiler import record
+
 logger = logging.getLogger(__name__)
 
 
-class _ApexWrapper:
-    """A wrapper class to use nvidia/apex.
+class _ForEachWrapper:
+    """A wrapper class of `torch._foreach_xxx` function.
 
-    Apex contains highly optimized functions. However, some environments may
-    not install apex.
-    This class provides fallback functions to handle such cases.
+    There are two options:
+    - torch with python for loop
+    - torch._foreach_xxx
     """
     def __init__(self):
-        try:
-            import apex_C
-            self.flatten = apex_C.flatten
-            self.unflatten = apex_C.unflatten
-        except ImportError:
-            logger.warning(
-                "fail to import apex_C: "
-                "apex was not installed or installed without --cpp_ext.")
-            self.flatten = torch._utils._flatten_dense_tensors
-            self.unflatten = torch._utils._unflatten_dense_tensors
+        self.flatten = torch._utils._flatten_dense_tensors
+        self.unflatten = torch._utils._unflatten_dense_tensors
 
-        try:
-            import amp_C
-            self._amp_C_multi_tensor_scale = amp_C.multi_tensor_scale
-        except ImportError:
+        self._enable_foreach = (hasattr(torch, "_foreach_add")
+                                and hasattr(torch, '_foreach_zero_'))
+        if not self._enable_foreach:
             logger.warning(
-                "fail to import amp_C: "
-                "apex was not installed or installed without --cpp_ext.")
-            self._amp_C_multi_tensor_scale = None
+                "torch does not have _foreach_xxx functions."
+                " Please use newer torch")
 
     def multi_tensor_scale(self, src, dst, scale):
-        if self._amp_C_multi_tensor_scale is None:
-            self._multi_tensor_scale(src, dst, scale)
-            return
-
-        dtype = src[0].dtype
-        device = src[0].device
-        if (dtype == torch.float or dtype == torch.float16
-                or dtype == torch.float64) and device.type == "cuda":
-            self._multi_tensor_scale_apex(src, dst, scale)
-        else:
-            self._multi_tensor_scale(src, dst, scale)
-
-    def _multi_tensor_scale_apex(self, src, dst, scale):
-        overflow_buf = torch.tensor([0], device=src[0].device).int()
-        self._amp_C_multi_tensor_scale(65536, overflow_buf, [src, dst],
-                                       scale)
-
-    def _multi_tensor_scale(self, src, dst, scale):
         with torch.no_grad():
-            for s, d in zip(src, dst):
-                d.copy_(s * scale)
+            # _foreach_zero for long type is not supported in CUDA
+            if self._enable_foreach and src[0].is_floating_point():
+                # scale
+                val = torch._foreach_mul(tuple(src), scale)
+                # copy tensor
+                torch._foreach_zero_(tuple(dst))
+                torch._foreach_add_(tuple(dst), val)
+            else:
+                for s, d in zip(src, dst):
+                    d.copy_(s * scale)
 
 
-apex_wrapper = None
+foreach_wrapper = None
 _apex_wrapper_mutex = threading.Lock()
 
 
-def get_apex_wrapper():
-    global apex_wrapper
-    if apex_wrapper is None:
+def get_foreach_wrapper():
+    global foreach_wrapper
+    if foreach_wrapper is None:
         with _apex_wrapper_mutex:
-            if apex_wrapper is None:
-                apex_wrapper = _ApexWrapper()
-    return apex_wrapper
+            if foreach_wrapper is None:
+                foreach_wrapper = _ForEachWrapper()
+    return foreach_wrapper
 
 
 def _reduce(values, group):
@@ -85,14 +67,16 @@ def _reduce(values, group):
     # flatten values to improve the runtime perfomance of all-reduce
     coalesced = torch.empty(size, device=values[0].device,
                             dtype=values[0].dtype)
-    coalesced_views = get_apex_wrapper().unflatten(coalesced, values)
-    get_apex_wrapper().multi_tensor_scale(values, coalesced_views, 1.0)
+    coalesced_views = get_foreach_wrapper().unflatten(coalesced, values)
+    get_foreach_wrapper().multi_tensor_scale(values, coalesced_views, 1.0)
 
-    with record_function("torch.distributed.all_reduce"):
+    with record(
+        "torch.distributed.all_reduce", use_cuda=torch.cuda.is_available()
+    ):
         dist.all_reduce(coalesced, group=group)
 
     # unflatten values
-    get_apex_wrapper().multi_tensor_scale(
+    get_foreach_wrapper().multi_tensor_scale(
         coalesced_views, values,
         1.0 / dist.get_world_size(group)
     )
@@ -100,13 +84,13 @@ def _reduce(values, group):
 
 def _broadcast(values, group):
     with torch.no_grad():
-        coalesced = get_apex_wrapper().flatten(values)
-        with record_function("torch.distributed.broadcast"):
+        coalesced = get_foreach_wrapper().flatten(values)
+        with record(
+            "torch.distributed.broadcast", use_cuda=torch.cuda.is_available()
+        ):
             dist.broadcast(coalesced, 0, group=group)
-        get_apex_wrapper().multi_tensor_scale(
-            get_apex_wrapper().unflatten(coalesced, values),
-            values, 1.0
-        )
+        src = get_foreach_wrapper().unflatten(coalesced, values)
+        get_foreach_wrapper().multi_tensor_scale(src, values, 1.0)
 
 
 def _group_by_type(values):
@@ -260,7 +244,12 @@ class DistributedDataParallel(nn.Module):
 
                     # cast to long because bool may not be used in all_reduce
                     has_grads = has_grads.long()
-                    dist.all_reduce(has_grads, op=dist.ReduceOp.MAX)
+                    with record(
+                        "pytorch_pfn_extras.nn.parallel."
+                        "DistributedDataParallel:coordinate",
+                        use_cuda=torch.cuda.is_available(),
+                    ):
+                        dist.all_reduce(has_grads, op=dist.ReduceOp.MAX)
 
                     for name, has_grad in zip(self._sorted_param_keys,
                                               has_grads.bool().cpu()):
@@ -274,15 +263,26 @@ class DistributedDataParallel(nn.Module):
                 grads = [params[name].grad for name in self._sorted_param_keys
                          if params[name].grad is not None]
                 groups = _group_by_type(grads)
-                for group in groups:
-                    self._reduce_function(group, self._process_group)
+                with record(
+                    "pytorch_pfn_extras.nn.parallel."
+                    "DistributedDataParallel:reduce_gradient",
+                    use_cuda=torch.cuda.is_available(),
+                ):
+                    for group in groups:
+                        self._reduce_function(group, self._process_group)
 
                 if self._broadcast_buffers:
                     buffers = dict(self.named_buffers())
                     bufs = [buffers[name] for name in self._sorted_buffer_keys]
                     groups = _group_by_type(bufs)
-                    for group in groups:
-                        self._broadcast_function(group, self._process_group)
+                    with record(
+                        "pytorch_pfn_extras.nn.parallel."
+                        "DistributedDataParallel:broadcast_buffer",
+                        use_cuda=torch.cuda.is_available(),
+                    ):
+                        for group in groups:
+                            self._broadcast_function(
+                                group, self._process_group)
 
         # PyTorch will invoke `_synchronize` after the backward computation.
         Variable._execution_engine.queue_callback(_synchronize)
