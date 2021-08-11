@@ -200,6 +200,7 @@ class Handler(BaseHandler):
         self._train_report_keys = config.pop('train_report_keys', [])
         self._async = config.pop('async', False)
         self.pending_iters = defaultdict(list)
+        self.futures = defaultdict(list)
         if self._autocast and not _amp_enabled:
             raise RuntimeError('Requested AMP features but torch.cuda.amp'
                                ' is not enabled')
@@ -314,6 +315,7 @@ class Handler(BaseHandler):
     def _complete_train_step(self, trainer, outs, block, sn, sm, rt):
         idx, batch, cback = self.pending_iters[sn][0]
         self.pending_iters[sn] = self.pending_iters[sn][1:]
+        self.futures[sn] = self.futures[sn][1:]
         # Since async mode is not supported with device splitting
         # we now that there is only ONE submodule, so we
         # can asure that now we can step the optimizers
@@ -321,6 +323,7 @@ class Handler(BaseHandler):
             trainer.models, trainer.optimizers, idx)
         if len(self.pending_iters[sn]) == 0:
             del self.pending_iters[sn]
+            del self.futures[sn]
         cback(idx, outs, is_deferred=block)
 
     def train_step(self, trainer, batch_idx, batch, complete_fn):
@@ -344,7 +347,7 @@ class Handler(BaseHandler):
                 trainer.models, trainer.optimizers, batch_idx, batch)
 
         if self._async:
-            # async returns inmediately
+            # async returns inmediately with a future like object.
             # Check if there is a completed iteration
             # If we enqueue everything first, we will blow up with
             # memory due to the dataloaders being in the background
@@ -352,7 +355,9 @@ class Handler(BaseHandler):
             # require different treatment depending on the device.
             for sn, sm, rt in self._runtime_iterator(trainer.models):
                 self.pending_iters[sn].append((batch_idx, batch, complete_fn))
-                outs = rt.get_pending_result(sm, False)
+                self.futures[sn].append(outs)
+                # Ensure that iterations complete in order
+                outs = rt.get_pending_result(sm, self.futures[sn][0], False)
                 if outs is not None:
                     self._complete_train_step(trainer, outs, False, sn, sm, rt)
         else:
@@ -376,8 +381,10 @@ class Handler(BaseHandler):
         # This call is deferred
         idx, batch, cback = self.pending_iters[sn][0]
         self.pending_iters[sn] = self.pending_iters[sn][1:]
+        self.futures[sn] = self.futures[sn][1:]
         if len(self.pending_iters[sn]) == 0:
             del self.pending_iters[sn]
+            del self.futures[sn]
         cback(idx, outs, is_deferred=block)
 
     def eval_step(self, evaluator, batch_idx, batch, complete_fn):
@@ -398,13 +405,16 @@ class Handler(BaseHandler):
         outs = self._logic.eval_step(evaluator.models, batch_idx, batch)
 
         if self._async:
-            # Is async returns inmediately
+            # Is async returns inmediately with a future like object.
+            # that can be used by the runtime to synchronize
             # Check if there is a completed iteration
             # If we enqueue everything first, we will blow up with
             # memory due to the dataloaders being in the background
             for sn, sm, rt in self._runtime_iterator(evaluator.models):
                 self.pending_iters[sn].append((batch_idx, batch, complete_fn))
-                outs = rt.get_pending_result(sm, False)
+                self.futures[sn].append(outs)
+                # Ensure that iterations complete in order
+                outs = rt.get_pending_result(sm, self.futures[sn][0], False)
                 if outs is not None:
                     self._complete_eval_step(
                         evaluator, outs, False, sn, sm, rt)
