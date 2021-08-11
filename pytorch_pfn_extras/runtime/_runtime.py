@@ -187,11 +187,13 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def get_pending_result(self, module, blocking):
+    def get_pending_result(self, future, module, blocking):
         """The method called to retrieve the result of a asynchronous call.
 
         Args:
             module (torch.nn.Module): A module.
+            future (object): An arbitrary object that the runtime can use
+                for synchronization.
             blocking (bool): A flag to determine wether to wait for
                 an asynchronous call completion or returns None.
 
@@ -241,7 +243,7 @@ class PyTorchRuntime(BaseRuntime):
     def eval_post_step(self, evaluator, module, batch_idx, batch, outs):
         pass
 
-    def get_pending_result(self, module, blocking):
+    def get_pending_result(self, future, module, blocking):
         pass
 
 
