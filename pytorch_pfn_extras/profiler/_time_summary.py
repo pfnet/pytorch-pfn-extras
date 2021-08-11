@@ -176,6 +176,7 @@ class TimeSummary:
         self._cpu_worker.finalize()
         if self._cuda_worker is not None:
             self._cuda_worker.finalize()
+        self._initialized = False
 
     def synchronize(self):
         self.initialize()
