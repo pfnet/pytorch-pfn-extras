@@ -62,16 +62,13 @@ def test_global_summary():
 
 def test_clear():
     summary = TimeSummary()
-    summary._summary._add({"foo": 10})
-    summary._summary._add({"foo": 5})
-    summary._summary._add({"foo": 15})
+    summary.add("foo", 10)
+    summary.add("foo", 5)
+    summary.add("foo", 15)
     summary.synchronize()
     with summary.summary(clear=True) as s:
         assert s[0].compute_mean() == {"foo": 10}
         assert s[1] == {"foo.min": 5, "foo.max": 15}
-    with summary.summary(clear=True) as s:
-        assert s[0].compute_mean() == {}
-        assert s[1] == {}
     summary.finalize()
 
 
@@ -81,7 +78,7 @@ def test_multiprocessing_start_method():
     subprocess.check_call([
         sys.executable,
         '-c',
-        ('import multiprocessing as mp; ' +
-         'import pytorch_pfn_extras; ' +
-         'mp.set_start_method("spawn"); ')
+        ('import multiprocessing as mp; '
+         + 'import pytorch_pfn_extras; '
+         + 'mp.set_start_method("spawn"); ')
     ])

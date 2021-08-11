@@ -192,6 +192,9 @@ class TimeSummary:
             max_value = self._additional_stats.get(f"{name}.max", value)
             self._additional_stats[f"{name}.max"] = max(value, max_value)
 
+    def add(self, name, value):
+        self._add_from_worker(name, value)
+
     @contextmanager
     def summary(self, clear: bool = False):
         self.initialize()
