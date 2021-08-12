@@ -1,11 +1,17 @@
 from collections import defaultdict
 import contextlib
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import torch
 
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras import reporting
 
+
+Batch = Union[torch.Tensor, List[torch.Tensor],
+              Tuple[torch.Tensor, ...], Dict[str, torch.Tensor]]
+Output = Any
+Outputs = Union[Output, List[Output], Tuple[Output, ...], Dict[str, Output]]
 
 _amp_enabled = False
 
@@ -19,9 +25,9 @@ except ImportError:
 
 
 @contextlib.contextmanager
-def torch_autocast(enabled=True):
+def torch_autocast(enabled: bool = True) -> Generator[None, None, None]:
     if _amp_enabled:
-        with torch.cuda.amp.autocast(enabled):
+        with torch.cuda.amp.autocast(enabled):  # type: ignore[no-untyped-call]
             yield
     else:
         yield
@@ -33,7 +39,7 @@ class BaseLogic:
         options = options.copy() if options else {}
         self.consume_options(options)
 
-    def consume_options(self, options):
+    def consume_options(self, options: Dict[str, Any]) -> None:
         """A method to update options of Logic.
 
         Note that the given dict will be modified.
@@ -43,7 +49,12 @@ class BaseLogic:
         """
         pass
 
-    def train_epoch_begin(self, models, epoch, loader):
+    def train_epoch_begin(
+            self,
+            models: Dict[str, torch.nn.Module],
+            epoch: int,
+            loader: torch.utils.data.DataLoader[Batch]
+    ) -> None:
         """A method called when starting a new epoch of training.
 
         Args:
@@ -53,7 +64,11 @@ class BaseLogic:
         """
         pass
 
-    def train_epoch_end(self, models, epoch):
+    def train_epoch_end(
+            self,
+            models: Dict[str, torch.nn.Module],
+            epoch: int,
+    ) -> None:
         """A method called when completing an epoch of training.
 
         Args:
@@ -62,7 +77,13 @@ class BaseLogic:
         """
         pass
 
-    def train_step(self, models, optimizers, batch_idx, batch):
+    def train_step(
+            self,
+            models: Dict[str, torch.nn.Module],
+            optimizers: Dict[str, torch.optim.Optimizer],
+            batch_idx: int,
+            batch: Batch,
+    ) -> None:
         """A method invokes the models forward and backward passes.
 
         Optimizing is left to `train_step_optimizers` since maybe the user
@@ -80,7 +101,12 @@ class BaseLogic:
         """
         pass
 
-    def train_step_optimizers(self, models, optimizers, batch_idx):
+    def train_step_optimizers(
+            self,
+            models: Dict[str, torch.nn.Module],
+            optimizers: Dict[str, torch.optim.Optimizer],
+            batch_idx: int,
+    ) -> None:
         """A method in charge of stepping the provided optimizers.
 
         Args:
@@ -91,7 +117,10 @@ class BaseLogic:
         """
         pass
 
-    def train_validation_begin(self, models):
+    def train_validation_begin(
+            self,
+            models: Dict[str, torch.nn.Module]
+    ) -> None:
         """A method called when starting a validation.
 
         Args:
@@ -99,7 +128,10 @@ class BaseLogic:
         """
         pass
 
-    def train_validation_end(self, models):
+    def train_validation_end(
+            self,
+            models: Dict[str, torch.nn.Module],
+    ) -> None:
         """A method called when the validation completes.
 
         Args:
@@ -107,7 +139,12 @@ class BaseLogic:
         """
         pass
 
-    def eval_step(self, models, batch_idx, batch):
+    def eval_step(
+            self,
+            models: Dict[str, torch.nn.Module],
+            batch_idx: int,
+            batch: Batch,
+    ) -> None:
         """A method for an evaluation step.
 
         Args:
@@ -121,7 +158,11 @@ class BaseLogic:
 
 class Logic(BaseLogic):
 
-    def __init__(self, model_name='main', options=None):
+    def __init__(
+            self,
+            model_name: str = 'main',
+            options: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """A set of methods that defines the training logic.
 
         Args:
@@ -157,7 +198,11 @@ class Logic(BaseLogic):
                 raise RuntimeError('grad_scaler should be a '
                                    'torch.cuda.amp.GradScaler object')
 
-    def _forward(self, model, batch):
+    def set_options(self, options: Dict[str, Any]) -> None:
+        self.backward_outputs = options.pop('backward_outputs', None)
+        self._grad_scaler = options.pop('grad_scaler', None)
+
+    def _forward(self, model: torch.nn.Module, batch: Batch) -> Output:
         if isinstance(batch, tuple) and hasattr(batch, '_fields'):
             return model(batch)
         if isinstance(batch, dict):
@@ -166,10 +211,10 @@ class Logic(BaseLogic):
             return model(*batch)
         return model(batch)
 
-    def _normalize_outputs(self, outputs):
+    def _normalize_outputs(self, outputs: Outputs) -> Dict[str, Output]:
         if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
             target = {k: getattr(outputs, k) for k in outputs._fields}
-        elif isinstance(outputs, dict):
+        if isinstance(outputs, dict):
             target = outputs
         elif isinstance(outputs, (list, tuple)):
             target = {str(i): out for i, out in enumerate(outputs)}
@@ -177,7 +222,7 @@ class Logic(BaseLogic):
             target = {"0": outputs}
         return target
 
-    def _backward(self, outputs):
+    def _backward(self, outputs: Dict[str, Output]) -> None:
         target = self._normalize_outputs(outputs)
 
         for k, v in target.items():
@@ -194,9 +239,14 @@ class Logic(BaseLogic):
                     and k in self.backward_outputs
                 )
             ):
-                v.backward()
+                v.backward()  # type: ignore[no-untyped-call]
 
-    def train_epoch_begin(self, models, epoch, loader):
+    def train_epoch_begin(
+            self,
+            models: Dict[str, torch.nn.Module],
+            epoch: int,
+            loader: torch.utils.data.DataLoader[Batch],
+    ) -> None:
         """A method called when starting a new epoch of training.
 
         Args:
@@ -208,9 +258,15 @@ class Logic(BaseLogic):
         model.train()
         if hasattr(loader, 'sampler') and hasattr(loader.sampler, 'set_epoch'):
             # Needed for `torch.utils.data.DistributedSampler`
-            loader.sampler.set_epoch(epoch)
+            loader.sampler.set_epoch(epoch)  # type: ignore[attr-defined]
 
-    def train_step(self, models, optimizers, batch_idx, batch):
+    def train_step(
+            self,
+            models: Dict[str, torch.nn.Module],
+            optimizers: Dict[str, torch.optim.Optimizer],
+            batch_idx: int,
+            batch: Batch,
+    ) -> Any:
         """A method invokes the model forward and backward passes.
 
         Optimizing is left to `train_step_optimizers` since maybe the user
@@ -241,7 +297,12 @@ class Logic(BaseLogic):
         self._backward(to_back_outs)
         return outs
 
-    def train_step_optimizers(self, models, optimizers, batch_idx):
+    def train_step_optimizers(
+            self,
+            models: Dict[str, torch.nn.Module],
+            optimizers: Dict[str, torch.optim.Optimizer],
+            batch_idx: int,
+    ) -> None:
         """A method in charge of stepping the provided optimizers.
 
         Also a grad scaler will be used if defined.
@@ -259,7 +320,10 @@ class Logic(BaseLogic):
         else:
             optimizer.step()
 
-    def train_validation_begin(self, models):
+    def train_validation_begin(
+            self,
+            models: Dict[str, torch.nn.Module],
+    ) -> None:
         """A method called when starting a validation.
 
         Args:
@@ -268,7 +332,12 @@ class Logic(BaseLogic):
         model = models[self.model_name]
         model.eval()
 
-    def eval_step(self, models, batch_idx, batch):
+    def eval_step(
+            self,
+            models: Dict[str, torch.nn.Module],
+            batch_idx: int,
+            batch: Batch,
+    ) -> Any:
         """A method for an evaluation step.
 
         Args:
