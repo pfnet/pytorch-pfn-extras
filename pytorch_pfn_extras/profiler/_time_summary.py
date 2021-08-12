@@ -157,6 +157,9 @@ class TimeSummary:
             self.initialize()
         atexit.register(_Finalizer(self))
 
+    def __del__(self):
+        self.finalize()
+
     def initialize(self) -> None:
         """Initializes the worker threads for TimeSummary.
 
