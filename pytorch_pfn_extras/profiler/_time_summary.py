@@ -1,3 +1,4 @@
+import atexit
 from contextlib import contextmanager
 import os
 import time
@@ -6,6 +7,7 @@ import threading
 import queue
 import multiprocessing as mp
 import torch
+import weakref
 from pytorch_pfn_extras.reporting import DictSummary
 
 
@@ -19,9 +21,6 @@ class _CPUWorker:
         self._initialized = False
         self._queue = None
         self._thread = None
-
-    def __del__(self):
-        self.finalize()
 
     def initialize(self):
         if self._initialized:
@@ -69,9 +68,6 @@ class _CUDAWorker:
         self._queue = None
         self._event_lock = threading.Lock()
         self._events = None
-
-    def __del__(self):
-        self.finalize()
 
     def initialize(self):
         if self._initialized:
@@ -121,6 +117,16 @@ class _CUDAWorker:
             return self._events.get()
 
 
+class _Finalizer:
+    def __init__(self, ts):
+        self._ts = weakref.ref(ts)
+
+    def __call__(self):
+        ts = self._ts()
+        if ts:
+            ts.finalize()
+
+
 class TimeSummary:
     """Online summarization of execution times.
 
@@ -149,6 +155,10 @@ class TimeSummary:
         self._master_pid = os.getpid()
         if auto_init:
             self.initialize()
+        atexit.register(_Finalizer(self))
+
+    def __del__(self):
+        self.finalize()
 
     def initialize(self) -> None:
         """Initializes the worker threads for TimeSummary.
