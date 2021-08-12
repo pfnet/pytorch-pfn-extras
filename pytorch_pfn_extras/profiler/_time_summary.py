@@ -7,6 +7,7 @@ import threading
 import queue
 import multiprocessing as mp
 import torch
+import weakref
 from pytorch_pfn_extras.reporting import DictSummary
 
 
@@ -116,6 +117,16 @@ class _CUDAWorker:
             return self._events.get()
 
 
+class _Finalizer:
+    def __init__(self, ts):
+        self._ts = weakref.ref(ts)
+
+    def __call__(self):
+        ts = self._ts()
+        if ts:
+            ts.finalize()
+
+
 class TimeSummary:
     """Online summarization of execution times.
 
@@ -144,7 +155,7 @@ class TimeSummary:
         self._master_pid = os.getpid()
         if auto_init:
             self.initialize()
-        atexit.register(self.finalize)
+        atexit.register(_Finalizer(self))
 
     def initialize(self) -> None:
         """Initializes the worker threads for TimeSummary.
