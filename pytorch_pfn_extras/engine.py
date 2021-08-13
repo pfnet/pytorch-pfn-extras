@@ -1,13 +1,31 @@
+from typing import (
+    Any, Callable, Dict, List, Optional, Tuple, Type, Union, TYPE_CHECKING
+)
+
 import torch
 
-import pytorch_pfn_extras.handler
+import pytorch_pfn_extras.handler as handler_module
 from pytorch_pfn_extras.runtime import runtime_registry
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras._runtime import DeviceLike
+    from pytorch_pfn_extras import training
+    from pytorch_pfn_extras.training.trigger import TriggerLike
+    from pytorch_pfn_extras.training._trainer import _Trainer
+    from pytorch_pfn_extras.training._evaluator import _Evaluator
+    from pytorch_pfn_extras.training.metrics import MetricType
+    from pytorch_pfn_extras import writing
 
 
 class _Engine:
-    def __init__(self, handler, models, **kwargs):
+    def __init__(
+            self,
+            handler: handler_module.BaseHandler,
+            models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+            **kwargs: Any,
+    ) -> None:
         self.handler = handler
-        self._manager = None
+        self._manager: Optional['training.ExtensionsManager'] = None
 
         # The followings are used when setting up a manager instance
         if not isinstance(models, dict):
@@ -18,26 +36,29 @@ class _Engine:
         else:
             self._models = models
         self._kwargs = kwargs
-        self._extensions = []  # list of (args, kwargs)
-        self._manager_state = None
+        self._extensions: List[  # list of (args, kwargs)
+            Tuple[Tuple['training.Extension', Optional[str],
+                        'TriggerLike', Optional[int]],
+                  Dict[str, Any]]] = []
+        self._manager_state: Optional[Dict[str, Any]] = None
 
     def extend(
             self,
-            extension,
-            name=None,
-            trigger=None,
-            priority=None,
+            extension: 'training.Extension',
+            name: Optional[str] = None,
+            trigger: 'TriggerLike' = None,
+            priority: Optional[int] = None,
             *,
-            call_before_training=False,
-            **kwargs
-    ):
+            call_before_training: bool = False,
+            **kwargs: Any,
+    ) -> None:
         if self._manager is not None:
             raise RuntimeError('cannot extend after starting the engine')
         self._extensions.append(
             ((extension, name, trigger, priority),
              dict(call_before_training=call_before_training, **kwargs)))
 
-    def _setup_manager(self, iters_per_epoch):
+    def _setup_manager(self, iters_per_epoch: int) -> None:
         from pytorch_pfn_extras.training import ExtensionsManager
         self._manager = ExtensionsManager(
             self._models, iters_per_epoch=iters_per_epoch, **self._kwargs)
@@ -47,48 +68,50 @@ class _Engine:
             self.manager.load_state_dict(self._manager_state)
 
     @property
-    def manager(self):
+    def manager(self) -> 'training.ExtensionsManager':
         if self._manager is None:
             raise RuntimeError('the engine is not started yet')
         return self._manager
 
     @property
-    def models(self):
+    def models(self) -> Dict[str, torch.nn.Module]:
         # TODO(kmaehashi): do we need this convenient interface for handlers?
         return self.manager.raw_models
 
     @property
-    def optimizers(self):
+    def optimizers(self) -> Dict[str, torch.optim.Optimizer]:
         return self.manager.optimizers
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         return self.manager.state_dict()
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         if self._manager is None:
             self._manager_state = to_load
             return
         self.manager.load_state_dict(to_load)
 
-    def run(self, loader):
+    def run(self, *args: Any, **kwargs: Any) -> None:
         raise NotImplementedError
 
 
 def create_trainer(
-        models,
-        optimizers,
-        max_epochs,
+        models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+        optimizers: Dict[str, torch.optim.Optimizer],
+        max_epochs: int,
         *,
-        extensions=None,
-        out_dir='result',
-        stop_trigger=None,
-        writer=None,
-        evaluator=None,
-        device='cpu',
-        options=None,
-        logic=None,
-        transform_model=lambda n, x: x,
-        handler_class=None):
+        extensions: Optional[List['training.Extension']] = None,
+        out_dir: str = 'result',
+        stop_trigger: 'TriggerLike' = None,
+        writer: Optional['writing.Writer'] = None,
+        evaluator: Optional['_Evaluator'] = None,
+        device: 'DeviceLike' = 'cpu',
+        options: Optional[Dict[str, Any]] = None,
+        logic: Optional[handler_module.Logic] = None,
+        transform_model: Callable[
+            [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x,
+        handler_class: Optional[Type[handler_module.BaseHandler]] = None,
+) -> '_Trainer':
     """Creates a trainer object.
 
     Args:
@@ -130,10 +153,10 @@ def create_trainer(
     else:
         options = options.copy()
     if logic is None:
-        logic = pytorch_pfn_extras.handler.Logic()
+        logic = handler_module.Logic()
     logic.set_options(options)
     if handler_class is None:
-        handler_class = pytorch_pfn_extras.handler.Handler
+        handler_class = handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
@@ -153,14 +176,15 @@ def create_trainer(
 
 
 def create_evaluator(
-        models,
+        models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
         *,
-        progress_bar=False,
-        device='cpu',
-        metrics=None,
-        options=None,
-        logic=None,
-        handler_class=None):
+        progress_bar: bool = False,
+        device: 'DeviceLike' = 'cpu',
+        metrics: Optional[List['MetricType']] = None,
+        options: Optional[Dict[str, Any]] = None,
+        logic: Optional[handler_module.Logic] = None,
+        handler_class: Optional[Type[handler_module.BaseHandler]] = None,
+) -> '_Evaluator':
     """Creates a trainer object. the return value of this function is expected
     to be fed to `ppe.engine.create_trainer` as an argument.
 
@@ -194,10 +218,10 @@ def create_evaluator(
     else:
         options = options.copy()
     if logic is None:
-        logic = pytorch_pfn_extras.handler.Logic()
+        logic = handler_module.Logic()
     logic.set_options(options)
     if handler_class is None:
-        handler_class = pytorch_pfn_extras.handler.Handler
+        handler_class = handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
