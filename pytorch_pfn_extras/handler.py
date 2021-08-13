@@ -291,7 +291,7 @@ class Logic(BaseLogic):
             batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
                 Input tensors feeded to the model of the current step.
         """
-        with torch_autocast(enabled=self._autocast):
+        with torch_autocast(enabled=self._autocast):  # type: ignore[no-untyped-call] # NOQA
             optimizers[self.model_name].zero_grad()
             outs = self._forward(models[self.model_name], batch)
             to_back_outs = outs
@@ -817,7 +817,7 @@ class Handler(BaseHandler):
                 training step.
         """
         for _, sm, rt in self._runtime_iterator(evaluator.models):
-            rt.eval_pre_step(sm, evaluator, batch_idx, batch)
+            rt.eval_pre_step(evaluator, sm, batch_idx, batch)
 
         batch = self._entry_runtime.convert_batch(batch)
 
