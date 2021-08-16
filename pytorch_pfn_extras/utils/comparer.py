@@ -172,7 +172,10 @@ class OutputsComparer:
 
     def run_engine(self, engine, loaders):
         try:
-            engine.run(loaders)
+            if isinstance(loaders, (tuple, dict)):
+                engine.run(*loaders)
+            else:
+                engine.run(loaders)
             with self.report_lock:
                 self._finalized = True
                 self._assert_incompatible_trigger(len(self.outputs) == 0)

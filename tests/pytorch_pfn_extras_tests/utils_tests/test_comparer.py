@@ -32,7 +32,17 @@ def _get_evaluator(device, ret_val):
     return evaluator
 
 
-@pytest.mark.parametrize("engine_fn", [_get_trainer, _get_evaluator])
+def _get_trainer_with_evaluator(device, ret_val):
+    model = Model(device, ret_val)
+    optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
+    evaluator = ppe.engine.create_evaluator(model, device=device)
+    trainer = ppe.engine.create_trainer(
+        model, optimizer, 1, device=device, evaluator=evaluator)
+    return trainer
+
+
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_every_iter(engine_fn):
     engine_cpu = engine_fn("cpu", 1.0)
     engine_gpu = engine_fn("cuda:0", 1.0)
@@ -41,10 +51,16 @@ def test_compare_every_iter(engine_fn):
     )
     train_1 = list(torch.ones(10) for _ in range(10))
     train_2 = list(torch.ones(10) for _ in range(10))
-    comp.compare({"cpu": train_1, "gpu": train_2})
+    if engine_fn is _get_trainer_with_evaluator:
+        eval_1 = list(torch.ones(10) for _ in range(10))
+        eval_2 = list(torch.ones(10) for _ in range(10))
+        comp.compare({"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)})
+    else:
+        comp.compare({"cpu": train_1, "gpu": train_2})
 
 
-@pytest.mark.parametrize("engine_fn", [_get_trainer, _get_evaluator])
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_comparer_wrong(engine_fn):
     engine_cpu = engine_fn("cpu", 1.0)
     engine_gpu = engine_fn("cuda:0", 0.5)
@@ -54,7 +70,12 @@ def test_comparer_wrong(engine_fn):
     train_1 = list(torch.ones(10) for _ in range(10))
     train_2 = list(torch.ones(10) for _ in range(10))
     with pytest.raises(AssertionError):
-        comp.compare({"cpu": train_1, "gpu": train_2})
+        if engine_fn is _get_trainer_with_evaluator:
+            eval_1 = list(torch.ones(10) for _ in range(10))
+            eval_2 = list(torch.ones(10) for _ in range(10))
+            comp.compare({"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)})
+        else:
+            comp.compare({"cpu": train_1, "gpu": train_2})
 
 
 class _CustomComparer:
@@ -72,7 +93,8 @@ class _CustomComparer:
             assert out_1 == self.times_called * self.n_iters
 
 
-@pytest.mark.parametrize("engine_fn", [_get_trainer, _get_evaluator])
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_comparer_n_iters(engine_fn):
     engine_cpu = engine_fn("cpu", 1.0)
     engine_gpu = engine_fn("cuda:0", 1.0)
@@ -84,11 +106,19 @@ def test_comparer_n_iters(engine_fn):
     )
     train_1 = list(torch.ones(10) for _ in range(10))
     train_2 = list(torch.ones(10) for _ in range(10))
-    comp.compare({"cpu": train_1, "gpu": train_2}, n_iters=n_iters)
+    if engine_fn is _get_trainer_with_evaluator:
+        eval_1 = list(torch.ones(10) for _ in range(10))
+        eval_2 = list(torch.ones(10) for _ in range(10))
+        comp.compare(
+            {"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)},
+            n_iters=n_iters)
+    else:
+        comp.compare({"cpu": train_1, "gpu": train_2}, n_iters=n_iters)
     assert comp.compare_fn.times_called == 3
 
 
-@pytest.mark.parametrize("engine_fn", [_get_trainer, _get_evaluator])
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_comparer_kwargs(engine_fn):
     engine_cpu = engine_fn("cpu", 1.0)
     engine_gpu = engine_fn("cuda:0", 0.991)
@@ -99,10 +129,16 @@ def test_comparer_kwargs(engine_fn):
     )
     train_1 = list(torch.ones(10) for _ in range(10))
     train_2 = list(torch.ones(10) for _ in range(10))
-    comp.compare({"cpu": train_1, "gpu": train_2})
+    if engine_fn is _get_trainer_with_evaluator:
+        eval_1 = list(torch.ones(10) for _ in range(10))
+        eval_2 = list(torch.ones(10) for _ in range(10))
+        comp.compare({"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)})
+    else:
+        comp.compare({"cpu": train_1, "gpu": train_2})
 
 
-@pytest.mark.parametrize("engine_fn", [_get_trainer, _get_evaluator])
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_comparer_incompat_trigger(engine_fn):
     model_cpu = Model("cpu", 1.0)
     optimizer_cpu = torch.optim.SGD(model_cpu.parameters(), lr=1.0)
@@ -123,4 +159,9 @@ def test_comparer_incompat_trigger(engine_fn):
     train_1 = list(torch.ones(10) for _ in range(10))
     train_2 = list(torch.ones(10) for _ in range(10))
     with pytest.raises(ValueError):
-        comp.compare({"cpu": train_1, "gpu": train_2})
+        if engine_fn is _get_trainer_with_evaluator:
+            eval_1 = list(torch.ones(10) for _ in range(10))
+            eval_2 = list(torch.ones(10) for _ in range(10))
+            comp.compare({"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)})
+        else:
+            comp.compare({"cpu": train_1, "gpu": train_2})
