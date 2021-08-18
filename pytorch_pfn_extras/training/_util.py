@@ -1,7 +1,8 @@
 import re
+from typing import List
 
 
-def _get_ignite_version(version):
+def _get_ignite_version(version: str) -> List[int]:
     # We compare up to the minor version (first two digits).
     # This is because it is highly unlikely that these numbers
     # will contain other character than digits.
