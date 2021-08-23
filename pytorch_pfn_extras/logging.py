@@ -37,12 +37,13 @@ def _configure_logging(
     _logger.addHandler(handler)
 
 
-def _get_root_logger() -> Optional[logging.Logger]:
+def _get_root_logger() -> logging.Logger:
     """Returns a logger to be used by pytorch-pfn-extras."""
+    assert _logger is not None
     return _logger
 
 
-def get_logger(name: str) -> Optional[logging.Logger]:
+def get_logger(name: str) -> logging.Logger:
     """Returns a child logger to be used by applications.
 
     Args:
@@ -51,6 +52,4 @@ def get_logger(name: str) -> Optional[logging.Logger]:
     Returns:
         A logging.Logger object used to log in the application code.
     """
-    if _logger is None:
-        raise RuntimeError('')
-    return _logger.getChild(name)
+    return _get_root_logger().getChild(name)
