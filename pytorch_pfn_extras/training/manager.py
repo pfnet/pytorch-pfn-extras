@@ -459,20 +459,7 @@ class _BaseExtensionsManager:
 
     def state_dict(
             self,
-            *,
-            transform_models: Callable[
-                [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
     ) -> Dict[str, Any]:
-        """
-        transform_models is a function that apply a transformation
-        to a model.
-
-        When using a `torch.nn.DataParallel` model, if we want
-        to save only the `.module` object, state_dict can be
-        called as follows:
-
-        >>> manager.state_dict(transform_models=lambda n, x: x.module)
-        """
         to_save: Dict[str, Any] = {}
         to_save['_start_iteration'] = self.iteration
         to_save['_start_execution'] = self.execution
@@ -489,23 +476,7 @@ class _BaseExtensionsManager:
     def load_state_dict(
             self,
             to_load: Dict[str, Any],
-            *,
-            transform_models: Callable[
-                [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
     ) -> None:
-        """
-        transform_models is a function that apply a transformation
-        to a model before loading its state.
-
-        When using a `torch.nn.DataParallel` model, if we want
-        to load the original state in a model with the
-        `torch.nn.DataParallel` applied:
-
-        >>> manager.load_state_dict(
-                state, transform_models=(
-                    lambda n, x: x.module
-                    if isinstance(x, torch.nn.DataParallel) else x))
-        """
         self._start_iteration = to_load['_start_iteration']
         self.iteration = self._start_iteration
         self._start_execution = to_load.get('_start_execution', self.iteration)
