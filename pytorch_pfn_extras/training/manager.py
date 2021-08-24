@@ -14,6 +14,7 @@ from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training import _util as util_module
+from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 _get_time = time.perf_counter
 
@@ -95,7 +96,7 @@ class _BaseExtensionsManager:
             out_dir: str,
             writer: Optional[writing.Writer],
             stop_trigger: 'trigger_module.TriggerLike' = None,
-            transform_model=lambda n, x: x,
+            transform_model=default_transform_model,
     ) -> None:
         if extensions is None:
             extensions = []

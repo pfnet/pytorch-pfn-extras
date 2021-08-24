@@ -2,6 +2,7 @@ import torch
 
 import pytorch_pfn_extras.handler
 from pytorch_pfn_extras.runtime import runtime_registry
+from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 
 class _Engine:
@@ -87,7 +88,7 @@ def create_trainer(
         device='cpu',
         options=None,
         logic=None,
-        transform_model=lambda n, x: x,
+        transform_model=default_transform_model,
         handler_class=None):
     """Creates a trainer object.
 
