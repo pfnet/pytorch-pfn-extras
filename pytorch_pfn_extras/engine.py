@@ -1,11 +1,8 @@
 import torch
-from torch.nn.parallel import DistributedDataParallel
 
 import pytorch_pfn_extras.handler
 from pytorch_pfn_extras.runtime import runtime_registry
-from pytorch_pfn_extras.nn.parallel import (
-    DistributedDataParallel as PpeDistributedDataParallel,
-)
+from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 
 class _Engine:
@@ -78,12 +75,6 @@ class _Engine:
         raise NotImplementedError
 
 
-def _default_transform_model(n, x):
-    if isinstance(x, (DistributedDataParallel, PpeDistributedDataParallel)):
-        return x.module
-    return x
-
-
 def create_trainer(
         models,
         optimizers,
@@ -97,7 +88,7 @@ def create_trainer(
         device='cpu',
         options=None,
         logic=None,
-        transform_model=_default_transform_model,
+        transform_model=default_transform_model,
         handler_class=None):
     """Creates a trainer object.
 
