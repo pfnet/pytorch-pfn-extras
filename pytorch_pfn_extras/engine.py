@@ -1,9 +1,11 @@
 import torch
+from torch.nn.parallel import DistributedDataParallel
 
 import pytorch_pfn_extras.handler
 from pytorch_pfn_extras.runtime import runtime_registry
-from torch.nn.parallel import DistributedDataParallel
-from pytorch_pfn_extras.nn.parallel import DistributedDataParallel as PpeDistributedDataParallel
+from pytorch_pfn_extras.nn.parallel import (
+    DistributedDataParallel as PpeDistributedDataParallel,
+)
 
 
 class _Engine:
