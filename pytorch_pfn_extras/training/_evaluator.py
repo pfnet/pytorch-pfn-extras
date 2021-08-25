@@ -1,20 +1,33 @@
 import contextlib
 import queue
-from typing import Optional
+from typing import (
+    Callable, Dict, Generator, List, Optional, Union, TYPE_CHECKING
+)
 
 import torch
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training.extensions import evaluator
 
+from pytorch_pfn_extras.training.metrics import Batch as DictBatch
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.handler import BaseHandler
+    from pytorch_pfn_extras.runtime._runtime import Batch
+    from pytorch_pfn_extras.training.metrics import MetricType
+    from pytorch_pfn_extras.reporting import Observation
+
 
 @contextlib.contextmanager
-def _progress_bar(required, size):
+def _progress_bar(
+        required: bool,
+        size: int,
+) -> Generator[Callable[[int], None], None, None]:
     if required:
         progress = evaluator.IterationStatus(size)
         pbar = evaluator._IteratorProgressBar(progress)
 
-        def update(i):
+        def update(i: int) -> None:
             progress.current_position = i
             pbar.update()
         yield update
@@ -25,8 +38,14 @@ def _progress_bar(required, size):
 
 
 class _Evaluator:
-    def __init__(self, handler, models, *, progress_bar=False,
-                 metrics=None):
+    def __init__(
+            self,
+            handler: 'BaseHandler',
+            models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+            *,
+            progress_bar: bool = False,
+            metrics: Optional[List['MetricType']] = None,
+    ):
         super().__init__()
 
         if not isinstance(models, dict):
@@ -46,12 +65,14 @@ class _Evaluator:
             self._reporter.add_observers(
                 name, model.named_modules())
 
-    def _process_metrics(self, ins, outs):
+    def _process_metrics(self, ins: DictBatch, outs: DictBatch) -> DictBatch:
         for metric in self._metrics:
             outs.update(metric(ins, outs))
         return outs
 
-    def _complete_step(self, idx, outs, *, is_deferred=False):
+    def _complete_step(
+            self, idx: int, outs: DictBatch, *, is_deferred: bool = False
+    ) -> None:
         c_idx = self._idxs.get()
         # Asure that iterations complete in order
         if c_idx != idx:
@@ -73,7 +94,7 @@ class _Evaluator:
 
     def run(
             self,
-            loader: torch.utils.data.DataLoader,
+            loader: torch.utils.data.DataLoader[DictBatch],
             *,
             eval_len: Optional[int] = None
     ) -> None:
@@ -86,9 +107,9 @@ class _Evaluator:
                 The number of iterations per one evaluation epoch.
         """
         # Note: setup_manager is done by the Trainer.
-        self._idxs = queue.Queue()
-        self._inputs = queue.Queue()
-        self._observed = queue.Queue()
+        self._idxs = queue.Queue[int]()
+        self._inputs = queue.Queue[DictBatch]()
+        self._observed = queue.Queue['Observation']()
 
         if eval_len is None:
             eval_len = len(loader)
