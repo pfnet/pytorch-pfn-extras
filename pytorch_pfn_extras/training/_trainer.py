@@ -1,6 +1,6 @@
 import queue
 import time
-from typing import Optional
+from typing import Any, Optional, Tuple, Union, TYPE_CHECKING
 
 import torch
 
@@ -11,11 +11,23 @@ from pytorch_pfn_extras.training import trigger as trigger_module
 import pytorch_pfn_extras.reporting as reporting
 from pytorch_pfn_extras.profiler import record
 
+from pytorch_pfn_extras.training.trigger import Trigger, TriggerLike
+
+if TYPE_CHECKING:
+    import pytorch_pfn_extras.handler as handler_module
+    from pytorch_pfn_extras.training._evaluator import _Evaluator
+
 
 class _Trainer(pytorch_pfn_extras.engine._Engine):
-    def __init__(self, handler, *, evaluator, **kwargs):
+    def __init__(
+            self,
+            handler: 'handler_module.BaseHandler',
+            *,
+            evaluator: Union['_Evaluator', Tuple['_Evaluator', TriggerLike]],
+            **kwargs: Any,
+    ):
         super().__init__(handler, **kwargs)
-        if type(evaluator) is tuple:
+        if isinstance(evaluator, tuple):
             self.evaluator, trigger = evaluator
             self.evaluator_trigger = trigger_module.get_trigger(trigger)
         else:
@@ -24,39 +36,45 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
         self.val_loader = None
 
     @property
-    def epoch(self):
+    def epoch(self) -> int:
         return self.manager.epoch
 
     @property
-    def epoch_detail(self):
+    def epoch_detail(self) -> float:
         return self.manager.epoch_detail
 
     @property
-    def iteration(self):
+    def iteration(self) -> int:
         return self.manager.iteration
 
     @property
-    def is_before_training(self):
+    def is_before_training(self) -> bool:
         return self.manager.iteration == 0
 
     @property
-    def stop_trigger(self):
+    def stop_trigger(self) -> Trigger:
         return self._stop_trigger
 
     @stop_trigger.setter
-    def stop_trigger(self, trigger):
+    def stop_trigger(self, trigger: Trigger) -> None:
         self._stop_trigger = trigger
 
-    def get_optimizer(self, name):
+    def get_optimizer(self, name: str) -> torch.optim.Optimizer:
         return self.manager.optimizers[name]
 
-    def set_optimizer(self, name, optimizer):
+    def set_optimizer(self, name: str, optimizer: torch.optim.Optimizer) -> None:
         self.manager.optimizers[name] = optimizer
 
-    def is_epoch_last_iter(self, idx):
+    def is_epoch_last_iter(self, idx: int) -> bool:
         return (idx + 1) == (self.manager._iters_per_epoch)
 
-    def _complete_step(self, idx, outs, *, is_deferred=False):
+    def _complete_step(
+            self,
+            idx: int,
+            outs: 'handler_module.Outputs',
+            *,
+            is_deferred: bool = False,
+    ) -> None:
         self._deferred = False  # notify that the function was called
         c_idx = self._idxs.get()
         # Asure that iterations complete in order
@@ -95,7 +113,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
             record_run_iteration.complete()
             record_iteration.complete()
 
-    def _run_evaluator(self):
+    def _run_evaluator(self) -> None:
         self.evaluator.handler.train_validation_begin(self, self.evaluator)
         self.evaluator.run(self._val_loader, eval_len=self._eval_len)
         self.evaluator.handler.train_validation_end(self, self.evaluator)
@@ -105,7 +123,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
             val_loader: Optional[torch.utils.data.DataLoader] = None,
             *,
             train_len: Optional[int] = None,
-            eval_len: Optional[int] = None):
+            eval_len: Optional[int] = None) -> None:
         """Executes the training loop.
 
         Args:
