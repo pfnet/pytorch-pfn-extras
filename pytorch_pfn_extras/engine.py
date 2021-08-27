@@ -86,6 +86,8 @@ def create_trainer(
         writer=None,
         evaluator=None,
         device='cpu',
+        logic_options=None,
+        runtime_options=None,
         options=None,
         logic=None,
         transform_model=default_transform_model,
@@ -115,9 +117,11 @@ def create_trainer(
             If `None` is given, the evaluation is skipped.
         device (str or torch.device):
             Device name used for selecting a corresponding runtime class.
-        options (dict):
+        logic_options (dict):
             Option that is set to a logic object. When using the default logic
             class, See the documentation of `ppe.handler.Logic` for details.
+        runtime_options (dict):
+            Option that is used as a runtime config.
         logic (logic object):
             A logic object. If `None` is given, an logic object is instantiated
             from the default logic class.
@@ -126,22 +130,25 @@ def create_trainer(
             given, `ppe.handler.Handler` is used as a default handler class.
     """
 
-    if options is None:
-        options = {}
-    else:
-        options = options.copy()
+    if logic_options is None:
+        logic_options = {}
+    if runtime_options is None:
+        runtime_options = {}
+    if options is not None:
+        runtime_options.update(options.pop('runtime', {}))
+        logic_options.update(options)
     if logic is None:
         logic = pytorch_pfn_extras.handler.Logic()
-    logic.set_options(options)
+    logic.set_options(logic_options)
     if handler_class is None:
         handler_class = pytorch_pfn_extras.handler.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
-    entry_runtime = entry_runtime_cls(device, options.pop('runtime', {}))
-    handler = handler_class(logic, entry_runtime, options)
-    if len(options) > 0:
-        raise ValueError('Unknown configuration options:', options)
+    entry_runtime = entry_runtime_cls(device, runtime_options)
+    handler = handler_class(logic, entry_runtime, logic_options)
+    if len(logic_options) > 0:
+        raise ValueError('Unknown configuration options:', logic_options)
 
     from pytorch_pfn_extras.training._trainer import _Trainer
     return _Trainer(
@@ -159,6 +166,8 @@ def create_evaluator(
         progress_bar=False,
         device='cpu',
         metrics=None,
+        logic_options=None,
+        runtime_options=None,
         options=None,
         logic=None,
         handler_class=None):
@@ -177,9 +186,11 @@ def create_evaluator(
         metrics (list of metrics):
             List of metrics, which computes various quantities and update
             output for the reporting.
-        options (dict):
+        logic_options (dict):
             Option that is set to a logic object. When using the default logic
             class, See the documentation of `ppe.handler.Logic` for details.
+        runtime_options (dict):
+            Option that is used as a runtime config.
         logic (logic object):
             A logic object. If `None` is given, an logic object is instantiated
             from the default logic class.
@@ -190,23 +201,26 @@ def create_evaluator(
 
     if metrics is None:
         metrics = []
-    if options is None:
-        options = {}
-    else:
-        options = options.copy()
+    if logic_options is None:
+        logic_options = {}
+    if runtime_options is None:
+        runtime_options = {}
+    if options is not None:
+        runtime_options.update(options.pop('runtime', {}))
+        logic_options.update(options)
     if logic is None:
         logic = pytorch_pfn_extras.handler.Logic()
-    logic.set_options(options)
+    logic.set_options(logic_options)
     if handler_class is None:
         handler_class = pytorch_pfn_extras.handler.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
-    entry_runtime = entry_runtime_cls(device, options.pop('runtime', {}))
-    handler = handler_class(logic, entry_runtime, options)
+    entry_runtime = entry_runtime_cls(device, runtime_options)
+    handler = handler_class(logic, entry_runtime, logic_options)
 
-    if len(options) > 0:
-        raise ValueError('Unknown configuration options ', options)
+    if len(logic_options) > 0:
+        raise ValueError('Unknown configuration options ', logic_options)
 
     from pytorch_pfn_extras.training._evaluator import _Evaluator
     return _Evaluator(
