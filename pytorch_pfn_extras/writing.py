@@ -8,17 +8,17 @@ import threading
 import types
 from typing import (
     Any, Callable, Dict, Generator, Generic, IO, KeysView, List,
-    Optional, Tuple, Type, TypeVar, Union,
+    Optional, Tuple, Type, TypeVar, Union
 )
 
 import torch
 
 
-TargetType = Union[List[Any], Dict[str, Any]]
-SaveFun = Callable[..., None]
-HookFun = Callable[[], None]
-TaskFun = Callable[..., None]
-Worker = TypeVar('Worker', threading.Thread, multiprocessing.Process)
+_TargetType = Union[List[Any], Dict[str, Any]]
+_SaveFun = Callable[..., None]
+_HookFun = Callable[[], None]
+_TaskFun = Callable[..., None]
+_Worker = TypeVar('_Worker', threading.Thread, multiprocessing.Process)
 
 
 class _PosixFileStat:
@@ -187,7 +187,7 @@ class Writer:
             fs: Optional[_PosixFileSystem] = None,
             out_dir: Optional[str] = None,
     ) -> None:
-        self._post_save_hooks: List[HookFun] = []
+        self._post_save_hooks: List[_HookFun] = []
         self.fs = fs or _PosixFileSystem()
         self.out_dir = out_dir
         self._initialized = False
@@ -196,9 +196,9 @@ class Writer:
             self,
             filename: str,
             out_dir: str,
-            target: TargetType,
+            target: _TargetType,
             *,
-            savefun: Optional[SaveFun] = None,
+            savefun: Optional[_SaveFun] = None,
             append: bool = False
     ) -> None:
         """Invokes the actual snapshot function.
@@ -239,8 +239,8 @@ class Writer:
             self,
             filename: str,
             out_dir: str,
-            target: TargetType,
-            savefun: SaveFun,
+            target: _TargetType,
+            savefun: _SaveFun,
             append: bool,
             **savefun_kwargs: Any,
     ) -> None:
@@ -277,7 +277,7 @@ class Writer:
 
         self._post_save()
 
-    def _add_cleanup_hook(self, hook_fun: HookFun) -> None:
+    def _add_cleanup_hook(self, hook_fun: _HookFun) -> None:
         """Adds cleanup hook function.
 
         Technically, arbitrary user-defined hook can be called, but
@@ -318,7 +318,7 @@ class SimpleWriter(Writer):
 
     def __init__(
             self,
-            savefun: SaveFun = torch.save,
+            savefun: _SaveFun = torch.save,
             fs: Optional[_PosixFileSystem] = None,
             out_dir: Optional[str] = None,
             **kwds: Any,
@@ -331,9 +331,9 @@ class SimpleWriter(Writer):
             self,
             filename: str,
             out_dir: str,
-            target: TargetType,
+            target: _TargetType,
             *,
-            savefun: Optional[SaveFun] = None,
+            savefun: Optional[_SaveFun] = None,
             append: bool = False
     ) -> None:
         if savefun is None:
@@ -341,7 +341,7 @@ class SimpleWriter(Writer):
         self.save(filename, out_dir, target, savefun, append, **self._kwds)
 
 
-class StandardWriter(Writer, Generic[Worker]):
+class StandardWriter(Writer, Generic[_Worker]):
     """Base class of snapshot writers which use thread or process.
 
     This class creates a new thread or a process every time when ``__call__``
@@ -365,7 +365,7 @@ class StandardWriter(Writer, Generic[Worker]):
 
     def __init__(
             self,
-            savefun: SaveFun = torch.save,
+            savefun: _SaveFun = torch.save,
             fs: Optional[_PosixFileSystem] = None,
             out_dir: Optional[str] = None,
             **kwds: Any,
@@ -373,7 +373,7 @@ class StandardWriter(Writer, Generic[Worker]):
         super().__init__(fs=fs, out_dir=out_dir)
         self._savefun = savefun
         self._kwds = kwds
-        self._worker: Optional[Worker] = None
+        self._worker: Optional[_Worker] = None
         self._started = False
         self._finalized = False
 
@@ -381,9 +381,9 @@ class StandardWriter(Writer, Generic[Worker]):
             self,
             filename: str,
             out_dir: str,
-            target: TargetType,
+            target: _TargetType,
             *,
-            savefun: Optional[SaveFun] = None,
+            savefun: Optional[_SaveFun] = None,
             append: bool = False
     ) -> None:
         if savefun is None:
@@ -402,12 +402,12 @@ class StandardWriter(Writer, Generic[Worker]):
             self,
             filename: str,
             out_dir: str,
-            target: TargetType,
+            target: _TargetType,
             *,
-            savefun: Optional[SaveFun] = None,
+            savefun: Optional[_SaveFun] = None,
             append: bool = False,
             **savefun_kwargs: Any,
-    ) -> Worker:
+    ) -> _Worker:
         """Creates a worker for the snapshot.
 
         This method creates a thread or a process to take a snapshot. The
@@ -443,7 +443,7 @@ class ThreadWriter(StandardWriter[threading.Thread]):
 
     def __init__(
             self,
-            savefun: SaveFun = torch.save,
+            savefun: _SaveFun = torch.save,
             fs: Optional[_PosixFileSystem] = None,
             out_dir: Optional[str] = None,
             **kwds: Any
@@ -454,8 +454,8 @@ class ThreadWriter(StandardWriter[threading.Thread]):
             self,
             filename: str,
             out_dir: str,
-            target: TargetType,
-            savefun: SaveFun,
+            target: _TargetType,
+            savefun: _SaveFun,
             append: bool,
             **savefun_kwargs: Any,
     ) -> None:
@@ -473,9 +473,9 @@ class ThreadWriter(StandardWriter[threading.Thread]):
             self,
             filename: str,
             out_dir: str,
-            target: TargetType,
+            target: _TargetType,
             *,
-            savefun: Optional[SaveFun] = None,
+            savefun: Optional[_SaveFun] = None,
             append: bool = False,
             **savefun_kwargs: Any,
     ) -> threading.Thread:
@@ -502,7 +502,7 @@ class ProcessWriter(StandardWriter[multiprocessing.Process]):
 
     def __init__(
             self,
-            savefun: SaveFun = torch.save,
+            savefun: _SaveFun = torch.save,
             fs: Optional[_PosixFileSystem] = None,
             out_dir: Optional[str] = None,
             **kwds: Any,
@@ -513,9 +513,9 @@ class ProcessWriter(StandardWriter[multiprocessing.Process]):
             self,
             filename: str,
             out_dir: str,
-            target: TargetType,
+            target: _TargetType,
             *,
-            savefun: Optional[SaveFun] = None,
+            savefun: Optional[_SaveFun] = None,
             append: bool = False,
             **savefun_kwargs: Any,
     ) -> multiprocessing.Process:
@@ -526,10 +526,10 @@ class ProcessWriter(StandardWriter[multiprocessing.Process]):
 
 
 QueueType = queue.Queue[Optional[
-    Tuple[TaskFun, str, str, TargetType, Optional[SaveFun], bool]]]
+    Tuple[_TaskFun, str, str, _TargetType, Optional[_SaveFun], bool]]]
 
 
-class QueueWriter(Writer, Generic[Worker]):
+class QueueWriter(Writer, Generic[_Worker]):
     """Base class of queue snapshot writers.
 
     This class is a base class of snapshot writers that use a queue.
@@ -556,10 +556,10 @@ class QueueWriter(Writer, Generic[Worker]):
 
     def __init__(
             self,
-            savefun: SaveFun = torch.save,
+            savefun: _SaveFun = torch.save,
             fs: Optional[_PosixFileSystem] = None,
             out_dir: Optional[str] = None,
-            task: Optional[TaskFun] = None,
+            task: Optional[_TaskFun] = None,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
         if task is None:
@@ -567,7 +567,7 @@ class QueueWriter(Writer, Generic[Worker]):
         else:
             self._task = task
         self._queue = self.create_queue()
-        self._consumer: Worker = self.create_consumer(self._queue)
+        self._consumer: _Worker = self.create_consumer(self._queue)
         self._consumer.start()
         self._started = True
         self._finalized = False
@@ -576,21 +576,21 @@ class QueueWriter(Writer, Generic[Worker]):
             self,
             filename: str,
             out_dir: str,
-            target: TargetType,
+            target: _TargetType,
             *,
-            savefun: Optional[SaveFun] = None,
+            savefun: Optional[_SaveFun] = None,
             append: bool = False
     ) -> None:
         self._queue.put(
             (self._task, filename, out_dir, target, savefun, append))
 
-    def create_task(self, savefun: SaveFun) -> TaskFun:
+    def create_task(self, savefun: _SaveFun) -> _TaskFun:
         return SimpleWriter(savefun=savefun)
 
     def create_queue(self) -> QueueType:
         raise NotImplementedError
 
-    def create_consumer(self, q: QueueType) -> Worker:
+    def create_consumer(self, q: QueueType) -> _Worker:
         raise NotImplementedError
 
     def consume(self, q: QueueType) -> None:
@@ -629,10 +629,10 @@ class ThreadQueueWriter(QueueWriter[threading.Thread]):
 
     def __init__(
             self,
-            savefun: SaveFun = torch.save,
+            savefun: _SaveFun = torch.save,
             fs: Optional[_PosixFileSystem] = None,
             out_dir: Optional[str] = None,
-            task: Optional[TaskFun] = None
+            task: Optional[_TaskFun] = None
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, task=task, out_dir=out_dir)
 
@@ -662,10 +662,10 @@ class ProcessQueueWriter(QueueWriter[multiprocessing.Process]):
 
     def __init__(
             self,
-            savefun: SaveFun = torch.save,
+            savefun: _SaveFun = torch.save,
             fs: Optional[_PosixFileSystem] = None,
             out_dir: Optional[str] = None,
-            task: Optional[TaskFun] = None
+            task: Optional[_TaskFun] = None
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, task=task)
 
@@ -692,7 +692,7 @@ class TensorBoardWriter(object):
     """
     def __init__(
             self,
-            savefun: Optional[SaveFun] = None,
+            savefun: Optional[_SaveFun] = None,
             fs: Optional[_PosixFileSystem] = None,
             out_dir: Optional[str] = None,
             stats: Optional[KeysView[str]] = None,
@@ -710,9 +710,9 @@ class TensorBoardWriter(object):
             self,
             filename: str,
             out_dir: str,
-            target: TargetType,
+            target: _TargetType,
             *,
-            savefun: Optional[SaveFun] = None,
+            savefun: Optional[_SaveFun] = None,
             append: bool = False,
     ) -> None:
         """Sends the statistics to the TensorBoard.
