@@ -7,7 +7,7 @@ import sys
 import threading
 import types
 from typing import (
-    Any, Callable, Dict, Generator, Generic, IO, KeysView, List,
+    Any, Callable, Dict, Generic, IO, Iterator, KeysView, List,
     Optional, Tuple, Type, TypeVar, Union
 )
 
@@ -19,6 +19,7 @@ _SaveFun = Callable[..., None]
 _HookFun = Callable[[], None]
 _TaskFun = Callable[..., None]
 _Worker = TypeVar('_Worker', threading.Thread, multiprocessing.Process)
+_FileSystem = Any
 
 
 class _PosixFileStat:
@@ -84,7 +85,7 @@ class _PosixFileSystem(object):
             self,
             path_or_prefix: Optional[str] = None,
             recursive: bool = False,
-    ) -> Generator[str, str, None]:
+    ) -> Iterator[str]:
         if recursive:
             if path_or_prefix is None:
                 raise ValueError(
@@ -99,7 +100,7 @@ class _PosixFileSystem(object):
 
     def _recursive_list(
             self, prefix_end_index: int, path: str,
-    ) -> Generator[str, str, None]:
+    ) -> Iterator[str]:
         for file in os.scandir(path):
             yield file.path[prefix_end_index:]
             if file.is_dir():
@@ -116,8 +117,8 @@ class _PosixFileSystem(object):
 
     def __exit__(
             self,
-            exc_type: Optional[Type[Exception]],
-            exc_value: Optional[Exception],
+            exc_type: Optional[Type[BaseException]],
+            exc_value: Optional[BaseException],
             traceback: Optional[types.TracebackType],
     ) -> None:
         pass
@@ -184,7 +185,7 @@ class Writer:
 
     def __init__(
             self,
-            fs: Optional[_PosixFileSystem] = None,
+            fs: _FileSystem = None,
             out_dir: Optional[str] = None,
     ) -> None:
         self._post_save_hooks: List[_HookFun] = []
@@ -319,7 +320,7 @@ class SimpleWriter(Writer):
     def __init__(
             self,
             savefun: _SaveFun = torch.save,
-            fs: Optional[_PosixFileSystem] = None,
+            fs: _FileSystem = None,
             out_dir: Optional[str] = None,
             **kwds: Any,
     ) -> None:
@@ -366,7 +367,7 @@ class StandardWriter(Writer, Generic[_Worker]):
     def __init__(
             self,
             savefun: _SaveFun = torch.save,
-            fs: Optional[_PosixFileSystem] = None,
+            fs: _FileSystem = None,
             out_dir: Optional[str] = None,
             **kwds: Any,
     ) -> None:
@@ -444,7 +445,7 @@ class ThreadWriter(StandardWriter[threading.Thread]):
     def __init__(
             self,
             savefun: _SaveFun = torch.save,
-            fs: Optional[_PosixFileSystem] = None,
+            fs: _FileSystem = None,
             out_dir: Optional[str] = None,
             **kwds: Any
     ) -> None:
@@ -503,7 +504,7 @@ class ProcessWriter(StandardWriter[multiprocessing.Process]):
     def __init__(
             self,
             savefun: _SaveFun = torch.save,
-            fs: Optional[_PosixFileSystem] = None,
+            fs: _FileSystem = None,
             out_dir: Optional[str] = None,
             **kwds: Any,
     ) -> None:
@@ -557,7 +558,7 @@ class QueueWriter(Writer, Generic[_Worker]):
     def __init__(
             self,
             savefun: _SaveFun = torch.save,
-            fs: Optional[_PosixFileSystem] = None,
+            fs: _FileSystem = None,
             out_dir: Optional[str] = None,
             task: Optional[_TaskFun] = None,
     ) -> None:
@@ -630,7 +631,7 @@ class ThreadQueueWriter(QueueWriter[threading.Thread]):
     def __init__(
             self,
             savefun: _SaveFun = torch.save,
-            fs: Optional[_PosixFileSystem] = None,
+            fs: _FileSystem = None,
             out_dir: Optional[str] = None,
             task: Optional[_TaskFun] = None
     ) -> None:
@@ -663,7 +664,7 @@ class ProcessQueueWriter(QueueWriter[multiprocessing.Process]):
     def __init__(
             self,
             savefun: _SaveFun = torch.save,
-            fs: Optional[_PosixFileSystem] = None,
+            fs: _FileSystem = None,
             out_dir: Optional[str] = None,
             task: Optional[_TaskFun] = None
     ) -> None:
@@ -693,7 +694,7 @@ class TensorBoardWriter(object):
     def __init__(
             self,
             savefun: Optional[_SaveFun] = None,
-            fs: Optional[_PosixFileSystem] = None,
+            fs: _FileSystem = None,
             out_dir: Optional[str] = None,
             stats: Optional[KeysView[str]] = None,
             **kwds: Any
