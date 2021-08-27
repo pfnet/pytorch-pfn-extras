@@ -6,7 +6,7 @@ User Guide
 
    trainer
    logic
-   runtime
+   runtimes
    extensions
    reporting
    lazy
