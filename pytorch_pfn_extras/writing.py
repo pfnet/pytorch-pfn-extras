@@ -526,8 +526,8 @@ class ProcessWriter(StandardWriter[multiprocessing.Process]):
             kwargs=savefun_kwargs)
 
 
-QueueType = queue.Queue[Optional[
-    Tuple[_TaskFun, str, str, _TargetType, Optional[_SaveFun], bool]]]
+_QueUnit = Optional[Tuple[
+    _TaskFun, str, str, _TargetType, Optional[_SaveFun], bool]]
 
 
 class QueueWriter(Writer, Generic[_Worker]):
@@ -588,13 +588,13 @@ class QueueWriter(Writer, Generic[_Worker]):
     def create_task(self, savefun: _SaveFun) -> _TaskFun:
         return SimpleWriter(savefun=savefun)
 
-    def create_queue(self) -> QueueType:
+    def create_queue(self) -> 'queue.Queue[_QueUnit]':
         raise NotImplementedError
 
-    def create_consumer(self, q: QueueType) -> _Worker:
+    def create_consumer(self, q: 'queue.Queue[_QueUnit]') -> _Worker:
         raise NotImplementedError
 
-    def consume(self, q: QueueType) -> None:
+    def consume(self, q: 'queue.Queue[_QueUnit]') -> None:
         while True:
             task = q.get()
             if task is None:
@@ -637,10 +637,10 @@ class ThreadQueueWriter(QueueWriter[threading.Thread]):
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, task=task, out_dir=out_dir)
 
-    def create_queue(self) -> QueueType:
+    def create_queue(self) -> 'queue.Queue[_QueUnit]':
         return queue.Queue()
 
-    def create_consumer(self, q: QueueType) -> threading.Thread:
+    def create_consumer(self, q: 'queue.Queue[_QueUnit]') -> threading.Thread:
         return threading.Thread(target=self.consume, args=(q,))
 
 
@@ -670,10 +670,10 @@ class ProcessQueueWriter(QueueWriter[multiprocessing.Process]):
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, task=task)
 
-    def create_queue(self) -> QueueType:
+    def create_queue(self) -> 'queue.Queue[_QueUnit]':
         return multiprocessing.JoinableQueue()
 
-    def create_consumer(self, q: QueueType) -> multiprocessing.Process:
+    def create_consumer(self, q: 'queue.Queue[_QueUnit]') -> multiprocessing.Process:
         return multiprocessing.Process(target=self.consume, args=(q,))
 
 
