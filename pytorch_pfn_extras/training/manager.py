@@ -463,7 +463,6 @@ class _BaseExtensionsManager:
     ) -> Dict[str, Any]:
         to_save: Dict[str, Any] = {}
         to_save['_start_iteration'] = self.iteration
-        to_save['_start_execution'] = self.execution
         # Use self.models to apply transform_model
         to_save['models'] = {
             name: self.models[name].state_dict()
@@ -480,8 +479,7 @@ class _BaseExtensionsManager:
     ) -> None:
         self._start_iteration = to_load['_start_iteration']
         self.iteration = self._start_iteration
-        self._start_execution = to_load.get('_start_execution', self.iteration)
-        self.execution = self._start_execution
+        self.execution = self.iteration
         for name in self.models:
             # TODO(ecastill) map_loc when loading the model and DDP check
             # Use self.models to apply transform_model
