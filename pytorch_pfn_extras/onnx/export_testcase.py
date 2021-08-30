@@ -15,6 +15,7 @@ from torch.onnx.symbolic_helper import _default_onnx_opset_version
 from torch.onnx.utils import \
     _export as torch_export, _model_to_graph as torch_model_to_graph
 
+import pytorch_pfn_extras.onnx.as_output as as_output
 from pytorch_pfn_extras.onnx.annotate import init_annotate
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
     LARGE_TENSOR_DATA_THRESHOLD
@@ -115,11 +116,14 @@ def _export(
         opset_ver = _default_onnx_opset_version
     strip_doc_string = kwargs.pop('strip_doc_string', True)
     with init_annotate(model, opset_ver) as ann:
+        # onnx_graph = None
+        model = as_output._start_trace(model)
         outs = _export_util(
             model, args, bytesio, strip_doc_string=False, **kwargs)
         onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)
+        as_output._end_trace(onnx_graph)
     if strip_doc_string:
         for node in onnx_graph.graph.node:
             node.doc_string = b''
