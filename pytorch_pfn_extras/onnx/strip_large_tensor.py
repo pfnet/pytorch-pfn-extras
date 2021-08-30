@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import argparse
 import json
 import operator
