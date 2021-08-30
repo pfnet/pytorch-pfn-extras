@@ -17,7 +17,7 @@ def test_report():
         assert "foo" in s[0].compute_mean()
         assert "foo.min" in s[1]
         assert "foo.max" in s[1]
-    summary.close()
+    summary.finalize()
 
 
 def test_report_async():
