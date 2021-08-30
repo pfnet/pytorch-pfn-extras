@@ -5,27 +5,25 @@ import queue
 import shutil
 import sys
 import threading
-from typing import Optional
+import types
+from typing import (
+    Any, Callable, Dict, Generic, IO, Iterator, KeysView, List,
+    Optional, Tuple, Type, TypeVar, Union
+)
 
 import torch
 
 
-def open_wrapper(func):
-    def wrapper(self, file_path, mode='rb',
-                buffering=-1, encoding=None,
-                errors=None, newline=None,
-                closefd=True,
-                opener=None):
-        file_obj = func(self, file_path, mode, buffering, encoding,
-                        errors, newline, closefd, opener)
-        return self._wrap_fileobject(
-            file_obj, file_path, mode, buffering, encoding,
-            errors, newline, closefd, opener)
-    return wrapper
+_TargetType = Union[List[Any], Dict[str, Any]]
+_SaveFun = Callable[..., None]
+_HookFun = Callable[[], None]
+_TaskFun = Callable[..., None]
+_Worker = TypeVar('_Worker', threading.Thread, multiprocessing.Process)
+_FileSystem = Any
 
 
 class _PosixFileStat:
-    def __init__(self, _stat, filename):
+    def __init__(self, _stat: os.stat_result, filename: str) -> None:
         self.filename = filename
         self.last_modified = _stat.st_mtime
         self.last_accessed = _stat.st_atime
@@ -43,33 +41,51 @@ class _PosixFileSystem(object):
 
     This class currently abstracts POSIX
     """
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def get_actual_path(self, path):
+    def get_actual_path(self, path: str) -> str:
         return os.path.join(self.root, path)
 
-    def _wrap_fileobject(self, file_obj, file_path, *args, **kwargs):
+    def _wrap_fileobject(
+            self,
+            file_obj: IO[Any],
+            file_path: str,
+            *args: Any, **kwargs: Any,
+    ) -> IO[Any]:
         return file_obj
 
     @property
-    def root(self):
+    def root(self) -> str:
         return self._root
 
     @root.setter
-    def root(self, root):
+    def root(self, root: str) -> None:
         self._root = root
 
-    @open_wrapper
-    def open(self, file_path, mode='r',
-             buffering=-1, encoding=None, errors=None,
-             newline=None, closefd=True, opener=None):
+    def open(
+            self,
+            file_path: str,
+            mode: str = 'rb',
+            buffering: int = -1,
+            encoding: Optional[str] = None,
+            errors: Optional[str] = None,
+            newline: Optional[str] = None,
+            closefd: bool = True,
+            opener: Optional[Callable[[str, int], int]] = None,
+    ) -> IO[Any]:
+        file_obj = io.open(file_path, mode,
+                           buffering, encoding, errors,
+                           newline, closefd, opener)
+        return self._wrap_fileobject(
+            file_obj, file_path, mode, buffering, encoding,
+            errors, newline, closefd, opener)
 
-        return io.open(file_path, mode,
-                       buffering, encoding, errors,
-                       newline, closefd, opener)
-
-    def list(self, path_or_prefix: Optional[str] = None, recursive=False):
+    def list(
+            self,
+            path_or_prefix: Optional[str] = None,
+            recursive: bool = False,
+    ) -> Iterator[str]:
         if recursive:
             if path_or_prefix is None:
                 raise ValueError(
@@ -82,39 +98,55 @@ class _PosixFileSystem(object):
             for file in os.scandir(path_or_prefix):
                 yield file.name
 
-    def _recursive_list(self, prefix_end_index: int, path: str):
+    def _recursive_list(
+            self, prefix_end_index: int, path: str,
+    ) -> Iterator[str]:
         for file in os.scandir(path):
             yield file.path[prefix_end_index:]
-
             if file.is_dir():
-                yield from self._recursive_list(prefix_end_index,
-                                                file.path)
+                yield from self._recursive_list(prefix_end_index, file.path)
 
-    def stat(self, path):
+    def stat(self, path: str) -> _PosixFileStat:
         return _PosixFileStat(os.stat(path), path)
 
-    def close(self):
+    def close(self) -> None:
         pass
 
-    def __enter__(self):
+    def __enter__(self) -> '_PosixFileSystem':
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(
+            self,
+            exc_type: Optional[Type[BaseException]],
+            exc_value: Optional[BaseException],
+            traceback: Optional[types.TracebackType],
+    ) -> None:
         pass
 
-    def isdir(self, file_path):
+    def isdir(self, file_path: str) -> bool:
         return os.path.isdir(file_path)
 
-    def mkdir(self, file_path, mode=0o777, *args, dir_fd=None):
-        return os.mkdir(file_path, mode, *args, dir_fd=None)
+    def mkdir(
+            self,
+            file_path: str,
+            mode: int = 0o777,
+            *args: Any,
+            dir_fd: Optional[int] = None
+    ) -> None:
+        return os.mkdir(file_path, mode, *args, dir_fd=dir_fd)
 
-    def makedirs(self, file_path, mode=0o777, exist_ok=False):
+    def makedirs(
+            self,
+            file_path: str,
+            mode: int = 0o777,
+            exist_ok: bool = False
+    ) -> None:
         return os.makedirs(file_path, mode, exist_ok)
 
-    def exists(self, file_path):
+    def exists(self, file_path: str) -> bool:
         return os.path.exists(file_path)
 
-    def rename(self, src, dst):
+    def rename(self, src: str, dst: str) -> None:
         try:
             return os.replace(src, dst)
         except OSError:
@@ -123,7 +155,7 @@ class _PosixFileSystem(object):
                   file=sys.stderr)
             raise
 
-    def remove(self, file_path, recursive=False):
+    def remove(self, file_path: str, recursive: bool = False) -> None:
         if recursive:
             return shutil.rmtree(file_path)
         if os.path.isdir(file_path):
@@ -151,17 +183,25 @@ class Writer:
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, fs=None, out_dir=None):
-        self._post_save_hooks = []
-        self.fs = fs
+    def __init__(
+            self,
+            fs: _FileSystem = None,
+            out_dir: Optional[str] = None,
+    ) -> None:
+        self._post_save_hooks: List[_HookFun] = []
+        self.fs = fs or _PosixFileSystem()
         self.out_dir = out_dir
-        if fs is None:
-            self.fs = _PosixFileSystem()
-
         self._initialized = False
 
-    def __call__(self, filename, out_dir, target, *,
-                 savefun=None, append=False):
+    def __call__(
+            self,
+            filename: str,
+            out_dir: str,
+            target: _TargetType,
+            *,
+            savefun: Optional[_SaveFun] = None,
+            append: bool = False
+    ) -> None:
         """Invokes the actual snapshot function.
 
         This method is invoked by a
@@ -185,19 +225,26 @@ class Writer:
         """
         raise NotImplementedError
 
-    def initialize(self, out_dir):
+    def initialize(self, out_dir: str) -> None:
         self.fs.makedirs(out_dir, exist_ok=True)
         self._initialized = True
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.finalize()
 
-    def finalize(self):
+    def finalize(self) -> None:
         """Finalizes the writer."""
         pass
 
-    def save(self, filename, out_dir, target,
-             savefun, append, **savefun_kwargs):
+    def save(
+            self,
+            filename: str,
+            out_dir: str,
+            target: _TargetType,
+            savefun: _SaveFun,
+            append: bool,
+            **savefun_kwargs: Any,
+    ) -> None:
         if self.out_dir is not None:
             out_dir = self.out_dir
         if not self._initialized:
@@ -231,7 +278,7 @@ class Writer:
 
         self._post_save()
 
-    def _add_cleanup_hook(self, hook_fun):
+    def _add_cleanup_hook(self, hook_fun: _HookFun) -> None:
         """Adds cleanup hook function.
 
         Technically, arbitrary user-defined hook can be called, but
@@ -244,7 +291,7 @@ class Writer:
         """
         self._post_save_hooks.append(hook_fun)
 
-    def _post_save(self):
+    def _post_save(self) -> None:
         for hook in self._post_save_hooks:
             hook()
 
@@ -270,19 +317,32 @@ class SimpleWriter(Writer):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
+    def __init__(
+            self,
+            savefun: _SaveFun = torch.save,
+            fs: _FileSystem = None,
+            out_dir: Optional[str] = None,
+            **kwds: Any,
+    ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
         self._savefun = savefun
         self._kwds = kwds
 
-    def __call__(self, filename, out_dir, target, *,
-                 savefun=None, append=False):
+    def __call__(
+            self,
+            filename: str,
+            out_dir: str,
+            target: _TargetType,
+            *,
+            savefun: Optional[_SaveFun] = None,
+            append: bool = False
+    ) -> None:
         if savefun is None:
             savefun = self._savefun
         self.save(filename, out_dir, target, savefun, append, **self._kwds)
 
 
-class StandardWriter(Writer):
+class StandardWriter(Writer, Generic[_Worker]):
     """Base class of snapshot writers which use thread or process.
 
     This class creates a new thread or a process every time when ``__call__``
@@ -304,16 +364,29 @@ class StandardWriter(Writer):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
+    def __init__(
+            self,
+            savefun: _SaveFun = torch.save,
+            fs: _FileSystem = None,
+            out_dir: Optional[str] = None,
+            **kwds: Any,
+    ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
         self._savefun = savefun
         self._kwds = kwds
-        self._worker = None
+        self._worker: Optional[_Worker] = None
         self._started = False
         self._finalized = False
 
-    def __call__(self, filename, out_dir, target, *,
-                 savefun=None, append=False):
+    def __call__(
+            self,
+            filename: str,
+            out_dir: str,
+            target: _TargetType,
+            *,
+            savefun: Optional[_SaveFun] = None,
+            append: bool = False
+    ) -> None:
         if savefun is None:
             savefun = self._savefun
         if self._started:
@@ -327,8 +400,15 @@ class StandardWriter(Writer):
         self._finalized = False
 
     def create_worker(
-            self, filename, out_dir, target, *,
-            savefun=None, append=False, **savefun_kwargs):
+            self,
+            filename: str,
+            out_dir: str,
+            target: _TargetType,
+            *,
+            savefun: Optional[_SaveFun] = None,
+            append: bool = False,
+            **savefun_kwargs: Any,
+    ) -> _Worker:
         """Creates a worker for the snapshot.
 
         This method creates a thread or a process to take a snapshot. The
@@ -338,7 +418,9 @@ class StandardWriter(Writer):
         """
         raise NotImplementedError
 
-    def finalize(self):
+    def finalize(self) -> None:
+        if self._worker is None:
+            raise RuntimeError('worker is not created')
         try:
             if self._started and not self._finalized:
                 self._worker.join()
@@ -350,7 +432,7 @@ class StandardWriter(Writer):
             self._finalized = True
 
 
-class ThreadWriter(StandardWriter):
+class ThreadWriter(StandardWriter[threading.Thread]):
     """Snapshot writer that uses a separate thread.
 
     This class creates a new thread that invokes the actual saving function.
@@ -360,29 +442,51 @@ class ThreadWriter(StandardWriter):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
+    def __init__(
+            self,
+            savefun: _SaveFun = torch.save,
+            fs: _FileSystem = None,
+            out_dir: Optional[str] = None,
+            **kwds: Any
+    ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
-    def _save_with_exitcode(self, *args, **kwargs):
+    def _save_with_exitcode(
+            self,
+            filename: str,
+            out_dir: str,
+            target: _TargetType,
+            savefun: _SaveFun,
+            append: bool,
+            **savefun_kwargs: Any,
+    ) -> None:
         try:
-            self.save(*args, **kwargs)
+            self.save(
+                filename, out_dir, target, savefun, append, **savefun_kwargs)
         except Exception as e:
             thread = threading.current_thread()
-            thread.exitcode = -1
+            thread.exitcode = -1  # type: ignore[attr-defined]
             print(
                 f'Error: ThreadWriter failed in thread "{thread.name}": '
                 f'{type(e).__name__}: {str(e)}', file=sys.stderr)
 
     def create_worker(
-            self, filename, out_dir, target, *,
-            savefun=None, append=False, **savefun_kwargs):
+            self,
+            filename: str,
+            out_dir: str,
+            target: _TargetType,
+            *,
+            savefun: Optional[_SaveFun] = None,
+            append: bool = False,
+            **savefun_kwargs: Any,
+    ) -> threading.Thread:
         return threading.Thread(
             target=self._save_with_exitcode,
             args=(filename, out_dir, target, savefun, append),
             kwargs=savefun_kwargs)
 
 
-class ProcessWriter(StandardWriter):
+class ProcessWriter(StandardWriter[multiprocessing.Process]):
     """Snapshot writer that uses a separate process.
 
     This class creates a new process that invokes the actual saving function.
@@ -397,19 +501,36 @@ class ProcessWriter(StandardWriter):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, out_dir=None, **kwds):
+    def __init__(
+            self,
+            savefun: _SaveFun = torch.save,
+            fs: _FileSystem = None,
+            out_dir: Optional[str] = None,
+            **kwds: Any,
+    ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
     def create_worker(
-            self, filename, out_dir, target, *,
-            savefun=None, append=False, **savefun_kwargs):
+            self,
+            filename: str,
+            out_dir: str,
+            target: _TargetType,
+            *,
+            savefun: Optional[_SaveFun] = None,
+            append: bool = False,
+            **savefun_kwargs: Any,
+    ) -> multiprocessing.Process:
         return multiprocessing.Process(
             target=self.save,
             args=(filename, out_dir, target, savefun, append),
             kwargs=savefun_kwargs)
 
 
-class QueueWriter(Writer):
+_QueUnit = Optional[Tuple[
+    _TaskFun, str, str, _TargetType, Optional[_SaveFun], bool]]
+
+
+class QueueWriter(Writer, Generic[_Worker]):
     """Base class of queue snapshot writers.
 
     This class is a base class of snapshot writers that use a queue.
@@ -434,38 +555,47 @@ class QueueWriter(Writer):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    _started = False
-    _finalized = False
-    _queue = None
-    _consumer = None
-
-    def __init__(self, savefun=torch.save, fs=None, out_dir=None, task=None):
+    def __init__(
+            self,
+            savefun: _SaveFun = torch.save,
+            fs: _FileSystem = None,
+            out_dir: Optional[str] = None,
+            task: Optional[_TaskFun] = None,
+    ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
+        self._started = False
+        self._finalized = False
         if task is None:
             self._task = self.create_task(savefun)
         else:
             self._task = task
         self._queue = self.create_queue()
-        self._consumer = self.create_consumer(self._queue)
+        self._consumer: _Worker = self.create_consumer(self._queue)
         self._consumer.start()
         self._started = True
-        self._finalized = False
 
     def __call__(
-            self, filename, out_dir, target, *, savefun=None, append=False):
+            self,
+            filename: str,
+            out_dir: str,
+            target: _TargetType,
+            *,
+            savefun: Optional[_SaveFun] = None,
+            append: bool = False
+    ) -> None:
         self._queue.put(
-            [self._task, filename, out_dir, target, savefun, append])
+            (self._task, filename, out_dir, target, savefun, append))
 
-    def create_task(self, savefun):
+    def create_task(self, savefun: _SaveFun) -> _TaskFun:
         return SimpleWriter(savefun=savefun)
 
-    def create_queue(self):
+    def create_queue(self) -> 'queue.Queue[_QueUnit]':
         raise NotImplementedError
 
-    def create_consumer(self, q):
+    def create_consumer(self, q: 'queue.Queue[_QueUnit]') -> _Worker:
         raise NotImplementedError
 
-    def consume(self, q):
+    def consume(self, q: 'queue.Queue[_QueUnit]') -> None:
         while True:
             task = q.get()
             if task is None:
@@ -476,7 +606,7 @@ class QueueWriter(Writer):
                     task[1], task[2], task[3], savefun=task[4], append=task[5])
                 q.task_done()
 
-    def finalize(self):
+    def finalize(self) -> None:
         if self._started:
             if not self._finalized:
                 self._queue.put(None)
@@ -486,7 +616,7 @@ class QueueWriter(Writer):
         self._finalized = True
 
 
-class ThreadQueueWriter(QueueWriter):
+class ThreadQueueWriter(QueueWriter[threading.Thread]):
     """Snapshot writer that uses a thread queue.
 
     This class creates a thread and a queue by :mod:`threading` and
@@ -499,17 +629,23 @@ class ThreadQueueWriter(QueueWriter):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, out_dir=None, task=None):
+    def __init__(
+            self,
+            savefun: _SaveFun = torch.save,
+            fs: _FileSystem = None,
+            out_dir: Optional[str] = None,
+            task: Optional[_TaskFun] = None
+    ) -> None:
         super().__init__(savefun=savefun, fs=fs, task=task, out_dir=out_dir)
 
-    def create_queue(self):
+    def create_queue(self) -> 'queue.Queue[_QueUnit]':
         return queue.Queue()
 
-    def create_consumer(self, q):
+    def create_consumer(self, q: 'queue.Queue[_QueUnit]') -> threading.Thread:
         return threading.Thread(target=self.consume, args=(q,))
 
 
-class ProcessQueueWriter(QueueWriter):
+class ProcessQueueWriter(QueueWriter[multiprocessing.Process]):
     """Snapshot writer that uses process queue.
 
     This class creates a process and a queue by :mod:`multiprocessing` module.
@@ -526,13 +662,19 @@ class ProcessQueueWriter(QueueWriter):
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    def __init__(self, savefun=torch.save, fs=None, out_dir=None, task=None):
+    def __init__(
+            self,
+            savefun: _SaveFun = torch.save,
+            fs: _FileSystem = None,
+            out_dir: Optional[str] = None,
+            task: Optional[_TaskFun] = None
+    ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, task=task)
 
-    def create_queue(self):
+    def create_queue(self) -> 'queue.Queue[_QueUnit]':
         return multiprocessing.JoinableQueue()
 
-    def create_consumer(self, q):
+    def create_consumer(self, q: 'queue.Queue[_QueUnit]') -> multiprocessing.Process:
         return multiprocessing.Process(target=self.consume, args=(q,))
 
 
@@ -551,17 +693,30 @@ class TensorBoardWriter(object):
         kwds: Passed as an additional arguments to SummaryWriter.
     """
     def __init__(
-            self, savefun=None, fs=None, out_dir=None, stats=None, **kwds):
+            self,
+            savefun: Optional[_SaveFun] = None,
+            fs: _FileSystem = None,
+            out_dir: Optional[str] = None,
+            stats: Optional[KeysView[str]] = None,
+            **kwds: Any
+    ) -> None:
         import torch.utils.tensorboard
         self._stats = stats
-        self._writer = torch.utils.tensorboard.SummaryWriter(
+        self._writer = torch.utils.tensorboard.SummaryWriter(  # type: ignore[no-untyped-call] # NOQA: B950
             log_dir=out_dir, **kwds)
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.finalize()
 
     def __call__(
-            self, filename, out_dir, target, *, savefun=None, append=False):
+            self,
+            filename: str,
+            out_dir: str,
+            target: _TargetType,
+            *,
+            savefun: Optional[_SaveFun] = None,
+            append: bool = False,
+    ) -> None:
         """Sends the statistics to the TensorBoard.
 
         Args:
@@ -584,7 +739,8 @@ class TensorBoardWriter(object):
             keys = self._stats
         for key in keys:
             value = stats_cpu[key]
-            self._writer.add_scalar(key, value, stats_cpu['iteration'])
+            self._writer.add_scalar(  # type: ignore[no-untyped-call]
+                key, value, stats_cpu['iteration'])
 
-    def finalize(self):
-        self._writer.close()
+    def finalize(self) -> None:
+        self._writer.close()  # type: ignore[no-untyped-call]
