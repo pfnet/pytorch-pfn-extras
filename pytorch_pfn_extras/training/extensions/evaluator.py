@@ -202,7 +202,9 @@ class Evaluator(extension.Extension):
                 progress.current_position = idx
                 observation = {}
                 with reporting.report_scope(observation):
-                    if isinstance(batch, (tuple, list)):
+                    if isinstance(batch, tuple) and hasattr(batch, '_fields'):
+                        outs = self.eval_func(batch)
+                    elif isinstance(batch, (tuple, list)):
                         outs = self.eval_func(*batch)
                     elif isinstance(batch, dict):
                         outs = self.eval_func(**batch)

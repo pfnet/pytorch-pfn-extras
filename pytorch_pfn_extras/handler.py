@@ -515,14 +515,18 @@ class Logic(BaseLogic):
         self._grad_scaler = options.pop('grad_scaler', None)
 
     def _forward(self, model, batch):
+        if isinstance(batch, tuple) and hasattr(batch, '_fields'):
+            return model(batch)
         if isinstance(batch, dict):
             return model(**batch)
-        elif isinstance(batch, (list, tuple)):
+        if isinstance(batch, (list, tuple)):
             return model(*batch)
         return model(batch)
 
     def _normalize_outputs(self, outputs):
-        if isinstance(outputs, dict):
+        if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
+            target = {k: getattr(outputs, k) for k in outputs._fields}
+        elif isinstance(outputs, dict):
             target = outputs
         elif isinstance(outputs, (list, tuple)):
             target = {str(i): out for i, out in enumerate(outputs)}

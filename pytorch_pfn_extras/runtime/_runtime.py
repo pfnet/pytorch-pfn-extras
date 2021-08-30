@@ -36,17 +36,20 @@ class BaseRuntime:
 
         # this should be called with the runtime associated to a model
         # or a model part
+        if isinstance(args, tuple) and hasattr(args, '_fields'):
+            return args.__class__(
+                **{k: self.move_tensor(getattr(args, k)) for k in args._fields})
         if isinstance(args, dict):
             return {
                 k: self.move_tensor(v) if isinstance(v, torch.Tensor) else v
                 for k, v in args.items()
             }
-        elif isinstance(args, (list, tuple)):
+        if isinstance(args, (list, tuple)):
             return [
                 self.move_tensor(v) if isinstance(v, torch.Tensor) else v
                 for v in args
             ]
-        elif isinstance(args, torch.Tensor):
+        if isinstance(args, torch.Tensor):
             return self.move_tensor(args)
         return args
 
