@@ -563,6 +563,8 @@ class QueueWriter(Writer, Generic[_Worker]):
             task: Optional[_TaskFun] = None,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
+        self._started = False
+        self._finalized = False
         if task is None:
             self._task = self.create_task(savefun)
         else:
@@ -571,7 +573,6 @@ class QueueWriter(Writer, Generic[_Worker]):
         self._consumer: _Worker = self.create_consumer(self._queue)
         self._consumer.start()
         self._started = True
-        self._finalized = False
 
     def __call__(
             self,
