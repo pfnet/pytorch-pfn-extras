@@ -1,8 +1,15 @@
 import operator
+from typing import Tuple, TYPE_CHECKING
 import warnings
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import trigger
+
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+    from pytorch_pfn_extras.training._trigger_util import TriggerLike
+    from pytorch_pfn_extras.training._trigger_util import UnitLiteral
 
 
 class EarlyStoppingTrigger(trigger.Trigger):
@@ -36,38 +43,23 @@ class EarlyStoppingTrigger(trigger.Trigger):
         verbose (bool) : Enable verbose output.
             If verbose is true, you can get more information
         max_trigger: Upper bound of the number of training loops
-
-    .. note::
-       ``patients`` is also available as an alias of ``patience`` for
-       historical reason.
     """
 
-    def __init__(self, check_trigger=(1, 'epoch'), monitor='main/loss',
-                 patience=None, mode='auto', verbose=False,
-                 max_trigger=(100, 'epoch'), **kwargs):
-
-        # `patients` as an alias of `patience`
-        patients = kwargs.get('patients', None)
-        if patients is None:
-            if patience is None:
-                patience = 3
-            else:
-                pass
-        else:
-            if patience is None:
-                patience = patients
-            else:
-                raise TypeError(
-                    'Both \'patience\' and \'patients\' arguments are '
-                    'specified. \'patients\' is an alias of the former. '
-                    'Specify only \'patience\'.')
-
+    def __init__(
+            self,
+            check_trigger: 'TriggerLike' = (1, 'epoch'),
+            monitor: str = 'main/loss',
+            patience: int = 3,
+            mode: str = 'auto',
+            verbose: bool = False,
+            max_trigger: Tuple[int, 'UnitLiteral'] = (100, 'epoch'),
+    ) -> None:
         self.count = 0
         self.patience = patience
         self.monitor = monitor
         self.verbose = verbose
         self.already_warning = False
-        self._max_trigger = trigger.get_trigger(max_trigger)
+        self._max_trigger = trigger.IntervalTrigger(*max_trigger)
         self._interval_trigger = trigger.get_trigger(check_trigger)
 
         self._init_summary()
@@ -95,7 +87,7 @@ class EarlyStoppingTrigger(trigger.Trigger):
                 print('early stopping: operator is less')
             self.best = float('inf')
 
-    def __call__(self, manager):
+    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
         """Decides whether the training loop should be stopped.
 
         Args:
@@ -126,7 +118,7 @@ class EarlyStoppingTrigger(trigger.Trigger):
             return False
 
         stat = self._summary.compute_mean()
-        current_val = stat[self.monitor]
+        current_val = float(stat[self.monitor])
         self._init_summary()
 
         if self._compare(current_val, self.best):
@@ -143,11 +135,11 @@ class EarlyStoppingTrigger(trigger.Trigger):
 
         return False
 
-    def _stop_condition(self):
+    def _stop_condition(self) -> bool:
         return self.count >= self.patience
 
-    def _init_summary(self):
+    def _init_summary(self) -> None:
         self._summary = reporting.DictSummary()
 
-    def get_training_length(self):
+    def get_training_length(self) -> Tuple[float, str]:
         return self._max_trigger.get_training_length()

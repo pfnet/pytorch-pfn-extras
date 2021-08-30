@@ -1,5 +1,12 @@
+from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import trigger as trigger_module
+
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+    from pytorch_pfn_extras.training._trigger_util import TriggerLike
 
 
 class BestValueTrigger(trigger_module.Trigger):
@@ -18,14 +25,19 @@ class BestValueTrigger(trigger_module.Trigger):
 
     """
 
-    def __init__(self, key, compare, trigger=(1, 'epoch')):
+    def __init__(
+            self,
+            key: str,
+            compare: Callable[[float, float], bool],
+            trigger: 'TriggerLike' = (1, 'epoch'),
+    ) -> None:
         self._key = key
-        self._best_value = None
+        self._best_value: Optional[float] = None
         self._interval_trigger = trigger_module.get_trigger(trigger)
         self._init_summary()
         self._compare = compare
 
-    def __call__(self, manager):
+    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
         """Decides whether the extension should be called on this iteration.
 
         Args:
@@ -58,16 +70,16 @@ class BestValueTrigger(trigger_module.Trigger):
             return True
         return False
 
-    def _init_summary(self):
+    def _init_summary(self) -> None:
         self._summary = reporting.DictSummary()
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         state = {'interval_trigger': self._interval_trigger.state_dict(),
                  '_summary': self._summary.state_dict(),
                  '_best_value': self._best_value}
         return state
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         self._interval_trigger.load_state_dict(to_load['interval_trigger'])
         self._summary.load_state_dict(to_load['_summary'])
         self._best_value = to_load['_best_value']
@@ -90,10 +102,9 @@ class MaxValueTrigger(BestValueTrigger):
 
     """
 
-    def __init__(self, key, trigger=(1, 'epoch')):
+    def __init__(self, key: str, trigger: 'TriggerLike' = (1, 'epoch')):
         super().__init__(
-            key,
-            lambda max_value, new_value: new_value > max_value, trigger)
+            key, lambda max_value, new_value: new_value > max_value, trigger)
 
 
 class MinValueTrigger(BestValueTrigger):
@@ -113,7 +124,6 @@ class MinValueTrigger(BestValueTrigger):
 
     """
 
-    def __init__(self, key, trigger=(1, 'epoch')):
+    def __init__(self, key: str, trigger: 'TriggerLike' = (1, 'epoch')):
         super().__init__(
-            key,
-            lambda min_value, new_value: new_value < min_value, trigger)
+            key, lambda min_value, new_value: new_value < min_value, trigger)
