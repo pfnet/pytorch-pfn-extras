@@ -1,4 +1,5 @@
 from pytorch_pfn_extras.training.extension import Extension  # NOQA
+from pytorch_pfn_extras.training.extension import ExtensionEntry  # NOQA
 from pytorch_pfn_extras.training.extension import make_extension  # NOQA
 from pytorch_pfn_extras.training.extension import PRIORITY_EDITOR  # NOQA
 from pytorch_pfn_extras.training.extension import PRIORITY_READER  # NOQA

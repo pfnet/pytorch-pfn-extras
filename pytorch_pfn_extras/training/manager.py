@@ -74,7 +74,7 @@ class _BaseExtensionsManager:
         self._start_time: Optional[float] = None
         self._iters_per_epoch: Optional[int] = None
         self._extensions: Dict[
-            str, extension_module._ExtensionEntry] = collections.OrderedDict()
+            str, extension_module.ExtensionEntry] = collections.OrderedDict()
         for ext in extensions:
             self.extend(ext)
 
@@ -258,7 +258,7 @@ class _BaseExtensionsManager:
             modified_name = '%s_%d' % (name, ordinal)
 
         ext.name = modified_name
-        self._extensions[modified_name] = extension_module._ExtensionEntry(
+        self._extensions[modified_name] = extension_module.ExtensionEntry(
             ext, priority, trigger, call_before_training)
 
     def get_extension(self, name: str) -> extension_module.Extension:
