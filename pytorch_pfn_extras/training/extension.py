@@ -3,7 +3,7 @@ import types
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
-    from pytorch_pfn_extras.training._trigger_util import TriggerLike
+    from pytorch_pfn_extras.training._trigger_util import Trigger, TriggerLike
     ExtensionLike = Callable[[_BaseExtensionsManager], None]
 
 
@@ -222,3 +222,30 @@ def make_extension(
 
 def _as_extension(ext: 'ExtensionLike') -> Extension:
     return ext if isinstance(ext, Extension) else _WrappedExtension(ext)
+
+
+class _ExtensionEntry:
+
+    def __init__(
+            self,
+            extension: Extension,
+            priority: int,
+            trigger: 'Trigger',
+            call_before_training: bool
+    ) -> None:
+        self.extension = extension
+        self.trigger = trigger
+        self.priority = priority
+        self.call_before_training = call_before_training
+
+    def state_dict(self) -> Dict[str, Any]:
+        state = {}
+        state['extension'] = self.extension.state_dict()
+        state['trigger'] = self.trigger.state_dict()
+        return state
+
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
+        if 'extension' in to_load:
+            self.extension.load_state_dict(to_load['extension'])
+        if 'trigger' in to_load:
+            self.trigger.load_state_dict(to_load['trigger'])

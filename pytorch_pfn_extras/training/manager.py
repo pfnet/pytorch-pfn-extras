@@ -27,33 +27,6 @@ class IterationNotification:
         self._is_completed = False
 
 
-class _ExtensionEntry:
-
-    def __init__(
-            self,
-            extension: extension_module.Extension,
-            priority: int,
-            trigger: trigger_module.Trigger,
-            call_before_training: bool
-    ) -> None:
-        self.extension = extension
-        self.trigger = trigger
-        self.priority = priority
-        self.call_before_training = call_before_training
-
-    def state_dict(self) -> Dict[str, Any]:
-        state = {}
-        state['extension'] = self.extension.state_dict()
-        state['trigger'] = self.trigger.state_dict()
-        return state
-
-    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
-        if 'extension' in to_load:
-            self.extension.load_state_dict(to_load['extension'])
-        if 'trigger' in to_load:
-            self.trigger.load_state_dict(to_load['trigger'])
-
-
 class _ManagerExecutionProxy:
     """
     Object that is passed to the triggers of extensions depending if they
@@ -149,7 +122,8 @@ class _BaseExtensionsManager:
         # Defer!
         self._start_time: Optional[float] = None
         self._iters_per_epoch: Optional[int] = None
-        self._extensions: Dict[str, _ExtensionEntry] = collections.OrderedDict()
+        self._extensions: Dict[
+            str, extension_module._ExtensionEntry] = collections.OrderedDict()
         for ext in extensions:
             self.extend(ext)
 
@@ -361,7 +335,7 @@ class _BaseExtensionsManager:
             modified_name = '%s_%d' % (name, ordinal)
 
         ext.name = modified_name
-        self._extensions[modified_name] = _ExtensionEntry(
+        self._extensions[modified_name] = extension_module._ExtensionEntry(
             ext, priority, trigger, call_before_training)
 
     def get_extension(self, name: str) -> extension_module.Extension:
