@@ -3,7 +3,7 @@ import contextlib
 import copy
 from pytorch_pfn_extras.profiler import record
 import time
-from typing import Any, Callable, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 from typing import TYPE_CHECKING
 import warnings
 
