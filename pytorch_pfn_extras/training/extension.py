@@ -224,7 +224,7 @@ def _as_extension(ext: 'ExtensionLike') -> Extension:
     return ext if isinstance(ext, Extension) else _WrappedExtension(ext)
 
 
-class _ExtensionEntry:
+class ExtensionEntry:
 
     def __init__(
             self,
