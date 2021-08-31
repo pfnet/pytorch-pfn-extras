@@ -2,6 +2,10 @@ import logging
 
 from contextlib import contextmanager
 from collections import OrderedDict
+from typing import (
+    Any, Callable, Dict, Generator, List, Mapping, Optional, Sequence, Tuple,
+    TypeVar, Union
+)
 
 import torch
 from torch import nn
@@ -13,6 +17,10 @@ import threading
 
 logger = logging.getLogger(__name__)
 
+Tensors = Union[Tuple[torch.Tensor, ...], torch.Tensor]
+DistFunc = Callable[[Sequence[torch.Tensor], Optional[dist.ProcessGroup]], None]
+HookFun = Callable[['DistributedDataParallel'], None]
+
 
 class _ApexWrapper:
     """A wrapper class to use nvidia/apex.
@@ -21,7 +29,7 @@ class _ApexWrapper:
     not install apex.
     This class provides fallback functions to handle such cases.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         try:
             import apex_C
             self.flatten = apex_C.flatten
@@ -42,7 +50,12 @@ class _ApexWrapper:
                 "apex was not installed or installed without --cpp_ext.")
             self._amp_C_multi_tensor_scale = None
 
-    def multi_tensor_scale(self, src, dst, scale):
+    def multi_tensor_scale(
+            self,
+            src: Sequence[torch.Tensor],
+            dst: Sequence[torch.Tensor],
+            scale: float,
+    ) -> None:
         if self._amp_C_multi_tensor_scale is None:
             self._multi_tensor_scale(src, dst, scale)
             return
@@ -55,22 +68,32 @@ class _ApexWrapper:
         else:
             self._multi_tensor_scale(src, dst, scale)
 
-    def _multi_tensor_scale_apex(self, src, dst, scale):
+    def _multi_tensor_scale_apex(
+            self,
+            src: Sequence[torch.Tensor],
+            dst: Sequence[torch.Tensor],
+            scale: float,
+    ) -> None:
         overflow_buf = torch.tensor([0], device=src[0].device).int()
         self._amp_C_multi_tensor_scale(65536, overflow_buf, [src, dst],
                                        scale)
 
-    def _multi_tensor_scale(self, src, dst, scale):
-        with torch.no_grad():
+    def _multi_tensor_scale(
+            self,
+            src: Sequence[torch.Tensor],
+            dst: Sequence[torch.Tensor],
+            scale: float,
+    ) -> None:
+        with torch.no_grad():  # type: ignore[no-untyped-call]
             for s, d in zip(src, dst):
                 d.copy_(s * scale)
 
 
-apex_wrapper = None
+apex_wrapper: Optional[_ApexWrapper] = None
 _apex_wrapper_mutex = threading.Lock()
 
 
-def get_apex_wrapper():
+def get_apex_wrapper() -> _ApexWrapper:
     global apex_wrapper
     if apex_wrapper is None:
         with _apex_wrapper_mutex:
@@ -79,7 +102,10 @@ def get_apex_wrapper():
     return apex_wrapper
 
 
-def _reduce(values, group):
+def _reduce(
+        values: Sequence[torch.Tensor],
+        group: Optional[dist.ProcessGroup],
+) -> None:
     size = sum([v.numel() for v in values])
 
     # flatten values to improve the runtime perfomance of all-reduce
@@ -89,28 +115,31 @@ def _reduce(values, group):
     get_apex_wrapper().multi_tensor_scale(values, coalesced_views, 1.0)
 
     with record_function("torch.distributed.all_reduce"):
-        dist.all_reduce(coalesced, group=group)
+        dist.all_reduce(coalesced, group=group)  # type: ignore[no-untyped-call]
 
     # unflatten values
     get_apex_wrapper().multi_tensor_scale(
         coalesced_views, values,
-        1.0 / dist.get_world_size(group)
+        1.0 / dist.get_world_size(group)  # type: ignore[no-untyped-call]
     )
 
 
-def _broadcast(values, group):
-    with torch.no_grad():
+def _broadcast(
+        values: Sequence[torch.Tensor],
+        group: Optional[dist.ProcessGroup]
+) -> None:
+    with torch.no_grad():  # type: ignore[no-untyped-call]
         coalesced = get_apex_wrapper().flatten(values)
         with record_function("torch.distributed.broadcast"):
-            dist.broadcast(coalesced, 0, group=group)
+            dist.broadcast(coalesced, 0, group=group)  # type: ignore[no-untyped-call]
         get_apex_wrapper().multi_tensor_scale(
             get_apex_wrapper().unflatten(coalesced, values),
             values, 1.0
         )
 
 
-def _group_by_type(values):
-    groups = {}
+def _group_by_type(values: Sequence[torch.Tensor]) -> List[List[torch.Tensor]]:
+    groups: Dict[torch.dtype, List[torch.Tensor]] = {}
     for value in values:
         if value.dtype not in groups:
             groups[value.dtype] = []
@@ -147,20 +176,23 @@ class DistributedDataParallel(nn.Module):
                           "find_unused_parameters", "check_reduction",
                           "gradient_as_bucket_view"]
 
-    def __init__(self, module,
-                 broadcast_buffers=True,
-                 negotiate_grads=True,
-                 process_group=None,
-                 reduce_function=None,
-                 broadcast_function=None,
-                 **kwargs):
-        super().__init__()
-
+    def __init__(
+            self,
+            module: nn.Module,
+            broadcast_buffers: bool = True,
+            negotiate_grads: bool = True,
+            process_group: Optional[dist.ProcessGroup] = None,
+            reduce_function: Optional[DistFunc] = None,
+            broadcast_function: Optional[DistFunc] = None,
+            **kwargs: Any
+    ) -> None:
         """
         This module receives keyword arguments for the compatibility with
         `torch.nn.parallel.DistributedDataParallel`.
         It shows a warning when setting the ignored arguments.
         """
+        super().__init__()  # type: ignore[no-untyped-call]
+
         for name in DistributedDataParallel._unused_parameters:
             if name in kwargs:
                 logger.warning(
@@ -185,7 +217,7 @@ class DistributedDataParallel(nn.Module):
         self._sorted_buffer_keys = [key for key, _ in self.named_buffers()]
         self._sorted_buffer_keys.sort()
 
-        self._comm_hooks = OrderedDict()
+        self._comm_hooks: Dict[int, HookFun] = OrderedDict()
 
         self._require_sync = True
         self._show_send_gpu_warning = False
@@ -194,9 +226,9 @@ class DistributedDataParallel(nn.Module):
         params = dict(self.named_parameters())
         buffers = dict(self.named_buffers())
         values = \
-            [params[name] for name in self._sorted_param_keys] + \
-            [buffers[name] for name in self._sorted_buffer_keys]
-        if dist.is_initialized():
+            [buffers[name] for name in self._sorted_buffer_keys] + \
+            [params[name] for name in self._sorted_param_keys]
+        if dist.is_initialized():  # type: ignore[no-untyped-call]
             groups = _group_by_type(values)
             for group in groups:
                 _broadcast(group, self._process_group)
@@ -207,7 +239,7 @@ class DistributedDataParallel(nn.Module):
         self.register_backward_hook(self._backward_hook)
 
     @contextmanager
-    def no_sync(self):
+    def no_sync(self) -> Generator[None, None, None]:
         """A context manager to disable synchronization after backward
         """
         prev = self._require_sync
@@ -217,18 +249,24 @@ class DistributedDataParallel(nn.Module):
         finally:
             self._require_sync = prev
 
-    def forward(self, *args, **kwargs):
+    def forward(self, *args: Any, **kwargs: Any) -> Any:
         args = self._input_to_device(args)
         kwargs = self._input_to_device(kwargs)
         return self.module(*args, **kwargs)
 
-    def load_state_dict(self, *args, **kwargs):
-        self.module.load_state_dict(*args, **kwargs)
+    def load_state_dict(
+            self,
+            state_dict: 'OrderedDict[str, torch.Tensor]',
+            strict: bool = True,
+    ) -> None:
+        self.module.load_state_dict(state_dict, strict=strict)
 
-    def state_dict(self):
+    T_destination = TypeVar('T_destination', bound=Mapping[str, torch.Tensor])
+
+    def state_dict(self) -> Dict[str, Any]:  # type: ignore[override]
         return self.module.state_dict()
 
-    def register_comm_hook(self, hook):
+    def register_comm_hook(self, hook: HookFun) -> hooks.RemovableHandle:
         """Registers a hook function. This module will invoke the hook before
         starting the synchronization.
 
@@ -239,8 +277,13 @@ class DistributedDataParallel(nn.Module):
         self._comm_hooks[handle.id] = hook
         return handle
 
-    def _backward_hook(self, module, gin, gout):
-        def _synchronize():
+    def _backward_hook(
+            self,
+            module: torch.nn.Module,
+            gin: Tensors,
+            gout: Tensors
+    ) -> None:
+        def _synchronize() -> None:
             if not self._require_sync:
                 return
 
@@ -260,7 +303,8 @@ class DistributedDataParallel(nn.Module):
 
                     # cast to long because bool may not be used in all_reduce
                     has_grads = has_grads.long()
-                    dist.all_reduce(has_grads, op=dist.ReduceOp.MAX)
+                    dist.all_reduce(  # type: ignore[no-untyped-call]
+                        has_grads, op=dist.ReduceOp.MAX)
 
                     for name, has_grad in zip(self._sorted_param_keys,
                                               has_grads.bool().cpu()):
@@ -287,7 +331,7 @@ class DistributedDataParallel(nn.Module):
         # PyTorch will invoke `_synchronize` after the backward computation.
         Variable._execution_engine.queue_callback(_synchronize)
 
-    def _input_to_device(self, obj):
+    def _input_to_device(self, obj: Any) -> Any:
         """Send data to the target device
 
         Analogous to `torch.nn.parallel.scatter_gather.scatter`
