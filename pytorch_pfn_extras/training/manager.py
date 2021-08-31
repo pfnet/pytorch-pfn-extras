@@ -3,7 +3,7 @@ import contextlib
 import copy
 from pytorch_pfn_extras.profiler import record
 import time
-from typing import Any, Callable, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 from typing import TYPE_CHECKING
 import warnings
 
@@ -460,20 +460,7 @@ class _BaseExtensionsManager:
 
     def state_dict(
             self,
-            *,
-            transform_models: Callable[
-                [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
     ) -> Dict[str, Any]:
-        """
-        transform_models is a function that apply a transformation
-        to a model.
-
-        When using a `torch.nn.DataParallel` model, if we want
-        to save only the `.module` object, state_dict can be
-        called as follows:
-
-        >>> manager.state_dict(transform_models=lambda n, x: x.module)
-        """
         to_save: Dict[str, Any] = {}
         to_save['_start_iteration'] = self.iteration
         to_save['_start_execution'] = self.execution
@@ -490,23 +477,7 @@ class _BaseExtensionsManager:
     def load_state_dict(
             self,
             to_load: Dict[str, Any],
-            *,
-            transform_models: Callable[
-                [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
     ) -> None:
-        """
-        transform_models is a function that apply a transformation
-        to a model before loading its state.
-
-        When using a `torch.nn.DataParallel` model, if we want
-        to load the original state in a model with the
-        `torch.nn.DataParallel` applied:
-
-        >>> manager.load_state_dict(
-                state, transform_models=(
-                    lambda n, x: x.module
-                    if isinstance(x, torch.nn.DataParallel) else x))
-        """
         self._start_iteration = to_load['_start_iteration']
         self.iteration = self._start_iteration
         self._start_execution = to_load.get('_start_execution', self.iteration)
@@ -731,13 +702,8 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
         def set_extensions_cleanup(engine: Engine) -> None:
             self._finalize_extensions()
 
-    def state_dict(
-            self,
-            *,
-            transform_models: Callable[
-                [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
-    ) -> Dict[str, Any]:
-        to_save = super().state_dict(transform_models=transform_models)
+    def state_dict(self) -> Dict[str, Any]:
+        to_save = super().state_dict()
         to_save['_epoch_length'] = self.engine.state.epoch_length
         to_save['_start_iteration'] = self.engine.state.iteration
         return to_save
@@ -745,9 +711,6 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
     def load_state_dict(
             self,
             to_load: Dict[str, Any],
-            *,
-            transform_models: Callable[
-                [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x
     ) -> None:
-        super().load_state_dict(to_load, transform_models=transform_models)
+        super().load_state_dict(to_load)
         self._start_epoch = self._start_iteration // to_load['_epoch_length']
