@@ -1,31 +1,57 @@
 import json
 import os
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 import reprlib
 
 
-def customize_type(**default_kwargs):
-    def deco(type_):
-        type_._custom_default_kwargs = default_kwargs
+ConfigKey = Tuple[Union[str, int], ...]
+AttrKey = Tuple[Union[str, int], ...]
+KeyPair = Tuple[ConfigKey, Optional[AttrKey]]
+ConfigType = Any
+Loader = Callable[[str], Any]
+DumpTrace = Tuple[KeyPair, ...]
+LoadTrace = Tuple[Tuple[str, ConfigKey], ...]
+
+
+def customize_type(**default_kwargs: Any) -> Callable[
+        [Callable[..., Any]], Callable[..., Any]]:
+    def deco(type_: Callable[..., Any]) -> Callable[..., Any]:
+        type_._custom_default_kwargs = default_kwargs  # type: ignore[attr-defined] # NOQA
         return type_
     return deco
 
 
 class Config(object):
 
-    def __init__(self, config, types=None):
-        self._cache = {((), None): config}
+    def __init__(
+            self,
+            config: Any,
+            types: Optional[Dict[str, Callable[..., Any]]] = None,
+    ) -> None:
+        self._cache: Dict[KeyPair, Any] = {((), None): config}
         self._types = types or {}
 
-    def __getitem__(self, key):
-        return self._eval(*_parse_key(key, None)[:2], ())
+    def __getitem__(self, key: str) -> Any:
+        return self._eval(*_parse_key(key, ())[:2], ())
 
     @classmethod
-    def load_path(cls, path, *, loader=None, types=None):
+    def load_path(
+            cls,
+            path: str,
+            *,
+            loader: Optional[Loader] = None,
+            types: Optional[Dict[str, Callable[..., Any]]] = None,
+    ) -> 'Config':
         if loader is None:
             loader = _json_loader
         return cls(_load(path, loader, ()), types)
 
-    def _eval(self, config_key, attr_key, trace):
+    def _eval(
+            self,
+            config_key: ConfigKey,
+            attr_key: Optional[AttrKey],
+            trace: DumpTrace,
+    ) -> Any:
         if (config_key, attr_key) in self._cache:
             return self._cache[(config_key, attr_key)]
 
@@ -36,7 +62,7 @@ class Config(object):
                 'Circular dependency',
                 _dump_trace(trace))
 
-        def cache(value):
+        def cache(value: Any) -> Any:
             self._cache[(config_key, attr_key)] = value
             return value
 
@@ -113,7 +139,9 @@ class Config(object):
                 return cache(config)
 
 
-def _parse_key(key, current_config_key):
+def _parse_key(
+        key: str, current_config_key: ConfigKey
+) -> Tuple[ConfigKey, Optional[AttrKey], bool]:
     if key.startswith('!'):
         key = key[1:]
         escape = True
@@ -126,11 +154,11 @@ def _parse_key(key, current_config_key):
     else:
         rel = True
 
-    config_key = key.split('/')
-    config_key[-1], *attr_key = config_key[-1].split('.')
+    config_key_str = key.split('/')
+    config_key_str[-1], *attr_key_list = config_key_str[-1].split('.')
 
-    config_key = [_parse_k(k) for k in config_key]
-    attr_key = tuple(_parse_k(k) for k in attr_key)
+    config_key = [_parse_k(k) for k in config_key_str]
+    attr_key: Optional[AttrKey] = tuple(_parse_k(k) for k in attr_key_list)
 
     if escape:
         assert not attr_key
@@ -154,32 +182,32 @@ def _parse_key(key, current_config_key):
     return tuple(config_key), attr_key, rel
 
 
-def _parse_k(k):
+def _parse_k(k: str) -> Union[str, int]:
     try:
         return int(k)
     except ValueError:
         return k
 
 
-def _dump_key(config_key, attr_key):
-    config_key = '/' + '/'.join(str(k) for k in config_key)
+def _dump_key(config_key: ConfigKey, attr_key: Optional[AttrKey]) -> str:
+    config_key_str = '/' + '/'.join(str(k) for k in config_key)
 
     if attr_key:
-        attr_key = '.'.join(str(k) for k in attr_key)
-        return config_key + '.' + attr_key
+        attr_key_str = '.'.join(str(k) for k in attr_key)
+        return config_key_str + '.' + attr_key_str
     elif attr_key is None:
-        return '!' + config_key
+        return '!' + config_key_str
     else:
-        return config_key
+        return config_key_str
 
 
-def _dump_trace(trace):
+def _dump_trace(trace: DumpTrace) -> str:
     return ' -> '.join(
         _dump_key(config_key, attr_key)
         for config_key, attr_key in trace)
 
 
-def _load(path, loader, trace):
+def _load(path: str, loader: Loader, trace: LoadTrace) -> ConfigType:
     path = os.path.normpath(path)
     circular = (path, ()) in trace
     trace = (*trace, (path, ()))
@@ -192,7 +220,12 @@ def _load(path, loader, trace):
     return _expand_import(config, os.path.dirname(path), loader, trace)
 
 
-def _expand_import(config, workdir, loader, trace):
+def _expand_import(
+        config: ConfigType,
+        workdir: str,
+        loader: Loader,
+        trace: LoadTrace,
+) -> ConfigType:
     path, config_key = trace[-1]
     if isinstance(config, dict):
         config = {k: _expand_import(v, workdir, loader,
@@ -230,6 +263,6 @@ def _expand_import(config, workdir, loader, trace):
         return config
 
 
-def _json_loader(path):
+def _json_loader(path: str) -> Any:
     with open(path) as f:
         return json.load(f)
