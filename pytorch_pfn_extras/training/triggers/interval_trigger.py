@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple, TYPE_CHECKING
+from typing import Tuple, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import trigger
 
