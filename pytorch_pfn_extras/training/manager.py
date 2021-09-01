@@ -265,7 +265,10 @@ class _BaseExtensionsManager:
 
     def extend(
             self,
-            extension: 'extension_module.ExtensionLike',
+            extension: Union[
+                'extension_module.ExtensionLike',
+                'extension_module.ExtensionEntry',
+            ],
             name: Optional[str] = None,
             trigger: 'trigger_module.TriggerLike' = None,
             priority: Optional[int] = None,
@@ -314,6 +317,11 @@ class _BaseExtensionsManager:
         if self._start_extensions_called:
             raise RuntimeError(
                 'extend called after the extensions were initialized')
+
+        if isinstance(extension, extension_module.ExtensionEntry):
+            self._extensions[extension.name] = extension
+            return
+
         ext = extension_module._as_extension(extension)
         if name is None:
             name = ext.name or ext.default_name
@@ -323,7 +331,6 @@ class _BaseExtensionsManager:
 
         if trigger is None:
             trigger = ext.trigger
-        trigger = trigger_module.get_trigger(trigger)
 
         if priority is None:
             priority = ext.priority
@@ -336,7 +343,7 @@ class _BaseExtensionsManager:
 
         ext.name = modified_name
         self._extensions[modified_name] = extension_module.ExtensionEntry(
-            ext, priority, trigger, call_before_training)
+            ext, modified_name, priority, trigger, call_before_training)
 
     def get_extension(self, name: str) -> extension_module.Extension:
         """Returns the extension of a given name.

@@ -1,9 +1,11 @@
 from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 import types
 
+from pytorch_pfn_extras.training import _trigger_util
+
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
-    from pytorch_pfn_extras.training._trigger_util import Trigger, TriggerLike
+    from pytorch_pfn_extras.training._trigger_util import TriggerLike
     ExtensionLike = Callable[[_BaseExtensionsManager], None]
 
 
@@ -229,12 +231,14 @@ class ExtensionEntry:
     def __init__(
             self,
             extension: Extension,
-            priority: int,
-            trigger: 'Trigger',
-            call_before_training: bool
+            name: Optional[str] = None,
+            priority: int = Extension.priority,
+            trigger: 'TriggerLike' = Extension.trigger,
+            call_before_training: bool = False,
     ) -> None:
+        self.name = name or extension.name
         self.extension = extension
-        self.trigger = trigger
+        self.trigger = _trigger_util.get_trigger(trigger)
         self.priority = priority
         self.call_before_training = call_before_training
 
