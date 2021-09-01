@@ -191,7 +191,10 @@ class _BaseExtensionsManager:
 
     def extend(
             self,
-            extension: 'extension_module.ExtensionLike',
+            extension: Union[
+                'extension_module.ExtensionLike',
+                'extension_module.ExtensionEntry',
+            ]
             name: Optional[str] = None,
             trigger: 'trigger_module.TriggerLike' = None,
             priority: Optional[int] = None,
@@ -237,6 +240,10 @@ class _BaseExtensionsManager:
                 instead.
 
         """
+        if isinstance(ext, extension_module.ExtensionEntry):
+            self._extensions[modified_name] = ext
+            return
+
         ext = extension_module._as_extension(extension)
         if name is None:
             name = ext.name or ext.default_name
