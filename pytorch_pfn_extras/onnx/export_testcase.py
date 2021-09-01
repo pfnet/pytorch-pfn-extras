@@ -115,15 +115,15 @@ def _export(
     if opset_ver is None:
         opset_ver = _default_onnx_opset_version
     strip_doc_string = kwargs.pop('strip_doc_string', True)
-    with init_annotate(model, opset_ver) as ann:
-        # onnx_graph = None
-        model = as_output._start_trace(model)
+    with init_annotate(model, opset_ver) as ann, \
+            as_output.trace(model) as (model, outputs):
         outs = _export_util(
             model, args, bytesio, strip_doc_string=False, **kwargs)
         onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)
-        as_output._end_trace(onnx_graph)
+        outputs.add_outputs_to_model(onnx_graph)
+
     if strip_doc_string:
         for node in onnx_graph.graph.node:
             node.doc_string = b''

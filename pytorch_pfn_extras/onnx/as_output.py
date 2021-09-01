@@ -1,9 +1,13 @@
 import onnx
-from typing import List, NamedTuple, Optional
+from typing import Callable, List, NamedTuple, Optional
 import torch
 import logging
+import threading
+from contextlib2 import contextmanager
 
 _logger = logging.getLogger(__name__)
+
+_outputs = threading.local()
 
 
 class _Output(NamedTuple):
@@ -53,9 +57,6 @@ class _Outputs:
                 v.name = old_name_to_new_name[v.name]
 
 
-_outputs: Optional[_Outputs] = None
-
-
 class _ModuleWithAdditionalOutputs(torch.nn.Module):
     def __init__(self, module: torch.nn.Module, outputs: _Outputs) -> None:
         super().__init__()
@@ -80,28 +81,18 @@ class _ModuleWithAdditionalOutputs(torch.nn.Module):
         return self.module.load_state_dict(*args, **kwargs)
 
 
-def _start_trace(module: torch.nn.Module):
-    global _outputs
-    assert _outputs is None
-    _outputs = _Outputs()
-    return _ModuleWithAdditionalOutputs(module, _outputs)
-
-
-def _end_trace(onnx_graph: onnx.ModelProto) -> onnx.ModelProto:
-    global _outputs
-    if _outputs is not None:
-        _logger.warning(
-            f"Old outputs remains with the output of {[v for v, _ in _outputs.values]}. "
-            "The previous export might fail with exceptions."
-        )
-
-    onnx_graph = _outputs.add_outputs_to_model(onnx_graph)
-    _outputs = None
-    return onnx_graph
+@contextmanager
+def trace(module: torch.nn.Module) -> None:
+    _outputs.outputs = _Outputs()
+    module = _ModuleWithAdditionalOutputs(module, _outputs.outputs)
+    try:
+        yield module, _outputs.outputs
+    finally:
+        # onnx_graph = _outputs.add_outputs_to_model(onnx_graph)
+        _outputs.outputs = None
 
 
 def as_output(name: str, value: torch.Tensor) -> torch.Tensor:
-    global _outputs
-    if _outputs is not None:
-        _outputs.add(name, value)
+    if hasattr(_outputs, "outputs") and _outputs.outputs is not None:
+        _outputs.outputs.add(name, value)
     return value

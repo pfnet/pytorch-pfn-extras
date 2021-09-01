@@ -1,16 +1,12 @@
-from collections import OrderedDict
-from contextlib import suppress
 import os
 from packaging import version
 
-import numpy as np
 import onnx
 import onnx.checker
 import onnx.numpy_helper
 import pytest
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.onnx
 
 from pytorch_pfn_extras.onnx import as_output
