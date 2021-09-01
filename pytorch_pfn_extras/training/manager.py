@@ -109,7 +109,7 @@ class _BaseExtensionsManager:
             writer = writing.SimpleWriter(out_dir=out_dir)
         # triggers are stateful, so we need to make a copy for internal use
         self._internal_stop_trigger = copy.deepcopy(self._stop_trigger)
-        self.observation: Dict[str, reporting.ReportValue] = {}
+        self.observation: reporting.Observation = {}
         self._out = out_dir
         self.writer = writer
         self.reporter = reporting.Reporter()

@@ -1,11 +1,14 @@
 import torch
 import copy
+from typing import TypeVar
 import warnings
 
 
-def _reset_parameters(model):
-    if isinstance(model, torch.nn.Sequential) or \
-       isinstance(model, torch.nn.ModuleList):
+Model = TypeVar('Model', torch.nn.Module, 'ExtendedSequential')
+
+
+def _reset_parameters(model: Model) -> Model:
+    if isinstance(model, (torch.nn.Sequential, torch.nn.ModuleList)):
         for submodel in model:
             _reset_parameters(submodel)
     elif isinstance(model, torch.nn.ModuleDict):
@@ -13,9 +16,9 @@ def _reset_parameters(model):
             _reset_parameters(submodel)
     else:
         if hasattr(model, 'reset_parameters'):
-            model.reset_parameters()
+            model.reset_parameters()  # type: ignore [operator]
         elif hasattr(model, '_reset_parameters'):
-            model._reset_parameters()
+            model._reset_parameters()  # type: ignore [operator]
         else:
             if (len(list(model.parameters())) != 0
                     or len(list(model.buffers())) != 0):
@@ -32,7 +35,7 @@ class ExtendedSequential(torch.nn.Sequential):
     """Sequential module with extended features from chainer.
 
     """
-    def _copy_model(self, mode):
+    def _copy_model(self, mode: str) -> 'ExtendedSequential':
         if mode == 'init':
             return _reset_parameters(copy.deepcopy(self))
         elif mode == 'copy':
@@ -41,7 +44,9 @@ class ExtendedSequential(torch.nn.Sequential):
             # mode == share
             return copy.copy(self)
 
-    def repeat(self, n_repeat: int, mode: 'str' = 'init'):
+    def repeat(
+            self, n_repeat: int, mode: str = 'init'
+    ) -> 'ExtendedSequential':
         """Repeats this Sequential multiple times.
 
         This method returns a :class:`~torch.nn.Sequential` object which has

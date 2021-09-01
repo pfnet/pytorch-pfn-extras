@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import ctypes
 import multiprocessing
 
