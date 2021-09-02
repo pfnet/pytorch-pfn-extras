@@ -1,9 +1,9 @@
 import onnx
-from typing import Callable, List, NamedTuple, Optional
+from typing import List, NamedTuple
 import torch
 import logging
 import threading
-from contextlib2 import contextmanager
+from contextlib import contextmanager
 
 _logger = logging.getLogger(__name__)
 
