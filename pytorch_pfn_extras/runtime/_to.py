@@ -3,19 +3,18 @@ from typing import Any, Dict, Optional, Type, TypeVar, TYPE_CHECKING
 import torch
 
 import pytorch_pfn_extras as ppe
+from pytorch_pfn_extras.runtime._runtime import DeviceLike, BaseRuntime
 
-if TYPE_CHECKING:
-    from pytorch_pfn_extras.runtime._runtime import DeviceLike, BaseRuntime
 
 ModuleOrTensor = TypeVar('ModuleOrTensor', torch.nn.Module, torch.Tensor)
 
 
 def to(
         module_or_tensor: ModuleOrTensor,
-        device: 'DeviceLike',
+        device: DeviceLike,
         *,
         config: Optional[Dict[str, Any]] = None,
-        runtime_class: Optional[Type['BaseRuntime']] = None,
+        runtime_class: Optional[Type[BaseRuntime]] = None,
 ) -> ModuleOrTensor:
     """A function to transfer the given object to the given device.
 
