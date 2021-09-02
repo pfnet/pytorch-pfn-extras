@@ -1,5 +1,5 @@
 from typing import (
-    Any, Dict, Generator, List, Optional, Sequence, Tuple, Union, TYPE_CHECKING
+    Any, Dict, Generator, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 )
 
 import torch
@@ -7,9 +7,6 @@ import torch
 _RUNTIME_TAG_NAME = '_ppe_runtime'
 
 DeviceLike = Union[str, torch.device]
-Batch = Union[torch.Tensor, List[torch.Tensor],
-              Tuple[torch.Tensor, ...], Dict[str, torch.Tensor]]
-Loader = Sequence[Batch]
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training._trainer import _Trainer
@@ -95,7 +92,7 @@ class BaseRuntime:
     def initialize_module(
             self,
             module: torch.nn.Module,
-            loader_or_batch: Optional[Union[Loader, torch.Tensor]],
+            loader_or_batch: Optional[Union[Iterable[Any], torch.Tensor]],
             optimizer: Optional[torch.optim.Optimizer] = None,
     ) -> None:
         """Initializes the module at the beginning of training or inference.
@@ -128,7 +125,7 @@ class BaseRuntime:
             trainer: '_Trainer',
             module: torch.nn.Module,
             batch_idx: int,
-            batch: Batch,
+            batch: Any,
     ) -> None:
         """Preprocess of each step.
 
@@ -151,8 +148,8 @@ class BaseRuntime:
             trainer: '_Trainer',
             module: torch.nn.Module,
             batch_idx: int,
-            batch: Batch,
-            outs: Batch,
+            batch: Any,
+            outs: Any,
     ) -> None:
         """Postprocess of each step.
 
@@ -197,7 +194,7 @@ class BaseRuntime:
             evaluator: '_Evaluator',
             module: torch.nn.Module,
             batch_idx: int,
-            batch: Batch,
+            batch: Any,
     ) -> None:
         """The method called at the beginning of each evaluation.
 
@@ -217,8 +214,8 @@ class BaseRuntime:
             evaluator: '_Evaluator',
             module: torch.nn.Module,
             batch_idx: int,
-            batch: Batch,
-            outs: Batch,
+            batch: Any,
+            outs: Any,
     ) -> None:
         """The method called at the end of each evaluation.
 
@@ -272,7 +269,7 @@ class PyTorchRuntime(BaseRuntime):
     def initialize_module(
             self,
             module: torch.nn.Module,
-            loader_or_batch: Optional[Union[Loader, torch.Tensor]],
+            loader_or_batch: Optional[Union[Iterable[Any], torch.Tensor]],
             optimizer: Optional[torch.optim.Optimizer] = None,
     ) -> None:
         pass
@@ -291,7 +288,7 @@ class PyTorchRuntime(BaseRuntime):
             trainer: '_Trainer',
             module: torch.nn.Module,
             batch_idx: int,
-            batch: Batch,
+            batch: Any,
     ) -> None:
         pass
 
@@ -300,8 +297,8 @@ class PyTorchRuntime(BaseRuntime):
             trainer: '_Trainer',
             module: torch.nn.Module,
             batch_idx: int,
-            batch: Batch,
-            outs: Batch,
+            batch: Any,
+            outs: Any,
     ) -> None:
         pass
 
@@ -310,7 +307,7 @@ class PyTorchRuntime(BaseRuntime):
             evaluator: '_Evaluator',
             module: torch.nn.Module,
             batch_idx: int,
-            batch: Batch,
+            batch: Any,
     ) -> None:
         pass
 
@@ -319,8 +316,8 @@ class PyTorchRuntime(BaseRuntime):
             evaluator: '_Evaluator',
             module: torch.nn.Module,
             batch_idx: int,
-            batch: Batch,
-            outs: Batch,
+            batch: Any,
+            outs: Any,
     ) -> None:
         pass
 
