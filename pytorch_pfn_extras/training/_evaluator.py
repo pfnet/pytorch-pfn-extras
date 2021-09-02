@@ -9,10 +9,10 @@ from pytorch_pfn_extras.training.extensions import evaluator
 
 
 @contextlib.contextmanager
-def _progress_bar(required, size):
+def _progress_bar(name, required, size):
     if required:
         progress = evaluator.IterationStatus(size)
-        pbar = evaluator._IteratorProgressBar(progress)
+        pbar = evaluator._IteratorProgressBar(name, progress)
 
         def update(i):
             progress.current_position = i
@@ -96,7 +96,7 @@ class _Evaluator:
         self._summary = reporting.DictSummary()
         observation = {}
         self.handler.eval_loop_begin(self)
-        self._pbar = _progress_bar(self._progress_bar, eval_len)
+        self._pbar = _progress_bar('validation', self._progress_bar, eval_len)
         self._update = self._pbar.__enter__()
         loader_iter = iter(loader)
         with torch.no_grad():

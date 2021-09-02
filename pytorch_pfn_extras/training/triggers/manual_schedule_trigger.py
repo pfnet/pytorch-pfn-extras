@@ -1,4 +1,11 @@
+from typing import List, Union, TYPE_CHECKING
+
 from pytorch_pfn_extras.training import trigger
+
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+    from pytorch_pfn_extras.training._trigger_util import UnitLiteral
 
 
 class ManualScheduleTrigger(trigger.Trigger):
@@ -20,7 +27,7 @@ class ManualScheduleTrigger(trigger.Trigger):
 
     """
 
-    def __init__(self, points, unit):
+    def __init__(self, points: Union[float, List[float]], unit: 'UnitLiteral'):
         if unit not in ('epoch', 'iteration'):
             raise ValueError(
                 'Trigger unit must be either \'epoch\' or \'iteration\'.')
@@ -28,7 +35,7 @@ class ManualScheduleTrigger(trigger.Trigger):
         self.points = (points if isinstance(points, list) else [points])
         self.unit = unit
 
-    def __call__(self, manager):
+    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
         """Decides whether the extension should be called on this iteration.
 
         Args:
@@ -45,7 +52,7 @@ class ManualScheduleTrigger(trigger.Trigger):
         fire = self.may_fire(manager.iteration, manager._iters_per_epoch)
         return fire
 
-    def may_fire(self, iteration, epoch_length):
+    def may_fire(self, iteration: int, epoch_length: int) -> bool:
         if self.unit == 'epoch':
             fire = any(
                 int(p * epoch_length) == iteration for p in self.points)

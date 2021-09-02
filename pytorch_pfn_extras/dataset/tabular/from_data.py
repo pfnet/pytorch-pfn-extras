@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import numpy
 import torch
 from pytorch_pfn_extras.dataset.tabular import tabular_dataset

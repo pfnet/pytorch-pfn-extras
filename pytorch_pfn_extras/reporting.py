@@ -1,21 +1,22 @@
 import collections
 import contextlib
 import threading
-from typing import Union, TYPE_CHECKING
+import types
+from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
 import warnings
 
 import numpy
 import torch
 
 
-if TYPE_CHECKING:
-    ReportValue = Union[torch.Tensor, int, float, numpy.generic, numpy.ndarray]
+Scalar = Union[torch.Tensor, numpy.ndarray, numpy.floating, float]
+Observation = Dict[str, Scalar]
 
 
 _thread_local = threading.local()
 
 
-def _nograd(value):
+def _nograd(value: Scalar) -> Scalar:
     if isinstance(value, torch.Tensor):
         return value.detach()
     return value
@@ -72,20 +73,25 @@ class Reporter:
 
     """
 
-    def __init__(self):
-        self._observer_names = {}
-        self.observation = {}
+    def __init__(self) -> None:
+        self._observer_names: Dict[int, str] = {}
+        self.observation: Observation = {}
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """Makes this reporter object current."""
         _get_reporters().append(self)
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(
+            self,
+            exc_type: Optional[Type[BaseException]],
+            exc_value: Optional[BaseException],
+            traceback: Optional[types.TracebackType],
+    ) -> None:
         """Recovers the previous reporter object to the current."""
         _get_reporters().pop()
 
     @contextlib.contextmanager
-    def scope(self, observation):
+    def scope(self, observation: Observation) -> Generator[None, None, None]:
         """Creates a scope to report observed values to ``observation``.
 
         This is a context manager to be passed to ``with`` statements. In this
@@ -108,7 +114,7 @@ class Reporter:
             self.__exit__(None, None, None)
             self.observation = old
 
-    def add_observer(self, name, observer):
+    def add_observer(self, name: str, observer: torch.nn.Module) -> None:
         """Registers an observer of values.
 
         Observer defines a scope of names for observed values. Values observed
@@ -124,7 +130,11 @@ class Reporter:
         """
         self._observer_names[id(observer)] = name
 
-    def add_observers(self, prefix, observers):
+    def add_observers(
+            self,
+            prefix: str,
+            observers: List[Tuple[str, torch.nn.Module]]
+    ) -> None:
         """Registers multiple observers at once.
 
         This is a convenient method to register multiple objects at once.
@@ -137,7 +147,11 @@ class Reporter:
         for name, observer in observers:
             self._observer_names[id(observer)] = prefix + name
 
-    def report(self, values, observer=None):
+    def report(
+            self,
+            values: Dict[str, Scalar],
+            observer: Optional[torch.nn.Module] = None,
+    ) -> None:
         """Reports observed values.
 
         The values are written with the key, prefixed by the name of the
@@ -171,20 +185,23 @@ class Reporter:
             self.observation.update(values)
 
 
-def _get_reporters():
+def _get_reporters() -> List[Reporter]:
     try:
-        reporters = _thread_local.reporters
+        reporters: List[Reporter] = _thread_local.reporters
     except AttributeError:
         reporters = _thread_local.reporters = []
     return reporters
 
 
-def get_current_reporter():
+def get_current_reporter() -> Reporter:
     """Returns the current reporter object."""
     return _get_reporters()[-1]
 
 
-def report(values, observer=None):
+def report(
+        values: Dict[str, Scalar],
+        observer: Optional[torch.nn.Module] = None,
+) -> None:
     """Reports observed values with the current reporter object.
 
     Any reporter object can be set current by the ``with`` statement. This
@@ -235,7 +252,7 @@ def report(values, observer=None):
 
 
 @contextlib.contextmanager
-def report_scope(observation):
+def report_scope(observation: Observation) -> Generator[None, None, None]:
     """Returns a report scope with the current reporter.
 
     This is equivalent to ``get_current_reporter().scope(observation)``,
@@ -257,12 +274,12 @@ class Summary:
 
     """
 
-    def __init__(self):
-        self._x = 0.0
-        self._x2 = 0.0
-        self._n = 0
+    def __init__(self) -> None:
+        self._x: Scalar = 0.0
+        self._x2: Scalar = 0.0
+        self._n: Scalar = 0
 
-    def add(self, value, weight=1):
+    def add(self, value: Scalar, weight: Scalar = 1) -> None:
         """Adds a scalar value.
 
         Args:
@@ -277,12 +294,12 @@ class Summary:
         self._x2 += weight * value * value
         self._n += weight
 
-    def compute_mean(self):
+    def compute_mean(self) -> Scalar:
         """Computes the mean."""
         x, n = self._x, self._n
         return x / n
 
-    def make_statistics(self):
+    def make_statistics(self) -> Tuple[Scalar, Scalar]:
         """Computes and returns the mean and standard deviation values.
 
         Returns:
@@ -298,7 +315,7 @@ class Summary:
             std = numpy.sqrt(var)
         return mean, std
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         state = {}
         try:
             # Save the stats as python scalars in order to avoid
@@ -310,7 +327,7 @@ class Summary:
             warnings.warn('The previous statistics are not saved.')
         return state
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         # Casting here is because of backward compatibility
         # Restore previously taken snapshots with autoload
         self._x = float(_nograd(to_load['_x']))
@@ -328,10 +345,10 @@ class DictSummary:
 
     """
 
-    def __init__(self):
-        self._summaries = collections.defaultdict(Summary)
+    def __init__(self) -> None:
+        self._summaries: Dict[str, Summary] = collections.defaultdict(Summary)
 
-    def add(self, d):
+    def add(self, d: Dict[str, Union[Scalar, Tuple[Scalar, Scalar]]]) -> None:
         """Adds a dictionary of scalars.
 
         Args:
@@ -343,17 +360,16 @@ class DictSummary:
         """
         summaries = self._summaries
         for k, v in d.items():
-            w = 1
+            w: Scalar = 1
             if isinstance(v, tuple):
-                w = v[1]
-                v = v[0]
+                v, w = v
                 if not numpy.isscalar(w) and not getattr(w, 'ndim', -1) == 0:
                     raise ValueError(
                         'Given weight to {} was not scalar.'.format(k))
             if numpy.isscalar(v) or getattr(v, 'ndim', -1) == 0:
                 summaries[k].add(v, weight=w)
 
-    def compute_mean(self):
+    def compute_mean(self) -> Dict[str, Scalar]:
         """Creates a dictionary of mean values.
 
         It returns a single dictionary that holds a mean value for each entry
@@ -366,7 +382,7 @@ class DictSummary:
         return {name: summary.compute_mean()
                 for name, summary in self._summaries.items()}
 
-    def make_statistics(self):
+    def make_statistics(self) -> Dict[str, Scalar]:
         """Creates a dictionary of statistics.
 
         It returns a single dictionary that holds mean and standard deviation
@@ -386,11 +402,11 @@ class DictSummary:
 
         return stats
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         return {
             name: summ.state_dict() for name, summ in self._summaries.items()}
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         self._summaries.clear()
         for name, summ_state in to_load.items():
             self._summaries[name].load_state_dict(summ_state)

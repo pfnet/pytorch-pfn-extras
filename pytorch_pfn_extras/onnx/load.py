@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import onnx
 import json
 import warnings
