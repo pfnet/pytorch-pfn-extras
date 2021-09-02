@@ -6,6 +6,7 @@ import torch
 
 import pytorch_pfn_extras.handler as handler_module
 from pytorch_pfn_extras.runtime import runtime_registry
+from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras._runtime import DeviceLike
@@ -109,7 +110,7 @@ def create_trainer(
         options: Optional[Dict[str, Any]] = None,
         logic: Optional[handler_module.Logic] = None,
         transform_model: Callable[
-            [str, torch.nn.Module], torch.nn.Module] = lambda n, x: x,
+            [str, torch.nn.Module], torch.nn.Module] = default_transform_model,
         handler_class: Optional[Type[handler_module.BaseHandler]] = None,
 ) -> '_Trainer':
     """Creates a trainer object.

@@ -52,6 +52,9 @@ class ProfileReport(extension.Extension):
         format=None,
         **kwargs,
     ):
+        # Initializes global TimeSummary.
+        time_summary.initialize()
+
         if store_keys is None:
             self._store_keys = store_keys
         else:

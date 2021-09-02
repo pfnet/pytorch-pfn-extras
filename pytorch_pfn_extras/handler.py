@@ -584,7 +584,10 @@ class Logic(BaseLogic):
         to_back_outs = outs
         if self._grad_scaler is not None:
             to_back_outs = self._normalize_outputs(outs)
-            assert len(outs) == 1, "loss scaling with multiple outputs is not supported"
+            if not isinstance(outs, torch.Tensor):
+                assert (
+                    len(outs) == 1
+                ), "loss scaling with multiple outputs is not supported"
             to_back_outs = {
                 k: self._grad_scaler.scale(v) for k, v in to_back_outs.items()}
         self._backward(to_back_outs)
