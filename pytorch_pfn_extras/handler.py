@@ -1,7 +1,7 @@
 from collections import defaultdict
 import contextlib
 from typing import (
-    Any, Callable, Dict, Generator, List, Optional, Sequence,
+    Any, Callable, Dict, Generator, Iterable, List, Optional,
     Tuple, Union, TYPE_CHECKING,
 )
 
@@ -15,12 +15,6 @@ if TYPE_CHECKING:
     from pytorch_pfn_extras.training._evaluator import _Evaluator
     from pytorch_pfn_extras.runtime import BaseRuntime
 
-
-Batch = Union[torch.Tensor, List[torch.Tensor],
-              Tuple[torch.Tensor, ...], Dict[str, torch.Tensor]]
-Output = Any
-Outputs = Union[Output, List[Output], Tuple[Output, ...], Dict[str, Output]]
-Loader = Sequence[Batch]
 
 _amp_enabled = False
 
@@ -62,7 +56,7 @@ class BaseLogic:
             self,
             models: Dict[str, torch.nn.Module],
             epoch: int,
-            loader: Loader,
+            loader: Iterable[Any],
     ) -> None:
         """A method called when starting a new epoch of training.
 
@@ -91,7 +85,7 @@ class BaseLogic:
             models: Dict[str, torch.nn.Module],
             optimizers: Dict[str, torch.optim.Optimizer],
             batch_idx: int,
-            batch: Batch,
+            batch: Any,
     ) -> Any:
         """A method invokes the models forward and backward passes.
 
@@ -152,7 +146,7 @@ class BaseLogic:
             self,
             models: Dict[str, torch.nn.Module],
             batch_idx: int,
-            batch: Batch,
+            batch: Any,
     ) -> Any:
         """A method for an evaluation step.
 
@@ -211,7 +205,7 @@ class Logic(BaseLogic):
         self.backward_outputs = options.pop('backward_outputs', None)
         self._grad_scaler = options.pop('grad_scaler', None)
 
-    def _forward(self, model: torch.nn.Module, batch: Batch) -> Output:
+    def _forward(self, model: torch.nn.Module, batch: Any) -> Any:
         if isinstance(batch, tuple) and hasattr(batch, '_fields'):
             return model(batch)
         if isinstance(batch, dict):
@@ -220,7 +214,7 @@ class Logic(BaseLogic):
             return model(*batch)
         return model(batch)
 
-    def _normalize_outputs(self, outputs: Outputs) -> Dict[str, Output]:
+    def _normalize_outputs(self, outputs: Any) -> Dict[str, Any]:
         if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
             target = {k: getattr(outputs, k) for k in outputs._fields}
         if isinstance(outputs, dict):
@@ -231,7 +225,7 @@ class Logic(BaseLogic):
             target = {"0": outputs}
         return target
 
-    def _backward(self, outputs: Dict[str, Output]) -> None:
+    def _backward(self, outputs: Dict[str, Any]) -> None:
         target = self._normalize_outputs(outputs)
 
         for k, v in target.items():
@@ -254,7 +248,7 @@ class Logic(BaseLogic):
             self,
             models: Dict[str, torch.nn.Module],
             epoch: int,
-            loader: Loader,
+            loader: Iterable[Any],
     ) -> None:
         """A method called when starting a new epoch of training.
 
@@ -274,7 +268,7 @@ class Logic(BaseLogic):
             models: Dict[str, torch.nn.Module],
             optimizers: Dict[str, torch.optim.Optimizer],
             batch_idx: int,
-            batch: Batch,
+            batch: Any,
     ) -> Any:
         """A method invokes the model forward and backward passes.
 
@@ -345,7 +339,7 @@ class Logic(BaseLogic):
             self,
             models: Dict[str, torch.nn.Module],
             batch_idx: int,
-            batch: Batch,
+            batch: Any,
     ) -> Any:
         """A method for an evaluation step.
 
@@ -395,7 +389,7 @@ class BaseHandler:
         """
         pass
 
-    def train_setup(self, trainer: '_Trainer', loader: Loader) -> None:
+    def train_setup(self, trainer: '_Trainer', loader: Iterable[Any]) -> None:
         """A method called only once when starting a training run.
 
         .. seealso:
@@ -405,7 +399,7 @@ class BaseHandler:
         # Called only once when starting a training run.
         pass
 
-    def train_epoch_begin(self, trainer: '_Trainer', loader: Loader) -> None:
+    def train_epoch_begin(self, trainer: '_Trainer', loader: Iterable[Any]) -> None:
         """A method called when starting a new epoch.
 
         .. seealso:
@@ -460,8 +454,8 @@ class BaseHandler:
             self,
             trainer: '_Trainer',
             batch_idx: int,
-            batch: Batch,
-            complete_fn: Callable[[int, Outputs], None],
+            batch: Any,
+            complete_fn: Callable[[int, Any], None],
     ) -> None:
         """A training step.
 
@@ -476,8 +470,8 @@ class BaseHandler:
             self,
             trainer: '_Trainer',
             batch_idx: int,
-            batch: Batch,
-            outputs: Outputs,
+            batch: Any,
+            outputs: Any,
     ) -> None:
         """A method called after each training step.
 
@@ -488,7 +482,7 @@ class BaseHandler:
         # Called after train_step.
         pass
 
-    def eval_setup(self, evaluator: '_Evaluator', loader: Loader) -> None:
+    def eval_setup(self, evaluator: '_Evaluator', loader: Iterable[Any]) -> None:
         """A method called only once when starting a training run.
         When evaluator is not given, this method is not called.
 
@@ -514,8 +508,8 @@ class BaseHandler:
             self,
             evaluator: '_Evaluator',
             batch_idx: int,
-            batch: Batch,
-            complete_fn: Callable[[int, Outputs], None],
+            batch: Any,
+            complete_fn: Callable[[int, Any], None],
     ) -> None:
         """Evaluation iteration.
 
@@ -540,8 +534,8 @@ class BaseHandler:
             self,
             evaluator: '_Evaluator',
             batch_idx: int,
-            batch: Batch,
-            outputs: Outputs,
+            batch: Any,
+            outputs: Any,
     ) -> None:
         """A method called after each evaluation step.
 
@@ -554,7 +548,7 @@ class BaseHandler:
 
 
 ModulesTuple = Tuple[str, torch.nn.Module, 'BaseRuntime']
-PendingIters = List[Tuple[int, Batch, Callable[..., None]]]
+PendingIters = List[Tuple[int, Any, Callable[..., None]]]
 
 
 class Handler(BaseHandler):
@@ -613,7 +607,7 @@ class Handler(BaseHandler):
     def _setup(
             self,
             models: Dict[str, torch.nn.Module],
-            loader: Union[Loader, Dict[str, Loader]],
+            loader: Union[Iterable[Any], Dict[str, Iterable[Any]]],
             optimizers: Optional[Dict[str, torch.optim.Optimizer]] = None,
     ) -> None:
         # This requires loader to be always a dict
@@ -645,7 +639,7 @@ class Handler(BaseHandler):
             raise RuntimeError("Async mode is not supported in models "
                                "splitted across different devices")
 
-    def train_setup(self, trainer: '_Trainer', loader: Loader) -> None:
+    def train_setup(self, trainer: '_Trainer', loader: Iterable[Any]) -> None:
         """A method called only once when starting a training run.
 
         Args:
@@ -656,7 +650,7 @@ class Handler(BaseHandler):
             model.train()
         self._setup(trainer.models, loader, trainer.optimizers)
 
-    def train_epoch_begin(self, trainer: '_Trainer', loader: Loader) -> None:
+    def train_epoch_begin(self, trainer: '_Trainer', loader: Iterable[Any]) -> None:
         """A method called when starting a new epoch.
 
         Args:
@@ -721,7 +715,7 @@ class Handler(BaseHandler):
         self._logic.train_validation_end(evaluator.models)
 
     def _complete_train_step(
-            self, trainer: '_Trainer', outs: Outputs, block: bool,
+            self, trainer: '_Trainer', outs: Any, block: bool,
             sn: str, sm: torch.nn.Module, rt: 'BaseRuntime',
     ) -> None:
         idx, batch, cback = self.pending_iters[sn][0]
@@ -739,8 +733,8 @@ class Handler(BaseHandler):
             self,
             trainer: '_Trainer',
             batch_idx: int,
-            batch: Batch,
-            complete_fn: Callable[[int, Outputs], None],
+            batch: Any,
+            complete_fn: Callable[[int, Any], None],
     ) -> None:
         """A training step.
 
@@ -777,7 +771,7 @@ class Handler(BaseHandler):
                 trainer.models, trainer.optimizers, batch_idx)
             complete_fn(batch_idx, outs)
 
-    def eval_setup(self, evaluator: '_Evaluator', loader: Loader) -> None:
+    def eval_setup(self, evaluator: '_Evaluator', loader: Iterable[Any]) -> None:
         """Called only once when starting a training run.
         When evaluator is not given, this method is not called.
 
@@ -790,7 +784,7 @@ class Handler(BaseHandler):
         self._setup(evaluator.models, loader)
 
     def _complete_eval_step(
-            self, evaluator: '_Evaluator', outs: Outputs, block: bool,
+            self, evaluator: '_Evaluator', outs: Any, block: bool,
             sn: str, sm: torch.nn.Module, rt: 'BaseRuntime',
     ) -> None:
         # This call is deferred
@@ -804,8 +798,8 @@ class Handler(BaseHandler):
             self,
             evaluator: '_Evaluator',
             batch_idx: int,
-            batch: Batch,
-            complete_fn: Callable[[int, Outputs], None],
+            batch: Any,
+            complete_fn: Callable[[int, Any], None],
     ) -> None:
         """Evaluation iteration.
 
@@ -841,8 +835,8 @@ class Handler(BaseHandler):
             self,
             evaluator: '_Evaluator',
             batch_idx: int,
-            batch: Batch,
-            outputs: Outputs,
+            batch: Any,
+            outputs: Any,
     ) -> None:
         """A method called after each evaluation step.
 
@@ -878,8 +872,8 @@ class Handler(BaseHandler):
             self,
             trainer: '_Trainer',
             batch_idx: int,
-            batch: Batch,
-            outputs: Outputs
+            batch: Any,
+            outputs: Any
     ) -> None:
         """A method called after each training step.
 
