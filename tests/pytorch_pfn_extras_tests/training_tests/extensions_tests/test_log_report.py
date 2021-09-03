@@ -95,3 +95,25 @@ def test_tensorboard_writer():
             tb_data = f.read()
         for key in ['epoch', 'iteration', 'elapsed_time']:
             assert key.encode('ascii') in tb_data
+
+
+def test_deferred_values():
+    max_epochs = 3
+    iters_per_epoch = 5
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        manager = ppe.training.ExtensionsManager(
+            {}, {}, max_epochs=max_epochs, iters_per_epoch=iters_per_epoch,
+            out_dir=tmpdir)
+        log_report = extensions.LogReport(filename="out")
+        manager.extend(log_report)
+        for epoch_idx in range(max_epochs):
+            for _ in range(iters_per_epoch):
+                with manager.run_iteration():
+                    ppe.reporting.report({"x": lambda: epoch_idx})
+            with open(os.path.join(tmpdir, 'out')) as f:
+                data = f.read()
+                values = json.loads(data)
+                assert len(values) == epoch_idx + 1
+                this_epoch = values.pop()
+                assert this_epoch["x"] == epoch_idx

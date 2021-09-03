@@ -2,7 +2,7 @@ import collections
 import contextlib
 import threading
 import types
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union, Callable
 import warnings
 
 import numpy
@@ -10,13 +10,14 @@ import torch
 
 
 Scalar = Union[torch.Tensor, numpy.ndarray, numpy.floating, float]
-Observation = Dict[str, Scalar]
+Value = Union[Scalar, Callable[[], float]]
+Observation = Dict[str, Value]
 
 
 _thread_local = threading.local()
 
 
-def _nograd(value: Scalar) -> Scalar:
+def _nograd(value: Value) -> Value:
     if isinstance(value, torch.Tensor):
         return value.detach()
     return value
@@ -199,7 +200,7 @@ def get_current_reporter() -> Reporter:
 
 
 def report(
-        values: Dict[str, Scalar],
+        values: Dict[str, Value],
         observer: Optional[torch.nn.Module] = None,
 ) -> None:
     """Reports observed values with the current reporter object.
@@ -278,8 +279,15 @@ class Summary:
         self._x: Scalar = 0.0
         self._x2: Scalar = 0.0
         self._n: Scalar = 0
+        self._deferred = []
 
-    def add(self, value: Scalar, weight: Scalar = 1) -> None:
+    def _add_deferred_values(self) -> None:
+        for fn, weight in self._deferred:
+            value = fn()
+            self.add(value, weight)
+        self._deferred.clear()
+
+    def add(self, value: Value, weight: Scalar = 1) -> None:
         """Adds a scalar value.
 
         Args:
@@ -290,12 +298,18 @@ class Summary:
                 Default is 1 (integer).
 
         """
+        if callable(value):
+            self._deferred.append((value, weight))
+            return
+
         self._x += weight * value
         self._x2 += weight * value * value
         self._n += weight
 
     def compute_mean(self) -> Scalar:
         """Computes the mean."""
+        self._add_deferred_values()
+
         x, n = self._x, self._n
         return x / n
 
@@ -306,6 +320,8 @@ class Summary:
             tuple: Mean and standard deviation values.
 
         """
+        self._add_deferred_values()
+
         x, n = self._x, self._n
         mean = x / n
         var = self._x2 / n - mean * mean
@@ -316,6 +332,7 @@ class Summary:
         return mean, std
 
     def state_dict(self) -> Dict[str, Any]:
+        self._add_deferred_values()
         state = {}
         try:
             # Save the stats as python scalars in order to avoid
@@ -330,6 +347,7 @@ class Summary:
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         # Casting here is because of backward compatibility
         # Restore previously taken snapshots with autoload
+        self._add_deferred_values()
         self._x = float(_nograd(to_load['_x']))
         self._x2 = float(_nograd(to_load['_x2']))
         self._n = int(_nograd(to_load['_n']))
@@ -348,7 +366,7 @@ class DictSummary:
     def __init__(self) -> None:
         self._summaries: Dict[str, Summary] = collections.defaultdict(Summary)
 
-    def add(self, d: Dict[str, Union[Scalar, Tuple[Scalar, Scalar]]]) -> None:
+    def add(self, d: Dict[str, Union[Value, Tuple[Value, Scalar]]]) -> None:
         """Adds a dictionary of scalars.
 
         Args:
@@ -367,6 +385,8 @@ class DictSummary:
                     raise ValueError(
                         'Given weight to {} was not scalar.'.format(k))
             if numpy.isscalar(v) or getattr(v, 'ndim', -1) == 0:
+                summaries[k].add(v, weight=w)
+            elif callable(v):
                 summaries[k].add(v, weight=w)
 
     def compute_mean(self) -> Dict[str, Scalar]:
