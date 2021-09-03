@@ -15,7 +15,7 @@ from torch.onnx.symbolic_helper import _default_onnx_opset_version
 from torch.onnx.utils import \
     _export as torch_export, _model_to_graph as torch_model_to_graph
 
-import pytorch_pfn_extras.onnx.as_output as as_output
+from pytorch_pfn_extras.onnx import _as_output as as_output
 from pytorch_pfn_extras.onnx.annotate import init_annotate
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
     LARGE_TENSOR_DATA_THRESHOLD
