@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type, TypeVar, TYPE_CHECKING
+from typing import Any, Dict, Optional, Type, TypeVar
 
 import torch
 

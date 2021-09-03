@@ -1,4 +1,4 @@
-from typing import Dict, Type, TYPE_CHECKING
+from typing import Dict, Type
 
 import torch
 
