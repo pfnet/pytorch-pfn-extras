@@ -1,11 +1,8 @@
 import onnx
 from typing import List, NamedTuple
 import torch
-import logging
 import threading
 from contextlib import contextmanager
-
-_logger = logging.getLogger(__name__)
 
 _outputs = threading.local()
 
