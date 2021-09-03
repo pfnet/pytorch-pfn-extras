@@ -5,5 +5,5 @@ from pytorch_pfn_extras.onnx.export_testcase import LARGE_TENSOR_DATA_THRESHOLD 
 from pytorch_pfn_extras.onnx.annotate import annotate  # NOQA
 from pytorch_pfn_extras.onnx.annotate import apply_annotation  # NOQA
 from pytorch_pfn_extras.onnx.annotate import scoped_anchor  # NOQA
-from pytorch_pfn_extras.onnx.as_output import as_output  # NOQA
+from pytorch_pfn_extras.onnx._as_output import as_output  # NOQA
 from pytorch_pfn_extras.onnx.load import load_model  # NOQA
