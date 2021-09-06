@@ -227,6 +227,22 @@ def _as_extension(ext: 'ExtensionLike') -> Extension:
 
 
 class ExtensionEntry:
+    """Extension and options.
+
+    Args:
+        extension: An extension.
+        name: Name of extension. If omitted, inferred from the attributes of
+            ``extension`` argument.
+        priority: Invocation priority of the extension.
+            Default is ``PRIORITY_READER``.
+        trigger: Trigger object that determines when to invoke the extension.
+            Default is ``(1, 'iteration')``.
+        call_before_training (bool): Flag to call extension before training.
+            Default is ``False``.
+
+    .. seealso::
+       :meth:`pytorch_pfn_extras.training.ExtensionsManager.extend`
+    """
 
     def __init__(
             self,
