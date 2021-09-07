@@ -249,7 +249,7 @@ def test_trainer_defer(path):
     options = {'async': True}
 
     trainer = engine.create_trainer(
-        model_with_loss, optimizer, 2, options=options,
+        model_with_loss, optimizer, 2, handler_options=options,
         device=device, extensions=extensions,
         out_dir=path
     )
@@ -283,7 +283,7 @@ def test_trainer_defer_wrong_order(path):
     options = {'async': True}
 
     trainer = engine.create_trainer(
-        model_with_loss, optimizer, 2, options=options,
+        model_with_loss, optimizer, 2, handler_options=options,
         device=device, handler_class=WrongOrderHandler,
         out_dir=path
     )

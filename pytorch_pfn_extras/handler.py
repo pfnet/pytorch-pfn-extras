@@ -192,6 +192,7 @@ class Handler(BaseHandler):
                     If ``True``, async mode is enabled. Default is ``False``.
         """
         super().__init__(logic)
+        config = config.copy()
         # This is used to send the batch to the appropiate device
         self._entry_runtime = entry_runtime
         self._ppe_modules = []
@@ -200,6 +201,8 @@ class Handler(BaseHandler):
         self._train_report_keys = config.pop('train_report_keys', [])
         self._async = config.pop('async', False)
         self.pending_iters = defaultdict(list)
+        if len(config) > 0:
+            raise ValueError('Unknown Handler configuration options:', config)
         if self._autocast and not _amp_enabled:
             raise RuntimeError('Requested AMP features but torch.cuda.amp'
                                ' is not enabled')
@@ -554,8 +557,15 @@ class Logic(BaseLogic):
         """
         if options is None:
             options = {}
+        else:
+            options = options.copy()
         self.set_options(options)
         self.model_name = model_name
+
+    def set_options(self, options):
+        self.backward_outputs = options.pop('backward_outputs', None)
+        self._grad_scaler = options.pop('grad_scaler', None)
+
         if self._grad_scaler is not None:
             if not _amp_enabled:
                 raise RuntimeError('Requested AMP features but torch.cuda.amp'
@@ -563,10 +573,8 @@ class Logic(BaseLogic):
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
                 raise RuntimeError('grad_scaler should be a '
                                    'torch.cuda.amp.GradScaler object')
-
-    def set_options(self, options):
-        self.backward_outputs = options.pop('backward_outputs', None)
-        self._grad_scaler = options.pop('grad_scaler', None)
+        if len(options) > 0:
+            raise ValueError('Unknown Logic configuration options:', options)
 
     def _forward(self, model, batch):
         if isinstance(batch, tuple) and hasattr(batch, '_fields'):
