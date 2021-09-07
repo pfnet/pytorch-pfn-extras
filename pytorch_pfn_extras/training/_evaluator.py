@@ -107,9 +107,9 @@ class _Evaluator:
                 The number of iterations per one evaluation epoch.
         """
         # Note: setup_manager is done by the Trainer.
-        self._idxs = queue.Queue[int]()
-        self._inputs = queue.Queue[DictBatch]()
-        self._observed = queue.Queue['Observation']()
+        self._idxs: 'queue.Queue[int]' = queue.Queue()
+        self._inputs: 'queue.Queue[DictBatch]' = queue.Queue()
+        self._observed: 'queue.Queue[Observation]' = queue.Queue()
 
         if eval_len is None:
             eval_len = len(loader)
