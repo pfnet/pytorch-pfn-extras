@@ -216,8 +216,9 @@ class Logic(BaseLogic):
 
     def _normalize_outputs(self, outputs: Any) -> Dict[str, Any]:
         if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
-            target = {k: getattr(outputs, k) for k in outputs._fields}
-        if isinstance(outputs, dict):
+            fields = outputs._fields  # type: ignore[attr-defined]
+            target = {k: getattr(outputs, k) for k in fields}
+        elif isinstance(outputs, dict):
             target = outputs
         elif isinstance(outputs, (list, tuple)):
             target = {str(i): out for i, out in enumerate(outputs)}
