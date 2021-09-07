@@ -150,11 +150,11 @@ def create_trainer(
         handler_class:
             A handler class that instantiates a handler object. If `None` is
             given, `ppe.handler.Handler` is used as a default handler class.
-        options (dict):
+        options:
             Options that are set to the handler and logic object.
             See the documentation of `ppe.handler.Handler` and
             `ppe.handler.Logic` for details.
-        runtime_options (dict):
+        runtime_options:
             Options that are set to the runtime object. See the documentation
             of `ppe.runtime.PyTorchRuntime` for details.
     """
@@ -220,11 +220,11 @@ def create_evaluator(
         handler_class:
             A handler class that instantiates a handler object. If `None` is
             given, `ppe.handler.Handler` is used as a default handler class.
-        options (dict):
+        options:
             Options that are set to the handler and logic object.
             See the documentation of `ppe.handler.Handler` and
             `ppe.handler.Logic` for details.
-        runtime_options (dict):
+        runtime_options:
             Options that are set to the runtime object. See the documentation
             of `ppe.handler.Handler` for details.
     """
