@@ -169,13 +169,13 @@ class BaseHandler:
 
 class Handler(BaseHandler):
 
-    def __init__(self, logic, entry_runtime, config):
+    def __init__(self, logic, entry_runtime, options):
         """A set of callback functions to perform device-specific operations.
 
         Args:
             logic (Logic): A logic.
             entry_runtime (BaseRuntime): A runtime object.
-            config (dict): A config.
+            options (dict): The configuration options.
 
                 * ``'autocast'`` (bool):
                     If ``True``, torch.cuda.amp.autocast is enabled.
@@ -192,17 +192,17 @@ class Handler(BaseHandler):
                     If ``True``, async mode is enabled. Default is ``False``.
         """
         super().__init__(logic)
-        config = config.copy()
+        options = options.copy()
         # This is used to send the batch to the appropiate device
         self._entry_runtime = entry_runtime
         self._ppe_modules = []
-        self._autocast = config.pop('autocast', False)
-        self._eval_report_keys = config.pop('eval_report_keys', [])
-        self._train_report_keys = config.pop('train_report_keys', [])
-        self._async = config.pop('async', False)
+        self._autocast = options.pop('autocast', False)
+        self._eval_report_keys = options.pop('eval_report_keys', [])
+        self._train_report_keys = options.pop('train_report_keys', [])
+        self._async = options.pop('async', False)
         self.pending_iters = defaultdict(list)
-        if len(config) > 0:
-            raise ValueError('Unknown Handler configuration options:', config)
+        if len(options) > 0:
+            raise ValueError('Unknown Handler configuration options:', options)
         if self._autocast and not _amp_enabled:
             raise RuntimeError('Requested AMP features but torch.cuda.amp'
                                ' is not enabled')
