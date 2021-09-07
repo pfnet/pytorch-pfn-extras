@@ -111,8 +111,7 @@ def create_trainer(
         transform_model: Callable[
             [str, torch.nn.Module], torch.nn.Module] = default_transform_model,
         handler_class: Optional[Type[handler_module.BaseHandler]] = None,
-        handler_options: Optional[Dict[str, Any]] = None,
-        logic_options: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Dict[str, Any]] = None,
 ) -> '_Trainer':
     """Creates a trainer object.
@@ -151,34 +150,29 @@ def create_trainer(
         handler_class:
             A handler class that instantiates a handler object. If `None` is
             given, `ppe.handler.Handler` is used as a default handler class.
-        handler_options (dict):
-            Options that are set to the handler object. See the documentation
-            of `ppe.handler.Handler` for details.
-        logic_options (dict):
-            Options that are set to the logic object. When using the default
-            logic class, See the documentation of `ppe.handler.Logic`
-            for details.
+        options (dict):
+            Options that are set to the handler and logic object.
+            See the documentation of `ppe.handler.Handler` and
+            `ppe.handler.Logic` for details.
         runtime_options (dict):
             Options that are set to the runtime object. See the documentation
             of `ppe.runtime.PyTorchRuntime` for details.
     """
 
-    if logic_options is None:
-        logic_options = {}
-    if handler_options is None:
-        handler_options = {}
+    if options is None:
+        options = {}
     if runtime_options is None:
         runtime_options = {}
     if logic is None:
         logic = handler_module.Logic()
-    logic.set_options(logic_options)
+    logic._set_options(options, strict=False)
     if handler_class is None:
         handler_class = handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
     entry_runtime = entry_runtime_cls(device, runtime_options)
-    handler = handler_class(logic, entry_runtime, handler_options)
+    handler = handler_class(logic, entry_runtime, options)
 
     from pytorch_pfn_extras.training._trainer import _Trainer
     return _Trainer(
@@ -196,11 +190,9 @@ def create_evaluator(
         progress_bar: bool = False,
         device: 'DeviceLike' = 'cpu',
         metrics: Optional[List['MetricType']] = None,
-        options: Optional[Dict[str, Any]] = None,
         logic: Optional[handler_module.Logic] = None,
         handler_class: Optional[Type[handler_module.BaseHandler]] = None,
-        handler_options: Optional[Dict[str, Any]] = None,
-        logic_options: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Dict[str, Any]] = None,
 ) -> '_Evaluator':
     """Creates an evaluator object. The return value of this function is
@@ -224,13 +216,10 @@ def create_evaluator(
         handler_class:
             A handler class that instantiates a handler object. If `None` is
             given, `ppe.handler.Handler` is used as a default handler class.
-        handler_options (dict):
-            Options that are set to the handler object. See the documentation
-            of `ppe.handler.Handler` for details.
-        logic_options (dict):
-            Options that are set to the logic object. When using the default
-            logic class, See the documentation of `ppe.handler.Logic`
-            for details.
+        options (dict):
+            Options that are set to the handler and logic object.
+            See the documentation of `ppe.handler.Handler` and
+            `ppe.handler.Logic` for details.
         runtime_options (dict):
             Options that are set to the runtime object. See the documentation
             of `ppe.handler.Handler` for details.
@@ -238,24 +227,21 @@ def create_evaluator(
 
     if metrics is None:
         metrics = []
-    if logic_options is None:
-        logic_options = {}
-    if handler_options is None:
-        handler_options = {}
+    if options is None:
+        options = {}
     if runtime_options is None:
         runtime_options = {}
 
     if logic is None:
         logic = handler_module.Logic()
-    logic.set_options(options)
-    logic.set_options(logic_options)
+    logic._set_options(options, strict=False)
     if handler_class is None:
         handler_class = handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
     entry_runtime = entry_runtime_cls(device, runtime_options)
-    handler = handler_class(logic, entry_runtime, handler_options)
+    handler = handler_class(logic, entry_runtime, options)
 
     from pytorch_pfn_extras.training._evaluator import _Evaluator
     return _Evaluator(

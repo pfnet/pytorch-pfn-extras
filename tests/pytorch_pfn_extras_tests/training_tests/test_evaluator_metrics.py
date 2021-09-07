@@ -29,7 +29,7 @@ def test_evaluator_with_metric(device, accuracy):
     evaluator = engine.create_evaluator(
         model, device=device,
         metrics=[ppe.training.metrics.AccuracyMetric('t', 'y')],
-        handler_options={'eval_report_keys': ['accuracy']})
+        options={'eval_report_keys': ['accuracy']})
     evaluator.handler.eval_setup(evaluator, data)
     reporter = ppe.reporting.Reporter()
     observation = {}
@@ -89,7 +89,7 @@ def test_evaluator_async(accuracy):
 
     ppe.to(model, device)
     evaluator = engine.create_evaluator(
-        model, device=device, handler_options=options,
+        model, device=device, options=options,
         metrics=[ppe.training.metrics.AccuracyMetric('t', 'y')])
 
     reporter = ppe.reporting.Reporter()

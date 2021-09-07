@@ -463,6 +463,9 @@ class Handler(BaseHandler):
 
 
 class BaseLogic:
+    def _set_options(self, options, strict=True):
+        pass
+
     def train_epoch_begin(self, models, epoch, loader):
         """A method called when starting a new epoch of training.
 
@@ -559,10 +562,10 @@ class Logic(BaseLogic):
             options = {}
         else:
             options = options.copy()
-        self.set_options(options)
+        self._set_options(options)
         self.model_name = model_name
 
-    def set_options(self, options):
+    def _set_options(self, options, strict=True):
         self.backward_outputs = options.pop('backward_outputs', None)
         self._grad_scaler = options.pop('grad_scaler', None)
 
@@ -573,7 +576,7 @@ class Logic(BaseLogic):
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
                 raise RuntimeError('grad_scaler should be a '
                                    'torch.cuda.amp.GradScaler object')
-        if len(options) > 0:
+        if strict and len(options) > 0:
             raise ValueError('Unknown Logic configuration options:', options)
 
     def _forward(self, model, batch):
