@@ -9,7 +9,7 @@ from pytorch_pfn_extras.runtime import runtime_registry
 from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras._runtime import DeviceLike
+    from pytorch_pfn_extras.runtime._runtime import DeviceLike
     from pytorch_pfn_extras import training
     from pytorch_pfn_extras.training.trigger import TriggerLike
     from pytorch_pfn_extras.training._trainer import _Trainer
@@ -116,35 +116,39 @@ def create_trainer(
     """Creates a trainer object.
 
     Args:
-        models: (dict or torch.nn.Module):
+        models:
             Map of string to Module or an actual Module.
-        optimizers (dict or torch.optim.Optimizer):
+        optimizers:
             Map of string to Optimizer or an actual Optimizer.
-        max_epochs (int):
+        max_epochs:
             Number of epochs in the whole training loop.
             Ignored if `stop_trigger` is passed as a kwarg.
-        extensions (list of Extension, optional):
+        extensions:
             List of extensions to be registered to the trainer.
-        out_dir (str):
+        out_dir:
             Output directory (default: ``result``).
-        stop_trigger (trigger object, optional):
+        stop_trigger (trigger, optional):
             Trigger that can be consulted to determine wether training has
             concluded. The default is an interval trigger set to `max_epochs`
-        writer (writing.Writer, optional):
+        writer:
             Writer that can be used by extensions to write data to custom
             filesystems.
-        evaluator (Evaluator, optional):
+        evaluator:
             Evaluator that is used in evaluation phase.
             If `None` is given, the evaluation is skipped.
+            Evaluators can be created with :func:`pytorch_pfn_extras.engine.create_evaluator`.
         device (str or torch.device):
             Device name used for selecting a corresponding runtime class.
-        options (dict):
+        options:
             Option that is set to a logic object. When using the default logic
             class, See the documentation of `ppe.handler.Logic` for details.
-        logic (logic object):
+        logic:
             A logic object. If `None` is given, an logic object is instantiated
             from the default logic class.
-        handler_class (handler class):
+        transform_model:
+            A function to transform a model structure, often used to unwrap the
+            a module from DDP module.
+        handler_class:
             A handler class that instantiates a handler object. If `None` is
             given, `ppe.handler.Handler` is used as a default handler class.
     """
@@ -186,15 +190,15 @@ def create_evaluator(
         logic: Optional[handler_module.Logic] = None,
         handler_class: Optional[Type[handler_module.BaseHandler]] = None,
 ) -> '_Evaluator':
-    """Creates a trainer object. the return value of this function is expected
-    to be fed to `ppe.engine.create_trainer` as an argument.
+    """Creates an evaluator object. The return value of this function is
+    expected to be fed to `ppe.engine.create_trainer` as an argument.
 
     Args:
-        models: (dict or torch.nn.Module):
-            Map of string to Module or an actual Module. In most cases,
-            this arugment is the same as the `model` arguemnt of
+        models:
+            Map of string to :class:`torch.nn.Module` or an actual Module.
+            In most cases, this arugment is the same as the `model` arguemnt of
             `ppe.engine.create_trainer`.
-        progress_bar (bool):
+        progress_bar:
             If `True`, a progress bar is enabled in evaluation.
         device (str or torch.device):
             Device name used for selecting a corresponding runtime class.
@@ -204,10 +208,10 @@ def create_evaluator(
         options (dict):
             Option that is set to a logic object. When using the default logic
             class, See the documentation of `ppe.handler.Logic` for details.
-        logic (logic object):
+        logic:
             A logic object. If `None` is given, an logic object is instantiated
             from the default logic class.
-        handler_class (handler class):
+        handler_class:
             A handler class that instantiates a handler object. If `None` is
             given, `ppe.handler.Handler` is used as a default handler class.
     """
