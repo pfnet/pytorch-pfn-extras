@@ -7,8 +7,8 @@ import pytorch_pfn_extras as ppe
 
 
 class MockRuntime(ppe.runtime.BaseRuntime):
-    def __init__(self, device, config):
-        super().__init__(device, config)
+    def __init__(self, device, options):
+        super().__init__(device, options)
         self._initialize_called = False
         self._train_epoch_begin_called = False
         self._called_module = None
@@ -104,14 +104,14 @@ class MockLogic(ppe.handler.BaseLogic):
 
 
 class HandlerTester:
-    def _get_handler(self, config=None):
-        if config is None:
-            config = {}
+    def _get_handler(self, options=None):
+        if options is None:
+            options = {}
         ppe.runtime.runtime_registry.register('test_rt', MockRuntime)
         trainer = MockTrainer()
         logic = MockLogic()
         handler = ppe.handler.Handler(
-            logic, MockRuntime('test_rt', {}), config
+            logic, MockRuntime('test_rt', {}), options
         )
         return handler, trainer, logic
 
@@ -132,6 +132,12 @@ class HandlerTester:
 
 
 class TestHandlerTrainSync(HandlerTester):
+
+    def test_handler_invalid_options(self):
+        options = {'invalid': True}
+        with pytest.raises(ValueError):
+            self._get_handler(options)
+
     @pytest.mark.parametrize(
         'to_move', [('self',), ('sm1',), ('sm2',), ('sm1', 'sm2')]
     )
@@ -180,8 +186,8 @@ class TestHandlerTrainSync(HandlerTester):
         'to_move', [('self',), ('sm1',), ('sm2',), ('sm1', 'sm2')]
     )
     def test_train_post_step(self, to_move):
-        config = {'train_report_keys': ['output']}
-        handler, trainer, _ = self._get_handler(config)
+        options = {'train_report_keys': ['output']}
+        handler, trainer, _ = self._get_handler(options)
         module = trainer.models['main']
         self._move_modules(module, to_move)
         reporter = ppe.reporting.Reporter()
@@ -192,8 +198,8 @@ class TestHandlerTrainSync(HandlerTester):
 
 
 class TestHandlerValidationSync(HandlerTester):
-    def _get_handler(self, config=None):
-        handler, _, logic = super()._get_handler(config)
+    def _get_handler(self, options=None):
+        handler, _, logic = super()._get_handler(options)
         evaluator = MockEvaluator()
         return handler, evaluator, logic
 
@@ -236,8 +242,8 @@ class TestHandlerValidationSync(HandlerTester):
         'to_move', [('self',), ('sm1',), ('sm2',), ('sm1', 'sm2')]
     )
     def test_train_post_step(self, to_move):
-        config = {'eval_report_keys': ['output']}
-        handler, evaluator, _ = self._get_handler(config)
+        options = {'eval_report_keys': ['output']}
+        handler, evaluator, _ = self._get_handler(options)
         module = evaluator.models['main']
         self._move_modules(module, to_move)
         reporter = ppe.reporting.Reporter()
@@ -248,8 +254,8 @@ class TestHandlerValidationSync(HandlerTester):
 
 
 class AsyncRuntime(MockRuntime):
-    def __init__(self, device, config):
-        super().__init__(device, config)
+    def __init__(self, device, options):
+        super().__init__(device, options)
         # Returns a result once every 10 items
         self._period = 10
         self._count = 0
@@ -262,18 +268,18 @@ class AsyncRuntime(MockRuntime):
 
 
 class TestAsyncHandler:
-    def _get_handler(self, config):
+    def _get_handler(self, options):
         ppe.runtime.runtime_registry.register('test_rt', AsyncRuntime)
         logic = MockLogic()
         handler = ppe.handler.Handler(
-            logic, AsyncRuntime('test_rt', {}), config
+            logic, AsyncRuntime('test_rt', {}), options
         )
         return handler
 
     def test_train_step_async(self):
-        config = {'eval_report_keys': ['output'], 'async': True}
+        options = {'eval_report_keys': ['output'], 'async': True}
         trainer = MockTrainer()
-        handler = self._get_handler(config)
+        handler = self._get_handler(options)
         ppe.to(trainer.models['main'], 'test_rt')
         prev_batch_idx = 0
 
@@ -294,8 +300,8 @@ class TestAsyncHandler:
         assert len(handler.pending_iters['main']) == 0
 
     def test_eval_step_async(self):
-        config = {'eval_report_keys': ['output'], 'async': True}
-        handler = self._get_handler(config)
+        options = {'eval_report_keys': ['output'], 'async': True}
+        handler = self._get_handler(options)
         evaluator = MockEvaluator()
         ppe.to(evaluator.models['main'], 'test_rt')
         prev_batch_idx = 0
@@ -317,9 +323,9 @@ class TestAsyncHandler:
         assert len(handler.pending_iters['main']) == 0
 
     def test_setup_multi_device_split_invalid(self):
-        config = {'eval_report_keys': ['output'], 'async': True}
+        options = {'eval_report_keys': ['output'], 'async': True}
         trainer = MockTrainer()
-        handler = self._get_handler(config)
+        handler = self._get_handler(options)
         ppe.to(trainer.models['main'].sm1, 'test_rt')
         ppe.to(trainer.models['main'].sm2, 'cpu')
         with pytest.raises(RuntimeError, match='models splitted'):
@@ -379,6 +385,11 @@ class TestHandlerAutocast:
 
 
 class TestLogic:
+    def test_logic_invalid_options(self):
+        options = {'invalid': True}
+        with pytest.raises(ValueError):
+            ppe.handler.Logic(options=options)
+
     def test_train_epoch_begin(self):
         # Check that the DataLoader has the sampler updated
         class _MockedDL:

@@ -86,6 +86,23 @@ def test_trainer(device, path):
     trainer.run(data, data)
 
 
+def test_trainer_invalid_options(path):
+    device = 'cpu'
+    model = MyModel()
+    ppe.to(model, device)
+    model_with_loss = MyModelWithLossFn(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    extensions = _make_extensions()
+    options = {'this is an unknown option': True}
+    with pytest.raises(ValueError):
+        engine.create_trainer(
+            model_with_loss, optimizer, 20,
+            device=device, extensions=extensions,
+            out_dir=path,
+            options=options,
+        )
+
+
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 @pytest.mark.parametrize('progress_bar', [True, False])
 def test_train_with_evaluator(device, progress_bar, path):
