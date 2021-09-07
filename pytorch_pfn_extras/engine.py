@@ -161,8 +161,12 @@ def create_trainer(
 
     if options is None:
         options = {}
+    else:
+        options.copy()
     if runtime_options is None:
         runtime_options = {}
+    else:
+        runtime_options.copy()
     if logic is None:
         logic = handler_module.Logic()
     logic._set_options(options, strict=False)
@@ -229,8 +233,12 @@ def create_evaluator(
         metrics = []
     if options is None:
         options = {}
+    else:
+        options.copy()
     if runtime_options is None:
         runtime_options = {}
+    else:
+        runtime_options.copy()
 
     if logic is None:
         logic = handler_module.Logic()
