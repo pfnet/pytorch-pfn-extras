@@ -319,6 +319,12 @@ class _BaseExtensionsManager:
                 'extend called after the extensions were initialized')
 
         if isinstance(extension, extension_module.ExtensionEntry):
+            if name is not None:
+                raise ValueError('"name" is duplicated')
+            if trigger is not None:
+                raise ValueError('"trigger" is duplicated')
+            if priority is not None:
+                raise ValueError('"prioirity" is duplicated')
             self._extensions[extension.name] = extension
             return
 
@@ -343,7 +349,8 @@ class _BaseExtensionsManager:
 
         ext.name = modified_name
         self._extensions[modified_name] = extension_module.ExtensionEntry(
-            ext, modified_name, priority, trigger, call_before_training)
+            ext, name=modified_name, priority=priority,
+            trigger=trigger, call_before_training=call_before_training)
 
     def get_extension(self, name: str) -> extension_module.Extension:
         """Returns the extension of a given name.

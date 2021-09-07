@@ -237,7 +237,7 @@ class ExtensionEntry:
             Default is ``PRIORITY_READER``.
         trigger: Trigger object that determines when to invoke the extension.
             Default is ``(1, 'iteration')``.
-        call_before_training (bool): Flag to call extension before training.
+        call_before_training: Flag to call extension before training.
             Default is ``False``.
 
     .. seealso::
@@ -246,14 +246,18 @@ class ExtensionEntry:
 
     def __init__(
             self,
-            extension: Extension,
+            extension: 'ExtensionLike',
+            *,
             name: Optional[str] = None,
             priority: int = Extension.priority,
             trigger: 'TriggerLike' = Extension.trigger,
             call_before_training: bool = False,
     ) -> None:
-        self.name = name or extension.name
-        self.extension = extension
+        self.extension = _as_extension(extension)
+        self.name = name or self.extension.name or self.extension.default_name
+        if self.name == 'training':
+            raise ValueError(
+                'the name "training" is prohibited as an extension name')
         self.trigger = _trigger_util.get_trigger(trigger)
         self.priority = priority
         self.call_before_training = call_before_training

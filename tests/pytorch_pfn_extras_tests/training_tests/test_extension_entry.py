@@ -53,6 +53,7 @@ def test_trainer(device, path):
     model = MyModel()
     ppe.to(model, device)
     model_with_loss = MyModelWithLossFn(model)
+    ppe.to(model_with_loss, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
         [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
