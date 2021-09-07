@@ -159,24 +159,21 @@ def create_trainer(
             of `ppe.runtime.PyTorchRuntime` for details.
     """
 
-    if options is None:
-        options = {}
-    else:
-        options.copy()
-    if runtime_options is None:
-        runtime_options = {}
-    else:
-        runtime_options.copy()
-    if logic is None:
-        logic = handler_module.Logic()
-    logic._set_options(options, strict=False)
-    if handler_class is None:
-        handler_class = handler_module.Handler
+    options = options.copy() if options else {}
+    runtime_options = runtime_options.copy() if runtime_options else {}
+    logic = handler_module.Logic() if logic is None else logic
+    handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
     entry_runtime = entry_runtime_cls(device, runtime_options)
-    handler = handler_class(logic, entry_runtime, options)
+    handler = handler_class(logic, entry_runtime, {})
+
+    # Handler options are popped first, then pass the remainings to Logic.
+    handler.consume_options(options)
+    logic.consume_options(options)
+    if len(options) > 0:
+        raise ValueError('Unknown options: ', options)
 
     from pytorch_pfn_extras.training._trainer import _Trainer
     return _Trainer(
@@ -229,27 +226,22 @@ def create_evaluator(
             of `ppe.handler.Handler` for details.
     """
 
-    if metrics is None:
-        metrics = []
-    if options is None:
-        options = {}
-    else:
-        options.copy()
-    if runtime_options is None:
-        runtime_options = {}
-    else:
-        runtime_options.copy()
-
-    if logic is None:
-        logic = handler_module.Logic()
-    logic._set_options(options, strict=False)
-    if handler_class is None:
-        handler_class = handler_module.Handler
+    metrics = metrics if metrics else []
+    options = options.copy() if options else {}
+    runtime_options = runtime_options.copy() if runtime_options else {}
+    logic = handler_module.Logic() if logic is None else logic
+    handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
     entry_runtime = entry_runtime_cls(device, runtime_options)
     handler = handler_class(logic, entry_runtime, options)
+
+    # Handler options are popped first, then pass the remainings to Logic.
+    handler.consume_options(options)
+    logic.consume_options(options)
+    if len(options) > 0:
+        raise ValueError('Unknown options: ', options)
 
     from pytorch_pfn_extras.training._evaluator import _Evaluator
     return _Evaluator(
