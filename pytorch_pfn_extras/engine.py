@@ -107,11 +107,12 @@ def create_trainer(
         writer: Optional['writing.Writer'] = None,
         evaluator: Optional['_Evaluator'] = None,
         device: 'DeviceLike' = 'cpu',
-        options: Optional[Dict[str, Any]] = None,
         logic: Optional[handler_module.Logic] = None,
         transform_model: Callable[
             [str, torch.nn.Module], torch.nn.Module] = default_transform_model,
         handler_class: Optional[Type[handler_module.BaseHandler]] = None,
+        options: Optional[Dict[str, Any]] = None,
+        runtime_options: Optional[Dict[str, Any]] = None,
 ) -> '_Trainer':
     """Creates a trainer object.
 
@@ -140,9 +141,6 @@ def create_trainer(
             :func:`pytorch_pfn_extras.engine.create_evaluator`.
         device (str or torch.device):
             Device name used for selecting a corresponding runtime class.
-        options:
-            Option that is set to a logic object. When using the default logic
-            class, See the documentation of `ppe.handler.Logic` for details.
         logic:
             A logic object. If `None` is given, an logic object is instantiated
             from the default logic class.
@@ -152,24 +150,30 @@ def create_trainer(
         handler_class:
             A handler class that instantiates a handler object. If `None` is
             given, `ppe.handler.Handler` is used as a default handler class.
+        options:
+            Options that are set to the handler and logic object.
+            See the documentation of `ppe.handler.Handler` and
+            `ppe.handler.Logic` for details.
+        runtime_options:
+            Options that are set to the runtime object. See the documentation
+            of `ppe.runtime.PyTorchRuntime` for details.
     """
 
-    if options is None:
-        options = {}
-    else:
-        options = options.copy()
-    if logic is None:
-        logic = handler_module.Logic()
-    logic.set_options(options)
-    if handler_class is None:
-        handler_class = handler_module.Handler
+    options = options.copy() if options else {}
+    runtime_options = runtime_options.copy() if runtime_options else {}
+    logic = handler_module.Logic() if logic is None else logic
+    handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
-    entry_runtime = entry_runtime_cls(device, options.pop('runtime', {}))
-    handler = handler_class(logic, entry_runtime, options)
+    entry_runtime = entry_runtime_cls(device, runtime_options)
+    handler = handler_class(logic, entry_runtime, {})
+
+    # Handler options are popped first, then pass the remainings to Logic.
+    handler.consume_options(options)
+    logic.consume_options(options)
     if len(options) > 0:
-        raise ValueError('Unknown configuration options:', options)
+        raise ValueError('Unknown options: ', options)
 
     from pytorch_pfn_extras.training._trainer import _Trainer
     return _Trainer(
@@ -187,9 +191,10 @@ def create_evaluator(
         progress_bar: bool = False,
         device: 'DeviceLike' = 'cpu',
         metrics: Optional[List['MetricType']] = None,
-        options: Optional[Dict[str, Any]] = None,
         logic: Optional[handler_module.Logic] = None,
         handler_class: Optional[Type[handler_module.BaseHandler]] = None,
+        options: Optional[Dict[str, Any]] = None,
+        runtime_options: Optional[Dict[str, Any]] = None,
 ) -> '_Evaluator':
     """Creates an evaluator object. The return value of this function is
     expected to be fed to `ppe.engine.create_trainer` as an argument.
@@ -206,36 +211,37 @@ def create_evaluator(
         metrics (list of metrics):
             List of metrics, which computes various quantities and update
             output for the reporting.
-        options (dict):
-            Option that is set to a logic object. When using the default logic
-            class, See the documentation of `ppe.handler.Logic` for details.
         logic:
             A logic object. If `None` is given, an logic object is instantiated
             from the default logic class.
         handler_class:
             A handler class that instantiates a handler object. If `None` is
             given, `ppe.handler.Handler` is used as a default handler class.
+        options:
+            Options that are set to the handler and logic object.
+            See the documentation of `ppe.handler.Handler` and
+            `ppe.handler.Logic` for details.
+        runtime_options:
+            Options that are set to the runtime object. See the documentation
+            of `ppe.handler.Handler` for details.
     """
 
-    if metrics is None:
-        metrics = []
-    if options is None:
-        options = {}
-    else:
-        options = options.copy()
-    if logic is None:
-        logic = handler_module.Logic()
-    logic.set_options(options)
-    if handler_class is None:
-        handler_class = handler_module.Handler
+    metrics = metrics if metrics else []
+    options = options.copy() if options else {}
+    runtime_options = runtime_options.copy() if runtime_options else {}
+    logic = handler_module.Logic() if logic is None else logic
+    handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
-    entry_runtime = entry_runtime_cls(device, options.pop('runtime', {}))
+    entry_runtime = entry_runtime_cls(device, runtime_options)
     handler = handler_class(logic, entry_runtime, options)
 
+    # Handler options are popped first, then pass the remainings to Logic.
+    handler.consume_options(options)
+    logic.consume_options(options)
     if len(options) > 0:
-        raise ValueError('Unknown configuration options ', options)
+        raise ValueError('Unknown options: ', options)
 
     from pytorch_pfn_extras.training._evaluator import _Evaluator
     return _Evaluator(

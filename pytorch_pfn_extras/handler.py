@@ -29,7 +29,7 @@ def torch_autocast(enabled=True):
 
 class BaseHandler:
 
-    def __init__(self, logic, *args, **kwargs):
+    def __init__(self, logic, options, *args, **kwargs):
         """Base class of Handler.
 
         .. seealso:
@@ -39,7 +39,22 @@ class BaseHandler:
             logic (Logic): A logic.
         """
         super().__init__()
+        options = options.copy() if options else {}
         self._logic = logic
+        self.consume_options(options)
+
+    def consume_options(self, options):
+        """A method to update options of Handler.
+
+        Note that the given dict will be modified.
+
+        Args:
+            options (dict): Option key-values to be set.
+
+        .. seealso:
+           :meth:`pytorch_pfn_extras.handler.Handler.consume_options`
+        """
+        pass
 
     def train_setup(self, trainer, loader):
         """A method called only once when starting a training run.
@@ -169,13 +184,13 @@ class BaseHandler:
 
 class Handler(BaseHandler):
 
-    def __init__(self, logic, entry_runtime, config):
+    def __init__(self, logic, entry_runtime, options):
         """A set of callback functions to perform device-specific operations.
 
         Args:
             logic (Logic): A logic.
             entry_runtime (BaseRuntime): A runtime object.
-            config (dict): A config.
+            options (dict): The configuration options.
 
                 * ``'autocast'`` (bool):
                     If ``True``, torch.cuda.amp.autocast is enabled.
@@ -191,15 +206,19 @@ class Handler(BaseHandler):
                 * ``'async'`` (bool):
                     If ``True``, async mode is enabled. Default is ``False``.
         """
-        super().__init__(logic)
+        super().__init__(logic, options)
+        self.pending_iters = defaultdict(list)
+
         # This is used to send the batch to the appropiate device
         self._entry_runtime = entry_runtime
         self._ppe_modules = []
-        self._autocast = config.pop('autocast', False)
-        self._eval_report_keys = config.pop('eval_report_keys', [])
-        self._train_report_keys = config.pop('train_report_keys', [])
-        self._async = config.pop('async', False)
-        self.pending_iters = defaultdict(list)
+
+    def consume_options(self, options):
+        super().consume_options(options)
+        self._autocast = options.pop('autocast', False)
+        self._eval_report_keys = options.pop('eval_report_keys', [])
+        self._train_report_keys = options.pop('train_report_keys', [])
+        self._async = options.pop('async', False)
         if self._autocast and not _amp_enabled:
             raise RuntimeError('Requested AMP features but torch.cuda.amp'
                                ' is not enabled')
@@ -460,6 +479,21 @@ class Handler(BaseHandler):
 
 
 class BaseLogic:
+    def __init__(self, options=None):
+        super().__init__()
+        options = options.copy() if options else {}
+        self.consume_options(options)
+
+    def consume_options(self, options):
+        """A method to update options of Logic.
+
+        Note that the given dict will be modified.
+
+        Args:
+            options (dict): Option key-values to be set.
+        """
+        pass
+
     def train_epoch_begin(self, models, epoch, loader):
         """A method called when starting a new epoch of training.
 
@@ -552,10 +586,15 @@ class Logic(BaseLogic):
             * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
                 A gradient scaler that outputs are applied to.
         """
-        if options is None:
-            options = {}
-        self.set_options(options)
+        super().__init__(options)
         self.model_name = model_name
+
+    def consume_options(self, options):
+        super().consume_options(options)
+
+        self.backward_outputs = options.pop('backward_outputs', None)
+        self._grad_scaler = options.pop('grad_scaler', None)
+
         if self._grad_scaler is not None:
             if not _amp_enabled:
                 raise RuntimeError('Requested AMP features but torch.cuda.amp'
@@ -563,10 +602,6 @@ class Logic(BaseLogic):
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
                 raise RuntimeError('grad_scaler should be a '
                                    'torch.cuda.amp.GradScaler object')
-
-    def set_options(self, options):
-        self.backward_outputs = options.pop('backward_outputs', None)
-        self._grad_scaler = options.pop('grad_scaler', None)
 
     def _forward(self, model, batch):
         if isinstance(batch, tuple) and hasattr(batch, '_fields'):

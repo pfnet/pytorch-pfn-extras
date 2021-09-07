@@ -25,17 +25,17 @@ class BaseRuntime:
     Args:
         device_spec (torch.device or str):
             The device that modules and tensors are transferred to.
-        config (dict):
+        options (dict):
             A configuration dictionary that can be used from runtime method.
     """
 
     def __init__(
             self,
             device_spec: DeviceLike,
-            config: Optional[Dict[str, Any]] = None,
+            options: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.device_spec = device_spec
-        self.config = config
+        self.options = options
 
     def convert_batch(self, args: Any) -> Any:
         """Transfers the given batch to the specific device.
