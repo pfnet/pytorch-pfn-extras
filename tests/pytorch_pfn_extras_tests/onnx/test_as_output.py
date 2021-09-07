@@ -39,7 +39,6 @@ def test_as_output_no_export():
     assert y.shape == (1, 6, 30, 20)
 
 
-
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_as_output():
     if torch_version < version.Version('1.8.0'):

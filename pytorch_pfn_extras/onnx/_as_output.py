@@ -34,7 +34,8 @@ class _Outputs:
         assert n_output >= len(self.values)
 
         # Rename last len(self.values) outputs
-        for i, additional_output in enumerate(onnx_graph.graph.output[-len(self.values):]):
+        for i, additional_output in enumerate(
+                onnx_graph.graph.output[-len(self.values):]):
             name = self.values[i].name
             orig_name = additional_output.name
             old_name_to_new_name[orig_name] = name
