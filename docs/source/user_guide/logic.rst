@@ -18,6 +18,6 @@ Default Logic (:class:`ppe.handler.Logic <pytorch_pfn_extras.handler.Logic>`)
 ------------------------------------------------------------------------------------------
 
 PPE provides a default logic that performs the forward/backward/optimizer loop
-for a single model. This logic allows using some torch features such as AMP
+for a single model. This logic allows using some torch features such as AMP autocast
 and GradScaler and performs the backward pass on the outputs specified by the
 config option backward_outputs.

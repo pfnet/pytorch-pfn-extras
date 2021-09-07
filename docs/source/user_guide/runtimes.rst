@@ -31,7 +31,7 @@ allows moving a module or a tensor to the new device by invoking the
 
 The module will be tagged by adding a attribute named
 ``_ppe_runtime`` that holds the needed runtime. It is the responsibility of the
-user written runtime to perform the actual movement to the device and apply
+user custom runtime to perform the actual movement to the device and apply
 all the transformations needed to a module so it can be correctly executed.
 
 Usually, runtime writers will need to replace the given module forward function

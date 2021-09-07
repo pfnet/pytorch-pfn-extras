@@ -3,9 +3,9 @@ Trainer and Evaluator
 
 .. note::
 
-   The Trainer/Evaluator APIs are currently under the technical preview and may subject to change in the future versions.
+   The Trainer/Evaluator APIs are currently under technical preview and may subject to change in the future versions.
 
-The Trainer and Evaluator provides the device-agnostic training framework for PyTorch.
+The Trainer and Evaluator provide the device-agnostic training framework for PyTorch.
 These APIs abstract the training process using different :doc:`runtimes <runtimes>`, handlers, and :doc:`logics <logic>`.
 
 Concepts
