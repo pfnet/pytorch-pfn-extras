@@ -136,7 +136,8 @@ def create_trainer(
         evaluator:
             Evaluator that is used in evaluation phase.
             If `None` is given, the evaluation is skipped.
-            Evaluators can be created with :func:`pytorch_pfn_extras.engine.create_evaluator`.
+            Evaluators can be created with
+            :func:`pytorch_pfn_extras.engine.create_evaluator`.
         device (str or torch.device):
             Device name used for selecting a corresponding runtime class.
         options:
