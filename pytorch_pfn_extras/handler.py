@@ -461,24 +461,78 @@ class Handler(BaseHandler):
 
 class BaseLogic:
     def train_epoch_begin(self, models, epoch, loader):
+        """A method called when starting a new epoch of training.
+
+        Args:
+            epoch (int): Number of epochs already finished.
+            models (dict of torch.nn.Module): The models.
+            loader (torch.utils.data.DataLoader): The data loder.
+        """
         pass
 
     def train_epoch_end(self, models, epoch):
+        """A method called when completing an epoch of training.
+
+        Args:
+            epoch (int): Number of epochs already finished.
+            models (dict of torch.nn.Module): The models.
+        """
         pass
 
     def train_step(self, models, optimizers, batch_idx, batch):
+        """A method invokes the models forward and backward passes.
+
+        Optimizing is left to `train_step_optimizers` since maybe the user
+        would like to aggregate the gradients of several iterations.
+
+        Args:
+            models (dict of torch.nn.Module):
+                The models.
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of training steps already finished.
+            batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
+                Input tensors feeded to the model of the current step.
+        """
         pass
 
     def train_step_optimizers(self, models, optimizers, batch_idx):
+        """A method in charge of stepping the provided optimizers.
+
+        Args:
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of steps already finished.
+        """
         pass
 
     def train_validation_begin(self, models):
+        """A method called when starting a validation.
+
+        Args:
+            models (dict of torch.nn.Module): The models.
+        """
         pass
 
     def train_validation_end(self, models):
+        """A method called when the validation completes.
+
+        Args:
+            models (dict of torch.nn.Module): The models.
+        """
         pass
 
     def eval_step(self, models, batch_idx, batch):
+        """A method for an evaluation step.
+
+        Args:
+            models (dict of torch.nn.Module): The models.
+            batch_idx (int): Number of steps already finished.
+            batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
+                Input tensors feeded to the model of the current step.
+        """
         pass
 
 
