@@ -1,7 +1,7 @@
 pytorch-pfn-extras
 ==================
 
-``pytorch-pfn-extras`` is a collection of supplementary components to accelerate research and development in PyTorch.
+**pytorch-pfn-extras** (PPE) is a collection of supplementary components to accelerate research and development in PyTorch.
 
 .. toctree::
    :maxdepth: 2
