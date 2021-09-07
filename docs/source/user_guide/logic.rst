@@ -1,7 +1,7 @@
 Logic for Custom Training and Evaluation
 ============================================================
 
-In the training and evaluation engines, the :class:`ppe.handler.BaseLogic <pytorch_pfn_extras.handler.BaseLogic>` API is in charge of abstracting the algorithmic details of the training and evaluation loops.
+In the training and evaluation engines, :class:`ppe.handler.BaseLogic <pytorch_pfn_extras.handler.BaseLogic>` API is in charge of abstracting the algorithmic details of the training and evaluation loops.
 
 Logic is an object that defines multiple callbacks used
 through the training and evaluation processes.
