@@ -13,11 +13,11 @@ from pytorch_pfn_extras.training.metrics import Batch as DictBatch
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.handler import BaseHandler
-    from pytorch_pfn_extras.runtime._runtime import Batch
     from pytorch_pfn_extras.training.metrics import MetricType
     from pytorch_pfn_extras.reporting import Observation
 
 
+@contextlib.contextmanager
 def _progress_bar(
         name: str,
         required: bool,
