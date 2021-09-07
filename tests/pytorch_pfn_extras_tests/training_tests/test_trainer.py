@@ -93,8 +93,8 @@ def test_trainer_invalid_options(path):
     model_with_loss = MyModelWithLossFn(model)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     extensions = _make_extensions()
-    options = {'this is an unknown option': True}
-    with pytest.raises(ValueError):
+    options = {'UNKNOWN_OPTIONS': True}
+    with pytest.raises(ValueError, match="UNKNOWN_OPTIONS"):
         engine.create_trainer(
             model_with_loss, optimizer, 20,
             device=device, extensions=extensions,

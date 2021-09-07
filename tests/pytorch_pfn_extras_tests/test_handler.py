@@ -133,11 +133,6 @@ class HandlerTester:
 
 class TestHandlerTrainSync(HandlerTester):
 
-    def test_handler_invalid_options(self):
-        options = {'invalid': True}
-        with pytest.raises(ValueError):
-            self._get_handler(options)
-
     @pytest.mark.parametrize(
         'to_move', [('self',), ('sm1',), ('sm2',), ('sm1', 'sm2')]
     )
@@ -385,10 +380,6 @@ class TestHandlerAutocast:
 
 
 class TestLogic:
-    def test_logic_invalid_options(self):
-        options = {'invalid': True}
-        with pytest.raises(ValueError):
-            ppe.handler.Logic(options=options)
 
     def test_train_epoch_begin(self):
         # Check that the DataLoader has the sampler updated
