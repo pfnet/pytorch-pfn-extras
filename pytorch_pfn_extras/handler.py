@@ -27,9 +27,6 @@ def torch_autocast(enabled=True):
         yield
 
 
-_is_torch_17 = torch.__version__.split('.')[1] == '7'
-
-
 class BaseHandler:
 
     def __init__(self, logic, options, *args, **kwargs):
