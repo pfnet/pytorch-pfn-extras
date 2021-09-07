@@ -34,6 +34,25 @@ class Net(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
+class ModelWithLoss(torch.nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, data, target):
+        output = self.model(data)
+
+        if self.training:
+            loss = F.nll_loss(output, target)
+            ppe.reporting.report({'train/loss': loss.item()})
+            return {'loss': loss}
+
+        # Final result will be average of averages of the same size
+        test_loss = F.nll_loss(output, target, reduction='mean').item()
+        pred = output.argmax(dim=1, keepdim=True)
+        return {'loss': test_loss, 'output': pred}
+
+
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
@@ -113,24 +132,6 @@ def main():
     trigger = None
     # trigger = ppe.training.triggers.EarlyStoppingTrigger(
     #     check_trigger=(1, 'epoch'), monitor='val/loss')
-
-    class ModelWithLoss(torch.nn.Module):
-        def __init__(self, model):
-            super().__init__()
-            self.model = model
-
-        def forward(self, data, target):
-            output = model(data)
-
-            if model.training:
-                loss = F.nll_loss(output, target)
-                ppe.reporting.report({'train/loss': loss.item()})
-                return {'loss': loss}
-
-            # Final result will be average of averages of the same size
-            test_loss = F.nll_loss(output, target, reduction='mean').item()
-            pred = output.argmax(dim=1, keepdim=True)
-            return {'loss': test_loss, 'output': pred}
 
     model_with_loss = ModelWithLoss(model)
     trainer = ppe.engine.create_trainer(
