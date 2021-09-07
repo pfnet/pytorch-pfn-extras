@@ -9,38 +9,17 @@ $ErrorActionPreference = "Stop"
 
 
 # Setup environment
-if ($test -eq "torch15") {
-    # PyTorch 1.5 + Python 3.6
-    ActivateCUDA 10.2
-    ActivatePython 3.6
-    RunOrDie python -m pip install -U pip setuptools
-    RunOrDie python -m pip install torch==1.5.* torchvision==0.6.* -f https://download.pytorch.org/whl/torch_stable.html
-
-} elseif ($test -eq "torch16") {
-    # PyTorch 1.6 + Python 3.7
-    ActivateCUDA 10.2
-    ActivatePython 3.7
-    RunOrDie python -m pip install -U pip setuptools
-    RunOrDie python -m pip install torch==1.6.* torchvision==0.7.* -f https://download.pytorch.org/whl/torch_stable.html
-
-} elseif ($test -eq "torch17") {
-    # PyTorch 1.7 + Python 3.6
-    ActivateCUDA 10.2
-    ActivatePython 3.6
-    RunOrDie python -m pip install -U pip setuptools
-    RunOrDie python -m pip install torch==1.7.* torchvision==0.8.* -f https://download.pytorch.org/whl/torch_stable.html
-
-} elseif ($test -eq "torch18") {
-    # PyTorch 1.8 + Python 3.8
+if ($test -eq "torch18") {
+    # PyTorch 1.8 + Python 3.7
     ActivateCUDA 11.1
-    ActivatePython 3.8
+    ActivatePython 3.7
     RunOrDie python -m pip install -U pip setuptools
     RunOrDie python -m pip install torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu111/torch_stable.html
 
 } elseif ($test -eq "torch19") {
-    # PyTorch 1.9 + Python 3.9
+    # PyTorch 1.9 + Python 3.8
     ActivateCUDA 11.1
-    ActivatePython 3.9
+    ActivatePython 3.8
     RunOrDie python -m pip install -U pip setuptools
     RunOrDie python -m pip install torch==1.9.* torchvision==0.10.* -f https://download.pytorch.org/whl/cu111/torch_stable.html
 
