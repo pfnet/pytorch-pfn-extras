@@ -461,24 +461,78 @@ class Handler(BaseHandler):
 
 class BaseLogic:
     def train_epoch_begin(self, models, epoch, loader):
+        """A method called when starting a new epoch of training.
+
+        Args:
+            epoch (int): Number of epochs already finished.
+            models (dict of torch.nn.Module): The models.
+            loader (torch.utils.data.DataLoader): The data loder.
+        """
         pass
 
     def train_epoch_end(self, models, epoch):
+        """A method called when completing an epoch of training.
+
+        Args:
+            epoch (int): Number of epochs already finished.
+            models (dict of torch.nn.Module): The models.
+        """
         pass
 
     def train_step(self, models, optimizers, batch_idx, batch):
+        """A method invokes the models forward and backward passes.
+
+        Optimizing is left to `train_step_optimizers` since maybe the user
+        would like to aggregate the gradients of several iterations.
+
+        Args:
+            models (dict of torch.nn.Module):
+                The models.
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of training steps already finished.
+            batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
+                Input tensors feeded to the model of the current step.
+        """
         pass
 
     def train_step_optimizers(self, models, optimizers, batch_idx):
+        """A method in charge of stepping the provided optimizers.
+
+        Args:
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of steps already finished.
+        """
         pass
 
     def train_validation_begin(self, models):
+        """A method called when starting a validation.
+
+        Args:
+            models (dict of torch.nn.Module): The models.
+        """
         pass
 
     def train_validation_end(self, models):
+        """A method called when the validation completes.
+
+        Args:
+            models (dict of torch.nn.Module): The models.
+        """
         pass
 
     def eval_step(self, models, batch_idx, batch):
+        """A method for an evaluation step.
+
+        Args:
+            models (dict of torch.nn.Module): The models.
+            batch_idx (int): Number of steps already finished.
+            batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
+                Input tensors feeded to the model of the current step.
+        """
         pass
 
 
@@ -515,14 +569,18 @@ class Logic(BaseLogic):
         self._grad_scaler = options.pop('grad_scaler', None)
 
     def _forward(self, model, batch):
+        if isinstance(batch, tuple) and hasattr(batch, '_fields'):
+            return model(batch)
         if isinstance(batch, dict):
             return model(**batch)
-        elif isinstance(batch, (list, tuple)):
+        if isinstance(batch, (list, tuple)):
             return model(*batch)
         return model(batch)
 
     def _normalize_outputs(self, outputs):
-        if isinstance(outputs, dict):
+        if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
+            target = {k: getattr(outputs, k) for k in outputs._fields}
+        elif isinstance(outputs, dict):
             target = outputs
         elif isinstance(outputs, (list, tuple)):
             target = {str(i): out for i, out in enumerate(outputs)}
@@ -584,7 +642,10 @@ class Logic(BaseLogic):
         to_back_outs = outs
         if self._grad_scaler is not None:
             to_back_outs = self._normalize_outputs(outs)
-            assert len(outs) == 1, "loss scaling with multiple outputs is not supported"
+            if not isinstance(outs, torch.Tensor):
+                assert (
+                    len(outs) == 1
+                ), "loss scaling with multiple outputs is not supported"
             to_back_outs = {
                 k: self._grad_scaler.scale(v) for k, v in to_back_outs.items()}
         self._backward(to_back_outs)

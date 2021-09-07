@@ -11,8 +11,8 @@ class AccuracyMetric:
     """A metric for an evaluator to report accuracy.
 
     Args:
-        label_key (str): The key name of label.
-        output_key (str): The key name of prediction.
+        label_key: The key name of label.
+        output_key: The key name of prediction.
 
     .. seealso:
        :func:`pytorch_pfn_extras.engine.create_evaluator`

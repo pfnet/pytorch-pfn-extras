@@ -1,4 +1,11 @@
+from typing import Tuple, TYPE_CHECKING
+
 from pytorch_pfn_extras.training import trigger
+
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+    from pytorch_pfn_extras.training._trigger_util import UnitLiteral
 
 
 class IntervalTrigger(trigger.Trigger):
@@ -23,14 +30,14 @@ class IntervalTrigger(trigger.Trigger):
 
     """
 
-    def __init__(self, period, unit):
+    def __init__(self, period: float, unit: 'UnitLiteral'):
         if unit not in ('epoch', 'iteration'):
             raise ValueError(
                 'Trigger unit must be either \'epoch\' or \'iteration\'.')
         self.period = period
         self.unit = unit
 
-    def __call__(self, manager):
+    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
         """Decides whether the extension should be called on this iteration.
 
         Args:
@@ -48,10 +55,10 @@ class IntervalTrigger(trigger.Trigger):
         fire = self.may_fire(current_step, manager._iters_per_epoch)
         return fire
 
-    def get_training_length(self):
+    def get_training_length(self) -> Tuple[float, str]:
         return (self.period, self.unit)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a string describing the class and interval
 
         Returns:
@@ -61,7 +68,7 @@ class IntervalTrigger(trigger.Trigger):
             self.__class__.__name__, self.period, self.unit
         )
 
-    def may_fire(self, iteration, epoch_length):
+    def may_fire(self, iteration: int, epoch_length: int) -> bool:
         if iteration == 0:
             if self.unit == 'epoch':
                 return epoch_length == 0

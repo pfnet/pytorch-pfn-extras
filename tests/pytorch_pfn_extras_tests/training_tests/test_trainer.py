@@ -1,4 +1,5 @@
 import tempfile
+import typing
 
 import pytest
 
@@ -364,3 +365,83 @@ class TestTrainerState:
         assert new_trainer.epoch == 20
         assert _compare_states(
             trainer.state_dict(), new_trainer.state_dict())
+
+
+class MyModelWithLossDictOutput(torch.nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, x, t):
+        y = self.model(x)
+        prefix = 'train' if self.training else 'val'
+        loss = F.l1_loss(y, t)
+        ppe.reporting.report({prefix + '/loss': loss})
+        return {'y': y, 'loss': loss}
+
+
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+@pytest.mark.parametrize('progress_bar', [True, False])
+def test_trainer_dict_input(device, progress_bar, path):
+    model = MyModel()
+    ppe.to(model, device)
+    model_with_loss = MyModelWithLossDictOutput(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [{'x': torch.rand(20,), 't': torch.rand(10,)} for i in range(10)])
+    extensions = _make_extensions()
+
+    evaluator = engine.create_evaluator(
+        model_with_loss, device=device, progress_bar=progress_bar)
+
+    trainer = engine.create_trainer(
+        model_with_loss, optimizer, 20,
+        device=device, evaluator=evaluator, extensions=extensions,
+        out_dir=path
+    )
+    trainer.run(data, data)
+
+
+class Input(typing.NamedTuple):
+    x: torch.Tensor
+    t: torch.Tensor
+
+
+class Output(typing.NamedTuple):
+    y: torch.Tensor
+    loss: torch.Tensor
+
+
+class MyModelWithLossNamedTupleOutput(torch.nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
+
+    def forward(self, input):
+        y = self.model(input.x)
+        prefix = 'train' if self.training else 'val'
+        loss = F.l1_loss(y, input.t)
+        ppe.reporting.report({prefix + '/loss': loss})
+        return Output(y, loss)
+
+
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+@pytest.mark.parametrize('progress_bar', [True, False])
+def test_trainer_namedtuple_input(device, progress_bar, path):
+    model = MyModel()
+    ppe.to(model, device)
+    model_with_loss = MyModelWithLossNamedTupleOutput(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [Input(torch.rand(20,), torch.rand(10,)) for i in range(10)])
+    extensions = _make_extensions()
+
+    evaluator = engine.create_evaluator(
+        model_with_loss, device=device, progress_bar=progress_bar)
+
+    trainer = engine.create_trainer(
+        model_with_loss, optimizer, 20,
+        device=device, evaluator=evaluator, extensions=extensions,
+        out_dir=path
+    )
+    trainer.run(data, data)

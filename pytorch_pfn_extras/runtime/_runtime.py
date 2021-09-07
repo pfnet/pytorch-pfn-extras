@@ -1,6 +1,16 @@
+from typing import (
+    Any, Dict, Generator, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
+)
+
 import torch
 
 _RUNTIME_TAG_NAME = '_ppe_runtime'
+
+DeviceLike = Union[str, torch.device]
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training._trainer import _Trainer
+    from pytorch_pfn_extras.training._evaluator import _Evaluator
 
 
 class BaseRuntime:
@@ -19,11 +29,15 @@ class BaseRuntime:
             A configuration dictionary that can be used from runtime method.
     """
 
-    def __init__(self, device_spec, config=None):
+    def __init__(
+            self,
+            device_spec: DeviceLike,
+            config: Optional[Dict[str, Any]] = None,
+    ) -> None:
         self.device_spec = device_spec
         self.config = config
 
-    def convert_batch(self, args):
+    def convert_batch(self, args: Any) -> Any:
         """Transfers the given batch to the specific device.
 
         Args:
@@ -36,21 +50,24 @@ class BaseRuntime:
 
         # this should be called with the runtime associated to a model
         # or a model part
+        if isinstance(args, tuple) and hasattr(args, '_fields'):
+            return args.__class__(
+                **{k: self.move_tensor(getattr(args, k)) for k in args._fields})
         if isinstance(args, dict):
             return {
                 k: self.move_tensor(v) if isinstance(v, torch.Tensor) else v
                 for k, v in args.items()
             }
-        elif isinstance(args, (list, tuple)):
+        if isinstance(args, (list, tuple)):
             return [
                 self.move_tensor(v) if isinstance(v, torch.Tensor) else v
                 for v in args
             ]
-        elif isinstance(args, torch.Tensor):
+        if isinstance(args, torch.Tensor):
             return self.move_tensor(args)
         return args
 
-    def move_module(self, module):
+    def move_module(self, module: torch.nn.Module) -> torch.nn.Module:
         """Transfers the module to the specific device.
 
         Before this method is called, ``ppe.to`` will add this class as
@@ -64,7 +81,7 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def move_tensor(self, tensor):
+    def move_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
         """Transfers the tensor to the specific device.
 
         Args:
@@ -75,7 +92,12 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def initialize_module(self, module, loader_or_batch, optimizer=None):
+    def initialize_module(
+            self,
+            module: torch.nn.Module,
+            loader_or_batch: Optional[Union[Iterable[Any], torch.Tensor]],
+            optimizer: Optional[torch.optim.Optimizer] = None,
+    ) -> None:
         """Initializes the module at the beginning of training or inference.
 
         Args:
@@ -91,7 +113,7 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def train_epoch_begin(self, module):
+    def train_epoch_begin(self, module: torch.nn.Module) -> None:
         """Preprocess of each epoch.
 
         Args:
@@ -101,7 +123,13 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def train_pre_step(self, trainer, module, batch_idx, batch):
+    def train_pre_step(
+            self,
+            trainer: '_Trainer',
+            module: torch.nn.Module,
+            batch_idx: int,
+            batch: Any,
+    ) -> None:
         """Preprocess of each step.
 
         This method is called at the beginning of every steps: the set of
@@ -118,7 +146,14 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def train_post_step(self, trainer, module, batch_idx, batch, outs):
+    def train_post_step(
+            self,
+            trainer: '_Trainer',
+            module: torch.nn.Module,
+            batch_idx: int,
+            batch: Any,
+            outs: Any,
+    ) -> None:
         """Postprocess of each step.
 
         This method is called at the end of every steps: the set of
@@ -137,7 +172,7 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def train_validation_begin(self, module):
+    def train_validation_begin(self, module: torch.nn.Module) -> None:
         """The method called before each evaluation.
 
         Args:
@@ -147,7 +182,7 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def train_validation_end(self, module):
+    def train_validation_end(self, module: torch.nn.Module) -> None:
         """The method called after each evaluation.
 
         Args:
@@ -157,7 +192,13 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def eval_pre_step(self, evaluator, module, batch_idx, batch):
+    def eval_pre_step(
+            self,
+            evaluator: '_Evaluator',
+            module: torch.nn.Module,
+            batch_idx: int,
+            batch: Any,
+    ) -> None:
         """The method called at the beginning of each evaluation.
 
         Args:
@@ -171,7 +212,14 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def eval_post_step(self, evaluator, module, batch_idx, batch, outs):
+    def eval_post_step(
+            self,
+            evaluator: '_Evaluator',
+            module: torch.nn.Module,
+            batch_idx: int,
+            batch: Any,
+            outs: Any,
+    ) -> None:
         """The method called at the end of each evaluation.
 
         Args:
@@ -187,7 +235,11 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def get_pending_result(self, module, blocking):
+    def get_pending_result(
+            self,
+            module: torch.nn.Module,
+            blocking: bool,
+    ) -> List[torch.Tensor]:
         """The method called to retrieve the result of a asynchronous call.
 
         Args:
@@ -211,50 +263,91 @@ class PyTorchRuntime(BaseRuntime):
         device_spec (torch.device or str): The device.
     """
 
-    def move_module(self, module):
+    def move_module(self, module: torch.nn.Module) -> torch.nn.Module:
         return module.to(self.device_spec)
 
-    def move_tensor(self, tensor):
+    def move_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
         return tensor.to(self.device_spec)
 
-    def initialize_module(self, module, loader_or_batch, optimizer=None):
+    def initialize_module(
+            self,
+            module: torch.nn.Module,
+            loader_or_batch: Optional[Union[Iterable[Any], torch.Tensor]],
+            optimizer: Optional[torch.optim.Optimizer] = None,
+    ) -> None:
         pass
 
-    def train_epoch_begin(self, module):
+    def train_epoch_begin(self, module: torch.nn.Module) -> None:
         pass
 
-    def train_validation_begin(self, module):
+    def train_validation_begin(self, module: torch.nn.Module) -> None:
         pass
 
-    def train_validation_end(self, module):
+    def train_validation_end(self, module: torch.nn.Module) -> None:
         pass
 
-    def train_pre_step(self, trainer, module, batch_idx, batch):
+    def train_pre_step(
+            self,
+            trainer: '_Trainer',
+            module: torch.nn.Module,
+            batch_idx: int,
+            batch: Any,
+    ) -> None:
         pass
 
-    def train_post_step(self, trainer, module, batch_idx, batch, outs):
+    def train_post_step(
+            self,
+            trainer: '_Trainer',
+            module: torch.nn.Module,
+            batch_idx: int,
+            batch: Any,
+            outs: Any,
+    ) -> None:
         pass
 
-    def eval_pre_step(self, evaluator, module, batch_idx, batch):
+    def eval_pre_step(
+            self,
+            evaluator: '_Evaluator',
+            module: torch.nn.Module,
+            batch_idx: int,
+            batch: Any,
+    ) -> None:
         pass
 
-    def eval_post_step(self, evaluator, module, batch_idx, batch, outs):
+    def eval_post_step(
+            self,
+            evaluator: '_Evaluator',
+            module: torch.nn.Module,
+            batch_idx: int,
+            batch: Any,
+            outs: Any,
+    ) -> None:
         pass
 
-    def get_pending_result(self, module, blocking):
+    def get_pending_result(
+            self,
+            module: torch.nn.Module,
+            blocking: bool,
+    ) -> List[torch.Tensor]:
         pass
 
 
-def _module_runtime_tag(module):
-    return getattr(module, _RUNTIME_TAG_NAME, None)
+def _module_runtime_tag(module: torch.nn.Module) -> BaseRuntime:
+    return getattr(  # type: ignore[no-any-return]
+        module, _RUNTIME_TAG_NAME, None)
 
 
-def _set_module_runtime_tag(module, runtime):
+def _set_module_runtime_tag(
+        module: torch.nn.Module, runtime: BaseRuntime) -> None:
     return setattr(module, _RUNTIME_TAG_NAME, runtime)
 
 
-def named_runtime_modules(module, module_name='',
-                          first_level=True, recursive=True):
+def named_runtime_modules(
+        module: torch.nn.Module,
+        module_name: str = '',
+        first_level: bool = True,
+        recursive: bool = True,
+) -> Generator[Tuple[str, torch.nn.Module], Tuple[str, torch.nn.Module], None]:
     # This can be invoked with no containarized modules
     # to look for submodules that hold containers
     if _module_runtime_tag(module) is None:

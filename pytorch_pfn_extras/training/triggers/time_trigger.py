@@ -1,4 +1,10 @@
+from typing import Any, Dict, TYPE_CHECKING
+
 from pytorch_pfn_extras.training import trigger
+
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
 
 
 class TimeTrigger(trigger.Trigger):
@@ -12,20 +18,20 @@ class TimeTrigger(trigger.Trigger):
 
     """
 
-    def __init__(self, period):
+    def __init__(self, period: float) -> None:
         self._period = period
         self._next_time = self._period
 
-    def __call__(self, manager):
+    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
         if self._next_time < manager.elapsed_time:
             self._next_time += self._period
             return True
         else:
             return False
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         state = {'next_time': self._next_time}
         return state
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         self._next_time = to_load['next_time']
