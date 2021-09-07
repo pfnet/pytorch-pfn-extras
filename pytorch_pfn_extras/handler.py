@@ -56,6 +56,16 @@ class BaseHandler:
         """
         pass
 
+    def synchronize_train(self, trainer):
+        """A method called when synchronization is needed in training loop
+
+        .. seealso:
+           :meth:`pytorch_pfn_extras.handler.Handler.synchronize_train`
+        """
+        # Context: Trainer
+        # Called when synchronization of an asynchronous device is needed
+        pass
+
     def train_setup(self, trainer, loader):
         """A method called only once when starting a training run.
 
@@ -256,6 +266,16 @@ class Handler(BaseHandler):
             raise RuntimeError("Async mode is not supported in models "
                                "splitted across different devices")
 
+    def synchronize_train(self, trainer):
+        if self._async:
+            while self.pending_iters:
+                # TODO(ecastill) block until we get the result
+                for sn, sm, rt in self._runtime_iterator(trainer.models):
+                    outs = rt.get_pending_result(sm, True)
+                    if outs is not None:
+                        self._complete_train_step(
+                            trainer, outs, True, sn, sm, rt)
+
     def train_setup(self, trainer, loader):
         """A method called only once when starting a training run.
 
@@ -285,15 +305,7 @@ class Handler(BaseHandler):
         Args:
             trainer (Trainer): The trainer that calls this method.
         """
-        if self._async:
-            while self.pending_iters:
-                # TODO(ecastill) block until we get the result
-                for sn, sm, rt in self._runtime_iterator(trainer.models):
-                    outs = rt.get_pending_result(sm, True)
-                    if outs is not None:
-                        self._complete_train_step(
-                            trainer, outs, True, sn, sm, rt)
-
+        self._synchronize_train(trainer)
         self._logic.train_epoch_end(trainer.models, trainer.epoch)
 
     def train_validation_begin(self, trainer, evaluator):

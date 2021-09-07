@@ -174,7 +174,6 @@ def test_extensions_manager_state_dict():
     state_dict = manager.state_dict()
 
     assert state_dict == {
-        '_start_execution': passed_iteration,
         '_start_iteration': passed_iteration,
         'models': {'model_name': model_state_dict},
         'optimizers': {'optimizer_name': optimizer_state_dict},
@@ -239,7 +238,6 @@ def test_ignite_extensions_manager_state_dict():
     state_dict = manager.state_dict()
 
     assert state_dict == {
-        '_start_execution': passed_iteration,
         '_start_iteration': passed_iteration,
         '_epoch_length': iters_per_epoch,
         'models': {'model_name': model_state_dict},
@@ -287,7 +285,6 @@ def test_extensions_manager_with_plain_model_and_optimizer():
     state_dict = manager.state_dict()
 
     assert state_dict == {
-        '_start_execution': 0,
         '_start_iteration': 0,
         'models': {'main': model_state_dict},
         'optimizers': {'main': optimizer_state_dict},

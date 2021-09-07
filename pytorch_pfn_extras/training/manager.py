@@ -254,11 +254,10 @@ class _BaseExtensionsManager:
     def _prepare_for_training(
             self,
             start_iteration: int,
-            start_execution: int,
             iters_per_epoch: int
     ) -> None:
         self.iteration = start_iteration
-        self.execution = start_execution
+        self.execution = start_iteration
         self._iters_per_epoch = iters_per_epoch
 
     def start_extensions(self) -> None:
@@ -532,7 +531,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             raise ValueError(
                 'iters_per_epoch must be an integer >= 1 ({} given)'.format(
                     iters_per_epoch))
-        self._prepare_for_training(0, 0, iters_per_epoch)
+        self._prepare_for_training(0, iters_per_epoch)
 
     @contextlib.contextmanager
     def complete_iteration(self, *, observation=None, step_optimizers=None):
@@ -673,7 +672,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
         def set_training_started(engine: Engine) -> None:
             iters_per_epoch = len(engine.state.dataloader)
             # Initialize manager once before extensions' `initialize` call
-            self._prepare_for_training(0, 0, iters_per_epoch)
+            self._prepare_for_training(0, iters_per_epoch)
             self.start_extensions()
             start_iteration = self._start_iteration
             self.engine.state.iteration = self._start_iteration
@@ -681,7 +680,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             self._start_time = _get_time()
             # Initialize manager again after all state is restored
             self._prepare_for_training(
-                start_iteration, start_iteration, iters_per_epoch)
+                start_iteration, iters_per_epoch)
 
             # Make all the next
             # handlers to be executed after user defined ones
