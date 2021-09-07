@@ -155,12 +155,12 @@ def create_trainer(
             Options that are set to the handler object. See the documentation
             of `ppe.handler.Handler` for details.
         logic_options (dict):
-            Options that arte set to the logic object. When using the default
+            Options that are set to the logic object. When using the default
             logic class, See the documentation of `ppe.handler.Logic`
             for details.
-        handler_options (dict):
+        runtime_options (dict):
             Options that are set to the runtime object. See the documentation
-            of `ppe.handler.Handler` for details.
+            of `ppe.runtime.PyTorchRuntime` for details.
     """
 
     if logic_options is None:
@@ -228,10 +228,10 @@ def create_evaluator(
             Options that are set to the handler object. See the documentation
             of `ppe.handler.Handler` for details.
         logic_options (dict):
-            Options that arte set to the logic object. When using the default
+            Options that are set to the logic object. When using the default
             logic class, See the documentation of `ppe.handler.Logic`
             for details.
-        handler_options (dict):
+        runtime_options (dict):
             Options that are set to the runtime object. See the documentation
             of `ppe.handler.Handler` for details.
     """
