@@ -273,7 +273,7 @@ class _BaseExtensionsManager:
             trigger: 'trigger_module.TriggerLike' = None,
             priority: Optional[int] = None,
             *,
-            call_before_training: bool = False,
+            call_before_training: Optional[bool] = None,
             **kwargs: Dict[str, Any],
     ) -> None:
         """Registers an extension to the manager.
@@ -318,45 +318,26 @@ class _BaseExtensionsManager:
             raise RuntimeError(
                 'extend called after the extensions were initialized')
 
-        if isinstance(extension, extension_module.ExtensionEntry):
-            if name is not None:
-                raise ValueError('"name" is duplicated')
-            if trigger is not None:
-                raise ValueError('"trigger" is duplicated')
-            if priority is not None:
-                raise ValueError('"prioirity" is duplicated')
-            self._extend(extension)
-            return
+        if not isinstance(extension, extension_module.ExtensionEntry):
+            extension = extension_module.ExtensionEntry(extension)
 
-        ext = extension_module._as_extension(extension)
-        if name is None:
-            name = ext.name or ext.default_name
-        if name == 'training':
-            raise ValueError(
-                'the name "training" is prohibited as an extension name')
+        if trigger is not None:
+            extension.set_trigger(trigger)
 
-        if trigger is None:
-            trigger = ext.trigger
+        if priority is not None:
+            extension.priority = priority
 
-        if priority is None:
-            priority = ext.priority
+        if call_before_training is not None:
+            extension.call_before_training = call_before_training
 
-        self._extend(
-            extension_module.ExtensionEntry(
-                ext, name=name, priority=priority,
-                trigger=trigger, call_before_training=call_before_training))
-
-    def _extend(self, ext: extension_module.ExtensionEntry) -> None:
-        name = ext.name
-
-        modified_name = name
+        modified_name = name or extension.name
         ordinal = 0
         while modified_name in self._extensions:
             ordinal += 1
             modified_name = '%s_%d' % (name, ordinal)
 
-        ext.extension.name = modified_name
-        self._extensions[modified_name] = ext
+        extension.set_name(modified_name)
+        self._extensions[modified_name] = extension
 
     def get_extension(self, name: str) -> extension_module.Extension:
         """Returns the extension of a given name.

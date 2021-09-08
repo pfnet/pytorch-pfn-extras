@@ -5,7 +5,7 @@ from pytorch_pfn_extras.training import _trigger_util
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
-    from pytorch_pfn_extras.training._trigger_util import TriggerLike
+    from pytorch_pfn_extras.training._trigger_util import Trigger, TriggerLike
     ExtensionLike = Callable[[_BaseExtensionsManager], None]
 
 
@@ -231,7 +231,7 @@ class ExtensionEntry:
 
     Args:
         extension: An extension.
-        name: Name of extension. If omitted, inferred from the attributes of
+        name: Name of extension. If omitted, copied from the attributes of
             ``extension`` argument.
         priority: Invocation priority of the extension.
             Default is ``PRIORITY_READER``.
@@ -249,18 +249,26 @@ class ExtensionEntry:
             extension: 'ExtensionLike',
             *,
             name: Optional[str] = None,
-            priority: int = Extension.priority,
-            trigger: 'TriggerLike' = Extension.trigger,
+            priority: Optional[int] = None,
+            trigger: Optional['TriggerLike'] = None,
             call_before_training: bool = False,
     ) -> None:
         self.extension = _as_extension(extension)
-        self.name = name or self.extension.name or self.extension.default_name
-        if self.name == 'training':
+        self.priority = priority or self.extension.priority
+        self.call_before_training = call_before_training
+
+        self.set_trigger(trigger or self.extension.trigger)
+        self.set_name(name or self.extension.name or self.extension.default_name)
+
+    def set_trigger(self, trigger: 'TriggerLike') -> None:
+        self.trigger = _trigger_util.get_trigger(trigger)
+
+    def set_name(self, name: str) -> None:
+        if name == 'training':
             raise ValueError(
                 'the name "training" is prohibited as an extension name')
-        self.trigger = _trigger_util.get_trigger(trigger)
-        self.priority = priority
-        self.call_before_training = call_before_training
+        self.name = name
+        self.extension.name = name
 
     def state_dict(self) -> Dict[str, Any]:
         state = {}
