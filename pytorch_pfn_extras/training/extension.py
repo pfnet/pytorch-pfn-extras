@@ -4,7 +4,7 @@ import types
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
     from pytorch_pfn_extras.training._trigger_util import TriggerLike
-    ExtensionLike = Callable[[_BaseExtensionsManager], None]
+    ExtensionLike = Callable[[_BaseExtensionsManager], Any]
 
 
 PRIORITY_WRITER = 300
@@ -58,7 +58,7 @@ class Extension:
         """
         return type(self).__name__
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> None:
+    def __call__(self, manager: '_BaseExtensionsManager') -> Any:
         """Invokes the extension.
 
         Implementations should override this operator. This method is called
