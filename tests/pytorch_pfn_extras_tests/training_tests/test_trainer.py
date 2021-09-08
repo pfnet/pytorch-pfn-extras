@@ -235,7 +235,7 @@ class MyModelWithLossAsync(MyModelWithLossFn):
         self._pending_called = True
         self._current_it += 1
         out = None
-        if block or self._current_it % 4 == 0:
+        if block or (self._current_it % 4 == 0):
             out, self._outs = self._outs[0], self._outs[1:]
         return out
 
@@ -275,6 +275,56 @@ def test_trainer_defer(path):
     assert trainer.manager.execution == 200
     assert extensions[0].called == 200
     assert extensions[1].called == 200
+    assert model_with_loss._pending_called
+
+
+def test_trainer_synchronize(path):
+    class Extension:
+        def __init__(self, is_async):
+            self.name = 'Dummy'
+            self.trigger = (1, 'iteration')
+            self.called = 0
+            self.is_async = is_async
+
+        def __call__(self, manager):
+            self.called += 1
+
+    class SyncHandler(ppe.handler.Handler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self._times_synced = 0
+
+        def _synchronize_train(self, trainer):
+            super()._synchronize_train(trainer)
+            self._times_synced += 1
+
+    device = 'async-cpu'
+    model = MyModel()
+    model_with_loss = MyModelWithLossAsync(model)
+    # Register the handler
+    ppe.runtime.runtime_registry.register(device, DeferRuntime)
+    ppe.to(model_with_loss, device)
+
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+
+    extensions = [Extension(True), Extension(False)]
+    options = {'async': True, 'sync_trigger': (10, 'iteration')}
+    n_epoch = 2
+    trainer = engine.create_trainer(
+        model_with_loss, optimizer, n_epoch, options=options,
+        device=device, extensions=extensions,
+        handler_class=SyncHandler,
+        out_dir=path,
+    )
+    trainer.run(data, data)
+    assert trainer.manager.iteration == 200
+    assert trainer.manager.execution == 200
+    assert extensions[0].called == 200
+    assert extensions[1].called == 200
+    # the trigger does not fire in execution 0
+    assert trainer.handler._times_synced == 19 + n_epoch
     assert model_with_loss._pending_called
 
 

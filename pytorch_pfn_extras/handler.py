@@ -57,16 +57,6 @@ class BaseHandler:
         """
         pass
 
-    def _synchronize_train(self, trainer):
-        """A method called when synchronization is needed in training loop
-
-        .. seealso:
-           :meth:`pytorch_pfn_extras.handler.Handler.synchronize_train`
-        """
-        # Context: Trainer
-        # Called when synchronization of an asynchronous device is needed
-        pass
-
     def train_setup(self, trainer, loader):
         """A method called only once when starting a training run.
 
@@ -348,7 +338,7 @@ class Handler(BaseHandler):
 
         self._logic.train_validation_end(evaluator.models)
 
-    def _complete_train_step(self, trainer, outs, block, sn, sm, rt):
+    def _complete_train_step(self, trainer, outs, deferred, sn, sm, rt):
         idx, batch, cback = self.pending_iters[sn][0]
         self.pending_iters[sn] = self.pending_iters[sn][1:]
         # Since async mode is not supported with device splitting
@@ -358,7 +348,7 @@ class Handler(BaseHandler):
             trainer.models, trainer.optimizers, idx)
         if len(self.pending_iters[sn]) == 0:
             del self.pending_iters[sn]
-        cback(idx, outs, is_deferred=block)
+        cback(idx, outs, is_deferred=deferred)
 
     def train_step(self, trainer, batch_idx, batch, complete_fn):
         """A training step.
@@ -380,20 +370,27 @@ class Handler(BaseHandler):
             trainer.models, trainer.optimizers, batch_idx, batch)
 
         if self._async:
-            if self._sync_trigger is not None:
-                manager = trainer._manager._get_proxy_for_trigger(
-                    self._sync_trigger)
-                if self._sync_trigger(manager):
-                    self._synchronize_train(trainer)
             # async returns inmediately
             # Check if there is a completed iteration
             # If we enqueue everything first, we will blow up with
             # memory due to the dataloaders being in the background
             # We need to call the tagged runtimes since async mode
             # require different treatment depending on the device.
+            sync = False
+            if self._sync_trigger is not None:
+                # Synchronize must happen in executions, not completed
+                # iterations
+                manager = trainer._manager._get_proxy_for_trigger(
+                    self._sync_trigger)
+                if self._sync_trigger(manager):
+                    self._synchronize_train(trainer)
+                    sync = True
+
             for sn, sm, rt in self._runtime_iterator(trainer.models):
                 self.pending_iters[sn].append((batch_idx, batch, complete_fn))
-                outs = rt.get_pending_result(sm, False)
+                # If this was a sync operation, wait for this iteration and
+                # it will not defer the iteration as expected
+                outs = rt.get_pending_result(sm, sync)
                 if outs is not None:
                     self._complete_train_step(trainer, outs, False, sn, sm, rt)
         else:

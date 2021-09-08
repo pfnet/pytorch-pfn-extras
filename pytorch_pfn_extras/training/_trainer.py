@@ -22,9 +22,6 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
             self.evaluator = evaluator
             self.evaluator_trigger = trigger_module.get_trigger((1, 'epoch'))
         self.val_loader = None
-        self._sync_trigger = kwargs.pop('sync_trigger', None)
-        if self._sync_trigger is not None:
-            self._sync_trigger = trigger_module.get_trigger(self._sync_trigger)
 
     @property
     def epoch(self):
@@ -202,11 +199,6 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
                             self._profile_records.put([ntf0, ntf1, ntf2])
                             self.handler.train_step(
                                 self, idx, x, complete_fn=self._complete_step)
-                            if (
-                                self._sync_trigger is not None
-                                and self._sync_trigger(self.manager)
-                            ):
-                                self.handler.synchronize_train(self)
                             # Check if the callback was called
                             if self._deferred:
                                 # The iteration will be completed later
