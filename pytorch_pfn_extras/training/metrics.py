@@ -4,7 +4,7 @@ import torch
 
 
 Batch = Dict[str, torch.Tensor]
-MetricType = Callable[[Batch, Batch], Dict[str, Any]]
+MetricType = Callable[[Batch, Batch], Batch]
 
 
 class AccuracyMetric:
