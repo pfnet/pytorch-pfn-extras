@@ -1,4 +1,5 @@
 import contextlib
+from typing import Any, Generator, Optional
 
 import torch
 
@@ -10,7 +11,7 @@ _allocator = None
 
 
 @contextlib.contextmanager
-def stream(stream):
+def stream(stream: Optional[torch.cuda.Stream]) -> Generator[None, None, None]:
     """Context-manager that selects a given stream.
 
     This context manager also changes the CuPy's default stream if CuPy
@@ -31,13 +32,13 @@ def stream(stream):
             yield
 
 
-def use_default_mempool_in_cupy():
+def use_default_mempool_in_cupy() -> None:
     """Use the default memory pool in CuPy."""
     ensure_cupy()
     cupy.cuda.set_allocator(cupy.get_default_memory_pool().malloc)
 
 
-def use_torch_mempool_in_cupy():
+def use_torch_mempool_in_cupy() -> None:
     """Use the PyTorch memory pool in CuPy.
 
     If you want to use PyTorch's memory pool and non-default CUDA streams,
@@ -52,7 +53,7 @@ def use_torch_mempool_in_cupy():
     cupy.cuda.set_allocator(_allocator.malloc)
 
 
-def _torch_alloc(size, device_id):
+def _torch_alloc(size: int, device_id: int) -> Any:
     torch_stream_ptr = torch.cuda.current_stream().cuda_stream
     cupy_stream_ptr = cupy.cuda.get_current_stream().ptr
     if torch_stream_ptr != cupy_stream_ptr:
@@ -64,5 +65,5 @@ def _torch_alloc(size, device_id):
         size, device_id, torch_stream_ptr)
 
 
-def _torch_free(mem_ptr, device_id):
-    torch.cuda.caching_allocator_delete(mem_ptr)
+def _torch_free(mem_ptr: int, device_id: int) -> None:
+    torch.cuda.caching_allocator_delete(mem_ptr)  # type: ignore[no-untyped-call]
