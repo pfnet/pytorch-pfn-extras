@@ -630,6 +630,7 @@ class Logic(BaseLogic):
             # This is to avoid errors when the trained models returns
             # tensors others than scalars
             if isinstance(v, torch.Tensor) and (
+                v.grad_fn is not None and
                 (
                     self.backward_outputs is None
                     and v.numel() == 1
