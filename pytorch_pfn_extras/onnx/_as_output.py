@@ -1,5 +1,5 @@
 import onnx
-from typing import List, NamedTuple
+from typing import Any, Generator, List, NamedTuple, Tuple
 import torch
 import threading
 from contextlib import contextmanager
@@ -57,11 +57,11 @@ class _Outputs:
 
 class _ModuleWithAdditionalOutputs(torch.nn.Module):
     def __init__(self, module: torch.nn.Module, outputs: _Outputs) -> None:
-        super().__init__()
+        super().__init__()  # type: ignore[no-untyped-call]
         self.module = module
         self.outputs = outputs
 
-    def forward(self, *args, **kwargs):
+    def forward(self, *args: Any, **kwargs: Any) -> Any:
         out = self.module(*args, **kwargs)
         if len(self.outputs.values) == 0:
             return out
@@ -72,15 +72,17 @@ class _ModuleWithAdditionalOutputs(torch.nn.Module):
         out.extend([value for _, value in self.outputs.values])
         return out
 
-    def state_dict(self, *args, **kwargs):
+    def state_dict(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         return self.module.state_dict(*args, **kwargs)
 
-    def load_state_dict(self, *args, **kwargs):
+    def load_state_dict(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         return self.module.load_state_dict(*args, **kwargs)
 
 
 @contextmanager
-def trace(module: torch.nn.Module) -> None:
+def trace(
+        module: torch.nn.Module
+) -> Generator[Tuple[torch.nn.Module, _Outputs], None, None]:
     _outputs.outputs = _Outputs()
     module = _ModuleWithAdditionalOutputs(module, _outputs.outputs)
     try:
