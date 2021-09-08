@@ -5,6 +5,7 @@ import torch
 
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras import reporting
+from pytorch_pfn_extras.training import trigger as trigger_module
 
 
 _amp_enabled = False
@@ -56,7 +57,7 @@ class BaseHandler:
         """
         pass
 
-    def synchronize_train(self, trainer):
+    def _synchronize_train(self, trainer):
         """A method called when synchronization is needed in training loop
 
         .. seealso:
@@ -212,6 +213,9 @@ class Handler(BaseHandler):
                     Default is an empty list.
                 * ``'async'`` (bool):
                     If ``True``, async mode is enabled. Default is ``False``.
+                * ``'sync_trigger'`` (tuple or Trigger):
+                    Trigger used to synchronize iterations in
+                    asynchronous mode. Default is ``None``.
         """
         super().__init__(logic, options)
         self.pending_iters = defaultdict(list)
@@ -225,6 +229,15 @@ class Handler(BaseHandler):
         self._eval_report_keys = options.pop('eval_report_keys', [])
         self._train_report_keys = options.pop('train_report_keys', [])
         self._async = options.pop('async', False)
+        self._sync_trigger = options.pop('sync_trigger', None)
+        if self._sync_trigger is not None:
+            self._sync_trigger = trigger_module.get_trigger(self._sync_trigger)
+            if not self._async:
+                raise ValueError('sync_trigger requires async=True')
+
+        if self._autocast and not _amp_enabled:
+            raise RuntimeError('Requested AMP features but torch.cuda.amp'
+                               ' is not enabled')
 
     def _runtime_iterator(self, models):
         if not self._ppe_modules:
@@ -266,7 +279,7 @@ class Handler(BaseHandler):
             raise RuntimeError("Async mode is not supported in models "
                                "splitted across different devices")
 
-    def synchronize_train(self, trainer):
+    def _synchronize_train(self, trainer):
         if self._async:
             while self.pending_iters:
                 # TODO(ecastill) block until we get the result
@@ -367,6 +380,11 @@ class Handler(BaseHandler):
             trainer.models, trainer.optimizers, batch_idx, batch)
 
         if self._async:
+            if self._sync_trigger is not None:
+                manager = trainer._manager._get_proxy_for_trigger(
+                    self._sync_trigger)
+                if self._sync_trigger(manager):
+                    self._synchronize_train(trainer)
             # async returns inmediately
             # Check if there is a completed iteration
             # If we enqueue everything first, we will blow up with
