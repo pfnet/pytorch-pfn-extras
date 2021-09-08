@@ -325,7 +325,7 @@ class _BaseExtensionsManager:
                 raise ValueError('"trigger" is duplicated')
             if priority is not None:
                 raise ValueError('"prioirity" is duplicated')
-            self._extensions[extension.name] = extension
+            self._extend(extension)
             return
 
         ext = extension_module._as_extension(extension)
@@ -341,16 +341,22 @@ class _BaseExtensionsManager:
         if priority is None:
             priority = ext.priority
 
+        self._extend(
+            extension_module.ExtensionEntry(
+                ext, name=name, priority=priority,
+                trigger=trigger, call_before_training=call_before_training))
+
+    def _extend(self, ext: extension_module.ExtensionEntry) -> None:
+        name = ext.name
+
         modified_name = name
         ordinal = 0
         while modified_name in self._extensions:
             ordinal += 1
             modified_name = '%s_%d' % (name, ordinal)
 
-        ext.name = modified_name
-        self._extensions[modified_name] = extension_module.ExtensionEntry(
-            ext, name=modified_name, priority=priority,
-            trigger=trigger, call_before_training=call_before_training)
+        ext.extension.name = modified_name
+        self._extensions[modified_name] = ext
 
     def get_extension(self, name: str) -> extension_module.Extension:
         """Returns the extension of a given name.
