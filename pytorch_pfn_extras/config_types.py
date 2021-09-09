@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     import optuna
 
 
-def optuna_types(trial: 'optuna.Trial'):
+def optuna_types(trial: 'optuna.trial.Trial'):
     types = {
         "optuna_suggest_categorical": trial.suggest_categorical,
         "optuna_suggest_discrete_uniform": trial.suggest_discrete_uniform,
