@@ -289,13 +289,25 @@ def test_trainer_synchronize(path):
         def __call__(self, manager):
             self.called += 1
 
+    class ExtensionThatSyncs:
+        needs_sync = True
+
+        def __init__(self, trainer):
+            self.name = 'Dummy'
+            self.trigger = (10, 'iteration')
+            self.called = 0
+            self.object_to_sync = trainer
+
+        def __call__(self, manager):
+            self.called += 1
+
     class SyncHandler(ppe.handler.Handler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._times_synced = 0
 
-        def _synchronize_train(self, trainer):
-            super()._synchronize_train(trainer)
+        def synchronize_train(self, trainer):
+            super().synchronize_train(trainer)
             self._times_synced += 1
 
     device = 'async-cpu'
@@ -310,7 +322,7 @@ def test_trainer_synchronize(path):
         [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
 
     extensions = [Extension(True), Extension(False)]
-    options = {'async': True, 'sync_trigger': (10, 'iteration')}
+    options = {'async': True}
     n_epoch = 2
     trainer = engine.create_trainer(
         model_with_loss, optimizer, n_epoch, options=options,
@@ -318,13 +330,15 @@ def test_trainer_synchronize(path):
         handler_class=SyncHandler,
         out_dir=path,
     )
+    sync_ext = ExtensionThatSyncs(trainer)
+    trainer.extend(sync_ext)
     trainer.run(data, data)
     assert trainer.manager.iteration == 200
     assert trainer.manager.execution == 200
     assert extensions[0].called == 200
     assert extensions[1].called == 200
-    # the trigger does not fire in execution 0
-    assert trainer.handler._times_synced == 19 + n_epoch
+    assert extensions[1].called == 200
+    assert trainer.handler._times_synced == 20 + n_epoch
     assert model_with_loss._pending_called
 
 

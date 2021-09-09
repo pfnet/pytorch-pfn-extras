@@ -5,7 +5,6 @@ import torch
 
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras import reporting
-from pytorch_pfn_extras.training import trigger as trigger_module
 
 
 _amp_enabled = False
@@ -130,6 +129,16 @@ class BaseHandler:
         # Called after train_step.
         pass
 
+    def synchronize_train(self, trainer):
+        """A method called to enforce completion of pending iterations.
+
+        .. seealso:
+           :meth:`pytorch_pfn_extras.handler.Handler.train_post_step`
+        """
+        # Context: Trainer
+        # Can be called after train_step.
+        pass
+
     def eval_setup(self, evaluator, loader):
         """A method called only once when starting a training run.
         When evaluator is not given, this method is not called.
@@ -203,9 +212,6 @@ class Handler(BaseHandler):
                     Default is an empty list.
                 * ``'async'`` (bool):
                     If ``True``, async mode is enabled. Default is ``False``.
-                * ``'sync_trigger'`` (tuple or Trigger):
-                    Trigger used to synchronize iterations in
-                    asynchronous mode. Default is ``None``.
         """
         super().__init__(logic, options)
         self.pending_iters = defaultdict(list)
@@ -219,15 +225,6 @@ class Handler(BaseHandler):
         self._eval_report_keys = options.pop('eval_report_keys', [])
         self._train_report_keys = options.pop('train_report_keys', [])
         self._async = options.pop('async', False)
-        self._sync_trigger = options.pop('sync_trigger', None)
-        if self._sync_trigger is not None:
-            self._sync_trigger = trigger_module.get_trigger(self._sync_trigger)
-            if not self._async:
-                raise ValueError('sync_trigger requires async=True')
-
-        if self._autocast and not _amp_enabled:
-            raise RuntimeError('Requested AMP features but torch.cuda.amp'
-                               ' is not enabled')
 
     def _runtime_iterator(self, models):
         if not self._ppe_modules:
@@ -269,7 +266,12 @@ class Handler(BaseHandler):
             raise RuntimeError("Async mode is not supported in models "
                                "splitted across different devices")
 
-    def _synchronize_train(self, trainer):
+    def synchronize_train(self, trainer):
+        """A method called to enforce completion of pending iterations.
+
+        Args:
+            trainer (Trainer): The trainer that calls this method.
+        """
         if self._async:
             while self.pending_iters:
                 # TODO(ecastill) block until we get the result
@@ -308,7 +310,7 @@ class Handler(BaseHandler):
         Args:
             trainer (Trainer): The trainer that calls this method.
         """
-        self._synchronize_train(trainer)
+        self.synchronize_train(trainer)
         self._logic.train_epoch_end(trainer.models, trainer.epoch)
 
     def train_validation_begin(self, trainer, evaluator):
@@ -376,21 +378,9 @@ class Handler(BaseHandler):
             # memory due to the dataloaders being in the background
             # We need to call the tagged runtimes since async mode
             # require different treatment depending on the device.
-            sync = False
-            if self._sync_trigger is not None:
-                # Synchronize must happen in executions, not completed
-                # iterations
-                manager = trainer._manager._get_proxy_for_trigger(
-                    self._sync_trigger)
-                if self._sync_trigger(manager):
-                    self._synchronize_train(trainer)
-                    sync = True
-
             for sn, sm, rt in self._runtime_iterator(trainer.models):
                 self.pending_iters[sn].append((batch_idx, batch, complete_fn))
-                # If this was a sync operation, wait for this iteration and
-                # it will not defer the iteration as expected
-                outs = rt.get_pending_result(sm, sync)
+                outs = rt.get_pending_result(sm, False)
                 if outs is not None:
                     self._complete_train_step(trainer, outs, False, sn, sm, rt)
         else:

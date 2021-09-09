@@ -100,6 +100,9 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
         self.evaluator.run(self._val_loader, eval_len=self._eval_len)
         self.evaluator.handler.train_validation_end(self, self.evaluator)
 
+    def synchronize(self):
+        self.handler.synchronize_train(self)
+
     def run(self,
             train_loader: torch.utils.data.DataLoader,
             val_loader: Optional[torch.utils.data.DataLoader] = None,

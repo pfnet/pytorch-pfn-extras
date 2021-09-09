@@ -302,6 +302,7 @@ class _Snapshot(extension.Extension):
     trigger = 1, 'epoch'
     priority = extension.PRIORITY_SNAPSHOT
     needs_model_state = True
+    needs_sync = True
 
     def __init__(
             self, target=None, condition=None, writer=None,
@@ -318,6 +319,10 @@ class _Snapshot(extension.Extension):
         self.n_retains = n_retains
         self.autoload = autoload
         self._savefun = savefun
+        if callable(getattr(target, 'synchronize', None)):
+            self.object_to_sync = target
+        else:
+            self.needs_sync = False
 
     def initialize(self, manager):
         target = manager if self._target is None else self._target

@@ -151,6 +151,9 @@ class _WrappedExtension(Extension):
         self._ext = ext
         self.trigger = getattr(self._ext, 'trigger', Extension.trigger)
         self.priority = getattr(self._ext, 'priority', Extension.priority)
+        self.is_async = getattr(self._ext, 'is_async', False)
+        self.needs_sync = getattr(self._ext, 'needs_sync', False)
+        self.object_to_sync = getattr(self._ext, 'object_to_sync', None)
         super().__init__()
 
     @property

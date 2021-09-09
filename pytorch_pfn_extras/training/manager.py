@@ -380,6 +380,29 @@ class _BaseExtensionsManager:
             raise ValueError('extension %s not found' % name)
 
     def run_extensions(self, *, completed=True, only_iterations=True) -> None:
+        # The synchronize won't access the model data or execute the extension
+        # but it needs to disable the check as the sync mechanism may need
+        # to access the model objects.
+        self._model_available = True
+        for name, entry in self.extensions:
+            if (getattr(entry.extension, 'needs_sync', False) and
+                    not getattr(self, '_syncing', False)):
+                # extensions that needs synchronization will do it based on the
+                # execution coutn, ie. snapshot will be executed in iteration
+                # 50, we are currently in exeuction 50 but iteration 40.
+                # by the time we arrive to iteration 50 we will have on-going
+                # executions that have altered the state making it no longer
+                # valid. We force here to complete all the remaining executions
+                # so that the extension can be executed without ongoing work.
+                if entry.trigger(self._get_proxy_for_trigger(entry.trigger)):
+                    # When synchronizing, we complete pending iterations that
+                    # calls `run_extension`, so we want to avoid recursive
+                    # sync calls
+                    self._syncing = True
+                    entry.extension.object_to_sync.synchronize()
+                    self._syncing = False
+
+        to_run = []
         if completed:
             # Check if the model is available for the iteration just
             # completed, i.e., the iteration number is already incremented.
@@ -387,21 +410,20 @@ class _BaseExtensionsManager:
         else:
             self._model_available = False
 
-        to_run = []
         for name, entry in self.extensions:
             # When iterations are deferred we only
             # launch the extensions that doesn't need
             # the training status to advance
             # those are extensions set to execute
             # in a given interval of executions
-            is_async = (hasattr(entry.extension, 'is_async')
-                        and entry.extension.is_async)
+            is_async = getattr(entry.extension, 'is_async', False)
             if ((not completed and not is_async)
                     or (completed and is_async and only_iterations)):
                 continue
             manager = self
             if is_async:
                 manager = self._get_proxy_for_trigger(entry.trigger)
+
             if entry.trigger(manager):
                 # Execution of snapshot extensions are deferred until all the
                 # triggers are evaluated.
