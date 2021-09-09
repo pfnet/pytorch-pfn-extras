@@ -1,14 +1,18 @@
+from copy import deepcopy
 import os
 import sys
-from copy import deepcopy
+from typing import Any, Dict, IO, List, Optional, Tuple, Union
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training.extensions import log_report \
     as log_report_module
 from pytorch_pfn_extras.training.extensions import util
+from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
 
 
-def create_header_and_templates(entries):
+def create_header_and_templates(
+        entries: List[str],
+) -> Tuple[str, List[Tuple[str, str, str]]]:
     """Construct header and templates from `entries`
 
     Args:
@@ -29,7 +33,10 @@ def create_header_and_templates(entries):
     return header, templates
 
 
-def filter_and_sort_entries(all_entries, unit='epoch'):
+def filter_and_sort_entries(
+        all_entries: List[str],
+        unit: str = 'epoch',
+) -> List[str]:
     entries = deepcopy(all_entries)
     # TODO(nakago): sort other entries if necessary
 
@@ -58,7 +65,7 @@ class PrintReport(extension.Extension):
     to print specified entries of the log in a human-readable format.
 
     Args:
-        entries (list of str ot None): List of keys of observations to print.
+        entries (list of str or None): List of keys of observations to print.
             If `None` is passed, automatically infer keys from reported dict.
         log_report (str or LogReport): Log report to accumulate the
             observations. This is either the name of a LogReport extensions
@@ -68,7 +75,12 @@ class PrintReport(extension.Extension):
 
     """
 
-    def __init__(self, entries=None, log_report='LogReport', out=sys.stdout):
+    def __init__(
+            self,
+            entries: Optional[List[str]] = None,
+            log_report: Union[str, log_report_module.LogReport] = 'LogReport',
+            out: IO[Any] = sys.stdout,
+    ) -> None:
         if entries is None:
             self._infer_entries = True
             entries = []
@@ -82,22 +94,28 @@ class PrintReport(extension.Extension):
 
         # format information
         header, templates = create_header_and_templates(entries)
-        self._header = header  # printed at the first call
+        self._header: Optional[str] = header  # printed at the first call
         self._templates = templates
-        self._all_entries = []
+        self._all_entries: List[str] = []
 
-    def get_log_report(self, manager):
+    def get_log_report(
+            self,
+            manager: _BaseExtensionsManager,
+    ) -> log_report_module.LogReport:
         log_report = self._log_report
         if isinstance(log_report, str):
-            log_report = manager.get_extension(log_report)
+            ext = manager.get_extension(log_report)
+            if not isinstance(ext, log_report_module.LogReport):
+                raise TypeError('`log_report` must be LogReport object')
+            return ext
         elif isinstance(log_report, log_report_module.LogReport):
             log_report(manager)  # update the log report
+            return log_report
         else:
             raise TypeError('log report has a wrong type %s' %
                             type(log_report))
-        return log_report
 
-    def _update_entries(self, log_report):
+    def _update_entries(self, log_report: log_report_module.LogReport) -> None:
         log = log_report.log
         updated_flag = False
         aggregate_entries = log[self._log_len:]
@@ -110,7 +128,7 @@ class PrintReport(extension.Extension):
         if updated_flag:
             if hasattr(log_report, '_trigger') and hasattr(log_report._trigger,
                                                            'unit'):
-                unit = log_report._trigger.unit
+                unit = log_report._trigger.unit  # type: ignore[attr-defined]
             else:
                 # Failed to infer `unit`, use epoch as default
                 unit = 'epoch'
@@ -120,7 +138,7 @@ class PrintReport(extension.Extension):
             self._header = header  # printed at the first call
             self._templates = templates
 
-    def __call__(self, manager):
+    def __call__(self, manager: _BaseExtensionsManager) -> None:
         log_report = self.get_log_report(manager)
         log = log_report.log
 
@@ -145,18 +163,18 @@ class PrintReport(extension.Extension):
             log_len += 1
         self._log_len = log_len
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         log_report = self._log_report
         if isinstance(log_report, log_report_module.LogReport):
             return {'_log_report': log_report.state_dict()}
         return {}
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         log_report = self._log_report
         if isinstance(log_report, log_report_module.LogReport):
             log_report.load_state_dict(to_load['_log_report'])
 
-    def _print(self, observation):
+    def _print(self, observation: Dict[str, float]) -> None:
         out = self._out
         for entry, template, empty in self._templates:
             if entry in observation:
