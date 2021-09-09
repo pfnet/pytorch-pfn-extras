@@ -37,7 +37,7 @@ def torch_autocast(enabled: bool = True) -> Generator[None, None, None]:
 
 
 class BaseLogic:
-    def __init__(self, options=None):
+    def __init__(self, options: Optional[Dict[str, Any]] = None):
         super().__init__()
         options = options.copy() if options else {}
         self.consume_options(options)
@@ -184,7 +184,7 @@ class Logic(BaseLogic):
         super().__init__(options)
         self.model_name = model_name
 
-    def consume_options(self, options):
+    def consume_options(self, options: Dict[str, Any]) -> None:
         super().consume_options(options)
 
         self.backward_outputs = options.pop('backward_outputs', None)
@@ -200,10 +200,6 @@ class Logic(BaseLogic):
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
                 raise RuntimeError('grad_scaler should be a '
                                    'torch.cuda.amp.GradScaler object')
-
-    def set_options(self, options: Dict[str, Any]) -> None:
-        self.backward_outputs = options.pop('backward_outputs', None)
-        self._grad_scaler = options.pop('grad_scaler', None)
 
     def _forward(self, model: torch.nn.Module, batch: Any) -> Any:
         if isinstance(batch, tuple) and hasattr(batch, '_fields'):
@@ -260,7 +256,8 @@ class Logic(BaseLogic):
         """
         model = models[self.model_name]
         model.train()
-        if hasattr(loader, 'sampler') and hasattr(loader.sampler, 'set_epoch'):  # type: ignore[attr-defined] # NOQA
+        if hasattr(loader, 'sampler') and hasattr(
+                loader.sampler, 'set_epoch'):  # type: ignore[attr-defined]
             # Needed for `torch.utils.data.DistributedSampler`
             loader.sampler.set_epoch(epoch)  # type: ignore[attr-defined]
 
@@ -579,13 +576,13 @@ class Handler(BaseHandler):
                     If ``True``, async mode is enabled. Default is ``False``.
         """
         super().__init__(logic, options)
+        self.pending_iters: Dict[str, PendingIters] = defaultdict(list)
 
         # This is used to send the batch to the appropiate device
         self._entry_runtime = entry_runtime
         self._ppe_modules: List[ModulesTuple] = []
-        self.pending_iters: Dict[str, PendingIters] = defaultdict(list)
 
-    def consume_options(self, options):
+    def consume_options(self, options: Dict[str, Any]) -> None:
         super().consume_options(options)
         self._eval_report_keys = options.pop('eval_report_keys', [])
         self._train_report_keys = options.pop('train_report_keys', [])
