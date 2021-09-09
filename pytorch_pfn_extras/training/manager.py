@@ -318,26 +318,28 @@ class _BaseExtensionsManager:
             raise RuntimeError(
                 'extend called after the extensions were initialized')
 
-        if not isinstance(extension, extension_module.ExtensionEntry):
-            extension = extension_module.ExtensionEntry(extension)
+        if isinstance(extension, extension_module.ExtensionEntry):
+            entry = extension
+        else:
+            entry = extension_module.ExtensionEntry(extension)
 
         if trigger is not None:
-            extension.set_trigger(trigger)
+            entry._update_trigger(trigger)
 
         if priority is not None:
-            extension.priority = priority
+            entry.priority = priority
 
         if call_before_training is not None:
-            extension.call_before_training = call_before_training
+            entry.call_before_training = call_before_training
 
-        modified_name = name or extension.name
+        modified_name = name or entry.name
         ordinal = 0
         while modified_name in self._extensions:
             ordinal += 1
             modified_name = '%s_%d' % (name, ordinal)
 
-        extension.set_name(modified_name)
-        self._extensions[modified_name] = extension
+        entry._update_name(modified_name)
+        self._extensions[modified_name] = entry
 
     def get_extension(self, name: str) -> extension_module.Extension:
         """Returns the extension of a given name.

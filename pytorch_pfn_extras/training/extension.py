@@ -5,7 +5,7 @@ from pytorch_pfn_extras.training import _trigger_util
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
-    from pytorch_pfn_extras.training._trigger_util import Trigger, TriggerLike
+    from pytorch_pfn_extras.training._trigger_util import TriggerLike
     ExtensionLike = Callable[[_BaseExtensionsManager], None]
 
 
@@ -257,13 +257,13 @@ class ExtensionEntry:
         self.priority = priority or self.extension.priority
         self.call_before_training = call_before_training
 
-        self.set_trigger(trigger or self.extension.trigger)
-        self.set_name(name or self.extension.name or self.extension.default_name)
+        self._update_trigger(trigger or self.extension.trigger)
+        self._update_name(name or self.extension.name or self.extension.default_name)
 
-    def set_trigger(self, trigger: 'TriggerLike') -> None:
+    def _update_trigger(self, trigger: 'TriggerLike') -> None:
         self.trigger = _trigger_util.get_trigger(trigger)
 
-    def set_name(self, name: str) -> None:
+    def _update_name(self, name: str) -> None:
         if name == 'training':
             raise ValueError(
                 'the name "training" is prohibited as an extension name')
