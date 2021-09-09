@@ -332,9 +332,9 @@ class TestHandlerAutocast:
     @pytest.mark.parametrize('autocast', [True, False])
     def test_autocast(self, autocast):
         trainer = MockTrainer()
-        logic = ppe.handler.Logic()
+        logic = ppe.handler.Logic(options={'autocast': autocast})
         handler = ppe.handler.Handler(
-            logic, ppe.runtime.PyTorchRuntime('cuda'), {'autocast': autocast}
+            logic, ppe.runtime.PyTorchRuntime('cuda'), {}
         )
 
         completed = False
@@ -369,12 +369,8 @@ class TestHandlerAutocast:
         old_enable = ppe.handler._amp_enabled
         try:
             ppe.handler._amp_enabled = False
-            logic = ppe.handler.Logic()
             with pytest.raises(RuntimeError):
-                ppe.handler.Handler(
-                    logic, ppe.runtime.PyTorchRuntime('cuda'),
-                    {'autocast': True}
-                )
+                ppe.handler.Logic(options={'autocast': True})
         finally:
             ppe.handler._amp_enabled = old_enable
 
