@@ -196,7 +196,7 @@ class Handler(BaseHandler):
                     A list of names of outputs that are given as inputs
                     of ``reporting.report`` after each evaluation step.
                     Default is an empty list.
-                * ``'train_report_keys'``
+                * ``'train_report_keys'`` (list of str):
                     A list of names of outputs that are given as inputs
                     of ``reporting.report`` after each training step.
                     Default is an empty list.
