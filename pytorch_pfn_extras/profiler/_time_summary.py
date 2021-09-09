@@ -15,6 +15,23 @@ from pytorch_pfn_extras.reporting import DictSummary
 Events = Tuple[torch.cuda.Event, torch.cuda.Event]
 
 
+class _ReportNotification:
+    def __init__(self, summary, tag, use_cuda, begin_event, begin):
+        self._is_completed = True
+        self._summary = summary
+        self._tag = tag
+        self._use_cuda = use_cuda
+        self._begin_event = begin_event
+        self._begin = begin
+
+    def defer(self):
+        self._is_completed = False
+
+    def complete(self):
+        self._summary.complete_report(
+            self._tag, self._use_cuda, self._begin_event, self._begin)
+
+
 class _CPUWorker:
     def __init__(
             self,
@@ -245,6 +262,15 @@ class TimeSummary:
                 self._summary = DictSummary()
                 self._additional_stats = {}
 
+    def complete_report(self, tag, use_cuda, begin_event, begin):
+        end = time.time()
+        self._cpu_worker._queue.put((tag, end - begin))
+        if use_cuda:
+            end_event = self._cuda_worker.get_cuda_event()
+            end_event.record()
+            self._cuda_worker._queue.put(
+                (f"{tag}.cuda", (begin_event, end_event)))
+
     @contextmanager
     def report(self, tag: str, use_cuda: bool = False) -> Generator[None, None, None]:
         """Context manager to automatically report execution times.
@@ -258,21 +284,19 @@ class TimeSummary:
             use_cuda (bool): Indicates if GPU time should also be profiled.
         """
         self.initialize()
+        begin_event = None
         if use_cuda:
             assert self._cuda_worker is not None
             begin_event = self._cuda_worker.get_cuda_event()
             begin_event.record()  # type: ignore[no-untyped-call]
         try:
             begin = time.time()
-            yield
+            notification = _ReportNotification(
+                self, tag, use_cuda, begin_event, begin)
+            yield notification
         finally:
-            end = time.time()
-            self._cpu_worker.put(tag, end - begin)
-            if use_cuda:
-                assert self._cuda_worker is not None
-                end_event = self._cuda_worker.get_cuda_event()
-                end_event.record()  # type: ignore[no-untyped-call]
-                self._cuda_worker.put(f"{tag}.cuda", (begin_event, end_event))
+            if notification._is_completed:
+                self.complete_report(tag, use_cuda, begin_event, begin)
 
 
 time_summary = TimeSummary(auto_init=False)

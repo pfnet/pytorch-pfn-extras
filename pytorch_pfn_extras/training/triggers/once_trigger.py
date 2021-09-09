@@ -46,3 +46,6 @@ class OnceTrigger(trigger.Trigger):
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         self._flag_first = to_load['_flag_first']
+
+    def may_fire(self, iteration, epoch_length):
+        return not (self._flag_first or self._flag_resumed)

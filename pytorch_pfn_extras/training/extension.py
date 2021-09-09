@@ -47,6 +47,11 @@ class Extension:
     trigger: 'TriggerLike' = (1, 'iteration')
     priority: int = PRIORITY_READER
     name: Optional[str] = None
+    needs_model_state = False
+    # is_async determines whether the execution trigger will be fired
+    # by taking in account the number of executions regardless of the
+    # completed iterations
+    is_async = False
 
     @property
     def default_name(self) -> str:

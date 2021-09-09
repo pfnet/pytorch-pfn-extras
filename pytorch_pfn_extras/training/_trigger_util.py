@@ -7,6 +7,14 @@ if TYPE_CHECKING:
 
 class Trigger:
     """Base class for triggers."""
+    def may_fire(self, iteration: int, epoch_len: int) -> bool:
+        """Flags if the trigger may fire at the current iteration
+
+        This must not alter the trigger state
+
+        """
+        return True
+
     def load_state_dict(self, state: Dict[str, Any]) -> None:
         pass
 

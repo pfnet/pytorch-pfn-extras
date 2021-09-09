@@ -8,6 +8,22 @@ API Reference
 Training Loop
 ------------------
 
+Trainer (techincal preview)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autosummary::
+   :toctree: generated/
+
+   engine.create_trainer
+   engine.create_evaluator
+   handler.BaseLogic
+   handler.Logic
+   handler.BaseHandler
+   handler.Handler
+   runtime.BaseRuntime
+   runtime.PyTorchRuntime
+
+
 Extensions Manager
 ~~~~~~~~~~~~~~~~~~
 

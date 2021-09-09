@@ -34,33 +34,23 @@ class Net(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-def train(manager, args, model, device, train_loader):
-    while not manager.stop_trigger:
-        model.train()
-        for _, (data, target) in enumerate(train_loader):
-            with manager.run_iteration(step_optimizers=['main']):
-                data, target = data.to(device), target.to(device)
-                output = model(data)
-                loss = F.nll_loss(output, target)
-                ppe.reporting.report({'train/loss': loss.item()})
-                loss.backward()
+class ModelWithLoss(torch.nn.Module):
+    def __init__(self, model):
+        super().__init__()
+        self.model = model
 
+    def forward(self, data, target):
+        output = self.model(data)
 
-def test(args, model, device, data, target):
-    """ The extension loops over the iterator in order to
-        drive the evaluator progress bar and reporting
-        averages
-    """
-    model.eval()
-    data, target = data.to(device), target.to(device)
-    output = model(data)
-    # Final result will be average of averages of the same size
-    test_loss = F.nll_loss(output, target, reduction='mean').item()
-    ppe.reporting.report({'val/loss': test_loss})
-    pred = output.argmax(dim=1, keepdim=True)
+        if self.training:
+            loss = F.nll_loss(output, target)
+            ppe.reporting.report({'train/loss': loss.item()})
+            return {'loss': loss}
 
-    correct = pred.eq(target.view_as(pred)).sum().item()
-    ppe.reporting.report({'val/acc': correct / len(data)})
+        # Final result will be average of averages of the same size
+        test_loss = F.nll_loss(output, target, reduction='mean').item()
+        pred = output.argmax(dim=1, keepdim=True)
+        return {'loss': test_loss, 'output': pred}
 
 
 def main():
@@ -77,9 +67,8 @@ def main():
                         help='learning rate (default: 0.01)')
     parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
                         help='SGD momentum (default: 0.5)')
-    parser.add_argument('--no-cuda', dest='cuda',
-                        action='store_false', default=True,
-                        help='disables CUDA training')
+    parser.add_argument('--device', type=str, default='cuda',
+                        help='PyTorch device specifier')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
     parser.add_argument('--save-model', action='store_true', default=False,
@@ -90,11 +79,10 @@ def main():
                         action='store_false', default=True,
                         help='do not use lazy modules')
     args = parser.parse_args()
-    use_cuda = args.cuda and torch.cuda.is_available()
 
     torch.manual_seed(args.seed)
 
-    device = torch.device("cuda" if use_cuda else "cpu")
+    use_cuda = args.device.startswith('cuda')
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     train_loader = torch.utils.data.DataLoader(
@@ -103,63 +91,74 @@ def main():
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
-        batch_size=args.batch_size, shuffle=True, **kwargs)
+        batch_size=args.batch_size, shuffle=True,
+        collate_fn=ppe.dataloaders.utils.CollateAsDict(
+            names=['data', 'target']), **kwargs)
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../data', train=False, transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ])),
-        batch_size=args.test_batch_size, shuffle=True, **kwargs)
+        batch_size=args.test_batch_size, shuffle=True,
+        collate_fn=ppe.dataloaders.utils.CollateAsDict(
+            names=['data', 'target']), **kwargs)
 
     model = Net(args.lazy)
-    model.to(device)
     if args.lazy:
         # You need to run a dummy forward to initialize parameters.
         # This should be done before passing parameter list to optimizers.
-        # The dummy input can be generated from the loader's first batch
-        # (trim off the data to batch size = 1 for performance).
-        dummy_input = train_loader.dataset[0][0].unsqueeze(0).to(device)
+        dummy_input = train_loader.dataset[0][0].unsqueeze(0)
         model(dummy_input)
+
     optimizer = optim.SGD(
         model.parameters(), lr=args.lr, momentum=args.momentum)
 
-    # manager.extend(...) also works
     my_extensions = [
         extensions.LogReport(),
         extensions.ProgressBar(),
         extensions.observe_lr(optimizer=optimizer),
         extensions.ParameterStatistics(model, prefix='model'),
         extensions.VariableStatisticsPlot(model),
-        extensions.Evaluator(
-            test_loader, model,
-            eval_func=lambda data, target:
-                test(args, model, device, data, target),
-            progress_bar=True),
         extensions.PlotReport(
             ['train/loss', 'val/loss'], 'epoch', filename='loss.png'),
         extensions.PrintReport(['epoch', 'iteration',
                                 'train/loss', 'lr', 'model/fc2.bias/grad/min',
-                                'val/loss', 'val/acc']),
+                                'val/loss', 'val/accuracy']),
         extensions.snapshot(),
     ]
+
     # Custom stop triggers can be added to the manager and
     # their status accessed through `manager.stop_trigger`
     trigger = None
     # trigger = ppe.training.triggers.EarlyStoppingTrigger(
     #     check_trigger=(1, 'epoch'), monitor='val/loss')
-    manager = ppe.training.ExtensionsManager(
-        model, optimizer, args.epochs,
+
+    model_with_loss = ModelWithLoss(model)
+    trainer = ppe.engine.create_trainer(
+        model_with_loss,
+        optimizer,
+        args.epochs,
+        device=args.device,
         extensions=my_extensions,
-        iters_per_epoch=len(train_loader),
-        stop_trigger=trigger)
+        stop_trigger=trigger,
+        evaluator=ppe.engine.create_evaluator(
+            model_with_loss,
+            device=args.device,
+            progress_bar=True,
+            metrics=[ppe.training.metrics.AccuracyMetric('target', 'output')],
+            options={'eval_report_keys': ['loss', 'accuracy']}),
+        options={'train_report_keys': ['loss']}
+    )
+
+    if use_cuda:
+        ppe.to(model_with_loss, args.device)
+
     # Lets load the snapshot
     if args.snapshot is not None:
         state = torch.load(args.snapshot)
-        manager.load_state_dict(state)
-    train(manager, args, model, device, train_loader)
-    # Test function is called from the evaluator extension
-    # to get access to the reporter and other facilities
-    # test(args, model, device, test_loader)
+        trainer.load_state_dict(state)
+
+    trainer.run(train_loader, test_loader)
 
     if (args.save_model):
         torch.save(model.state_dict(), "mnist_cnn.pt")

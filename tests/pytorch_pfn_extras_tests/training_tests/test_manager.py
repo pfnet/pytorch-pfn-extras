@@ -25,13 +25,19 @@ def test_manager_status_info():
 
 class _DummyExtension(training.Extension):
 
-    def __init__(self, extension_id, call_record, init_record):
+    def __init__(
+            self, extension_id, call_record, init_record, use_model=False):
         self.extension_id = extension_id
         self.call_record = call_record
         self.init_record = init_record
+        self.use_model = use_model
 
     def __call__(self, manager):
         self.call_record.append(self.extension_id)
+        if self.use_model:
+            # Check if models are accessible.
+            assert manager.models['main'] is not None
+            assert manager.raw_models['main'] is not None
 
 
 class _DummyExtensionInitialize(_DummyExtension):
@@ -168,14 +174,13 @@ def test_extensions_manager_state_dict():
     state_dict = manager.state_dict()
 
     assert state_dict == {
+        '_start_execution': passed_iteration,
         '_start_iteration': passed_iteration,
         'models': {'model_name': model_state_dict},
         'optimizers': {'optimizer_name': optimizer_state_dict},
         'extensions': {'extension_name': {
             'extension': extension_state_dict,
             'trigger': {
-                '_previous_iteration': passed_iteration,
-                '_previous_epoch_detail': passed_iteration / iters_per_epoch
             },
         }},
     }
@@ -234,6 +239,7 @@ def test_ignite_extensions_manager_state_dict():
     state_dict = manager.state_dict()
 
     assert state_dict == {
+        '_start_execution': passed_iteration,
         '_start_iteration': passed_iteration,
         '_epoch_length': iters_per_epoch,
         'models': {'model_name': model_state_dict},
@@ -241,8 +247,6 @@ def test_ignite_extensions_manager_state_dict():
         'extensions': {'extension_name': {
             'extension': extension_state_dict,
             'trigger': {
-                '_previous_iteration': passed_iteration,
-                '_previous_epoch_detail': passed_iteration / iters_per_epoch
             },
         }},
     }
@@ -283,6 +287,7 @@ def test_extensions_manager_with_plain_model_and_optimizer():
     state_dict = manager.state_dict()
 
     assert state_dict == {
+        '_start_execution': 0,
         '_start_iteration': 0,
         'models': {'main': model_state_dict},
         'optimizers': {'main': optimizer_state_dict},
@@ -312,10 +317,28 @@ def test_model_transformations():
         _StateDictObj(state_dict=optimizer_state_dict),
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        transform_model=lambda n, x: x.wrapper_module(),
     )
 
-    state_dict = manager.state_dict(
-        transform_models=lambda n, x: x.wrapper_module())
+    assert not isinstance(manager.models['main'], Wrapper)
+    assert model.accessed
+
+
+def test_model_transformations_in_state_dict():
+    model_state_dict = object()
+    optimizer_state_dict = object()
+    max_epochs = 5
+    iters_per_epoch = 4
+    model = Wrapper(_StateDictModel(state_dict=model_state_dict))
+    manager = training.ExtensionsManager(
+        model,
+        _StateDictObj(state_dict=optimizer_state_dict),
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+        transform_model=lambda n, x: x.wrapper_module(),
+    )
+
+    state_dict = manager.state_dict()
     assert model.accessed
 
     new_model = _StateDictModel(state_dict_to_be_loaded=model_state_dict)
@@ -325,10 +348,10 @@ def test_model_transformations():
         new_optimizer,
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        transform_model=lambda n, x: x.wrapper_module(),
     )
-    new_manager.load_state_dict(
-        state_dict, transform_models=lambda n, x: x.wrapper_module())
-    assert isinstance(new_manager.models['main'], Wrapper)
+    new_manager.load_state_dict(state_dict)
+    assert isinstance(new_manager.models['main'], _StateDictModel)
 
 
 def test_call_optimizers():
@@ -344,6 +367,99 @@ def test_call_optimizers():
     with manager.run_iteration(step_optimizers=['main']):
         a.grad = torch.tensor([2.0])
     assert torch.equal(a.detach(), torch.tensor([-1.]))
+
+
+def test_needs_state_this_iteration():
+    m = torch.nn.Linear(5, 5)
+    a = torch.ones(1, requires_grad=True)
+    optimizer = torch.optim.SGD(lr=1.0, params=[a])
+    extension = _DummyExtension(0, [], [], True)
+    extension.name = 'Dummy'
+    extension.needs_model_state = True
+    extension.trigger = (50, 'iteration')
+    manager = training.ExtensionsManager(
+        m,
+        optimizer,
+        1,
+        iters_per_epoch=100,
+        extensions=[extension]
+    )
+    while not manager.stop_trigger:
+        with manager.run_iteration():
+            # iteration is always added 1 before calling
+            # extensions
+            if manager.iteration in (49, 99):
+                assert manager.needs_state_this_iteration()
+            else:
+                assert not manager.needs_state_this_iteration()
+
+
+@pytest.mark.parametrize('priority', [
+    None,
+    training.extension.PRIORITY_SNAPSHOT,
+    training.PRIORITY_WRITER,
+])
+def test_extensions_accessing_models_without_flag(priority):
+    m = torch.nn.Linear(5, 5)
+    a = torch.ones(1, requires_grad=True)
+    optimizer = torch.optim.SGD(lr=1.0, params=[a])
+    extension = _DummyExtension(0, [], [], True)
+    extension.name = 'Dummy'
+    extension.needs_model_state = False
+    extension.trigger = (1, 'iteration')
+    if priority is not None:
+        extension.priority = priority
+    manager = training.ExtensionsManager(
+        m,
+        optimizer,
+        1,
+        iters_per_epoch=5,
+        extensions=[extension]
+    )
+    while not manager.stop_trigger:
+        with pytest.raises(RuntimeError):
+            with manager.run_iteration():
+                pass
+
+
+def test_deferred_iteration():
+    m = torch.nn.Linear(5, 5)
+    a = torch.ones(1, requires_grad=True)
+    optimizer = torch.optim.SGD(lr=1.0, params=[a])
+    call_record = []
+    extension = _DummyExtension(0, call_record, [])
+    extension.name = 'Dummy 0'
+    extension.trigger = (1, 'iteration')
+    extension.is_async = True
+    extension2 = _DummyExtension(1, call_record, [])
+    extension2.name = 'Dummy 1'
+    extension2.trigger = (1, 'iteration')
+    manager = training.ExtensionsManager(
+        m,
+        optimizer,
+        1,
+        iters_per_epoch=100,
+        extensions=[extension, extension2]
+    )
+    for _ in range(5):
+        with manager.run_iteration() as iter_handler:
+            # iteration is always added 1 before calling
+            # extensions
+            iter_handler.defer()
+    with manager.run_iteration():
+        pass
+
+    assert manager.iteration == 1
+    assert manager.execution == 6
+    assert call_record == [0] * 6 + [1]
+
+    for _ in range(5):
+        with manager.complete_iteration():
+            pass
+
+    assert manager.iteration == 6
+    assert manager.execution == 6
+    assert call_record == [0] * 6 + [1] * 6
 
 
 if __name__ == '__main__':

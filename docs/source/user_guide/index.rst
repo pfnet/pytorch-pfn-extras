@@ -1,13 +1,35 @@
 User Guide
 ==========
 
+Trainer (techinical preview)
+------------------------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   trainer
+   logic
+   runtimes
+
+
+Extensions
+------------------
+
 .. toctree::
    :maxdepth: 2
 
    extensions
    reporting
-   lazy
    snapshot
+
+
+Utilities
+------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   lazy
    config
    onnx
    cuda

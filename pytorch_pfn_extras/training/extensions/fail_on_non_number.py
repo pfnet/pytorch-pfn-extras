@@ -12,6 +12,8 @@ class FailOnNonNumber(extension.Extension):
     ``RuntimeError`` if the parameters contain NaN or Inf.
     """
 
+    needs_model_state = True
+
     def __call__(self, manager):
         for name, model in manager.models.items():
             for param in model.parameters():
