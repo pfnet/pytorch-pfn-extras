@@ -567,19 +567,18 @@ class Logic(BaseLogic):
     def __init__(self, model_name='main', options=None):
         """A set of methods that defines the training logic.
 
-        model_name (str):
-            Name of the model. Default is ``'main'``.
-        options (dict, optional):
-            Options for backward computation.
+        Args:
+            model_name (str): Name of the model. Default is ``'main'``.
+            options (dict, optional): Options for backward computation.
 
-            * ``'backward_outputs'`` (list of str):
-                A list of names of outputs that require compution of
-                the gradient.
-            * ``'autocast'`` (bool):
-                If ``True``, ``torch.cuda.amp.autocast`` is enabled.
-                Default is ``False``.
-            * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
-                A gradient scaler that outputs are applied to.
+                * ``'backward_outputs'`` (list of str):
+                    A list of names of outputs that require compution of
+                    the gradient.
+                * ``'autocast'`` (bool):
+                    If ``True``, ``torch.cuda.amp.autocast`` is enabled.
+                    Default is ``False``.
+                * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
+                    A gradient scaler that outputs are applied to.
         """
         super().__init__(options)
         self.model_name = model_name
