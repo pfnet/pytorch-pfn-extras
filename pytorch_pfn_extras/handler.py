@@ -192,9 +192,6 @@ class Handler(BaseHandler):
             entry_runtime (BaseRuntime): A runtime object.
             options (dict): The configuration options.
 
-                * ``'autocast'`` (bool):
-                    If ``True``, torch.cuda.amp.autocast is enabled.
-                    Default is ``False``.
                 * ``'eval_report_keys'`` (list of str):
                     A list of names of outputs that are given as inputs
                     of ``reporting.report`` after each evaluation step.
@@ -578,6 +575,9 @@ class Logic(BaseLogic):
             * ``'backward_outputs'`` (list of str):
                 A list of names of outputs that require compution of
                 the gradient.
+            * ``'autocast'`` (bool):
+                If ``True``, ``torch.cuda.amp.autocast`` is enabled.
+                Default is ``False``.
             * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
                 A gradient scaler that outputs are applied to.
         """
