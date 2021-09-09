@@ -569,7 +569,7 @@ class Logic(BaseLogic):
 
         Args:
             model_name (str): Name of the model. Default is ``'main'``.
-            options (dict, optional): Options for backward computation.
+            options (dict, optional): The configuration options.
 
                 * ``'backward_outputs'`` (list of str):
                     A list of names of outputs that require compution of
