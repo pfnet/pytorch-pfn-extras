@@ -4,17 +4,19 @@ Lazy modules can automatically infer shapes of parameters based on the shape of 
 
 Following modules are provided:
 
-* `ppe.nn.LazyLinear`
-    * Module that behaves as `torch.nn.Linear` but `in_features` can be set to `None`.
-    * This module is now included as a part of PyTorch 1.8 release ([torch.nn.LazyLinear](https://pytorch.org/docs/stable/generated/torch.nn.LazyLinear.html), [pull-request](https://github.com/pytorch/pytorch/pull/44538)).
-
-* `ppe.nn.LazyConv1d`, `ppe.nn.LazyConv2d`, `ppe.nn.LazyConv3d`
-    * Module that behaves as `torch.nn.Conv[123]d` but `in_channels` can be set to `None`.
-    * These modles are now included as a part of PyTorch 1.8 release ([torch.nn.LazyConvXd](https://pytorch.org/docs/stable/generated/torch.nn.LazyConv1d.html), [pull-request](https://github.com/pytorch/pytorch/pull/47350)).
-
 * `ppe.nn.LazyBatchNorm1d`, `ppe.nn.LazyBatchNorm2d`, `ppe.nn.LazyBatchNorm3d`
     * Module that behaves as `torch.nn.BatchNorm[123]d` but `num_features` can be set to `None`.
     * These modles are now included as a part of PyTorch 1.9 release ([torch.nn.LazyBatchNormXd](https://pytorch.org/docs/stable/generated/torch.nn.LazyBatchNorm1d.html), [pull-request](https://github.com/pytorch/pytorch/pull/51862)).
+
+The following modules are now considered deprecated as now included as a part of PyTorch 1.8 release:
+
+* `ppe.nn.LazyLinear`
+    * Module that behaves as `torch.nn.Linear` but `in_features` can be set to `None`.
+    * PyTorch-native implementation: ([torch.nn.LazyLinear](https://pytorch.org/docs/stable/generated/torch.nn.LazyLinear.html), [pull-request](https://github.com/pytorch/pytorch/pull/44538))
+
+* `ppe.nn.LazyConv1d`, `ppe.nn.LazyConv2d`, `ppe.nn.LazyConv3d`
+    * Module that behaves as `torch.nn.Conv[123]d` but `in_channels` can be set to `None`.
+    * PyTorch-native implementation: ([torch.nn.LazyConvXd](https://pytorch.org/docs/stable/generated/torch.nn.LazyConv1d.html), [pull-request](https://github.com/pytorch/pytorch/pull/47350))
 
 Now that all lazy modules are merged to the upstream, we encourage you to migrate to PyTorch's lazy modules.
 We will keep these implementaions only for backward compatibility.
