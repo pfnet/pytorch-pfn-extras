@@ -4,7 +4,8 @@ import sys
 from typing import Any, Dict, IO, List, Optional, Tuple, Union
 
 from pytorch_pfn_extras.training import extension
-import pytorch_pfn_extras.training.extensions.log_report as log_report_module
+from pytorch_pfn_extras.training.extensions import log_report \
+    as log_report_module
 from pytorch_pfn_extras.training.extensions import util
 from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
 
