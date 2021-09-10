@@ -228,7 +228,6 @@ def _as_extension(ext: 'ExtensionLike') -> Extension:
 
 class ExtensionEntry:
     """Extension and options.
-    
     When name, priority, or trigger is not specified, it is copied from the
     attributes of the given ``extension``.
 
