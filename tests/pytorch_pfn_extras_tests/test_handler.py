@@ -48,7 +48,7 @@ class MockRuntime(ppe.runtime.BaseRuntime):
         self._train_validation_begin_called = True
         self._called_module = module
 
-    def eval_pre_step(self, module, evaluator, batch_idx, batch):
+    def eval_pre_step(self, evaluator, module, batch_idx, batch):
         self._eval_pre_step_called = True
         self._called_module = module
 
