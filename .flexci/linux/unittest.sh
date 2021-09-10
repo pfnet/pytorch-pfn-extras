@@ -25,10 +25,13 @@ MASTER_ADDR=127.0.0.1 MASTER_PORT=1236 mpirun -n 2 --allow-run-as-root python ex
 python example/mnist_custom_logic.py --batch-size 2048 --test-batch-size 2048 --epochs 1
 
 # Run pysen
-pysen run lint 2> /output/pysen.txt || true
+pysen generate .
+-pysen run lint 2> /output/pysen.txt || true
 
 # Run flake8
-pysen generate .
 flake8 .
+
+# Run mypy
+mypy pytorch_pfn_extras
 
 mv htmlcov /output/htmlcov
