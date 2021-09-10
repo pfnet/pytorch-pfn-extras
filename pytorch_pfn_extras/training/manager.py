@@ -16,6 +16,7 @@ from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training import _util as util_module
+from pytorch_pfn_extras.training import _trigger_util
 from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 _get_time = time.perf_counter
@@ -29,7 +30,7 @@ class IterationNotification:
         self._is_completed = False
 
 
-class _ManagerExecutionProxy:
+class _ManagerExecutionProxy(_trigger_util.TriggerArgument):
     """
     Object that is passed to the triggers of extensions depending if they
     require to measure executions when using async mode
@@ -57,7 +58,7 @@ class _ManagerExecutionProxy:
         return self._manager._iters_per_epoch
 
 
-class _BaseExtensionsManager:
+class _BaseExtensionsManager(_trigger_util.TriggerArgument):
     """
     Keeps track of the extensions and the current status
     """

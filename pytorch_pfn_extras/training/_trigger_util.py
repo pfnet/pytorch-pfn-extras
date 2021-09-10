@@ -1,8 +1,28 @@
-from typing import Any, Callable, Dict, Union, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Dict, Union, Optional, Tuple
 
 
-if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+class TriggerArgument:
+    @property
+    def iteration(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def epoch(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def epoch_detail(self) -> float:
+        raise NotImplementedError
+
+    @property
+    def elapsed_time(self) -> float:
+        raise NotImplementedError
+
+
+# TODO: Use `Literal['epoch', 'iteration']` after Py3.7 is dropped
+UnitLiteral = str
+TriggerFunc = Callable[[TriggerArgument], bool]
+TriggerLike = Optional[Union[TriggerFunc, Tuple[int, UnitLiteral]]]
 
 
 class Trigger:
@@ -21,23 +41,16 @@ class Trigger:
     def state_dict(self) -> Dict[str, Any]:
         return {}
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
+    def __call__(self, manager: TriggerArgument) -> bool:
         raise NotImplementedError
 
 
 class _CallableTrigger(Trigger):
-    def __init__(self, func: Callable[['_BaseExtensionsManager'], bool]) -> None:
+    def __init__(self, func: TriggerFunc) -> None:
         self.func = func
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
+    def __call__(self, manager: TriggerArgument) -> bool:
         return self.func(manager)
-
-
-TriggerFunc = Callable[['_BaseExtensionsManager'], bool]
-
-# TODO: Use `Literal['epoch', 'iteration']` after Py3.7 is dropped
-UnitLiteral = str
-TriggerLike = Optional[Union[Trigger, TriggerFunc, Tuple[int, UnitLiteral]]]
 
 
 def get_trigger(trigger: TriggerLike) -> Trigger:
@@ -82,5 +95,5 @@ def get_trigger(trigger: TriggerLike) -> Trigger:
         return interval_trigger.IntervalTrigger(*trigger)
 
 
-def _never_fire_trigger(manager: '_BaseExtensionsManager') -> bool:
+def _never_fire_trigger(manager: TriggerArgument) -> bool:
     return False
