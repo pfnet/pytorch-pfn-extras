@@ -1,5 +1,6 @@
 from pytorch_pfn_extras.training._trigger_util import Trigger  # NOQA
 from pytorch_pfn_extras.training._trigger_util import get_trigger  # NOQA
+from pytorch_pfn_extras.training._trigger_util import TriggerArgument  # NOQA
 from pytorch_pfn_extras.training._trigger_util import TriggerFunc  # NOQA
 from pytorch_pfn_extras.training._trigger_util import TriggerLike  # NOQA
 
