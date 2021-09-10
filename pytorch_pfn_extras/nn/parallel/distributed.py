@@ -104,12 +104,14 @@ def _broadcast(
         group: Optional[dist.ProcessGroup]
 ) -> None:
     with torch.no_grad():  # type: ignore[no-untyped-call]
-        coalesced = get_foreach_wrapper().flatten(values)  # type: ignore[no-untyped-call]
+        coalesced = get_foreach_wrapper().flatten(  # type: ignore[no-untyped-call]
+            values)
         with record(
             "torch.distributed.broadcast", use_cuda=torch.cuda.is_available()
         ):
             dist.broadcast(coalesced, 0, group=group)  # type: ignore[no-untyped-call]
-        src = get_foreach_wrapper().unflatten(coalesced, values)  # type: ignore[no-untyped-call]
+        src = get_foreach_wrapper().unflatten(  # type: ignore[no-untyped-call]
+            coalesced, values)
         get_foreach_wrapper().multi_tensor_scale(src, values, 1.0)
 
 
