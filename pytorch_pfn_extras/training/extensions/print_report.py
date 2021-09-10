@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from copy import deepcopy
 import os
 import sys

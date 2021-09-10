@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from collections import defaultdict
 import contextlib
 from typing import (

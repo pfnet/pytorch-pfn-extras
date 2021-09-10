@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from typing import Any, Dict, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import trigger

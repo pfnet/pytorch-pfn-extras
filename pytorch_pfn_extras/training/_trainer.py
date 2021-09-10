@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import queue
 import time
 from typing import Optional

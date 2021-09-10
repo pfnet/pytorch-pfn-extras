@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import atexit
 from contextlib import contextmanager
 import os

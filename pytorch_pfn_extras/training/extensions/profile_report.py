@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import json
 from collections import OrderedDict
 

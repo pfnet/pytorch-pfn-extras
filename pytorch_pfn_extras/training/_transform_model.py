@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from torch.nn.parallel import DistributedDataParallel
 
 from pytorch_pfn_extras.nn.parallel import (
