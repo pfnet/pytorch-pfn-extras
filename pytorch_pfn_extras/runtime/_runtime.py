@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from typing import (
     Any, Dict, Generator, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 )

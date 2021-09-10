@@ -83,7 +83,8 @@ def _reduce(
     # flatten values to improve the runtime perfomance of all-reduce
     coalesced = torch.empty(size, device=values[0].device,
                             dtype=values[0].dtype)
-    coalesced_views = get_foreach_wrapper().unflatten(coalesced, values)
+    coalesced_views = get_foreach_wrapper().unflatten(  # type: ignore[no-untyped-call]
+        coalesced, values)
     get_foreach_wrapper().multi_tensor_scale(values, coalesced_views, 1.0)
 
     with record(
@@ -103,12 +104,14 @@ def _broadcast(
         group: Optional[dist.ProcessGroup]
 ) -> None:
     with torch.no_grad():  # type: ignore[no-untyped-call]
-        coalesced = get_foreach_wrapper().flatten(values)
+        coalesced = get_foreach_wrapper().flatten(  # type: ignore[no-untyped-call]
+            values)
         with record(
             "torch.distributed.broadcast", use_cuda=torch.cuda.is_available()
         ):
             dist.broadcast(coalesced, 0, group=group)  # type: ignore[no-untyped-call]
-        src = get_foreach_wrapper().unflatten(coalesced, values)
+        src = get_foreach_wrapper().unflatten(  # type: ignore[no-untyped-call]
+            coalesced, values)
         get_foreach_wrapper().multi_tensor_scale(src, values, 1.0)
 
 

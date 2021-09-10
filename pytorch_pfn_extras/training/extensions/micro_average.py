@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module

@@ -283,7 +283,7 @@ class Logic(BaseLogic):
             batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
                 Input tensors feeded to the model of the current step.
         """
-        with torch_autocast(enabled=self._autocast):  # type: ignore[no-untyped-call] # NOQA
+        with torch_autocast(enabled=self._autocast):
             optimizers[self.model_name].zero_grad()
             outs = self._forward(models[self.model_name], batch)
             to_back_outs = outs
@@ -374,7 +374,7 @@ class BaseHandler:
         self._logic = logic
         self.consume_options(options)
 
-    def consume_options(self, options):
+    def consume_options(self, options: Dict[str, Any]) -> None:
         """A method to update options of Handler.
 
         Note that the given dict will be modified.

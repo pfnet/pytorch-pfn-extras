@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     import optuna
 
 
-def optuna_types(trial: 'optuna.trial.Trial'):
+def optuna_types(trial: 'optuna.trial.Trial') -> Dict[str, Any]:
     types = {
         "optuna_suggest_categorical": trial.suggest_categorical,
         "optuna_suggest_discrete_uniform": trial.suggest_discrete_uniform,
@@ -25,7 +25,7 @@ def load_path_with_optuna_types(
         trial: 'optuna.trial.Trial',
         loader: Optional[config.Loader] = None,
         types: Optional[Dict[str, Callable[..., Any]]] = None,
-):
+) -> config.Config:
     if types is None:
         types = {}
     for key, value in optuna_types(trial).items():
