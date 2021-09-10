@@ -397,7 +397,11 @@ class BaseHandler:
         # Called only once when starting a training run.
         pass
 
-    def train_epoch_begin(self, trainer: '_Trainer', loader: Iterable[Any]) -> None:
+    def train_epoch_begin(
+            self,
+            trainer: '_Trainer',
+            loader: Iterable[Any]
+    ) -> None:
         """A method called when starting a new epoch.
 
         .. seealso:
@@ -480,7 +484,11 @@ class BaseHandler:
         # Called after train_step.
         pass
 
-    def eval_setup(self, evaluator: '_Evaluator', loader: Iterable[Any]) -> None:
+    def eval_setup(
+            self,
+            evaluator: '_Evaluator',
+            loader: Iterable[Any]
+    ) -> None:
         """A method called only once when starting a training run.
         When evaluator is not given, this method is not called.
 
@@ -648,7 +656,11 @@ class Handler(BaseHandler):
             model.train()
         self._setup(trainer.models, loader, trainer.optimizers)
 
-    def train_epoch_begin(self, trainer: '_Trainer', loader: Iterable[Any]) -> None:
+    def train_epoch_begin(
+            self,
+            trainer: '_Trainer',
+            loader: Iterable[Any]
+    ) -> None:
         """A method called when starting a new epoch.
 
         Args:
@@ -769,7 +781,11 @@ class Handler(BaseHandler):
                 trainer.models, trainer.optimizers, batch_idx)
             complete_fn(batch_idx, outs)
 
-    def eval_setup(self, evaluator: '_Evaluator', loader: Iterable[Any]) -> None:
+    def eval_setup(
+            self,
+            evaluator: '_Evaluator',
+            loader: Iterable[Any]
+    ) -> None:
         """Called only once when starting a training run.
         When evaluator is not given, this method is not called.
 
