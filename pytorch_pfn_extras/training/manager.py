@@ -27,33 +27,6 @@ class IterationNotification:
         self._is_completed = False
 
 
-class _ExtensionEntry:
-
-    def __init__(
-            self,
-            extension: extension_module.Extension,
-            priority: int,
-            trigger: trigger_module.Trigger,
-            call_before_training: bool
-    ) -> None:
-        self.extension = extension
-        self.trigger = trigger
-        self.priority = priority
-        self.call_before_training = call_before_training
-
-    def state_dict(self) -> Dict[str, Any]:
-        state = {}
-        state['extension'] = self.extension.state_dict()
-        state['trigger'] = self.trigger.state_dict()
-        return state
-
-    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
-        if 'extension' in to_load:
-            self.extension.load_state_dict(to_load['extension'])
-        if 'trigger' in to_load:
-            self.trigger.load_state_dict(to_load['trigger'])
-
-
 class _ManagerExecutionProxy:
     """
     Object that is passed to the triggers of extensions depending if they
@@ -149,7 +122,8 @@ class _BaseExtensionsManager:
         # Defer!
         self._start_time: Optional[float] = None
         self._iters_per_epoch: Optional[int] = None
-        self._extensions: Dict[str, _ExtensionEntry] = collections.OrderedDict()
+        self._extensions: Dict[
+            str, extension_module.ExtensionEntry] = collections.OrderedDict()
         for ext in extensions:
             self.extend(ext)
 
@@ -291,12 +265,15 @@ class _BaseExtensionsManager:
 
     def extend(
             self,
-            extension: 'extension_module.ExtensionLike',
+            extension: Union[
+                'extension_module.ExtensionLike',
+                'extension_module.ExtensionEntry',
+            ],
             name: Optional[str] = None,
             trigger: 'trigger_module.TriggerLike' = None,
             priority: Optional[int] = None,
             *,
-            call_before_training: bool = False,
+            call_before_training: Optional[bool] = None,
             **kwargs: Dict[str, Any],
     ) -> None:
         """Registers an extension to the manager.
@@ -340,29 +317,29 @@ class _BaseExtensionsManager:
         if self._start_extensions_called:
             raise RuntimeError(
                 'extend called after the extensions were initialized')
-        ext = extension_module._as_extension(extension)
-        if name is None:
-            name = ext.name or ext.default_name
-        if name == 'training':
-            raise ValueError(
-                'the name "training" is prohibited as an extension name')
 
-        if trigger is None:
-            trigger = ext.trigger
-        trigger = trigger_module.get_trigger(trigger)
+        if isinstance(extension, extension_module.ExtensionEntry):
+            entry = extension
+        else:
+            entry = extension_module.ExtensionEntry(extension)
 
-        if priority is None:
-            priority = ext.priority
+        if trigger is not None:
+            entry._update_trigger(trigger)
 
-        modified_name = name
+        if priority is not None:
+            entry.priority = priority
+
+        if call_before_training is not None:
+            entry.call_before_training = call_before_training
+
+        modified_name = name or entry.name
         ordinal = 0
         while modified_name in self._extensions:
             ordinal += 1
             modified_name = '%s_%d' % (name, ordinal)
 
-        ext.name = modified_name
-        self._extensions[modified_name] = _ExtensionEntry(
-            ext, priority, trigger, call_before_training)
+        entry._update_name(modified_name)
+        self._extensions[modified_name] = entry
 
     def get_extension(self, name: str) -> extension_module.Extension:
         """Returns the extension of a given name.
