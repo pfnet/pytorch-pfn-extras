@@ -69,6 +69,14 @@ def test_extensions_manager_extensions():
         _DummyExtensionInitialize(3, call_record, init_record),
         _DummyExtensionInitialize(4, call_record, init_record),
         lambda manager: dummy5(manager),
+        training.ExtensionEntry(
+            _DummyExtension(6, call_record, init_record),
+            name='ext6', priority=-3, call_before_training=True,
+        ),
+        training.ExtensionEntry(
+            _DummyExtension(7, call_record, init_record),
+            name='ext7_', priority=-2, call_before_training=True,
+        ),
     ]
 
     manager.extend(exts[0], 'ext0', priority=2, call_before_training=True)
@@ -77,12 +85,16 @@ def test_extensions_manager_extensions():
     manager.extend(exts[3], 'ext3', priority=0, call_before_training=True)
     manager.extend(exts[4], 'ext4', priority=4, call_before_training=True)
     manager.extend(exts[5], 'ext5', priority=-1, call_before_training=True)
+    manager.extend(exts[6])
+    manager.extend(exts[7], 'ext7', priority=-4, call_before_training=False)
 
     assert manager.get_extension('ext0') is exts[0]
     assert manager.get_extension('ext1') is exts[1]
     assert manager.get_extension('ext2') is exts[2]
     assert manager.get_extension('ext3') is exts[3]
     assert manager.get_extension('ext4') is exts[4]
+    assert manager.get_extension('ext6') is exts[6].extension
+    assert manager.get_extension('ext7') is exts[7].extension
 
     with pytest.raises(ValueError):
         manager.get_extension('ext10')
@@ -95,7 +107,7 @@ def test_extensions_manager_extensions():
             assert manager.iteration == it
 
             if it == 0:
-                assert call_record == [4, 0, 3, 5]
+                assert call_record == [4, 0, 3, 5, 6]
                 assert init_record == [4, 1, 3]
             else:
                 assert call_record == []
@@ -104,7 +116,7 @@ def test_extensions_manager_extensions():
             call_record.clear()
             init_record.clear()
 
-        assert call_record == [4, 2, 0, 1, 3, 5]
+        assert call_record == [4, 2, 0, 1, 3, 5, 6, 7]
         assert init_record == []
 
 
