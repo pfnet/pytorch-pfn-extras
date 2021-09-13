@@ -7,6 +7,7 @@ from typing import (
 import torch
 
 import pytorch_pfn_extras.handler as handler_module
+import pytorch_pfn_extras.logic as logic_module
 from pytorch_pfn_extras.runtime import runtime_registry
 from pytorch_pfn_extras.training._transform_model import default_transform_model
 
@@ -109,7 +110,7 @@ def create_trainer(
         writer: Optional['writing.Writer'] = None,
         evaluator: Optional['_Evaluator'] = None,
         device: 'DeviceLike' = 'cpu',
-        logic: Optional[handler_module.Logic] = None,
+        logic: Optional[logic_module.Logic] = None,
         transform_model: Callable[
             [str, torch.nn.Module], torch.nn.Module] = default_transform_model,
         handler_class: Optional[Type[handler_module.BaseHandler]] = None,
@@ -166,7 +167,7 @@ def create_trainer(
     runtime_options = (
         runtime_options.copy() if runtime_options
         else options.pop('runtime', {}))
-    logic = handler_module.Logic() if logic is None else logic
+    logic = logic_module.Logic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
@@ -196,7 +197,7 @@ def create_evaluator(
         progress_bar: bool = False,
         device: 'DeviceLike' = 'cpu',
         metrics: Optional[List['MetricType']] = None,
-        logic: Optional[handler_module.Logic] = None,
+        logic: Optional[logic_module.Logic] = None,
         handler_class: Optional[Type[handler_module.BaseHandler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Dict[str, Any]] = None,
@@ -237,7 +238,7 @@ def create_evaluator(
     runtime_options = (
         runtime_options.copy() if runtime_options
         else options.pop('runtime', {}))
-    logic = handler_module.Logic() if logic is None else logic
+    logic = logic_module.Logic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
