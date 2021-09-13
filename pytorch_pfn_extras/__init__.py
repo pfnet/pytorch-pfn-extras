@@ -8,7 +8,6 @@ from pytorch_pfn_extras import dataset  # NOQA
 from pytorch_pfn_extras import dataloaders  # NOQA
 from pytorch_pfn_extras import engine  # NOQA
 from pytorch_pfn_extras import handler  # NOQA
-from pytorch_pfn_extras import logic  # NOQA
 from pytorch_pfn_extras import nn  # NOQA
 from pytorch_pfn_extras import profiler  # NOQA
 from pytorch_pfn_extras import reporting  # NOQA

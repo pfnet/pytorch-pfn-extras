@@ -34,7 +34,7 @@ class Net(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-class CustomLogic(ppe.logic.Logic):
+class CustomLogic(ppe.handler.Logic):
 
     def __init__(self, steps_per_update):
         self.steps_per_update = steps_per_update

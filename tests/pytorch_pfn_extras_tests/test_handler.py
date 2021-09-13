@@ -84,7 +84,7 @@ class MockEvaluator:
         self.epoch = 0
 
 
-class MockLogic(ppe.logic.BaseLogic):
+class MockLogic(ppe.handler.BaseLogic):
     def train_epoch_begin(self, epoch, models, loader):
         self._train_epoch_begin_called = True
 
@@ -332,7 +332,7 @@ class TestHandlerAutocast:
     @pytest.mark.parametrize('autocast', [True, False])
     def test_autocast(self, autocast):
         trainer = MockTrainer()
-        logic = ppe.logic.Logic(options={'autocast': autocast})
+        logic = ppe.handler.Logic(options={'autocast': autocast})
         handler = ppe.handler.Handler(
             logic, ppe.runtime.PyTorchRuntime('cuda'), {}
         )
@@ -366,13 +366,13 @@ class TestHandlerAutocast:
         assert completed
 
     def test_autocast_not_enabled(self):
-        old_enable = ppe.logic._amp_enabled
+        old_enable = ppe.handler._logic._amp_enabled
         try:
-            ppe.logic._amp_enabled = False
+            ppe.handler._logic._amp_enabled = False
             with pytest.raises(RuntimeError):
-                ppe.logic.Logic(options={'autocast': True})
+                ppe.handler.Logic(options={'autocast': True})
         finally:
-            ppe.logic._amp_enabled = old_enable
+            ppe.handler._logic._amp_enabled = old_enable
 
 
 class TestLogic:
@@ -385,7 +385,7 @@ class TestLogic:
                     def set_epoch(self, epoch):
                         self.epoch = epoch
                 self.sampler = _Sampler()
-        logic = ppe.logic.Logic()
+        logic = ppe.handler.Logic()
         loader = _MockedDL()
         models = {'main': torch.nn.Linear(1, 1)}
         # The model should be set to train mode
@@ -405,7 +405,7 @@ class TestLogic:
         return models, optimizers, input, out
 
     def test_train_step(self):
-        logic = ppe.logic.Logic()
+        logic = ppe.handler.Logic()
         models, optimizers, input, out = self._run_step(logic, 'cpu')
         model = models['main']
         assert input.grad is not None
@@ -418,7 +418,7 @@ class TestLogic:
         [None, ('0',), ('0', '1'), ('0', '1', '2'), ('1', '2'), ('2',)]
     )
     def test_train_step_backward(self, to_backprop):
-        logic = ppe.logic.Logic(options={'backward_outputs': to_backprop})
+        logic = ppe.handler.Logic(options={'backward_outputs': to_backprop})
         input = torch.rand(1, 1)
         input.requires_grad = True
 
@@ -460,7 +460,7 @@ class TestLogic:
                 original_parameters[val], getattr(model, f'l{val}').weight)
 
     def test_train_step_backward_nograd(self):
-        logic = ppe.logic.Logic()
+        logic = ppe.handler.Logic()
         input = torch.rand(1, 1)
         input.requires_grad = True
 
@@ -482,7 +482,7 @@ class TestLogic:
         assert outs['0'].grad is None
 
     def test_train_step_optimizers(self):
-        logic = ppe.logic.Logic()
+        logic = ppe.handler.Logic()
         models, optimizers, input, out = self._run_step(logic, 'cpu')
         model = models['main']
         m_weight = model.weight.clone().detach()
@@ -495,7 +495,7 @@ class TestLogic:
     def test_grad_scaler(self):
         scaler = torch.cuda.amp.GradScaler()
         options = {'grad_scaler': scaler}
-        logic = ppe.logic.Logic(options=options)
+        logic = ppe.handler.Logic(options=options)
         models, optimizers, input, out = self._run_step(logic, 'cuda')
         model = models['main']
         m_weight = model.weight.clone().detach()
@@ -513,20 +513,20 @@ class TestLogic:
     def test_invalid_grad_scaler(self):
         options = {'grad_scaler': object()}
         with pytest.raises(RuntimeError):
-            ppe.logic.Logic(options=options)
+            ppe.handler.Logic(options=options)
 
     def test_disabled_grad_scaler(self):
-        old_enable = ppe.logic._amp_enabled
+        old_enable = ppe.handler._logic._amp_enabled
         try:
-            ppe.logic._amp_enabled = False
+            ppe.handler._logic._amp_enabled = False
             options = {'grad_scaler': torch.cuda.amp.GradScaler()}
             with pytest.raises(RuntimeError):
-                ppe.logic.Logic(options=options)
+                ppe.handler.Logic(options=options)
         finally:
-            ppe.logic._amp_enabled = old_enable
+            ppe.handler._logic._amp_enabled = old_enable
 
     def test_train_validation_begin(self):
-        logic = ppe.logic.Logic()
+        logic = ppe.handler.Logic()
         models = {'main': torch.nn.Linear(1, 1)}
         models['main'].train()
         assert models['main'].training
@@ -534,7 +534,7 @@ class TestLogic:
         assert not models['main'].training
 
     def test_eval_step(self):
-        logic = ppe.logic.Logic()
+        logic = ppe.handler.Logic()
         input = torch.rand(1, 1)
         model = torch.nn.Linear(1, 1)
         models = {'main': model}
