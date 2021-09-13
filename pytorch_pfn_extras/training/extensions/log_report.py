@@ -28,13 +28,9 @@ class LogWriterSaveFunc:
                     'LogReport does not support json format with append mode.')
             log = json.dumps(target, indent=4)
         elif self._format == 'json-lines':
-            if self._append:
-                target = [target[-1]]
             # Add a new line at the end for subsequent appends
             log = '\n'.join([json.dumps(x) for x in target]) + '\n'
         elif self._format == 'yaml':
-            if self._append:
-                target = [target[-1]]
             import yaml
 
             # This is to dump ordered dicts as regular dicts
@@ -166,6 +162,8 @@ class LogReport(extension.Extension):
                 savefun = LogWriterSaveFunc(self._format, self._append)
                 writer(log_name, out, self._log,
                        savefun=savefun, append=self._append)
+                if self._append:
+                    self._log = []
 
             # reset the summary for the next output
             self._init_summary()
