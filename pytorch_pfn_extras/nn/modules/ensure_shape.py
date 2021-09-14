@@ -1,4 +1,4 @@
-from typing import Any, Optional, Tuple
+from typing import Optional, Tuple
 
 import torch
 
@@ -21,30 +21,32 @@ class EnsureShapeAndDtype(torch.nn.Module):
             self,
             shape: Optional[Tuple[int]] = None,
             dtype: Optional[torch.dtype] = None,
-            *args: Any,
+            *,
             broadcastable: Optional[bool] = False,
             can_cast: Optional[bool] = False,
-            **kwargs: Any
     ):
-        super().__init__(*args, **kwargs)
-        if shape is dtype is None:
+        super().__init__()  # type: ignore[no-untyped-call]
+        if shape is None and dtype is None:
             raise ValueError(
                 'shape, dtype or both arguments must be specified')
-        self._shape = shape
         self._dtype = dtype
         self._broadcastable = broadcastable
         self._can_cast = can_cast
         # Check if there are Nones in the shape and replace them by 1s
         # so we can compare the shapes using broadcast semantics
-        if self._shape is not None and None in self._shape:
-            self._shape = tuple(x if x is not None else 1 for x in self._shape)
+        c_shape = None
+        if shape is not None and None in shape:
+            c_shape = tuple(x if x is not None else 1 for x in shape)
             self._broadcastable = True
+        else:
+            c_shape = shape
 
-        if self._shape is not None:
+        self._shape = None
+        if c_shape is not None:
             # This is required for torch script
-            self._shape = torch.tensor(self._shape)
+            self._shape = torch.tensor(c_shape)
 
-    def _broadcast(self, shape_1: torch.Tensor, shape_2: torch.Tensor):
+    def _broadcast(self, shape_1: torch.Tensor, shape_2: torch.Tensor) -> bool:
         # Torch broadcast_shapes raises an exception, we want a simple
         # method that returs True/False so we can use torch script
         l_1, l_2 = len(shape_1), len(shape_2)
@@ -62,7 +64,7 @@ class EnsureShapeAndDtype(torch.nn.Module):
                 return False
         return True
 
-    def forward(self, input: torch.Tensor):
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         # To make it compatible with torchscript since torch.Size does not work
         t_shape = torch.tensor(input.shape)
         if self._shape is not None and list(t_shape) != list(self._shape):
@@ -92,7 +94,7 @@ def ensure_shape_and_dtype(
         dtype: Optional[torch.dtype] = None,
         broadcastable: Optional[bool] = False,
         can_cast: Optional[bool] = False
-):
+) -> None:
     """Checks the shape and type of a tensor.
 
     Args:
@@ -105,6 +107,6 @@ def ensure_shape_and_dtype(
            rules.
        can_cast: Check if the input tensor can be casted to the provided type.
     """
-    return EnsureShapeAndDtype(
+    EnsureShapeAndDtype(
         shape, dtype,
         broadcastable=broadcastable, can_cast=can_cast)(tensor)

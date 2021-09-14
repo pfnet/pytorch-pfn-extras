@@ -31,12 +31,12 @@ class TestEnsureShapeAndDtype:
             ensure_shape_and_dtype(tensor, shape)
 
     @pytest.mark.parametrize('shape_t, shape_c', [
-         ((1,), (2,)),
-         ((1, 1), (2, 1)),
-         ((1, 1), (2,)),
-         ((2, 1), (2, 2)),
-         ((2, 4), (4,)),
-         ((2, 3, 4), (1, 4)),
+        ((1,), (2,)),
+        ((1, 1), (2, 1)),
+        ((1, 1), (2,)),
+        ((2, 1), (2, 2)),
+        ((2, 4), (4,)),
+        ((2, 3, 4), (1, 4)),
     ])
     def test_broadcastable_shape(self, shape_t, shape_c):
         tensor = torch.zeros(shape_t)
@@ -44,11 +44,11 @@ class TestEnsureShapeAndDtype:
         module(tensor)
 
     @pytest.mark.parametrize('shape_t, shape_c', [
-         ((3,), (2,)),
-         ((2, 3), (2, 2)),
-         ((2, 4), (3, 4)),
-         ((2, 4), (3,)),
-         ((2, 3, 4), (2, 2, 1)),
+        ((3,), (2,)),
+        ((2, 3), (2, 2)),
+        ((2, 4), (3, 4)),
+        ((2, 4), (3,)),
+        ((2, 3, 4), (2, 2, 1)),
     ])
     def test_nonbroadcastable_shape(self, shape_t, shape_c):
         tensor = torch.zeros(shape_t)
@@ -57,11 +57,11 @@ class TestEnsureShapeAndDtype:
             module(tensor)
 
     @pytest.mark.parametrize('shape_t, shape_c', [
-         ((2,), (None,)),
-         ((2, 2), (2, None)),
-         ((2, 1), (None, 2)),
-         ((1, 4), (None, 4)),
-         ((2, 3, 4), (2, None, 4)),
+        ((2,), (None,)),
+        ((2, 2), (2, None)),
+        ((2, 1), (None, 2)),
+        ((1, 4), (None, 4)),
+        ((2, 3, 4), (2, None, 4)),
     ])
     def test_unknown_shape(self, shape_t, shape_c):
         tensor = torch.zeros(shape_t)
@@ -69,9 +69,9 @@ class TestEnsureShapeAndDtype:
         module(tensor)
 
     @pytest.mark.parametrize('shape_t, shape_c', [
-         ((3, 2), (2, None)),
-         ((1, 4), (None, 2)),
-         ((2, 3, 4), (3, None, 4)),
+        ((3, 2), (2, None)),
+        ((1, 4), (None, 2)),
+        ((2, 3, 4), (3, None, 4)),
     ])
     def test_invalid_unknown_shape(self, shape_t, shape_c):
         tensor = torch.zeros(shape_t)
