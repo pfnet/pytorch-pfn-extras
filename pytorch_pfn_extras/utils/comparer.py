@@ -172,8 +172,10 @@ class OutputsComparer:
 
     def run_engine(self, engine, loaders):
         try:
-            if isinstance(loaders, (tuple, dict)):
+            if isinstance(loaders, tuple):
                 engine.run(*loaders)
+            elif isinstance(loaders, dict):
+                engine.run(**loaders)
             else:
                 engine.run(loaders)
             with self.report_lock:
