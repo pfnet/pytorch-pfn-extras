@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from pytorch_pfn_extras.nn import EnsureShapeAndDtype
+from pytorch_pfn_extras.nn import EnsureShapeAndDtype, ensure_shape_and_dtype
 
 
 class TestEnsureShapeAndDtype:
@@ -16,6 +16,8 @@ class TestEnsureShapeAndDtype:
         tensor = torch.zeros(shape)
         module = EnsureShapeAndDtype(shape)
         module(tensor)
+        # Use the function version
+        ensure_shape_and_dtype(tensor, shape)
 
     @pytest.mark.parametrize(
         'shape', [(), (1,), (1, 1), (2,), (2, 4), (2, 3, 4)]
@@ -25,6 +27,8 @@ class TestEnsureShapeAndDtype:
         module = EnsureShapeAndDtype(shape)
         with pytest.raises(ValueError, match='input shape is'):
             module(tensor)
+        with pytest.raises(ValueError, match='input shape is'):
+            ensure_shape_and_dtype(tensor, shape)
 
     @pytest.mark.parametrize('shape_t, shape_c', [
          ((1,), (2,)),
@@ -82,6 +86,7 @@ class TestEnsureShapeAndDtype:
         tensor = torch.zeros(1, dtype=dtype)
         module = EnsureShapeAndDtype(None, dtype)
         module(tensor)
+        ensure_shape_and_dtype(tensor, None, dtype)
 
     @pytest.mark.parametrize('dtype_t, dtype_c', [
         (torch.int32, torch.int16),
@@ -121,6 +126,7 @@ class TestEnsureShapeAndDtype:
         tensor = torch.zeros(shape, dtype=dtype)
         module = EnsureShapeAndDtype(shape, dtype)
         module(tensor)
+        ensure_shape_and_dtype(tensor, shape, dtype)
 
     # Too many warnings to list them all
     @pytest.mark.filterwarnings('ignore')

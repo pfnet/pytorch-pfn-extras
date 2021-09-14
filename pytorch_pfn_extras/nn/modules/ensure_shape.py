@@ -8,12 +8,13 @@ class EnsureShapeAndDtype(torch.nn.Module):
 
     Args:
        shape: Tuple with the desired shape. If the input tensor shape
-          is not compatible, `ValueError` will be raised.
+           is not compatible, `ValueError` will be raised. If `None` is set
+           as a dimension value, that dimension will be ignored.
        dtype: Checks if the `dtype` of the input thensor matches the
-          provided one.
-       broadcastable: Check if the shape is different, check
-          if the shapes are compatible
-       can_cast: Check if the input tensor can be casted to the provided type
+           provided one.
+       broadcastable: Check if the shapes are compatible using broadcasting
+           rules.
+       can_cast: Check if the input tensor can be casted to the provided type.
     """
 
     def __init__(
@@ -83,3 +84,27 @@ class EnsureShapeAndDtype(torch.nn.Module):
                 raise ValueError(
                     f'Expected {self._dtype}, input dtype is {input.dtype}')
         return input
+
+
+def ensure_shape_and_dtype(
+        tensor: torch.Tensor,
+        shape: Optional[Tuple[int]],
+        dtype: Optional[torch.dtype] = None,
+        broadcastable: Optional[bool] = False,
+        can_cast: Optional[bool] = False
+):
+    """Checks the shape and type of a tensor.
+
+    Args:
+       shape: Tuple with the desired shape. If the input tensor shape
+           is not compatible, `ValueError` will be raised. If `None` is set
+           as a dimension value, that dimension will be ignored.
+       dtype: Checks if the `dtype` of the input thensor matches the
+           provided one.
+       broadcastable: Check if the shapes are compatible using broadcasting
+           rules.
+       can_cast: Check if the input tensor can be casted to the provided type.
+    """
+    return EnsureShapeAndDtype(
+        shape, dtype,
+        broadcastable=broadcastable, can_cast=can_cast)(tensor)
