@@ -366,13 +366,13 @@ class TestHandlerAutocast:
         assert completed
 
     def test_autocast_not_enabled(self):
-        old_enable = ppe.handler._amp_enabled
+        old_enable = ppe.handler._logic._amp_enabled
         try:
-            ppe.handler._amp_enabled = False
+            ppe.handler._logic._amp_enabled = False
             with pytest.raises(RuntimeError):
                 ppe.handler.Logic(options={'autocast': True})
         finally:
-            ppe.handler._amp_enabled = old_enable
+            ppe.handler._logic._amp_enabled = old_enable
 
 
 class TestLogic:
@@ -516,14 +516,14 @@ class TestLogic:
             ppe.handler.Logic(options=options)
 
     def test_disabled_grad_scaler(self):
-        old_enable = ppe.handler._amp_enabled
+        old_enable = ppe.handler._logic._amp_enabled
         try:
-            ppe.handler._amp_enabled = False
+            ppe.handler._logic._amp_enabled = False
             options = {'grad_scaler': torch.cuda.amp.GradScaler()}
             with pytest.raises(RuntimeError):
                 ppe.handler.Logic(options=options)
         finally:
-            ppe.handler._amp_enabled = old_enable
+            ppe.handler._logic._amp_enabled = old_enable
 
     def test_train_validation_begin(self):
         logic = ppe.handler.Logic()
