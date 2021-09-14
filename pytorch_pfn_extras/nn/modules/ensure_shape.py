@@ -36,7 +36,9 @@ class EnsureShapeAndDtype(torch.nn.Module):
         # so we can compare the shapes using broadcast semantics
         c_shape = None
         if shape is not None and None in shape:
-            c_shape = tuple(x if x is not None else 1 for x in shape)
+            c_shape = tuple(
+                x if x is not None else 1 for x in shape
+            )  # type: ignore[unreachable]
             self._broadcastable = True
         else:
             c_shape = shape
