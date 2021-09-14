@@ -1,6 +1,6 @@
 import queue
 import time
-from typing import Any, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, TYPE_CHECKING
 
 import torch
 
@@ -8,6 +8,7 @@ import pytorch_pfn_extras.engine
 import pytorch_pfn_extras.training
 from pytorch_pfn_extras.training import extension as extension
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training import manager as manager_module
 import pytorch_pfn_extras.reporting as reporting
 from pytorch_pfn_extras.profiler import record
 
@@ -16,6 +17,7 @@ from pytorch_pfn_extras.training.trigger import Trigger, TriggerLike
 if TYPE_CHECKING:
     import pytorch_pfn_extras.handler as handler_module
     from pytorch_pfn_extras.training._evaluator import _Evaluator
+    from pytorch_pfn_extras.profiler._time_summary import _ReportNotification
 
 
 class _Trainer(pytorch_pfn_extras.engine._Engine):
@@ -23,11 +25,12 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
             self,
             handler: 'handler_module.BaseHandler',
             *,
-            evaluator: Union['_Evaluator', Tuple['_Evaluator', TriggerLike]],
+            evaluator: Optional[Union['_Evaluator', Tuple['_Evaluator', TriggerLike]]],
             **kwargs: Any,
     ):
         super().__init__(handler, **kwargs)
         if isinstance(evaluator, tuple):
+            self.evaluator: Optional['_Evaluator'] = None
             self.evaluator, trigger = evaluator
             self.evaluator_trigger = trigger_module.get_trigger(trigger)
         else:
@@ -71,7 +74,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
     def _complete_step(
             self,
             idx: int,
-            outs: 'handler_module.Outputs',
+            outs: Any,
             *,
             is_deferred: bool = False,
     ) -> None:
@@ -114,13 +117,16 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
             record_iteration.complete()
 
     def _run_evaluator(self) -> None:
+        assert self.evaluator is not None
+        if self._val_loader is None:
+            raise ValueError('"val_loader" is not given.')
         self.evaluator.handler.train_validation_begin(self, self.evaluator)
         self.evaluator.run(self._val_loader, eval_len=self._eval_len)
         self.evaluator.handler.train_validation_end(self, self.evaluator)
 
-    def run(self,
-            train_loader: torch.utils.data.DataLoader,
-            val_loader: Optional[torch.utils.data.DataLoader] = None,
+    def run(self,  # type: ignore[override]
+            train_loader: Sequence[Any],
+            val_loader: Optional[Iterable[Any]] = None,
             *,
             train_len: Optional[int] = None,
             eval_len: Optional[int] = None) -> None:
@@ -148,17 +154,18 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
         self._eval_len = eval_len
 
         class _EvaluatorExt:
-            def __init__(self, trainer):
+            def __init__(self, trainer: '_Trainer') -> None:
                 self.name = 'Evaluator'
                 self.needs_model_state = True
                 self._trainer = trainer
 
-            def __call__(self, manager):
+            def __call__(self, manager: manager_module._BaseExtensionsManager) -> None:
                 self._trainer._run_evaluator()
 
         if self._manager is None:
             self._setup_manager(train_len)
-            if self.evaluator is not None:
+            assert isinstance(self._manager, manager_module._BaseExtensionsManager)
+            if self.evaluator is not None:  # type: ignore[unreachable]
                 # Register the evaluator as an extension to the manager
                 # To be triggered with the correct timing
                 self._manager.extend(
@@ -175,14 +182,15 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
 
             # When iterations are completed in the callback
             # This is needed to avoid being constantly passing parameters
-            self._idxs = queue.Queue()
-            self._inputs = queue.Queue()
-            self._times = queue.Queue()
-            self._observed = queue.Queue()
+            self._idxs: 'queue.Queue[int]' = queue.Queue()
+            self._inputs: 'queue.Queue[Any]' = queue.Queue()
+            self._times: 'queue.Queue[float]' = queue.Queue()
+            self._observed: 'queue.Queue[reporting.Observation]' = queue.Queue()
             # Iterator must be created after `train_epoch_begin` as it may be
             #  using a DistributedSampler.
             loader_iter = iter(train_loader)
-            self._profile_records = queue.Queue()
+            self._profile_records: 'queue.Queue[List[_ReportNotification]]' \
+                = queue.Queue()
             for idx in range(train_len):
                 with record(
                     "pytorch_pfn_extras.training.Trainer:iteration",

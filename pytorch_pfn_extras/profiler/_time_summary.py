@@ -26,10 +26,10 @@ class _ReportNotification:
         self._begin_event = begin_event
         self._begin = begin
 
-    def defer(self):
+    def defer(self) -> None:
         self._is_completed = False
 
-    def complete(self):
+    def complete(self) -> None:
         self._summary.complete_report(
             self._tag, self._use_cuda, self._begin_event, self._begin)
 
@@ -274,7 +274,11 @@ class TimeSummary:
                 (f"{tag}.cuda", (begin_event, end_event)))
 
     @contextmanager
-    def report(self, tag: str, use_cuda: bool = False) -> Generator[None, None, None]:
+    def report(
+            self,
+            tag: str,
+            use_cuda: bool = False,
+    ) -> Generator[_ReportNotification, None, None]:
         """Context manager to automatically report execution times.
 
         The start and completion times are obtained automatically,
