@@ -40,6 +40,8 @@ Extensions
    :toctree: generated/
 
    training.extension.make_extension
+   training.extension.Extension
+   training.extension.ExtensionEntry
 
 
 .. autosummary::

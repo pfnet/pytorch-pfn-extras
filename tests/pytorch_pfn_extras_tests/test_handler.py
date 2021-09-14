@@ -48,7 +48,7 @@ class MockRuntime(ppe.runtime.BaseRuntime):
         self._train_validation_begin_called = True
         self._called_module = module
 
-    def eval_pre_step(self, module, evaluator, batch_idx, batch):
+    def eval_pre_step(self, evaluator, module, batch_idx, batch):
         self._eval_pre_step_called = True
         self._called_module = module
 
@@ -332,9 +332,9 @@ class TestHandlerAutocast:
     @pytest.mark.parametrize('autocast', [True, False])
     def test_autocast(self, autocast):
         trainer = MockTrainer()
-        logic = ppe.handler.Logic()
+        logic = ppe.handler.Logic(options={'autocast': autocast})
         handler = ppe.handler.Handler(
-            logic, ppe.runtime.PyTorchRuntime('cuda'), {'autocast': autocast}
+            logic, ppe.runtime.PyTorchRuntime('cuda'), {}
         )
 
         completed = False
@@ -369,12 +369,8 @@ class TestHandlerAutocast:
         old_enable = ppe.handler._amp_enabled
         try:
             ppe.handler._amp_enabled = False
-            logic = ppe.handler.Logic()
             with pytest.raises(RuntimeError):
-                ppe.handler.Handler(
-                    logic, ppe.runtime.PyTorchRuntime('cuda'),
-                    {'autocast': True}
-                )
+                ppe.handler.Logic(options={'autocast': True})
         finally:
             ppe.handler._amp_enabled = old_enable
 
@@ -462,6 +458,28 @@ class TestLogic:
         for val in original_parameters:
             torch.testing.assert_allclose(
                 original_parameters[val], getattr(model, f'l{val}').weight)
+
+    def test_train_step_backward_nograd(self):
+        logic = ppe.handler.Logic()
+        input = torch.rand(1, 1)
+        input.requires_grad = True
+
+        class _DummyModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.l0 = torch.nn.Linear(1, 1)
+
+            def forward(self, x):
+                return {'0': x}
+
+        model = _DummyModel()
+        models = {'main': model}
+        optimizers = {'main': torch.optim.SGD(model.parameters(), 1.0)}
+        assert input.grad is None
+
+        outs = logic.train_step(models, optimizers, 0, input)
+
+        assert outs['0'].grad is None
 
     def test_train_step_optimizers(self):
         logic = ppe.handler.Logic()

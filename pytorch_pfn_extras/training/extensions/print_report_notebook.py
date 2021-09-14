@@ -1,9 +1,16 @@
+# mypy: ignore-errors
+
 import sys
+from typing import Any, IO, List, Optional, Union
 
 from IPython.core.display import display
 from ipywidgets import HTML
 
 from pytorch_pfn_extras.training.extensions.print_report import PrintReport
+
+from pytorch_pfn_extras.training.extensions import log_report \
+    as log_report_module
+from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
 
 
 class PrintReportNotebook(PrintReport):
@@ -26,20 +33,25 @@ class PrintReportNotebook(PrintReport):
 
     """
 
-    def __init__(self, entries=None, log_report='LogReport', out=sys.stdout):
+    def __init__(
+            self,
+            entries: Optional[List[str]] = None,
+            log_report: Union[str, log_report_module.LogReport] = 'LogReport',
+            out: IO[Any] = sys.stdout,
+    ) -> None:
         super(PrintReportNotebook, self).__init__(
             entries=entries, log_report=log_report, out=out
         )
         self._widget = HTML()
 
-    def initialize(self, trainer):
+    def initialize(self, manager: _BaseExtensionsManager) -> None:
         display(self._widget)
 
     @property
-    def widget(self):
+    def widget(self) -> HTML:
         return self._widget
 
-    def __call__(self, manager):
+    def __call__(self, manager: _BaseExtensionsManager) -> None:
         log_report = self.get_log_report(manager)
         df = log_report.to_dataframe()
         if self._infer_entries:

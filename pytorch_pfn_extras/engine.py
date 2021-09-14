@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from typing import (
     Any, Callable, Dict, List, Optional, Tuple, Type, Union, TYPE_CHECKING
 )
@@ -160,7 +162,10 @@ def create_trainer(
     """
 
     options = options.copy() if options else {}
-    runtime_options = runtime_options.copy() if runtime_options else {}
+    # TODO(kmaehashi): deprecate specifying 'runtime' key in options
+    runtime_options = (
+        runtime_options.copy() if runtime_options
+        else options.pop('runtime', {}))
     logic = handler_module.Logic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 
@@ -228,7 +233,10 @@ def create_evaluator(
 
     metrics = metrics if metrics else []
     options = options.copy() if options else {}
-    runtime_options = runtime_options.copy() if runtime_options else {}
+    # TODO(kmaehashi): deprecate specifying 'runtime' key in options
+    runtime_options = (
+        runtime_options.copy() if runtime_options
+        else options.pop('runtime', {}))
     logic = handler_module.Logic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 

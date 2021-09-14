@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 
 from pytorch_pfn_extras import reporting
