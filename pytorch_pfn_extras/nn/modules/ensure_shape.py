@@ -50,7 +50,7 @@ class EnsureShapeAndDtype(torch.nn.Module):
         l_1, l_2 = len(shape_1), len(shape_2)
         if l_1 != l_2:
             # we would like to do checks like the below one
-            # but torchscript converts everything to vectors
+            # but torchscript converts everything to tensors
             # shape_2 = (1,) * (l_1 - l_2) + shape_2
             if l_1 < l_2:
                 shape_1 = torch.cat([torch.ones(l_2 - l_1), shape_1])
