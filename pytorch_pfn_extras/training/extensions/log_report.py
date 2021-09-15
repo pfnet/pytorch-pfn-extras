@@ -44,6 +44,48 @@ class LogWriterSaveFunc:
         file_o.write(bytes(log.encode('ascii')))
 
 
+class _LogBuffer:
+
+    def __init__(self, *lookers) -> None:
+        self.lookers = {looker: 0 for looker in lookers}
+        self._log = []
+        self._offset = 0
+
+    def _normalize(self) -> None:
+        min_looker_index = min(self.lookers.values())
+        if min_looker_index > self._offset:
+            self._log = self._log[min_looker_index - self._offset:]
+            self._offset = min_looker_index
+
+    def append(self, observation) -> None:
+        self._log.append(observation)
+
+    def get(self, looker: str):
+        return self._log[self.lookers[looker] - self._offset:]
+
+    def clear(self, looker: str) -> None:
+        if looker not in self.lookers:
+            raise ValueError(f'looker {looker} is not registered')
+        self.lookers[looker] = len(self._log) + self._offset
+        self._normalize()
+
+    def register_looker(self, looker: str) -> None:
+        if looker not in self.lookers:
+            self.lookers[looker] = len(self._log) + self._offset
+
+    def state_dict(self):
+        return {
+            'lookers': self.lookers,
+            '_log': json.dumps(self._log),
+            '_offset': self._offset,
+        }
+
+    def load_state_dict(self, to_load):
+        self.lookers = to_load['lookers']
+        self._log = json.loads(to_load['_log'])
+        self._offset = to_load['_offset']
+
+
 class LogReport(extension.Extension):
 
     """
@@ -103,7 +145,7 @@ class LogReport(extension.Extension):
         self._keys = keys
         self._trigger = trigger_module.get_trigger(trigger)
         self._postprocess = postprocess
-        self._log = []
+        self._log = _LogBuffer('log_report')
         # When using a writer, it needs to have a savefun defined
         # to deal with a string.
         self._writer = kwargs.get('writer', None)
@@ -153,6 +195,8 @@ class LogReport(extension.Extension):
             if self._postprocess is not None:
                 self._postprocess(stats_cpu)
 
+            if self._append:
+                self._log.clear('log_report')
             self._log.append(stats_cpu)
 
             # write to the log file
@@ -160,10 +204,8 @@ class LogReport(extension.Extension):
                 log_name = self._log_name.format(**stats_cpu)
                 out = manager.out
                 savefun = LogWriterSaveFunc(self._format, self._append)
-                writer(log_name, out, self._log,
+                writer(log_name, out, self._log.get('log_report'),
                        savefun=savefun, append=self._append)
-                if self._append:
-                    self._log = []
 
             # reset the summary for the next output
             self._init_summary()
@@ -171,7 +213,7 @@ class LogReport(extension.Extension):
     @property
     def log(self):
         """The current list of observation dictionaries."""
-        return self._log
+        return self._log.get('log_report')
 
     def state_dict(self):
         state = {}
@@ -182,14 +224,14 @@ class LogReport(extension.Extension):
             state['_summary'] = self._summary.state_dict()
         except KeyError:
             pass
-        state['_log'] = json.dumps(self._log)
+        state['_log'] = self._log.state_dict()
         return state
 
     def load_state_dict(self, to_load):
         if hasattr(self._trigger, 'load_state_dict'):
             self._trigger.load_state_dict(to_load['_trigger'])
         self._summary.load_state_dict(to_load['_summary'])
-        self._log = json.loads(to_load['_log'])
+        self._log.load_state_dict(to_load['_log'])
 
     def _init_summary(self):
         self._summary = reporting.DictSummary()
@@ -199,4 +241,4 @@ class LogReport(extension.Extension):
             raise ImportError(
                 "Need to install pandas to use `to_dataframe` method."
             )
-        return pandas.DataFrame(self._log)
+        return pandas.DataFrame(self._log.get('log_report'))

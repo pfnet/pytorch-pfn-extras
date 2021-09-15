@@ -1,6 +1,5 @@
 # mypy: ignore-errors
 
-import json
 from collections import OrderedDict
 
 from pytorch_pfn_extras import reporting
@@ -65,7 +64,7 @@ class ProfileReport(extension.Extension):
             ]
         self._report_keys = report_keys
         self._trigger = trigger_module.get_trigger(trigger)
-        self._log = []
+        self._log = log_report._LogBuffer('log_report')
 
         log_name = kwargs.get("log_name", "log")
         if filename is None:
@@ -115,6 +114,8 @@ class ProfileReport(extension.Extension):
             out = OrderedDict(
                 [(k, stats_cpu[k]) for k in sorted(stats_cpu.keys())])
 
+            if self._append:
+                self._log.clear('log_report')
             self._log.append(out)
 
             # write to the log file
@@ -122,19 +123,17 @@ class ProfileReport(extension.Extension):
                 log_name = self._log_name.format(**out)
                 savefun = log_report.LogWriterSaveFunc(
                     self._format, self._append)
-                writer(log_name, out, self._log,
+                writer(log_name, out, self._log.get('log_report'),
                        savefun=savefun, append=self._append)
-                if self._append:
-                    self._log = []
 
     def state_dict(self):
         state = {}
         if hasattr(self._trigger, "state_dict"):
             state["_trigger"] = self._trigger.state_dict()
-        state["_log"] = json.dumps(self._log)
+        state["_log"] = self._log.state_dict()
         return state
 
     def load_state_dict(self, to_load):
         if hasattr(self._trigger, "load_state_dict"):
             self._trigger.load_state_dict(to_load["_trigger"])
-        self._log = json.loads(to_load["_log"])
+        self._log.load_state_dict(to_load["_log"])

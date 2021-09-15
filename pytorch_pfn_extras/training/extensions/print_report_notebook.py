@@ -53,6 +53,7 @@ class PrintReportNotebook(PrintReport):
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         log_report = self.get_log_report(manager)
+        log_report._log.register_looker('print_report')
         df = log_report.to_dataframe()
         if self._infer_entries:
             # --- update entries ---

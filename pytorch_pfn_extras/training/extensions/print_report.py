@@ -92,8 +92,6 @@ class PrintReport(extension.Extension):
         self._log_report = log_report
         self._out = out
 
-        self._log_len = 0  # number of observations already printed
-
         # format information
         header, templates = create_header_and_templates(entries)
         self._header: Optional[str] = header  # printed at the first call
@@ -118,9 +116,8 @@ class PrintReport(extension.Extension):
                             type(log_report))
 
     def _update_entries(self, log_report: log_report_module.LogReport) -> None:
-        log = log_report.log
         updated_flag = False
-        aggregate_entries = log[self._log_len:]
+        aggregate_entries = log_report._log.get('print_report')
         for obs in aggregate_entries:
             for entry in obs.keys():
                 if entry not in self._all_entries:
@@ -142,7 +139,7 @@ class PrintReport(extension.Extension):
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         log_report = self.get_log_report(manager)
-        log = log_report.log
+        log_report._log.register_looker('print_report')
 
         if self._infer_entries:
             # --- update entries ---
@@ -154,16 +151,14 @@ class PrintReport(extension.Extension):
             out.write(self._header)
             self._header = None
 
-        log_len = self._log_len
-        while len(log) > log_len:
+        for line in log_report._log.get('print_report'):
             # delete the printed contents from the current cursor
             if os.name == 'nt':
                 util.erase_console(0, 0)
             else:
                 out.write('\033[J')
-            self._print(log[log_len])
-            log_len += 1
-        self._log_len = log_len
+            self._print(line)
+        log_report._log.clear('print_report')
 
     def state_dict(self) -> Dict[str, Any]:
         log_report = self._log_report
