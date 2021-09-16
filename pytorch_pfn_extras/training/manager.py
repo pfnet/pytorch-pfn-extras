@@ -665,7 +665,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
 
         @self.engine.on(Events.STARTED)
         def set_training_started(engine: Engine) -> None:
-            iters_per_epoch = len(engine.state.dataloader)
+            iters_per_epoch = len(engine.state.dataloader)  # type: ignore[arg-type]
             # Initialize manager once before extensions' `initialize` call
             self._prepare_for_training(0, 0, iters_per_epoch)
             self.start_extensions()
