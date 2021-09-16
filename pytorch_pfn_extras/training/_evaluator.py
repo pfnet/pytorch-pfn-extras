@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 import contextlib
 import queue
 from typing import (
@@ -114,15 +112,15 @@ class _Evaluator:
         self._observed: 'queue.Queue[Observation]' = queue.Queue()
 
         if eval_len is None:
-            eval_len = len(loader)
+            eval_len = len(loader)  # type: ignore[arg-type]
 
         self._summary = reporting.DictSummary()
-        observation = {}
+        observation: Observation = {}
         self.handler.eval_loop_begin(self)
         self._pbar = _progress_bar('validation', self._progress_bar, eval_len)
         self._update = self._pbar.__enter__()
         loader_iter = iter(loader)
-        with torch.no_grad():
+        with torch.no_grad():  # type: ignore[no-untyped-call]
             for idx in range(eval_len):
                 try:
                     x = next(loader_iter)
