@@ -22,10 +22,10 @@ _get_time = time.perf_counter
 
 
 class IterationNotification:
-    def __init__(self):
+    def __init__(self) -> None:
         self._is_completed = True
 
-    def defer(self):
+    def defer(self) -> None:
         self._is_completed = False
 
 
@@ -549,7 +549,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             self,
             *,
             step_optimizers: Optional[List[str]] = None
-    ) -> Generator[None, None, None]:
+    ) -> Generator[IterationNotification, None, None]:
         """Context manager to run an iteration.
 
         This manager can additionally run a step in the

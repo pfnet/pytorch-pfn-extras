@@ -3,7 +3,7 @@
 import contextlib
 import queue
 from typing import (
-    Callable, Dict, Generator, List, Optional, Union, TYPE_CHECKING
+    Any, Callable, Dict, Generator, Iterable, List, Optional, Union, TYPE_CHECKING
 )
 
 import torch
@@ -96,7 +96,7 @@ class _Evaluator:
 
     def run(
             self,
-            loader: torch.utils.data.DataLoader[DictBatch],
+            loader: Iterable[Any],
             *,
             eval_len: Optional[int] = None
     ) -> None:

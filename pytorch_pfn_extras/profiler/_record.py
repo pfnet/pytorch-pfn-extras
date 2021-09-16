@@ -3,7 +3,7 @@ from typing import Any, Callable, Generator, Iterable, Optional, TypeVar
 
 import torch
 
-from pytorch_pfn_extras.profiler._time_summary import time_summary
+from pytorch_pfn_extras.profiler._time_summary import time_summary, _ReportNotification
 
 
 @contextmanager
@@ -11,7 +11,7 @@ def record(
         tag: str,
         metric: Optional[str] = None,
         use_cuda: bool = False,
-) -> Generator[None, None, None]:
+) -> Generator[_ReportNotification, None, None]:
     if metric is None:
         metric = tag
 
