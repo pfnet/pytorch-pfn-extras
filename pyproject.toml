@@ -10,4 +10,4 @@ mypy_preset = "strict"
 line_length = 80
 
 [[tool.pysen.lint.mypy_targets]]
-  paths = ["pytorch_pfn_extras", "example"]
+  paths = ["pytorch_pfn_extras"]
