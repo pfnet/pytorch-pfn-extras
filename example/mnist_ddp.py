@@ -15,10 +15,10 @@ class Net(nn.Module):
     def __init__(self, lazy):
         super().__init__()
         if lazy:
-            self.conv1 = ppe.nn.LazyConv2d(None, 20, 5, 1)
-            self.conv2 = ppe.nn.LazyConv2d(None, 50, 5, 1)
-            self.fc1 = ppe.nn.LazyLinear(None, 500)
-            self.fc2 = ppe.nn.LazyLinear(None, 10)
+            self.conv1 = nn.LazyConv2d(20, 5, 1)
+            self.conv2 = nn.LazyConv2d(50, 5, 1)
+            self.fc1 = nn.LazyLinear(500)
+            self.fc2 = nn.LazyLinear(10)
         else:
             self.conv1 = nn.Conv2d(1, 20, 5, 1)
             self.conv2 = nn.Conv2d(20, 50, 5, 1)
