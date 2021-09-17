@@ -1,6 +1,6 @@
 import queue
 import time
-from typing import Any, Iterable, List, Optional, Sequence, Tuple, Union, TYPE_CHECKING
+from typing import Any, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import torch
 
@@ -125,7 +125,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
         self.evaluator.handler.train_validation_end(self, self.evaluator)
 
     def run(self,  # type: ignore[override]
-            train_loader: Sequence[Any],
+            train_loader: Iterable[Any],
             val_loader: Optional[Iterable[Any]] = None,
             *,
             train_len: Optional[int] = None,
@@ -148,7 +148,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
             - :meth:`pytorch_pfn_extras.training._evaluator._Evaluator`
         """
         if train_len is None:
-            train_len = len(train_loader)
+            train_len = len(train_loader)  # type: ignore[arg-type]
 
         self._val_loader = val_loader
         self._eval_len = eval_len

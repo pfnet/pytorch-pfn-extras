@@ -2,7 +2,7 @@ import collections
 import contextlib
 import threading
 import types
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, Generator, List, Mapping, Optional, Tuple, Type, Union
 import warnings
 
 import numpy
@@ -347,7 +347,7 @@ class DictSummary:
     def __init__(self) -> None:
         self._summaries: Dict[str, Summary] = collections.defaultdict(Summary)
 
-    def add(self, d: Dict[str, Union[Scalar, Tuple[Scalar, Scalar]]]) -> None:
+    def add(self, d: Mapping[str, Union[Scalar, Tuple[Scalar, Scalar]]]) -> None:
         """Adds a dictionary of scalars.
 
         Args:
