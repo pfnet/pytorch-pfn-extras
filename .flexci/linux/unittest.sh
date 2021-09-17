@@ -33,6 +33,8 @@ flake8 .
 
 # Run mypy
 mypy pytorch_pfn_extras
-mypy example/mnist.py --allow-untyped-defs --allow-untyped-calls
+pushd example
+mypy mnist.py --config-file ../setup.cfg --allow-untyped-defs --allow-untyped-calls
+popd
 
 mv htmlcov /output/htmlcov
