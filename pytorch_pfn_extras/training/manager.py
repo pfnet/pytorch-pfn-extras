@@ -1,11 +1,9 @@
-# mypy: ignore-errors
-
 import collections
 import contextlib
 import copy
 from pytorch_pfn_extras.profiler import record
 import time
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Iterable, Generator, List, Optional, Union
 from typing import TYPE_CHECKING
 import warnings
 
@@ -16,7 +14,9 @@ from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training import _util as util_module
-from pytorch_pfn_extras.training._transform_model import default_transform_model
+from pytorch_pfn_extras.training._transform_model import (
+    default_transform_model, _TransformModel,
+)
 
 _get_time = time.perf_counter
 
@@ -35,25 +35,25 @@ class _ManagerExecutionProxy:
     require to measure executions when using async mode
     Note that in sync mode execution == iteration
     """
-    def __init__(self, manager):
+    def __init__(self, manager: '_BaseExtensionsManager') -> None:
         self._manager = manager
 
     @property
-    def iteration(self):
+    def iteration(self) -> int:
         return self._manager.execution
 
     @property
-    def epoch(self):
+    def epoch(self) -> int:
         # Extensions will start via self.iteration
         return self.iteration // self._iters_per_epoch
 
     @property
-    def epoch_detail(self):
+    def epoch_detail(self) -> float:
         # Extensions will start via self.iteration
         return self.iteration / self._iters_per_epoch
 
     @property
-    def _iters_per_epoch(self):
+    def _iters_per_epoch(self) -> int:
         return self._manager._iters_per_epoch
 
 
@@ -71,7 +71,7 @@ class _BaseExtensionsManager:
             out_dir: str,
             writer: Optional[writing.Writer],
             stop_trigger: 'trigger_module.TriggerLike' = None,
-            transform_model=default_transform_model,
+            transform_model: _TransformModel = default_transform_model,
     ) -> None:
         if extensions is None:
             extensions = []
@@ -123,7 +123,7 @@ class _BaseExtensionsManager:
         self._start_iteration = 0
         # Defer!
         self._start_time: Optional[float] = None
-        self._iters_per_epoch: Optional[int] = None
+        self.__iters_per_epoch: Optional[int] = None
         self._extensions: Dict[
             str, extension_module.ExtensionEntry] = collections.OrderedDict()
         for ext in extensions:
@@ -144,7 +144,7 @@ class _BaseExtensionsManager:
     def iteration(self, value: int) -> None:
         self._iteration = value
 
-    def _check_model_available(self):
+    def _check_model_available(self) -> None:
         if self._model_available:
             return
         raise RuntimeError(
@@ -161,7 +161,7 @@ class _BaseExtensionsManager:
         return models
 
     @property
-    def raw_models(self):
+    def raw_models(self) -> Dict[str, torch.nn.Module]:
         self.start_extensions()
         self._check_model_available()
         return self._models
@@ -186,14 +186,17 @@ class _BaseExtensionsManager:
     @property
     def epoch(self) -> int:
         # Extensions will start via self.iteration
-        assert self._iters_per_epoch is not None
         return self.iteration // self._iters_per_epoch
 
     @property
     def epoch_detail(self) -> float:
         # Extensions will start via self.iteration
-        assert self._iters_per_epoch is not None
         return self.iteration / self._iters_per_epoch
+
+    @property
+    def _iters_per_epoch(self) -> int:
+        assert self.__iters_per_epoch is not None
+        return self.__iters_per_epoch
 
     @property
     def stop_trigger(self) -> bool:
@@ -222,7 +225,11 @@ class _BaseExtensionsManager:
             ' `snapshot_iter_{.iteration}`).', DeprecationWarning)
         return self
 
-    def _get_proxy_for_trigger(self, trigger):
+    # TODO(asi1024): Add type annotation of return value.
+    def _get_proxy_for_trigger(
+            self,
+            trigger: 'trigger_module.Trigger',
+    ) -> Any:
         if isinstance(trigger, trigger_module.IntervalTrigger):
             return _ManagerExecutionProxy(self)
         return self
@@ -235,7 +242,7 @@ class _BaseExtensionsManager:
     ) -> None:
         self.iteration = start_iteration
         self.execution = start_execution
-        self._iters_per_epoch = iters_per_epoch
+        self.__iters_per_epoch = iters_per_epoch
 
     def start_extensions(self) -> None:
         if self._start_extensions_called:
@@ -359,7 +366,8 @@ class _BaseExtensionsManager:
         else:
             raise ValueError('extension %s not found' % name)
 
-    def run_extensions(self, *, completed=True, only_iterations=True) -> None:
+    def run_extensions(
+            self, *, completed: bool = True, only_iterations: bool = True) -> None:
         if completed:
             # Check if the model is available for the iteration just
             # completed, i.e., the iteration number is already incremented.
@@ -411,11 +419,11 @@ class _BaseExtensionsManager:
                 extension(self)
         self._model_available = True
 
-    def needs_state_this_iteration(self):
+    def needs_state_this_iteration(self) -> bool:
         # TODO(kmaehashi) remove this interface after migration complete.
         return self.needs_model_state(self.execution + 1)
 
-    def needs_model_state(self, iteration=None):
+    def needs_model_state(self, iteration: Optional[int] = None) -> bool:
         if iteration is None:
             # Iteration is added one, because iteration count
             # is increased just right before calling extensions
@@ -499,24 +507,29 @@ class ExtensionsManager(_BaseExtensionsManager):
             optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
             max_epochs: int,
             *,
-            iters_per_epoch: Optional[int],
+            iters_per_epoch: int,
             extensions: Optional[List['extension_module.ExtensionLike']] = None,
             out_dir: str = 'result',
             stop_trigger: 'trigger_module.TriggerLike' = None,
             writer: Optional[writing.Writer] = None,
-            transform_model=lambda n, x: x,
+            transform_model: _TransformModel = lambda n, x: x,
     ) -> None:
         super().__init__(
             models, optimizers, max_epochs, extensions,
             out_dir, writer, stop_trigger, transform_model)
-        if not (isinstance(iters_per_epoch, int) and iters_per_epoch >= 1):
+        if iters_per_epoch < 1:
             raise ValueError(
                 'iters_per_epoch must be an integer >= 1 ({} given)'.format(
                     iters_per_epoch))
         self._prepare_for_training(0, 0, iters_per_epoch)
 
     @contextlib.contextmanager
-    def complete_iteration(self, *, observation=None, step_optimizers=None):
+    def complete_iteration(
+            self,
+            *,
+            observation: Optional[reporting.Observation] = None,
+            step_optimizers: Optional[Iterable[str]] = None,
+    ) -> Generator[None, None, None]:
         """ Context manager to complete deferred iterations.
 
         Args:
@@ -529,7 +542,7 @@ class ExtensionsManager(_BaseExtensionsManager):
 
         if observation is None:
             observation = {}
-        step_optimizers_names = []
+        step_optimizers_names: Iterable[str] = []
         if step_optimizers is not None:
             step_optimizers_names = step_optimizers
         self.observation = observation
@@ -652,7 +665,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
 
         @self.engine.on(Events.STARTED)
         def set_training_started(engine: Engine) -> None:
-            iters_per_epoch = len(engine.state.dataloader)
+            iters_per_epoch = len(engine.state.dataloader)  # type: ignore[arg-type]
             # Initialize manager once before extensions' `initialize` call
             self._prepare_for_training(0, 0, iters_per_epoch)
             self.start_extensions()
