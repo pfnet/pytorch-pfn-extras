@@ -33,5 +33,6 @@ flake8 .
 
 # Run mypy
 mypy pytorch_pfn_extras
+mypy example/mnist.py --allow-untyped-defs --allow-untyped-calls
 
 mv htmlcov /output/htmlcov
