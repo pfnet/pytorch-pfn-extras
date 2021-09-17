@@ -12,18 +12,12 @@ import pytorch_pfn_extras.training.extensions as extensions
 
 
 class Net(nn.Module):
-    def __init__(self, lazy):
+    def __init__(self):
         super().__init__()
-        if lazy:
-            self.conv1 = nn.LazyConv2d(20, 5, 1)
-            self.conv2 = nn.LazyConv2d(50, 5, 1)
-            self.fc1 = nn.LazyLinear(500)
-            self.fc2 = nn.LazyLinear(10)
-        else:
-            self.conv1 = nn.Conv2d(1, 20, 5, 1)
-            self.conv2 = nn.Conv2d(20, 50, 5, 1)
-            self.fc1 = nn.Linear(4 * 4 * 50, 500)
-            self.fc2 = nn.Linear(500, 10)
+        self.conv1 = nn.Conv2d(1, 20, 5, 1)
+        self.conv2 = nn.Conv2d(20, 50, 5, 1)
+        self.fc1 = nn.Linear(4 * 4 * 50, 500)
+        self.fc2 = nn.Linear(500, 10)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -111,9 +105,6 @@ def main():
                         help='For Saving the current Model')
     parser.add_argument('--snapshot', type=str, default=None,
                         help='path to snapshot file')
-    parser.add_argument('--no-lazy', dest='lazy',
-                        action='store_false', default=True,
-                        help='do not use lazy modules')
     args = parser.parse_args()
     use_cuda = args.cuda and torch.cuda.is_available()
 
@@ -165,13 +156,8 @@ def main():
         local_test_dataset, batch_size=args.test_batch_size, shuffle=True,
         **kwargs)
 
-    model = Net(args.lazy)
+    model = Net()
     model.to(device)
-    if args.lazy:
-        # You need to run a dummy forward to initialize parameters.
-        # This should be done before passing parameter list to optimizers.
-        dummy_input = train_loader.dataset[0][0].unsqueeze(0).to(device)
-        model(dummy_input)
 
     model = ppe.nn.parallel.DistributedDataParallel(model)
 
