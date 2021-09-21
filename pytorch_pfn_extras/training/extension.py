@@ -49,6 +49,7 @@ class Extension:
     trigger: 'TriggerLike' = (1, 'iteration')
     priority: int = PRIORITY_READER
     name: Optional[str] = None
+    call_before_training: bool = False
     needs_model_state = False
     # is_async determines whether the execution trigger will be fired
     # by taking in account the number of executions regardless of the
@@ -249,14 +250,14 @@ class ExtensionEntry:
             name: Optional[str] = None,
             priority: Optional[int] = None,
             trigger: Optional['TriggerLike'] = None,
-            call_before_training: bool = False,
+            call_before_training: Optional[bool] = False,
     ) -> None:
-        self.extension = _as_extension(extension)
+        ext = _as_extension(extension)
+        self.extension = ext
         self.priority = priority or self.extension.priority
-        self.call_before_training = call_before_training
-
-        self._update_trigger(trigger or self.extension.trigger)
-        self._update_name(name or self.extension.name or self.extension.default_name)
+        self.call_before_training = call_before_training or ext.call_before_training
+        self._update_trigger(trigger or ext.trigger)
+        self._update_name(name or ext.name or ext.default_name)
 
     def _update_trigger(self, trigger: 'TriggerLike') -> None:
         self.trigger = _trigger_util.get_trigger(trigger)
