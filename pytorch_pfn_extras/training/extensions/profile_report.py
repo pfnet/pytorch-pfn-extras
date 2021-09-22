@@ -1,5 +1,6 @@
 # mypy: ignore-errors
 
+import json
 from collections import OrderedDict
 
 from pytorch_pfn_extras import reporting
@@ -64,7 +65,7 @@ class ProfileReport(extension.Extension):
             ]
         self._report_keys = report_keys
         self._trigger = trigger_module.get_trigger(trigger)
-        self._log = log_report._LogBuffer('log_report')
+        self._log = []
 
         log_name = kwargs.get("log_name", "log")
         if filename is None:
@@ -123,17 +124,17 @@ class ProfileReport(extension.Extension):
                 log_name = self._log_name.format(**out)
                 savefun = log_report.LogWriterSaveFunc(
                     self._format, self._append)
-                writer(log_name, out, self._log.get('log_report'),
+                writer(log_name, out, self._log,
                        savefun=savefun, append=self._append)
 
     def state_dict(self):
         state = {}
         if hasattr(self._trigger, "state_dict"):
             state["_trigger"] = self._trigger.state_dict()
-        state["_log"] = self._log.state_dict()
+        state["_log"] = json.dumps(self._log)
         return state
 
     def load_state_dict(self, to_load):
         if hasattr(self._trigger, "load_state_dict"):
             self._trigger.load_state_dict(to_load["_trigger"])
-        self._log.load_state_dict(to_load["_log"])
+        self._log = json.loads(to_load["_log"])
