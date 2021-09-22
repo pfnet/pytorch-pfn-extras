@@ -115,6 +115,10 @@ class PrintReport(extension.Extension):
             raise TypeError('log report has a wrong type %s' %
                             type(log_report))
 
+    def initialize(self, manager: _BaseExtensionsManager) -> None:
+        log_report = self.get_log_report(manager)
+        log_report._log.register_looker('print_report')
+
     def _update_entries(self, log_report: log_report_module.LogReport) -> None:
         updated_flag = False
         aggregate_entries = log_report._log.get('print_report')
@@ -139,7 +143,6 @@ class PrintReport(extension.Extension):
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         log_report = self.get_log_report(manager)
-        log_report._log.register_looker('print_report')
 
         if self._infer_entries:
             # --- update entries ---
