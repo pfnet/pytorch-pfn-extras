@@ -90,6 +90,7 @@ class PrintReport(extension.Extension):
             self._infer_entries = False
         self._entries = entries
         self._log_report = log_report
+        self._log_looker = None
         self._out = out
 
         # format information
@@ -117,11 +118,11 @@ class PrintReport(extension.Extension):
 
     def initialize(self, manager: _BaseExtensionsManager) -> None:
         log_report = self.get_log_report(manager)
-        log_report._log.register_looker('print_report')
+        self._log_looker = log_report._log_buffer.emit_new_looker()
 
     def _update_entries(self, log_report: log_report_module.LogReport) -> None:
         updated_flag = False
-        aggregate_entries = log_report._log.get('print_report')
+        aggregate_entries = self.log_looker.get()
         for obs in aggregate_entries:
             for entry in obs.keys():
                 if entry not in self._all_entries:
@@ -154,14 +155,14 @@ class PrintReport(extension.Extension):
             out.write(self._header)
             self._header = None
 
-        for line in log_report._log.get('print_report'):
+        for line in self._log_looker.get():
             # delete the printed contents from the current cursor
             if os.name == 'nt':
                 util.erase_console(0, 0)
             else:
                 out.write('\033[J')
             self._print(line)
-        log_report._log.clear('print_report')
+        self._log_looker.clear()
 
     def state_dict(self) -> Dict[str, Any]:
         log_report = self._log_report

@@ -2,6 +2,7 @@
 
 import collections
 import json
+from typing import List
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
@@ -46,8 +47,8 @@ class LogWriterSaveFunc:
 
 class _LogBuffer:
 
-    def __init__(self, *lookers) -> None:
-        self.lookers = {looker: 0 for looker in lookers}
+    def __init__(self) -> None:
+        self.lookers = {}
         self._log = []
         self._offset = 0
 
@@ -60,18 +61,20 @@ class _LogBuffer:
     def append(self, observation) -> None:
         self._log.append(observation)
 
-    def get(self, looker: str):
-        return self._log[self.lookers[looker] - self._offset:]
+    def _get(self, looker_id: int) -> List[str]:
+        return self._log[self.lookers[looker_id] - self._offset:]
 
-    def clear(self, looker: str) -> None:
-        if looker not in self.lookers:
-            raise ValueError(f'looker {looker} is not registered')
-        self.lookers[looker] = len(self._log) + self._offset
+    def _clear(self, looker_id: int) -> None:
+        if looker_id not in self.lookers:
+            raise ValueError(f'looker {looker_id} is not registered')
+        self.lookers[looker_id] = len(self._log) + self._offset
         self._normalize()
 
-    def register_looker(self, looker: str) -> None:
-        if looker not in self.lookers:
-            self.lookers[looker] = len(self._log) + self._offset
+    def emit_new_looker(self) -> '_LogLooker':
+        looker_id = len(self.lookers)
+        assert looker_id not in self.lookers
+        self.lookers[looker_id] = len(self._log) + self._offset
+        return _LogLooker(self, looker_id)
 
     def state_dict(self):
         return {
@@ -84,6 +87,19 @@ class _LogBuffer:
         self.lookers = to_load['lookers']
         self._log = json.loads(to_load['_log'])
         self._offset = to_load['_offset']
+
+
+class _LogLooker:
+
+    def __init__(self, log_buffer: _LogBuffer, looker_id: int) -> None:
+        self._log_buffer = log_buffer
+        self._looker_id = looker_id
+
+    def get(self) -> List[str]:
+        return self._log_buffer._get(self._looker_id)
+
+    def clear(self) -> None:
+        return self._log_buffer._clear(self._looker_id)
 
 
 class LogReport(extension.Extension):
@@ -145,7 +161,8 @@ class LogReport(extension.Extension):
         self._keys = keys
         self._trigger = trigger_module.get_trigger(trigger)
         self._postprocess = postprocess
-        self._log = _LogBuffer('log_report')
+        self._log_buffer = _LogBuffer()
+        self._log_looker = self._log_buffer.emit_new_looker()
         # When using a writer, it needs to have a savefun defined
         # to deal with a string.
         self._writer = kwargs.get('writer', None)
@@ -196,15 +213,15 @@ class LogReport(extension.Extension):
                 self._postprocess(stats_cpu)
 
             if self._append:
-                self._log.clear('log_report')
-            self._log.append(stats_cpu)
+                self._log_looker.clear()
+            self._log_buffer.append(stats_cpu)
 
             # write to the log file
             if self._log_name is not None:
                 log_name = self._log_name.format(**stats_cpu)
                 out = manager.out
                 savefun = LogWriterSaveFunc(self._format, self._append)
-                writer(log_name, out, self._log.get('log_report'),
+                writer(log_name, out, self._log_looker.get(),
                        savefun=savefun, append=self._append)
 
             # reset the summary for the next output
@@ -213,7 +230,7 @@ class LogReport(extension.Extension):
     @property
     def log(self):
         """The current list of observation dictionaries."""
-        return self._log.get('log_report')
+        return self._log_looker.get()
 
     def state_dict(self):
         state = {}
@@ -224,14 +241,14 @@ class LogReport(extension.Extension):
             state['_summary'] = self._summary.state_dict()
         except KeyError:
             pass
-        state['_log'] = self._log.state_dict()
+        state['_log'] = self._log_buffer.state_dict()
         return state
 
     def load_state_dict(self, to_load):
         if hasattr(self._trigger, 'load_state_dict'):
             self._trigger.load_state_dict(to_load['_trigger'])
         self._summary.load_state_dict(to_load['_summary'])
-        self._log.load_state_dict(to_load['_log'])
+        self._log_buffer.load_state_dict(to_load['_log'])
 
     def _init_summary(self):
         self._summary = reporting.DictSummary()
@@ -241,4 +258,4 @@ class LogReport(extension.Extension):
             raise ImportError(
                 "Need to install pandas to use `to_dataframe` method."
             )
-        return pandas.DataFrame(self._log.get('log_report'))
+        return pandas.DataFrame(self._log_looker.get())
