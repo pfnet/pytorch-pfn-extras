@@ -122,7 +122,7 @@ class PrintReport(extension.Extension):
 
     def _update_entries(self, log_report: log_report_module.LogReport) -> None:
         updated_flag = False
-        aggregate_entries = self.log_looker.get()
+        aggregate_entries = self._log_looker.get()
         for obs in aggregate_entries:
             for entry in obs.keys():
                 if entry not in self._all_entries:

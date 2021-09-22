@@ -116,7 +116,7 @@ class ProfileReport(extension.Extension):
                 [(k, stats_cpu[k]) for k in sorted(stats_cpu.keys())])
 
             if self._append:
-                self._log.clear('log_report')
+                self._log = []
             self._log.append(out)
 
             # write to the log file
