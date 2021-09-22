@@ -76,17 +76,11 @@ class _LogBuffer:
         self.lookers[looker_id] = len(self._log) + self._offset
         return _LogLooker(self, looker_id)
 
-    def state_dict(self):
-        return {
-            'lookers': self.lookers,
-            '_log': json.dumps(self._log),
-            '_offset': self._offset,
-        }
+    def state_dict(self) -> List[str]:
+        return json.dumps(self._log)
 
-    def load_state_dict(self, to_load):
-        self.lookers = to_load['lookers']
-        self._log = json.loads(to_load['_log'])
-        self._offset = to_load['_offset']
+    def load_state_dict(self, to_load: List[str]) -> None:
+        self._log = json.loads(to_load)
 
 
 class _LogLooker:
