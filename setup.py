@@ -21,4 +21,5 @@ setuptools.setup(
     },
     python_requires='>=3.6.0',
     packages=setuptools.find_packages(exclude=['tests']),
+    package_data={'pytorch_pfn_extras': ['py.typed']},
 )
