@@ -1,4 +1,4 @@
-from typing import Generator, List, Optional, Tuple
+from typing import Generator, List, Optional, Tuple, Any
 from contextlib import contextmanager
 
 import torch
@@ -30,7 +30,7 @@ def grad(
     grad_output = torch.ones_like(output)
 
     if torch.jit.is_tracing():
-        assert hasattr(_grad_state, "n_grad_call")
+        assert hasattr(_grad_state, "n_grad_call"), "ppe.onnx.grad() can only be used in conjunction with export functions under ppe.onnx"
         n_grad_call = _grad_state.n_grad_call
         _grad_state.n_grad_call += 1
 
