@@ -20,5 +20,5 @@ setuptools.setup(
         'onnx': ['onnx'],
     },
     python_requires='>=3.6.0',
-    packages=setuptools.find_packages(exclude=['tests']),
+    packages=setuptools.find_packages(exclude=['tests', 'tests.*']),
 )
