@@ -48,7 +48,7 @@ def test(args, model, device, data, target):
         averages
     """
     model.eval()
-    test_loss = 0.
+    test_loss = 0.0
     correct = 0
     data, target = data.to(device), target.to(device)
     output = model(data)
@@ -141,7 +141,7 @@ def main():
             transforms.Normalize((0.1307,), (0.3081,)),
         ]))
 
-    train_sampler = torch.utils.data.DistributedSampler(  # type: ignore[var-annotated]
+    train_sampler = torch.utils.data.DistributedSampler[int](
         train_dataset, num_replicas=comm_world_size, rank=comm_rank)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, sampler=train_sampler,
@@ -156,10 +156,7 @@ def main():
         local_test_dataset, batch_size=args.test_batch_size, shuffle=True,
         **kwargs)  # type: ignore[arg-type]
 
-    model = Net()
-    model.to(device)
-
-    model = ppe.nn.parallel.DistributedDataParallel(model)
+    model = ppe.nn.parallel.DistributedDataParallel(Net().to(device))
 
     optimizer = optim.SGD(
         model.parameters(), lr=args.lr, momentum=args.momentum)
