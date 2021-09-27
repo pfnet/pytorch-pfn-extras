@@ -3,8 +3,9 @@ import contextlib
 import copy
 from pytorch_pfn_extras.profiler import record
 import time
-from typing import Any, Dict, Iterable, Generator, List, Optional, Union
-from typing import TYPE_CHECKING
+from typing import (
+    Any, Dict, Iterable, Generator, List, Mapping, Optional, Union, TYPE_CHECKING
+)
 import warnings
 
 import torch
@@ -64,8 +65,9 @@ class _BaseExtensionsManager:
 
     def __init__(
             self,
-            models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
-            optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
+            models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
+            optimizers: Union[torch.optim.Optimizer,
+                              Mapping[str, torch.optim.Optimizer]],
             max_epochs: int,
             extensions: Optional[List['extension_module.ExtensionLike']],
             out_dir: str,
@@ -98,14 +100,14 @@ class _BaseExtensionsManager:
         # models before starting a training loop.
         self._model_available = True
 
-        if not isinstance(models, dict):
+        if not isinstance(models, collections.abc.Mapping):
             if not isinstance(models, torch.nn.Module):
                 raise ValueError(
                     'model must be an instance of dict or toch.nn.Module')
             self._models = {'main': models}
         else:
             self._models = models
-        if not isinstance(optimizers, dict):
+        if not isinstance(optimizers, collections.abc.Mapping):
             # TODO(ecastill) Optimizer type is not checked because of tests
             # using mocks and other classes
             self._optimizers = {'main': optimizers}
@@ -631,8 +633,9 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
     def __init__(
             self,
             engine: 'ignite.engine.Engine',
-            models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
-            optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
+            models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
+            optimizers: Union[torch.optim.Optimizer,
+                              Mapping[str, torch.optim.Optimizer]],
             max_epochs: int,
             *,
             extensions: Optional[List['extension_module.ExtensionLike']] = None,
