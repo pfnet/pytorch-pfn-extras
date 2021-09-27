@@ -40,4 +40,5 @@ flake8 .
 # Run mypy
 mypy pytorch_pfn_extras
 
-mv htmlcov /output/htmlcov
+# Publish coverage report
+mv tests/htmlcov /output/htmlcov
