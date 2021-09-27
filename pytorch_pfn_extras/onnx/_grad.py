@@ -55,7 +55,7 @@ def grad(
                 output: torch.Tensor,
                 grad_output: Optional[torch.Tensor],
                 *inputs: Tuple[torch.Tensor, ...],
-            ) -> Tuple[torch.Tensor, ...]:
+            ) -> Tuple[Optional[torch.Tensor], ...]:
                 @torch.jit.script
                 def _grad(
                     output: torch.Tensor,
@@ -64,7 +64,7 @@ def grad(
                     retain_graph: Optional[bool],
                     create_graph: bool,
                     allow_unused: bool,
-                ) -> List[torch.Tensor]:
+                ) -> List[Optional[torch.Tensor]]:
                     return torch.autograd.grad(
                         outputs=[output],
                         inputs=inputs,
