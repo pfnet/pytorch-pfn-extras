@@ -24,8 +24,8 @@ def grad(
     inputs: Tuple[torch.Tensor, ...],
     retain_graph: Optional[bool] = None,
     create_graph: bool = False,
-    allow_unused: bool = False,
     only_inputs: bool = True,
+    allow_unused: bool = False,
 ) -> Tuple[Optional[torch.Tensor], ...]:
     grad_output = torch.ones_like(output)
 
@@ -49,7 +49,7 @@ def grad(
         class _Gradient(torch.autograd.Function):
             @staticmethod
             def forward(
-                ctx,
+                ctx: Any,
                 output: torch.Tensor,
                 grad_output: Optional[torch.Tensor],
                 *inputs: Tuple[torch.Tensor, ...],
@@ -94,5 +94,6 @@ def grad(
             grad_outputs=grad_output,
             retain_graph=retain_graph,
             create_graph=create_graph,
+            only_inputs=only_inputs,
             allow_unused=allow_unused,
         )
