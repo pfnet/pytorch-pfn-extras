@@ -30,7 +30,9 @@ def grad(
     grad_output = torch.ones_like(output)
 
     if torch.jit.is_tracing():
-        assert hasattr(_grad_state, "n_grad_call"), "ppe.onnx.grad() can only be used in conjunction with export functions under ppe.onnx"
+        err_msg = "ppe.onnx.grad() can only be used in conjunction " + \
+            "with export functions under ppe.onnx"
+        assert hasattr(_grad_state, "n_grad_call"), err_msg
         n_grad_call = _grad_state.n_grad_call
         _grad_state.n_grad_call += 1
 
@@ -72,7 +74,12 @@ def grad(
                         allow_unused=allow_unused,
                     )
                 return tuple(_grad(
-                    output, list(inputs), grad_output, retain_graph, create_graph, allow_unused
+                    output,
+                    list(inputs),
+                    grad_output,
+                    retain_graph,
+                    create_graph,
+                    allow_unused,
                 ))
 
             # @torch.onnx.symbolic_helper.parse_args("v")
