@@ -29,7 +29,7 @@ def grad(
 ) -> Tuple[Optional[torch.Tensor], ...]:
     grad_output = torch.ones_like(output)
 
-    if torch.jit.is_tracing():
+    if torch.jit.is_tracing():  # type: ignore
         err_msg = "ppe.onnx.grad() can only be used in conjunction " + \
             "with export functions under ppe.onnx"
         assert hasattr(_grad_state, "n_grad_call"), err_msg
@@ -50,12 +50,12 @@ def grad(
 
         class _Gradient(torch.autograd.Function):
             @staticmethod
-            def forward(
+            def forward(  # type: ignore
                 ctx: Any,
                 output: torch.Tensor,
                 grad_output: Optional[torch.Tensor],
                 *inputs: Tuple[torch.Tensor, ...],
-            ):
+            ) -> Tuple[torch.Tensor, ...]:
                 @torch.jit.script
                 def _grad(
                     output: torch.Tensor,
@@ -64,11 +64,11 @@ def grad(
                     retain_graph: Optional[bool],
                     create_graph: bool,
                     allow_unused: bool,
-                ):
+                ) -> List[torch.Tensor]:
                     return torch.autograd.grad(
                         outputs=[output],
                         inputs=inputs,
-                        grad_outputs=[grad_output],
+                        grad_outputs=[grad_output],  # type: ignore
                         retain_graph=retain_graph,
                         create_graph=create_graph,
                         allow_unused=allow_unused,
@@ -82,9 +82,8 @@ def grad(
                     allow_unused,
                 ))
 
-            # @torch.onnx.symbolic_helper.parse_args("v")
             @staticmethod
-            def symbolic(g, output, grad_output, *inputs):
+            def symbolic(g, output, grad_output, *inputs):  # type: ignore
                 return g.op(
                     "Gradient",
                     *inputs,
@@ -93,7 +92,7 @@ def grad(
                     y_s=output_name,
                     outputs=len(input_names),
                 )
-        return _Gradient.apply(output, grad_output, *inputs_l)
+        return _Gradient.apply(output, grad_output, *inputs_l)  # type: ignore
     else:
         return torch.autograd.grad(
             outputs=output,
