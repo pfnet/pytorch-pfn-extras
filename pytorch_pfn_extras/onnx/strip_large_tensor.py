@@ -42,7 +42,7 @@ def _strip_raw_data(tensor):
         tensor.raw_data = onnx.numpy_helper.from_array(arr, tensor.name).raw_data
     onnx.external_data_helper.set_external_data(tensor,
                                                 location=json.dumps(meta_dict),
-                                                length=len(tensor.raw_data))
+                                                length=arr.nbytes)
     tensor.data_location = onnx.TensorProto.EXTERNAL
     tensor.ClearField('raw_data')
     tensor.ClearField('float_data')
