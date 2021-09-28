@@ -3,6 +3,7 @@ import contextlib
 import threading
 import types
 from typing import Any, Callable, Dict, Generator, List, Mapping, Optional, Tuple, Type, Union
+from typing import overload
 import warnings
 
 import numpy
@@ -18,13 +19,17 @@ Observation = Dict[str, Value]
 _thread_local = threading.local()
 
 
+@overload
+def _nograd(value: FloatLikeValue) -> FloatLikeValue:
+    ...
+
+
+@overload
 def _nograd(value: Value) -> Value:
-    if isinstance(value, torch.Tensor):
-        return value.detach()
-    return value
+    ...
 
 
-def _nograd_float(value: FloatLikeValue) -> FloatLikeValue:
+def _nograd(value: Union[FloatLikeValue, Value]) -> Union[FloatLikeValue, Value]:
     if isinstance(value, torch.Tensor):
         return value.detach()
     return value
@@ -354,9 +359,9 @@ class Summary:
         # Casting here is because of backward compatibility
         # Restore previously taken snapshots with autoload
         self._add_deferred_values()
-        self._x = float(_nograd_float(to_load['_x']))
-        self._x2 = float(_nograd_float(to_load['_x2']))
-        self._n = int(_nograd_float(to_load['_n']))
+        self._x = float(_nograd(to_load['_x']))
+        self._x2 = float(_nograd(to_load['_x2']))
+        self._n = int(_nograd(to_load['_n']))
 
 
 class DictSummary:
