@@ -17,15 +17,24 @@ if [ -d mnist_raw ]; then
     mv mnist_raw/* ../data/MNIST/raw
 fi
 python example/mnist.py --batch-size 2048 --test-batch-size 2048 --epochs 1 --save-model
+python example/mnist_trainer.py --batch-size 2048 --test-batch-size 2048 --epochs 1
 python example/ignite-mnist.py --batch_size 2048 --val_batch_size 2048 --epochs 1
 MASTER_ADDR=127.0.0.1 MASTER_PORT=1236 mpirun -n 2 --allow-run-as-root python example/mnist_ddp.py --batch-size 2048 --test-batch-size 2048 --epochs 1
 
+# Trainer
+python example/mnist_custom_logic.py --batch-size 2048 --test-batch-size 2048 --epochs 1
 
 # Run pysen
+pysen generate .
 pysen run lint 2> /output/pysen.txt || true
 
 # Run flake8
-pysen generate .
 flake8 .
+
+# Run mypy
+mypy pytorch_pfn_extras
+pushd example
+mypy mnist.py --config-file ../setup.cfg --allow-untyped-defs --allow-untyped-calls
+popd
 
 mv htmlcov /output/htmlcov

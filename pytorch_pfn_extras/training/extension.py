@@ -1,10 +1,12 @@
 from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 import types
 
+from pytorch_pfn_extras.training import _trigger_util
+
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
     from pytorch_pfn_extras.training._trigger_util import TriggerLike
-    ExtensionLike = Callable[[_BaseExtensionsManager], None]
+    ExtensionLike = Callable[[_BaseExtensionsManager], Any]
 
 
 PRIORITY_WRITER = 300
@@ -47,6 +49,11 @@ class Extension:
     trigger: 'TriggerLike' = (1, 'iteration')
     priority: int = PRIORITY_READER
     name: Optional[str] = None
+    needs_model_state = False
+    # is_async determines whether the execution trigger will be fired
+    # by taking in account the number of executions regardless of the
+    # completed iterations
+    is_async = False
 
     @property
     def default_name(self) -> str:
@@ -58,7 +65,7 @@ class Extension:
         """
         return type(self).__name__
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> None:
+    def __call__(self, manager: '_BaseExtensionsManager') -> Any:
         """Invokes the extension.
 
         Implementations should override this operator. This method is called
@@ -217,3 +224,58 @@ def make_extension(
 
 def _as_extension(ext: 'ExtensionLike') -> Extension:
     return ext if isinstance(ext, Extension) else _WrappedExtension(ext)
+
+
+class ExtensionEntry:
+    """Extension and options.
+    When name, priority, or trigger is not specified, it is copied from the
+    attributes of the given ``extension``.
+
+    Args:
+        extension: An extension.
+        name: Name of extension.
+        priority: Invocation priority of the extension.
+        trigger: Trigger object that determines when to invoke the extension.
+        call_before_training: Flag to call extension before training.
+
+    .. seealso::
+       :meth:`pytorch_pfn_extras.training.ExtensionsManager.extend`
+    """
+
+    def __init__(
+            self,
+            extension: 'ExtensionLike',
+            *,
+            name: Optional[str] = None,
+            priority: Optional[int] = None,
+            trigger: Optional['TriggerLike'] = None,
+            call_before_training: bool = False,
+    ) -> None:
+        self.extension = _as_extension(extension)
+        self.priority = priority or self.extension.priority
+        self.call_before_training = call_before_training
+
+        self._update_trigger(trigger or self.extension.trigger)
+        self._update_name(name or self.extension.name or self.extension.default_name)
+
+    def _update_trigger(self, trigger: 'TriggerLike') -> None:
+        self.trigger = _trigger_util.get_trigger(trigger)
+
+    def _update_name(self, name: str) -> None:
+        if name == 'training':
+            raise ValueError(
+                'the name "training" is prohibited as an extension name')
+        self.name = name
+        self.extension.name = name
+
+    def state_dict(self) -> Dict[str, Any]:
+        state = {}
+        state['extension'] = self.extension.state_dict()
+        state['trigger'] = self.trigger.state_dict()
+        return state
+
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
+        if 'extension' in to_load:
+            self.extension.load_state_dict(to_load['extension'])
+        if 'trigger' in to_load:
+            self.trigger.load_state_dict(to_load['trigger'])

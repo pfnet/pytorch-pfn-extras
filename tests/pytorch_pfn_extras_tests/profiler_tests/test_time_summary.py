@@ -1,6 +1,7 @@
 import multiprocessing as mp
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -16,6 +17,23 @@ def test_report():
         assert "foo" in s[0].compute_mean()
         assert "foo.min" in s[1]
         assert "foo.max" in s[1]
+    summary.finalize()
+
+
+def test_report_async():
+    summary = TimeSummary()
+    with summary.report("afoo") as notification:
+        notification.defer()
+    time.sleep(0.5)
+    # Explicitly call object completion
+    notification.complete()
+    summary.synchronize()
+    with summary.summary() as s:
+        stats = s[0].compute_mean()
+        assert "afoo" in stats
+        assert abs(0.5 - stats["afoo"]) < 2e-2
+        assert abs(0.5 - s[1]["afoo.min"]) < 2e-2
+        assert abs(0.5 - s[1]["afoo.max"]) < 2e-2
     summary.finalize()
 
 
@@ -69,6 +87,9 @@ def test_clear():
     with summary.summary(clear=True) as s:
         assert s[0].compute_mean() == {"foo": 10}
         assert s[1] == {"foo.min": 5, "foo.max": 15}
+    with summary.summary(clear=True) as s:
+        assert s[0].compute_mean() == {}
+        assert s[1] == {}
     summary.finalize()
 
 

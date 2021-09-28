@@ -2,7 +2,7 @@ import collections
 import contextlib
 import threading
 import types
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union, Callable
+from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Type, Union
 import warnings
 
 import numpy
@@ -326,10 +326,9 @@ class Summary:
         mean = x / n
         var = self._x2 / n - mean * mean
         if isinstance(var, torch.Tensor):
-            std = torch.sqrt(var)
+            return mean, torch.sqrt(var)
         else:
-            std = numpy.sqrt(var)
-        return mean, std
+            return mean, numpy.sqrt(var)
 
     def state_dict(self) -> Dict[str, Any]:
         self._add_deferred_values()

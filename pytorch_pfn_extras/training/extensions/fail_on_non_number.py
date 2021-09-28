@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import torch
 
 from pytorch_pfn_extras.training import extension
@@ -11,6 +13,8 @@ class FailOnNonNumber(extension.Extension):
     This extension is aimed to reduce unnecessary computations by throwing
     ``RuntimeError`` if the parameters contain NaN or Inf.
     """
+
+    needs_model_state = True
 
     def __call__(self, manager):
         for name, model in manager.models.items():

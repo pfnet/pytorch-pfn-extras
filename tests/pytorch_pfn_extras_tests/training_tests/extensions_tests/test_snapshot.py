@@ -352,11 +352,10 @@ def test_model_transformations(path):
         max_epochs,
         iters_per_epoch=iters_per_epoch,
         out_dir=path,
+        transform_model=lambda n, x: x.wrapper_module(),
     )
 
-    snapshot = extensions.snapshot(
-        filename='test',
-        transform_models=lambda n, x: x.wrapper_module())
+    snapshot = extensions.snapshot(filename='test')
     snapshot(manager)
 
     assert model.accessed

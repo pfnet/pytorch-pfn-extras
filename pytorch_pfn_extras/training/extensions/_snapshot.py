@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 import os
 
 import torch
@@ -144,9 +146,6 @@ n_retains=-1, autoload=False)
             Automatic loading only works when the filename is a string.
         saver_rank (int): If defined, the snapshot will be taken by only one
             rank when running in distributed mode and restored by all.
-        transform_models (callable): If defined, function to apply to a model
-            before obtaining its `state_dict`. Takes two parameters, the object
-            name and the object itself.
 
     Returns:
         Snapshot extension object.
@@ -169,8 +168,7 @@ def snapshot(savefun=None,
              snapshot_on_error=False,
              n_retains=-1,
              autoload=False,
-             saver_rank=None,
-             transform_models=None):
+             saver_rank=None):
     """
     Returns a trainer extension to take snapshots of the trainer.
 
@@ -222,9 +220,6 @@ def snapshot(savefun=None,
             by :func:`torch.save` .
         saver_rank (int): If defined, the snapshot will be taken by only one
             rank when running in distributed mode and restored by all.
-        transform_models (callable): If defined, function to apply to a model
-            before obtaining its `state_dict`. Takes two parameters, the object
-            name and the object itself.
     Returns:
         Snapshot extension object.
 
@@ -281,8 +276,7 @@ trigger=(1, 'epoch'))
         return _Snapshot(
             target=target, condition=condition, writer=writer,
             filename=filename, snapshot_on_error=snapshot_on_error,
-            n_retains=n_retains, autoload=autoload, savefun=savefun,
-            transform_models=transform_models)
+            n_retains=n_retains, autoload=autoload, savefun=savefun)
     return _DistributedSnapshot(
         target=target, condition=condition, writer=writer, filename=filename,
         snapshot_on_error=snapshot_on_error, n_retains=n_retains,
@@ -309,13 +303,13 @@ class _Snapshot(extension.Extension):
     """
     trigger = 1, 'epoch'
     priority = extension.PRIORITY_SNAPSHOT
+    needs_model_state = True
 
     def __init__(
             self, target=None, condition=None, writer=None,
             filename='snapshot_iter_{.iteration}',
             snapshot_on_error=False, n_retains=-1, autoload=False,
-            savefun=None,
-            transform_models=None):
+            savefun=None):
         if condition is None:
             condition = _always_true
         self._target = target
@@ -326,7 +320,6 @@ class _Snapshot(extension.Extension):
         self.n_retains = n_retains
         self.autoload = autoload
         self._savefun = savefun
-        self._transform_models = transform_models
 
     def initialize(self, manager):
         target = manager if self._target is None else self._target
@@ -392,11 +385,6 @@ class _Snapshot(extension.Extension):
         self.writer = writer
         # We need to get a dictionary with the state here
         kwargs = {}
-        # If the user defines a transform_models function and a custom
-        # target, he knows what he is doing so he should override state_dict
-        # for his own target
-        if self._transform_models is not None:
-            kwargs['transform_models'] = self._transform_models
 
         if type(target) is dict:
             serialized_target = {
@@ -437,10 +425,10 @@ class _DistributedSnapshot(_Snapshot):
             self, target=None, condition=None, writer=None,
             filename='snapshot_iter_{.iteration}',
             snapshot_on_error=False, n_retains=-1, autoload=False,
-            saver_rank=0, savefun=None, transform_models=None):
+            saver_rank=0, savefun=None):
         super().__init__(target, condition, writer, filename,
                          snapshot_on_error, n_retains,
-                         autoload, savefun, transform_models)
+                         autoload, savefun)
         # To support distributed snapshots
         if not torch.distributed.is_initialized():
             raise RuntimeError('The Distributed Snapshot extension',

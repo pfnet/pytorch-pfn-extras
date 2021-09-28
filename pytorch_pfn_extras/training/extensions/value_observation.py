@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from pytorch_pfn_extras.training import extension
 
 

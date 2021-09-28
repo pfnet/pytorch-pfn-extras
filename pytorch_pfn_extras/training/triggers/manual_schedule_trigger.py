@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Union, TYPE_CHECKING
+# mypy: ignore-errors
+
+from typing import List, Union, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import trigger
 
@@ -25,11 +27,6 @@ class ManualScheduleTrigger(trigger.Trigger):
         unit (str): Unit of the time specified by ``points``. It must be
             either ``'iteration'`` or ``'epoch'``.
 
-    Attributes:
-        finished (bool): Flag that indicates whether or not this trigger will
-        fire in the future. This flag is used to determine if the extension
-        should be initialized after resume.
-
     """
 
     def __init__(self, points: Union[float, List[float]], unit: 'UnitLiteral'):
@@ -39,10 +36,6 @@ class ManualScheduleTrigger(trigger.Trigger):
 
         self.points = (points if isinstance(points, list) else [points])
         self.unit = unit
-        self.finished = False
-
-        self._previous_iteration = 0
-        self._previous_epoch_detail = 0.
 
     def __call__(self, manager: '_BaseExtensionsManager') -> bool:
         """Decides whether the extension should be called on this iteration.
@@ -58,47 +51,13 @@ class ManualScheduleTrigger(trigger.Trigger):
             iteration.
 
         """
-        if self.unit == 'epoch':
-            epoch_detail = manager.epoch_detail
-            previous_epoch_detail = self._previous_epoch_detail
-
-            fire = any(
-                previous_epoch_detail < p <= epoch_detail
-                for p in self.points)
-
-            if fire and epoch_detail >= max(self.points):
-                self.finished = True
-        else:
-            iteration = manager.iteration
-            previous_iteration = self._previous_iteration
-
-            # if previous_iteration is invalid value,
-            # guess it from current iteration.
-            if previous_iteration < 0:
-                previous_iteration = iteration - 1
-
-            fire = any(
-                previous_iteration < p <= iteration
-                for p in self.points)
-
-            if fire and iteration >= max(self.points):
-                self.finished = True
-
-        # save current values
-        self._previous_iteration = manager.iteration
-        if hasattr(manager, 'epoch_detail'):
-            self._previous_epoch_detail = manager.epoch_detail
-
+        fire = self.may_fire(manager.iteration, manager._iters_per_epoch)
         return fire
 
-    def state_dict(self) -> Dict[str, Any]:
-        return {
-            '_previous_iteration': self._previous_iteration,
-            '_previous_epoch_detail': self._previous_epoch_detail,
-            'finished': self.finished,
-        }
-
-    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
-        self._previous_iteration = to_load['_previous_iteration']
-        self._previous_epoch_detail = to_load['_previous_epoch_detail']
-        self.finished = to_load['finished']
+    def may_fire(self, iteration: int, epoch_length: int) -> bool:
+        if self.unit == 'epoch':
+            fire = any(
+                int(p * epoch_length) == iteration for p in self.points)
+        else:
+            fire = any(p == iteration for p in self.points)
+        return fire

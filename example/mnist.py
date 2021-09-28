@@ -10,18 +10,12 @@ import pytorch_pfn_extras.training.extensions as extensions
 
 
 class Net(nn.Module):
-    def __init__(self, lazy):
+    def __init__(self):
         super().__init__()
-        if lazy:
-            self.conv1 = ppe.nn.LazyConv2d(None, 20, 5, 1)
-            self.conv2 = ppe.nn.LazyConv2d(None, 50, 5, 1)
-            self.fc1 = ppe.nn.LazyLinear(None, 500)
-            self.fc2 = ppe.nn.LazyLinear(None, 10)
-        else:
-            self.conv1 = nn.Conv2d(1, 20, 5, 1)
-            self.conv2 = nn.Conv2d(20, 50, 5, 1)
-            self.fc1 = nn.Linear(4 * 4 * 50, 500)
-            self.fc2 = nn.Linear(500, 10)
+        self.conv1 = nn.Conv2d(1, 20, 5, 1)
+        self.conv2 = nn.Conv2d(20, 50, 5, 1)
+        self.fc1 = nn.Linear(4 * 4 * 50, 500)
+        self.fc2 = nn.Linear(500, 10)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
@@ -52,15 +46,14 @@ def test(args, model, device, data, target):
         averages
     """
     model.eval()
-    test_loss = 0
-    correct = 0
     data, target = data.to(device), target.to(device)
     output = model(data)
     # Final result will be average of averages of the same size
-    test_loss += F.nll_loss(output, target, reduction='mean').item()
+    test_loss = F.nll_loss(output, target, reduction='mean').item()
     ppe.reporting.report({'val/loss': test_loss})
     pred = output.argmax(dim=1, keepdim=True)
-    correct += pred.eq(target.view_as(pred)).sum().item()
+
+    correct = pred.eq(target.view_as(pred)).sum().item()
     ppe.reporting.report({'val/acc': correct / len(data)})
 
 
@@ -87,9 +80,6 @@ def main():
                         help='For Saving the current Model')
     parser.add_argument('--snapshot', type=str, default=None,
                         help='path to snapshot file')
-    parser.add_argument('--no-lazy', dest='lazy',
-                        action='store_false', default=True,
-                        help='do not use lazy modules')
     args = parser.parse_args()
     use_cuda = args.cuda and torch.cuda.is_available()
 
@@ -104,23 +94,19 @@ def main():
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
-        batch_size=args.batch_size, shuffle=True, **kwargs)
+        batch_size=args.batch_size, shuffle=True,
+        **kwargs)  # type: ignore[arg-type]
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST('../data', train=False, transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ])),
-        batch_size=args.test_batch_size, shuffle=True, **kwargs)
+        batch_size=args.test_batch_size, shuffle=True,
+        **kwargs)  # type: ignore[arg-type]
 
-    model = Net(args.lazy)
+    model = Net()
     model.to(device)
-    if args.lazy:
-        # You need to run a dummy forward to initialize parameters.
-        # This should be done before passing parameter list to optimizers.
-        # The dummy input can be generated from the loader's first batch
-        # (trim off the data to batch size = 1 for performance).
-        dummy_input = train_loader.dataset[0][0].unsqueeze(0).to(device)
-        model(dummy_input)
+
     optimizer = optim.SGD(
         model.parameters(), lr=args.lr, momentum=args.momentum)
 

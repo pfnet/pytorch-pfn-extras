@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -42,10 +44,12 @@ class LRScheduler(extension.Extension):
     def __init__(
             self, scheduler, *,
             stepper=_default_stepper,
-            trigger=(1, 'epoch')):
+            trigger=(1, 'epoch'),
+            is_async=True):
         self.scheduler = scheduler
         self.trigger = trigger_module.get_trigger(trigger)
         self.stepper = stepper
+        self.is_async = is_async
 
     def __call__(self, manager):
         self.stepper(manager, self.scheduler)

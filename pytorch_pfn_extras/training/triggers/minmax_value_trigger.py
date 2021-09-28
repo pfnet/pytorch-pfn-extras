@@ -1,3 +1,5 @@
+# mypy: ignore-errors
+
 from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 
 from pytorch_pfn_extras import reporting
@@ -83,6 +85,9 @@ class BestValueTrigger(trigger_module.Trigger):
         self._interval_trigger.load_state_dict(to_load['interval_trigger'])
         self._summary.load_state_dict(to_load['_summary'])
         self._best_value = to_load['_best_value']
+
+    def may_fire(self, iteration, epoch_length):
+        return self._interval_trigger.may_fire(iteration, epoch_length)
 
 
 class MaxValueTrigger(BestValueTrigger):
