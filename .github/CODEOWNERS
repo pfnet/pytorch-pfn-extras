@@ -1,1 +1,3 @@
 * @asi1024 @emcastillo @kmaehashi
+/pytorch_pfn_extras/onnx @take-cheeze
+/tests/pytorch_pfn_extras_tests/onnx @take-cheeze
