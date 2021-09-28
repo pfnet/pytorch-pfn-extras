@@ -76,6 +76,9 @@ class _LogBuffer:
         self.lookers[looker_id] = len(self._log) + self._offset
         return _LogLooker(self, looker_id)
 
+    def size(self) -> int:
+        return len(self._log)
+
 
 class _LogLooker:
 
