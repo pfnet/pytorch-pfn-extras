@@ -2,7 +2,7 @@ import collections
 import contextlib
 import threading
 import types
-from typing import Any, Callable, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, Generator, List, Mapping, Optional, Tuple, Type, Union
 import warnings
 
 import numpy
@@ -10,6 +10,7 @@ import torch
 
 
 Scalar = Union[torch.Tensor, numpy.ndarray, numpy.floating, float]
+FloatLikeValue = Union[Scalar, float]
 Value = Union[Scalar, Callable[[], float]]
 Observation = Dict[str, Value]
 
@@ -18,6 +19,12 @@ _thread_local = threading.local()
 
 
 def _nograd(value: Value) -> Value:
+    if isinstance(value, torch.Tensor):
+        return value.detach()
+    return value
+
+
+def _nograd_float(value: FloatLikeValue) -> FloatLikeValue:
     if isinstance(value, torch.Tensor):
         return value.detach()
     return value
@@ -150,7 +157,7 @@ class Reporter:
 
     def report(
             self,
-            values: Dict[str, Scalar],
+            values: Mapping[str, Value],
             observer: Optional[torch.nn.Module] = None,
     ) -> None:
         """Reports observed values.
@@ -200,7 +207,7 @@ def get_current_reporter() -> Reporter:
 
 
 def report(
-        values: Dict[str, Value],
+        values: Mapping[str, Value],
         observer: Optional[torch.nn.Module] = None,
 ) -> None:
     """Reports observed values with the current reporter object.
@@ -279,7 +286,7 @@ class Summary:
         self._x: Scalar = 0.0
         self._x2: Scalar = 0.0
         self._n: Scalar = 0
-        self._deferred = []
+        self._deferred: List[Tuple[Callable[[], float], Scalar]] = []
 
     def _add_deferred_values(self) -> None:
         for fn, weight in self._deferred:
@@ -347,9 +354,9 @@ class Summary:
         # Casting here is because of backward compatibility
         # Restore previously taken snapshots with autoload
         self._add_deferred_values()
-        self._x = float(_nograd(to_load['_x']))
-        self._x2 = float(_nograd(to_load['_x2']))
-        self._n = int(_nograd(to_load['_n']))
+        self._x = float(_nograd_float(to_load['_x']))
+        self._x2 = float(_nograd_float(to_load['_x2']))
+        self._n = int(_nograd_float(to_load['_n']))
 
 
 class DictSummary:
@@ -365,7 +372,7 @@ class DictSummary:
     def __init__(self) -> None:
         self._summaries: Dict[str, Summary] = collections.defaultdict(Summary)
 
-    def add(self, d: Dict[str, Union[Value, Tuple[Value, Scalar]]]) -> None:
+    def add(self, d: Mapping[str, Union[Value, Tuple[Value, Scalar]]]) -> None:
         """Adds a dictionary of scalars.
 
         Args:
