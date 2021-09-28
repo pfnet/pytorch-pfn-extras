@@ -76,12 +76,6 @@ class _LogBuffer:
         self.lookers[looker_id] = len(self._log) + self._offset
         return _LogLooker(self, looker_id)
 
-    def state_dict(self) -> List[str]:
-        return json.dumps(self._log)
-
-    def load_state_dict(self, to_load: List[str]) -> None:
-        self._log = json.loads(to_load)
-
 
 class _LogLooker:
 
@@ -235,14 +229,14 @@ class LogReport(extension.Extension):
             state['_summary'] = self._summary.state_dict()
         except KeyError:
             pass
-        state['_log'] = self._log_buffer.state_dict()
+        state['_log'] = json.dumps(self._log_buffer._log)
         return state
 
     def load_state_dict(self, to_load):
         if hasattr(self._trigger, 'load_state_dict'):
             self._trigger.load_state_dict(to_load['_trigger'])
         self._summary.load_state_dict(to_load['_summary'])
-        self._log_buffer.load_state_dict(to_load['_log'])
+        self._log_buffer._log = json.loads(to_load['_log'])
 
     def _init_summary(self):
         self._summary = reporting.DictSummary()
