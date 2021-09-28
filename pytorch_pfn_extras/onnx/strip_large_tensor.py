@@ -55,7 +55,7 @@ def _strip_large_initializer_raw_data_from_graph(graph, large_tensor_threshold):
             _strip_raw_data(init)
     for node in graph.node:
         for attr in node.attribute:
-            if attr.name == 'subgraph':
+            if attr.HasField('g'):
                 _strip_large_initializer_raw_data_from_graph(attr.g, large_tensor_threshold)
 
 
