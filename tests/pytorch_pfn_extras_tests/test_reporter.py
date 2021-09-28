@@ -171,6 +171,15 @@ def test_report_tensor_detached():
     assert x.requires_grad
 
 
+def test_report_callable():
+    reporter = ppe.reporting.Reporter()
+    with reporter:
+        ppe.reporting.report({"x": lambda: 1.0})
+    observation = reporter.observation
+    assert "x" in observation
+    assert callable(observation["x"])
+
+
 # ppe.reporting.Summary
 
 def test_summary_basic():
@@ -223,6 +232,14 @@ def test_summary_weight():
     mean = summary.compute_mean()
     val = (1 * 0.5 + 2 * 0.4 + 3 * 0.3) / (0.5 + 0.4 + 0.3)
     numpy.testing.assert_allclose(mean.numpy(), val)
+
+
+def test_summary_deferred_add():
+    summary = ppe.reporting.Summary()
+    summary.add(lambda: 1.0)
+    assert summary._n == 0
+    assert len(summary._deferred) == 1
+    assert summary.compute_mean() == 1.0
 
 
 def _nograd(v):
@@ -463,4 +480,15 @@ def test_serialize_overwrite_rollback():
         'a': (3., 1., 3.),
         'b': (1., 5., 5.),
         'c': (8.,),
+    })
+
+
+def test_dict_summary_deferred_add():
+    summary = ppe.reporting.DictSummary()
+    summary.add({"x": lambda: 1.0, "y": lambda: 2.0})
+    summary.add({"x": lambda: -1.0})
+
+    _check_dict_summary(summary, {
+        "x": (1.0, -1.0),
+        "y": (2.0,),
     })
