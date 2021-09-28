@@ -2,7 +2,9 @@ import collections
 import contextlib
 import threading
 import types
-from typing import Any, Callable, Dict, Generator, List, Mapping, Optional, Tuple, Type, Union
+from typing import (
+    Any, Callable, Dict, Generator, List, Mapping, Optional, Tuple, Type, Union
+)
 from typing import overload
 import warnings
 
@@ -29,7 +31,8 @@ def _nograd(value: Value) -> Value:
     ...
 
 
-def _nograd(value: Union[FloatLikeValue, Value]) -> Union[FloatLikeValue, Value]:
+def _nograd(
+        value: Union[FloatLikeValue, Value]) -> Union[FloatLikeValue, Value]:
     if isinstance(value, torch.Tensor):
         return value.detach()
     return value
