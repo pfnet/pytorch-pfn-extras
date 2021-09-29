@@ -100,7 +100,7 @@ class _Engine:
 
 def create_trainer(
         models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
-        optimizers: Dict[str, torch.optim.Optimizer],
+        optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
         max_epochs: int,
         *,
         extensions: Optional[List['training.Extension']] = None,
