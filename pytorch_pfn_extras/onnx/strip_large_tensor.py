@@ -47,12 +47,22 @@ def _strip_raw_data(tensor):
     return tensor
 
 
-def _strip_large_initializer_raw_data(onnx_model, large_tensor_threshold):
-    for init in onnx_model.graph.initializer:
+def _strip_large_initializer_raw_data_from_graph(graph, large_tensor_threshold):
+    for init in graph.initializer:
         if _is_stripped(init):
             continue
         if is_large_tensor(init, large_tensor_threshold):
             _strip_raw_data(init)
+    for node in graph.node:
+        for attr in node.attribute:
+            if attr.HasField('g'):
+                _strip_large_initializer_raw_data_from_graph(
+                    attr.g, large_tensor_threshold)
+
+
+def _strip_large_initializer_raw_data(onnx_model, large_tensor_threshold):
+    _strip_large_initializer_raw_data_from_graph(
+        onnx_model.graph, large_tensor_threshold)
 
 
 def _strip_large_tensor_tool_impl(onnx_path, out_onnx_path,
