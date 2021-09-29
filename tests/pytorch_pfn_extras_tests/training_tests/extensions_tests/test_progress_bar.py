@@ -29,5 +29,6 @@ def test_run():
                 status = out.getvalue()
                 assert '{} iter, {} epoch / {} epochs'.format(
                     manager.iteration, epoch, max_epochs) in status
-                iters_per_sec = float(re.findall(r'([0-9]+\.[0-9]*) iters/sec', status)[-1])
+                iters_per_sec = float(
+                    re.findall(r'([0-9]+\.[0-9]*) iters/sec', status)[-1])
                 assert 8 <= iters_per_sec <= 12
