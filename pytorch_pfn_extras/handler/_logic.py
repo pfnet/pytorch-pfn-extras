@@ -277,7 +277,7 @@ class Logic(BaseLogic):
             if self._grad_scaler is not None:
                 to_back_outs = self._normalize_outputs(outs)
                 assert (
-                    len(outs) == 1
+                    len(to_back_outs) == 1
                 ), "loss scaling with multiple outputs is not supported"
                 to_back_outs = {
                     k: self._grad_scaler.scale(v)

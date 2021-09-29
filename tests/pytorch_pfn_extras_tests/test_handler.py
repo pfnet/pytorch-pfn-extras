@@ -398,7 +398,15 @@ class TestLogic:
     def _run_step(self, logic, device):
         input = torch.rand(1, 1).to(device)
         input.requires_grad = True
-        model = torch.nn.Linear(1, 1).to(device)
+
+        class _Module(torch.nn.Linear):
+            def __init__(self) -> None:
+                super().__init__(1, 1)
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return super().forward(x).sum()
+
+        model = _Module().to(device)
         models = {'main': model}
         optimizers = {'main': torch.optim.SGD(model.parameters(), 1.0, 0)}
         out = logic.train_step(models, optimizers, 0, input)
