@@ -1,6 +1,6 @@
 # mypy: ignore-errors
 
-from typing import List, Union, TYPE_CHECKING
+from typing import Sequence, Union, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import trigger
 
@@ -29,7 +29,7 @@ class ManualScheduleTrigger(trigger.Trigger):
 
     """
 
-    def __init__(self, points: Union[float, List[float]], unit: 'UnitLiteral'):
+    def __init__(self, points: Union[float, Sequence[float]], unit: 'UnitLiteral'):
         if unit not in ('epoch', 'iteration'):
             raise ValueError(
                 'Trigger unit must be either \'epoch\' or \'iteration\'.')
