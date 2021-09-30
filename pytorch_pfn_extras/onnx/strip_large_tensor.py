@@ -18,7 +18,7 @@ def is_large_tensor(tensor, threshold):
     return size > threshold
 
 
-def _is_stripped(tensor):
+def _is_stripped_or_set_external(tensor):
     for external_data in tensor.external_data:
         if external_data.key != 'location':
             continue
@@ -27,8 +27,8 @@ def _is_stripped(tensor):
             return external_value_dict.get('type', '') == 'stripped'
         except ValueError:
             # Invalid JSON, indicating `external_data.value` contains
-            # a file path
-            continue
+            # a file path. Treat the tensor as if it is already stripped.
+            return True
     return False
 
 
@@ -51,7 +51,7 @@ def _strip_raw_data(tensor):
 
 def _strip_large_initializer_raw_data_from_graph(graph, large_tensor_threshold):
     for init in graph.initializer:
-        if _is_stripped(init):
+        if _is_stripped_or_set_external(init):
             continue
         if is_large_tensor(init, large_tensor_threshold):
             _strip_raw_data(init)
