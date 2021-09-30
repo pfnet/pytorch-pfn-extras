@@ -1,4 +1,6 @@
 import io
+import re
+import time
 
 import pytorch_pfn_extras as ppe
 
@@ -21,8 +23,12 @@ def test_run():
     for epoch in range(max_epochs):
         for _ in range(iters_per_epoch):
             with manager.run_iteration():
+                time.sleep(0.1)
                 if manager.iteration < 2:
                     continue
-                status = '{} iter, {} epoch / {} epochs'.format(
-                    manager.iteration, epoch, max_epochs)
-                assert status in out.getvalue()
+                status = out.getvalue()
+                assert '{} iter, {} epoch / {} epochs'.format(
+                    manager.iteration, epoch, max_epochs) in status
+                iters_per_sec = float(
+                    re.findall(r'([0-9]+\.[0-9]*) iters/sec', status)[-1])
+                assert 8 <= iters_per_sec <= 12
