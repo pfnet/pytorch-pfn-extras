@@ -27,7 +27,7 @@ def _is_stripped_or_set_external(tensor):
             return external_value_dict.get('type', '') == 'stripped'
         except ValueError:
             # Invalid JSON, indicating `external_data.value` contains
-            # a file path, assume the tensor has no value means already stripped
+            # a file path. Treat the tensor as if it is already stripped.
             return True
     return False
 
