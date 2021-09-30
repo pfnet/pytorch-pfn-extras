@@ -100,19 +100,19 @@ class _BaseExtensionsManager:
         # models before starting a training loop.
         self._model_available = True
 
-        if not isinstance(models, collections.abc.Mapping):
+        if isinstance(models, collections.abc.Mapping):
+            self._models = models
+        else:
             if not isinstance(models, torch.nn.Module):
                 raise ValueError(
                     'model must be an instance of dict or toch.nn.Module')
             self._models = {'main': models}
+        if isinstance(optimizers, collections.abc.Mapping):
+            self._optimizers = optimizers
         else:
-            self._models = models
-        if not isinstance(optimizers, collections.abc.Mapping):
             # TODO(ecastill) Optimizer type is not checked because of tests
             # using mocks and other classes
             self._optimizers = {'main': optimizers}
-        else:
-            self._optimizers = optimizers
 
         for name, model in self._models.items():
             # TODO we should not initialize extensions at this point
@@ -163,13 +163,13 @@ class _BaseExtensionsManager:
         return models
 
     @property
-    def raw_models(self) -> Dict[str, torch.nn.Module]:
+    def raw_models(self) -> Mapping[str, torch.nn.Module]:
         self.start_extensions()
         self._check_model_available()
         return self._models
 
     @property
-    def optimizers(self) -> Dict[str, torch.optim.Optimizer]:
+    def optimizers(self) -> Mapping[str, torch.optim.Optimizer]:
         self.start_extensions()
         return self._optimizers
 
