@@ -40,7 +40,7 @@ flake8 .
 # Run mypy
 mypy pytorch_pfn_extras
 pushd example
-mypy mnist.py --config-file ../setup.cfg --allow-untyped-defs --allow-untyped-calls
+mypy . --config-file ../setup.cfg --allow-untyped-defs --allow-untyped-calls
 popd
 
 # Publish coverage report

@@ -1,7 +1,8 @@
 import contextlib
 import datetime
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Optional, TextIO, Union
+    Any, Callable, Dict, Generator, Iterable, List, Optional, TextIO, Union,
+    TYPE_CHECKING,
 )
 
 import numpy
@@ -325,10 +326,14 @@ class _IteratorProgressBar(util.ProgressBar):
         return lines
 
 
+if TYPE_CHECKING:
+    from typing.ignite import Engine
+
+
 class IgniteEvaluator(Evaluator):
     def __init__(
             self,
-            evaluator: Evaluator,
+            evaluator: 'Engine',
             iterator: Union[torch.utils.data.DataLoader[Any],
                             Dict[str, torch.utils.data.DataLoader[Any]]],
             target: Union[torch.nn.Module, Dict[str, torch.nn.Module]],

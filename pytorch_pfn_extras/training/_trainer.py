@@ -66,7 +66,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
         return self.manager.optimizers[name]
 
     def set_optimizer(self, name: str, optimizer: torch.optim.Optimizer) -> None:
-        self.manager.optimizers[name] = optimizer
+        self.manager.optimizers[name] = optimizer  # type: ignore[index]
 
     def is_epoch_last_iter(self, idx: int) -> bool:
         return (idx + 1) == (self.manager._iters_per_epoch)
