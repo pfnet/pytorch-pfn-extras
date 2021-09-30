@@ -38,9 +38,11 @@ def _strip_raw_data(tensor):
     meta_dict['type'] = "stripped"
     meta_dict['average'] = float(numpy.average(arr))
     meta_dict['variance'] = float(numpy.var(arr))
+    if not tensor.HasField("raw_data"):
+        tensor.raw_data = onnx.numpy_helper.from_array(arr, tensor.name).raw_data
     onnx.external_data_helper.set_external_data(tensor,
                                                 location=json.dumps(meta_dict),
-                                                length=len(tensor.raw_data))
+                                                length=arr.nbytes)
     tensor.data_location = onnx.TensorProto.EXTERNAL
     tensor.ClearField('raw_data')
     tensor.ClearField('float_data')
