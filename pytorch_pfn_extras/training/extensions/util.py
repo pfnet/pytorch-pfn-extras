@@ -2,10 +2,9 @@ import collections
 import os
 import sys
 import time
-from typing import Deque, Optional, Sequence, TextIO, Tuple, TYPE_CHECKING
+from typing import Deque, Optional, Sequence, TextIO, Tuple
 
-if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 if os.name == 'nt':
@@ -93,7 +92,7 @@ class ProgressBar:
 
     def update(
             self,
-            manager: Optional['_BaseExtensionsManager'] = None
+            manager: Optional[ExtensionsManagerProtocol] = None
     ) -> None:
         self.erase_console()
 

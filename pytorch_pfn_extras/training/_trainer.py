@@ -8,10 +8,10 @@ import pytorch_pfn_extras.engine
 import pytorch_pfn_extras.training
 from pytorch_pfn_extras.training import extension as extension
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.training import manager as manager_module
 import pytorch_pfn_extras.reporting as reporting
 from pytorch_pfn_extras.profiler import record
 
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 from pytorch_pfn_extras.training.trigger import Trigger, TriggerLike
 
 if TYPE_CHECKING:
@@ -159,12 +159,12 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
                 self.needs_model_state = True
                 self._trainer = trainer
 
-            def __call__(self, manager: manager_module._BaseExtensionsManager) -> None:
+            def __call__(self, manager: ExtensionsManagerProtocol) -> None:
                 self._trainer._run_evaluator()
 
         if self._manager is None:
             self._setup_manager(train_len)
-            assert isinstance(self._manager, manager_module._BaseExtensionsManager)
+            assert isinstance(self._manager, ExtensionsManagerProtocol)
             if self.evaluator is not None:  # type: ignore[unreachable]
                 # Register the evaluator as an extension to the manager
                 # To be triggered with the correct timing

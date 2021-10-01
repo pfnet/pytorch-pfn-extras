@@ -2,11 +2,11 @@ from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 import types
 
 from pytorch_pfn_extras.training import _trigger_util
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
     from pytorch_pfn_extras.training._trigger_util import TriggerLike
-    ExtensionLike = Callable[[_BaseExtensionsManager], Any]
+    ExtensionLike = Callable[[ExtensionsManagerProtocol], Any]
 
 
 PRIORITY_WRITER = 300
@@ -65,7 +65,7 @@ class Extension:
         """
         return type(self).__name__
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> Any:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> Any:
         """Invokes the extension.
 
         Implementations should override this operator. This method is called
@@ -95,7 +95,7 @@ class Extension:
         """
         pass
 
-    def initialize(self, manager: '_BaseExtensionsManager') -> None:
+    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         """Initializes up the manager state.
 
         This method is called before entering the training loop. An extension
@@ -114,7 +114,7 @@ class Extension:
 
     def on_error(
             self,
-            manager: '_BaseExtensionsManager',
+            manager: ExtensionsManagerProtocol,
             exc: Exception,
             tb: types.TracebackType,
     ) -> None:
@@ -159,18 +159,18 @@ class _WrappedExtension(Extension):
     def default_name(self) -> str:
         return getattr(self._ext, 'default_name', None) or super().default_name
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> None:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         self._ext(manager)
 
     def finalize(self) -> None:
         getattr(self._ext, 'finalize', super().finalize)()
 
-    def initialize(self, manager: '_BaseExtensionsManager') -> None:
+    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         getattr(self._ext, 'initialize', super().initialize)(manager)
 
     def on_error(
             self,
-            manager: '_BaseExtensionsManager',
+            manager: ExtensionsManagerProtocol,
             exc: Exception,
             tb: types.TracebackType,
     ) -> None:
@@ -178,7 +178,7 @@ class _WrappedExtension(Extension):
 
 
 _OnErrorType = Callable[
-    ['_BaseExtensionsManager', Exception, types.TracebackType], None]
+    [ExtensionsManagerProtocol, Exception, types.TracebackType], None]
 
 
 def make_extension(
