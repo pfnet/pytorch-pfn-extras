@@ -10,6 +10,20 @@ function RunOrDie {
     $global:LastExitCode = 0
     & $cmd @params
     if (-not $?) {
-        throw "Command failed (exit code = $LastExitCode): $args"
+        throw "Command failed (exit code = $LastExitCode): $cmd $params"
     }
+}
+
+function RunOrDieWithRetry {
+    $retry, $cmd, $params = $args
+    for ($i = 1; $i -le $retry; $i++) {
+        try {
+            RunOrDie $cmd $params
+            return
+        } catch {
+            $errmsg = $error[0]
+            Write-Host "RunOrDieWithRetry (attempt ${i}): ${errmsg}"
+        }
+    }
+    throw "No more retry."
 }
