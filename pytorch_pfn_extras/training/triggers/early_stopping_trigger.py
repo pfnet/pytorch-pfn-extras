@@ -6,10 +6,10 @@ import warnings
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import trigger
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
     from pytorch_pfn_extras.training._trigger_util import TriggerLike
     from pytorch_pfn_extras.training._trigger_util import UnitLiteral
 
@@ -89,7 +89,7 @@ class EarlyStoppingTrigger(trigger.Trigger):
                 print('early stopping: operator is less')
             self.best = float('inf')
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> bool:
         """Decides whether the training loop should be stopped.
 
         Args:

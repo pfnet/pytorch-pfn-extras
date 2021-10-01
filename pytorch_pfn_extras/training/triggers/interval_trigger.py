@@ -3,10 +3,10 @@
 from typing import Tuple, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import trigger
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
     from pytorch_pfn_extras.training._trigger_util import UnitLiteral
 
 
@@ -39,7 +39,7 @@ class IntervalTrigger(trigger.Trigger):
         self.period = period
         self.unit = unit
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> bool:
         """Decides whether the extension should be called on this iteration.
 
         Args:

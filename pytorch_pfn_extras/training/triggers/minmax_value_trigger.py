@@ -4,10 +4,10 @@ from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
     from pytorch_pfn_extras.training._trigger_util import TriggerLike
 
 
@@ -39,7 +39,7 @@ class BestValueTrigger(trigger_module.Trigger):
         self._init_summary()
         self._compare = compare
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> bool:
         """Decides whether the extension should be called on this iteration.
 
         Args:
