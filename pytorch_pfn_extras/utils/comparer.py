@@ -93,6 +93,7 @@ class OutputsComparer:
     def __init__(
             self, engines, to_compare_keys=None, *,
             compare_fn=_default_comparer,
+            max_pool=None,
     ):
         """A class for comparison of iteration outputs.
 
@@ -137,6 +138,8 @@ class OutputsComparer:
         self.report_lock = threading.Lock()
         self.compare_fn = compare_fn
         self._finalized = False
+        self._semaphore = threading.Semaphore(
+            len(engines) if max_pool is None else max_pool)
 
     def _assert_incompatible_trigger(self, condition):
         if not condition:
@@ -160,7 +163,9 @@ class OutputsComparer:
                 self._assert_incompatible_trigger(not self._finalized)
 
             # Excplicitly synchronize
+            self._semaphore.release()
             self.barrier.wait()
+            self._semaphore.acquire()
 
     def _compare_outs(self):
         names = list(self.outputs.keys())
@@ -174,6 +179,7 @@ class OutputsComparer:
 
     def run_engine(self, engine, loaders):
         try:
+            self._semaphore.acquire()
             if isinstance(loaders, tuple):
                 engine.run(*loaders)
             elif isinstance(loaders, dict):
@@ -186,6 +192,8 @@ class OutputsComparer:
         except Exception:
             self.barrier.abort()
             raise
+        finally:
+            self._semaphore.release()
 
     def compare(self, loaders, n_iters=None):
         """Compares outputs.
