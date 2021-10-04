@@ -93,7 +93,7 @@ class OutputsComparer:
     def __init__(
             self, engines, to_compare_keys=None, *,
             compare_fn=_default_comparer,
-            max_pool=None,
+            concurrency=None,
     ):
         """A class for comparison of iteration outputs.
 
@@ -139,7 +139,7 @@ class OutputsComparer:
         self.compare_fn = compare_fn
         self._finalized = False
         self._semaphore = threading.Semaphore(
-            len(engines) if max_pool is None else max_pool)
+            len(engines) if concurrency is None else concurrency)
 
     def _assert_incompatible_trigger(self, condition):
         if not condition:

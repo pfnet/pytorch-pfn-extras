@@ -169,12 +169,12 @@ def test_comparer_incompat_trigger(engine_fn):
 
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
-def test_compare_max_pool(engine_fn):
+def test_compare_concurrency(engine_fn):
     engine_cpu = engine_fn("cpu", 1.0)
     engine_gpu = engine_fn("cuda:0", 1.0)
     comp = ppe.utils.comparer.OutputsComparer(
         {"cpu": engine_cpu, "gpu": engine_gpu}, "a",
-        max_pool=1,
+        concurrency=1,
     )
     train_1 = list(torch.ones(10) for _ in range(10))
     train_2 = list(torch.ones(10) for _ in range(10))
