@@ -106,6 +106,9 @@ class OutputsComparer:
                 A set of keys of output dict to compare.
             compare_fn (function):
                 Comparison function. Default is ``get_default_comparer()``.
+            concurrency (int, optional):
+                The upper bound limit on the number of workers that run concurrently.
+                If ``None``, inferred from the size of ``engines``.
 
         Examples:
             >>> trainer_cpu = ppe.engine.create_trainer(
