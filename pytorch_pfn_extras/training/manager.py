@@ -60,15 +60,15 @@ class _ManagerExecutionProxy:
 
     @property
     def models(self) -> Dict[str, torch.nn.Module]:
-        return self._manager.models
+        raise RuntimeError('Models are not available during execution phase.')
 
     @property
     def raw_models(self) -> Mapping[str, torch.nn.Module]:
-        return self._manager.raw_models
+        raise RuntimeError('Models are not available during execution phase.')
 
     @property
     def optimizers(self) -> Mapping[str, torch.optim.Optimizer]:
-        return self._manager.optimizers
+        raise RuntimeError('Optimizers are not available during execution phase.')
 
     @property
     def elapsed_time(self) -> float:
