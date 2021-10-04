@@ -1,17 +1,35 @@
 from contextlib import contextmanager
+import inspect
 from typing import Any, Callable, Generator, Iterable, Optional, TypeVar
+import types
 
 import torch
 
 from pytorch_pfn_extras.profiler._time_summary import time_summary, _ReportNotification
 
 
+def _infer_tag_name(frame: Optional[types.FrameType], depth: int) -> str:
+    for _ in range(depth):
+        assert frame is not None
+        frame = frame.f_back
+    assert frame is not None
+    frame_info = inspect.getframeinfo(frame, context=0)
+    return '{}:{}:{}'.format(
+        inspect.getmodulename(frame_info.filename),
+        frame_info.lineno,
+        frame_info.function,
+    )
+
+
 @contextmanager
 def record(
-        tag: str,
+        tag: Optional[str],
         metric: Optional[str] = None,
         use_cuda: bool = False,
 ) -> Generator[_ReportNotification, None, None]:
+    if tag is None:
+        tag = _infer_tag_name(inspect.currentframe(), depth=2)
+
     if metric is None:
         metric = tag
 
@@ -30,12 +48,12 @@ _T = TypeVar('_T')
 
 
 def record_function(
-        tag: str,
+        tag: Optional[str],
         use_cuda: bool = False,
 ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
     def wrapper(f: Callable[..., _T]) -> Callable[..., _T]:
         def wrapped(*args: Any, **kwargs: Any) -> _T:
-            with record(tag, use_cuda=use_cuda):
+            with record(tag or f.__name__, use_cuda=use_cuda):
                 return f(*args, **kwargs)
 
         return wrapped
@@ -44,11 +62,14 @@ def record_function(
 
 
 def record_iterable(
-    tag: str,
-    iter: Iterable[_T],
-    divide_metric: bool = False,
-    use_cuda: bool = False,
+        tag: Optional[str],
+        iter: Iterable[_T],
+        divide_metric: bool = False,
+        use_cuda: bool = False,
 ) -> Iterable[_T]:
+    if tag is None:
+        tag = _infer_tag_name(inspect.currentframe(), depth=1)
+
     def wrapped() -> Iterable[_T]:
         for i, x in enumerate(iter):
             name = f"{tag}-{i}"
