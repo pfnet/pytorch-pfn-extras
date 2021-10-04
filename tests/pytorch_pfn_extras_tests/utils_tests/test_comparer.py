@@ -184,3 +184,23 @@ def test_compare_concurrency(engine_fn):
         comp.compare({"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)})
     else:
         comp.compare({"cpu": train_1, "gpu": train_2})
+
+
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+def test_compare_concurrency_wrong(engine_fn):
+    engine_cpu = engine_fn("cpu", 1.0)
+    engine_gpu = engine_fn("cuda:0", 0.5)
+    comp = ppe.utils.comparer.OutputsComparer(
+        {"cpu": engine_cpu, "gpu": engine_gpu}, "a",
+        concurrency=1,
+    )
+    train_1 = list(torch.ones(10) for _ in range(10))
+    train_2 = list(torch.ones(10) for _ in range(10))
+    with pytest.raises(AssertionError):
+        if engine_fn is _get_trainer_with_evaluator:
+            eval_1 = list(torch.ones(10) for _ in range(10))
+            eval_2 = list(torch.ones(10) for _ in range(10))
+            comp.compare({"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)})
+        else:
+            comp.compare({"cpu": train_1, "gpu": train_2})
