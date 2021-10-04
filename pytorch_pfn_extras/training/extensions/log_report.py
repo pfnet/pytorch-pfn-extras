@@ -50,9 +50,7 @@ class LogWriterSaveFunc:
 
 class LogReport(extension.Extension):
 
-    """__init__(\
-keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
-
+    """
     An extension to output the accumulated results to a log file.
 
     This extension accumulates the observations of the manager to
@@ -93,7 +91,7 @@ keys=None, trigger=(1, 'epoch'), postprocess=None, filename='log', writer=None)
             does not output the log to any file.
             For historical reasons ``log_name`` is also accepted as an alias
             of this argument.
-        append (bool, optionsl): If the file is JSON Lines or YAML, contents
+        append (bool, optional): If the file is JSON Lines or YAML, contents
             will be appended instead of rewritting the file every call.
         format (str, optional): accepted values are `'json'`, `'json-lines'`
             and `'yaml'`.
