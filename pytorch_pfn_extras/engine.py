@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from pytorch_pfn_extras.runtime._runtime import DeviceLike
     from pytorch_pfn_extras import training
     from pytorch_pfn_extras.training.trigger import TriggerLike
-    from pytorch_pfn_extras.training._trainer import _Trainer
-    from pytorch_pfn_extras.training._evaluator import _Evaluator
+    from pytorch_pfn_extras.training._trainer import Trainer
+    from pytorch_pfn_extras.training._evaluator import Evaluator
     from pytorch_pfn_extras.training.metrics import MetricType
     from pytorch_pfn_extras import writing
 
@@ -108,7 +108,7 @@ def create_trainer(
         out_dir: str = 'result',
         stop_trigger: 'TriggerLike' = None,
         writer: Optional['writing.Writer'] = None,
-        evaluator: Optional['_Evaluator'] = None,
+        evaluator: Optional['Evaluator'] = None,
         device: 'DeviceLike' = 'cpu',
         logic: Optional[handler_module.Logic] = None,
         transform_model: Callable[
@@ -116,7 +116,7 @@ def create_trainer(
         handler_class: Optional[Type[handler_module.BaseHandler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Dict[str, Any]] = None,
-) -> '_Trainer':
+) -> 'Trainer':
     """Creates a trainer object.
 
     Args:
@@ -181,8 +181,8 @@ def create_trainer(
     if len(options) > 0:
         raise ValueError('Unknown options: ', options)
 
-    from pytorch_pfn_extras.training._trainer import _Trainer
-    return _Trainer(
+    from pytorch_pfn_extras.training._trainer import Trainer
+    return Trainer(
         handler, evaluator=evaluator,
         models=models, optimizers=optimizers, max_epochs=max_epochs,
         extensions=extensions, out_dir=out_dir,
@@ -201,7 +201,7 @@ def create_evaluator(
         handler_class: Optional[Type[handler_module.BaseHandler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Dict[str, Any]] = None,
-) -> '_Evaluator':
+) -> 'Evaluator':
     """Creates an evaluator object. The return value of this function is
     expected to be fed to `ppe.engine.create_trainer` as an argument.
 
@@ -252,8 +252,8 @@ def create_evaluator(
     if len(options) > 0:
         raise ValueError('Unknown options: ', options)
 
-    from pytorch_pfn_extras.training._evaluator import _Evaluator
-    return _Evaluator(
+    from pytorch_pfn_extras.training._evaluator import Evaluator
+    return Evaluator(
         handler,
         models=models,
         progress_bar=progress_bar,

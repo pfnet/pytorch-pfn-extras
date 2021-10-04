@@ -11,8 +11,8 @@ from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.handler._logic import BaseLogic
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras.training._trainer import _Trainer
-    from pytorch_pfn_extras.training._evaluator import _Evaluator
+    from pytorch_pfn_extras.training._trainer import Trainer
+    from pytorch_pfn_extras.training._evaluator import Evaluator
     from pytorch_pfn_extras.runtime import BaseRuntime
 
 
@@ -51,7 +51,7 @@ class BaseHandler:
         """
         pass
 
-    def train_setup(self, trainer: '_Trainer', loader: Iterable[Any]) -> None:
+    def train_setup(self, trainer: 'Trainer', loader: Iterable[Any]) -> None:
         """A method called only once when starting a training run.
 
         .. seealso:
@@ -63,7 +63,7 @@ class BaseHandler:
 
     def train_epoch_begin(
             self,
-            trainer: '_Trainer',
+            trainer: 'Trainer',
             loader: Iterable[Any]
     ) -> None:
         """A method called when starting a new epoch.
@@ -75,7 +75,7 @@ class BaseHandler:
         # Called when starting a new epoch.
         pass
 
-    def train_epoch_end(self, trainer: '_Trainer') -> None:
+    def train_epoch_end(self, trainer: 'Trainer') -> None:
         """A method called when finishing an epoch.
 
         .. seealso:
@@ -87,8 +87,8 @@ class BaseHandler:
 
     def train_validation_begin(
             self,
-            trainer: '_Trainer',
-            evaluator: '_Evaluator',
+            trainer: 'Trainer',
+            evaluator: 'Evaluator',
     ) -> None:
         """A method called when starting a validation.
 
@@ -102,8 +102,8 @@ class BaseHandler:
 
     def train_validation_end(
             self,
-            trainer: '_Trainer',
-            evaluator: '_Evaluator',
+            trainer: 'Trainer',
+            evaluator: 'Evaluator',
     ) -> None:
         """A method called after validation.
 
@@ -118,7 +118,7 @@ class BaseHandler:
 
     def train_step(
             self,
-            trainer: '_Trainer',
+            trainer: 'Trainer',
             batch_idx: int,
             batch: Any,
             complete_fn: Callable[[int, Any], None],
@@ -134,7 +134,7 @@ class BaseHandler:
 
     def train_post_step(
             self,
-            trainer: '_Trainer',
+            trainer: 'Trainer',
             batch_idx: int,
             batch: Any,
             outputs: Any,
@@ -150,7 +150,7 @@ class BaseHandler:
 
     def eval_setup(
             self,
-            evaluator: '_Evaluator',
+            evaluator: 'Evaluator',
             loader: Iterable[Any]
     ) -> None:
         """A method called only once when starting a training run.
@@ -164,7 +164,7 @@ class BaseHandler:
         # given.
         pass
 
-    def eval_loop_begin(self, evaluator: '_Evaluator') -> None:
+    def eval_loop_begin(self, evaluator: 'Evaluator') -> None:
         """A method called before each evaluation step.
 
         Args:
@@ -176,7 +176,7 @@ class BaseHandler:
 
     def eval_step(
             self,
-            evaluator: '_Evaluator',
+            evaluator: 'Evaluator',
             batch_idx: int,
             batch: Any,
             complete_fn: Callable[[int, Any], None],
@@ -190,7 +190,7 @@ class BaseHandler:
         # Do an evaluation iteration.
         pass
 
-    def eval_loop_end(self, evaluator: '_Evaluator') -> None:
+    def eval_loop_end(self, evaluator: 'Evaluator') -> None:
         """A method called after running all steps of the evaluation.
 
         .. seealso:
@@ -202,7 +202,7 @@ class BaseHandler:
 
     def eval_post_step(
             self,
-            evaluator: '_Evaluator',
+            evaluator: 'Evaluator',
             batch_idx: int,
             batch: Any,
             outputs: Any,
@@ -309,7 +309,7 @@ class Handler(BaseHandler):
             raise RuntimeError("Async mode is not supported in models "
                                "splitted across different devices")
 
-    def train_setup(self, trainer: '_Trainer', loader: Iterable[Any]) -> None:
+    def train_setup(self, trainer: 'Trainer', loader: Iterable[Any]) -> None:
         """A method called only once when starting a training run.
 
         Args:
@@ -322,7 +322,7 @@ class Handler(BaseHandler):
 
     def train_epoch_begin(
             self,
-            trainer: '_Trainer',
+            trainer: 'Trainer',
             loader: Iterable[Any]
     ) -> None:
         """A method called when starting a new epoch.
@@ -336,7 +336,7 @@ class Handler(BaseHandler):
 
         self._logic.train_epoch_begin(trainer.models, trainer.epoch, loader)
 
-    def train_epoch_end(self, trainer: '_Trainer') -> None:
+    def train_epoch_end(self, trainer: 'Trainer') -> None:
         """A method called when finishing an epoch.
 
         Args:
@@ -355,8 +355,8 @@ class Handler(BaseHandler):
 
     def train_validation_begin(
             self,
-            trainer: '_Trainer',
-            evaluator: '_Evaluator',
+            trainer: 'Trainer',
+            evaluator: 'Evaluator',
     ) -> None:
         """A method called when starting a validation.
 
@@ -370,8 +370,8 @@ class Handler(BaseHandler):
 
     def train_validation_end(
             self,
-            trainer: '_Trainer',
-            evaluator: '_Evaluator',
+            trainer: 'Trainer',
+            evaluator: 'Evaluator',
     ) -> None:
         """A method called after validation.
 
@@ -389,7 +389,7 @@ class Handler(BaseHandler):
         self._logic.train_validation_end(evaluator.models)
 
     def _complete_train_step(
-            self, trainer: '_Trainer', outs: Any, block: bool,
+            self, trainer: 'Trainer', outs: Any, block: bool,
             sn: str, sm: torch.nn.Module, rt: 'BaseRuntime',
     ) -> None:
         idx, batch, cback = self.pending_iters[sn][0]
@@ -405,7 +405,7 @@ class Handler(BaseHandler):
 
     def train_step(
             self,
-            trainer: '_Trainer',
+            trainer: 'Trainer',
             batch_idx: int,
             batch: Any,
             complete_fn: Callable[[int, Any], None],
@@ -447,7 +447,7 @@ class Handler(BaseHandler):
 
     def eval_setup(
             self,
-            evaluator: '_Evaluator',
+            evaluator: 'Evaluator',
             loader: Iterable[Any]
     ) -> None:
         """Called only once when starting a training run.
@@ -462,7 +462,7 @@ class Handler(BaseHandler):
         self._setup(evaluator.models, loader)
 
     def _complete_eval_step(
-            self, evaluator: '_Evaluator', outs: Any, block: bool,
+            self, evaluator: 'Evaluator', outs: Any, block: bool,
             sn: str, sm: torch.nn.Module, rt: 'BaseRuntime',
     ) -> None:
         # This call is deferred
@@ -474,7 +474,7 @@ class Handler(BaseHandler):
 
     def eval_step(
             self,
-            evaluator: '_Evaluator',
+            evaluator: 'Evaluator',
             batch_idx: int,
             batch: Any,
             complete_fn: Callable[[int, Any], None],
@@ -511,7 +511,7 @@ class Handler(BaseHandler):
 
     def eval_post_step(
             self,
-            evaluator: '_Evaluator',
+            evaluator: 'Evaluator',
             batch_idx: int,
             batch: Any,
             outputs: Any,
@@ -532,7 +532,7 @@ class Handler(BaseHandler):
         for out in self._eval_report_keys:
             reporting.report({"val/{}".format(out): outputs[out]})
 
-    def eval_loop_end(self, evaluator: '_Evaluator') -> None:
+    def eval_loop_end(self, evaluator: 'Evaluator') -> None:
         """A method called after running all steps of the evaluation.
 
         Args:
@@ -548,7 +548,7 @@ class Handler(BaseHandler):
 
     def train_post_step(
             self,
-            trainer: '_Trainer',
+            trainer: 'Trainer',
             batch_idx: int,
             batch: Any,
             outputs: Any

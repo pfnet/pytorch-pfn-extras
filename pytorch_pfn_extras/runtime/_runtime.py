@@ -11,8 +11,8 @@ _RUNTIME_TAG_NAME = '_ppe_runtime'
 DeviceLike = Union[str, torch.device]
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras.training._trainer import _Trainer
-    from pytorch_pfn_extras.training._evaluator import _Evaluator
+    from pytorch_pfn_extras.training._trainer import Trainer
+    from pytorch_pfn_extras.training._evaluator import Evaluator
 
 
 class BaseRuntime:
@@ -127,7 +127,7 @@ class BaseRuntime:
 
     def train_pre_step(
             self,
-            trainer: '_Trainer',
+            trainer: 'Trainer',
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -138,7 +138,7 @@ class BaseRuntime:
         (typically one) iterations and an update.
 
         Args:
-            trainer (_Trainer): A trainer.
+            trainer (Trainer): A trainer.
             module (torch.nn.Module): A module.
             batch_idx (int): The batch index.
             batch (list of torch.Tensor):
@@ -150,7 +150,7 @@ class BaseRuntime:
 
     def train_post_step(
             self,
-            trainer: '_Trainer',
+            trainer: 'Trainer',
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -162,7 +162,7 @@ class BaseRuntime:
         (typically one) iterations and an update.
 
         Args:
-            trainer (_Trainer): A trainer.
+            trainer (Trainer): A trainer.
             module (torch.nn.Module): A module.
             batch_idx (int): The batch index.
             batch (list of torch.Tensor):
@@ -196,7 +196,7 @@ class BaseRuntime:
 
     def eval_pre_step(
             self,
-            evaluator: '_Evaluator',
+            evaluator: 'Evaluator',
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -204,7 +204,7 @@ class BaseRuntime:
         """The method called at the beginning of each evaluation.
 
         Args:
-            evaluator (_Evaluator): An evaluator.
+            evaluator (Evaluator): An evaluator.
             module (torch.nn.Module): A module.
             batch_idx (int): The batch index.
             batch (list of torch.Tensor):
@@ -216,7 +216,7 @@ class BaseRuntime:
 
     def eval_post_step(
             self,
-            evaluator: '_Evaluator',
+            evaluator: 'Evaluator',
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -225,7 +225,7 @@ class BaseRuntime:
         """The method called at the end of each evaluation.
 
         Args:
-            evaluator (_Evaluator): An evaluator.
+            evaluator (Evaluator): An evaluator.
             module (torch.nn.Module): A module.
             batch_idx (int): The batch index.
             batch (list of torch.Tensor):
@@ -290,7 +290,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_pre_step(
             self,
-            trainer: '_Trainer',
+            trainer: 'Trainer',
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -299,7 +299,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_post_step(
             self,
-            trainer: '_Trainer',
+            trainer: 'Trainer',
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -309,7 +309,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_pre_step(
             self,
-            evaluator: '_Evaluator',
+            evaluator: 'Evaluator',
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -318,7 +318,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_post_step(
             self,
-            evaluator: '_Evaluator',
+            evaluator: 'Evaluator',
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,

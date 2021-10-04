@@ -16,21 +16,21 @@ from pytorch_pfn_extras.training.trigger import Trigger, TriggerLike
 
 if TYPE_CHECKING:
     import pytorch_pfn_extras.handler as handler_module
-    from pytorch_pfn_extras.training._evaluator import _Evaluator
+    from pytorch_pfn_extras.training._evaluator import Evaluator
     from pytorch_pfn_extras.profiler._time_summary import _ReportNotification
 
 
-class _Trainer(pytorch_pfn_extras.engine._Engine):
+class Trainer(pytorch_pfn_extras.engine._Engine):
     def __init__(
             self,
             handler: 'handler_module.BaseHandler',
             *,
-            evaluator: Optional[Union['_Evaluator', Tuple['_Evaluator', TriggerLike]]],
+            evaluator: Optional[Union['Evaluator', Tuple['Evaluator', TriggerLike]]],
             **kwargs: Any,
     ):
         super().__init__(handler, **kwargs)
         if isinstance(evaluator, tuple):
-            self.evaluator: Optional['_Evaluator'] = None
+            self.evaluator: Optional['Evaluator'] = None
             self.evaluator, trigger = evaluator
             self.evaluator_trigger = trigger_module.get_trigger(trigger)
         else:
@@ -145,7 +145,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
                 to ``Evaluator.run()``
 
         .. seealso::
-            - :meth:`pytorch_pfn_extras.training._evaluator._Evaluator`
+            - :meth:`pytorch_pfn_extras.training._evaluator.Evaluator`
         """
         if train_len is None:
             train_len = len(train_loader)  # type: ignore[arg-type]
@@ -154,7 +154,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
         self._eval_len = eval_len
 
         class _EvaluatorExt:
-            def __init__(self, trainer: '_Trainer') -> None:
+            def __init__(self, trainer: 'Trainer') -> None:
                 self.name = 'Evaluator'
                 self.needs_model_state = True
                 self._trainer = trainer

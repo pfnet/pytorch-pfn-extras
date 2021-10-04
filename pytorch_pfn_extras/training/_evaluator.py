@@ -37,7 +37,7 @@ def _progress_bar(
         yield lambda i: None
 
 
-class _Evaluator:
+class Evaluator:
     def __init__(
             self,
             handler: 'BaseHandler',
