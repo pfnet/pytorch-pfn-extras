@@ -9,7 +9,7 @@ from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training.extensions import log_report \
     as log_report_module
 from pytorch_pfn_extras.training.extensions import util
-from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 def create_header_and_templates(
@@ -102,7 +102,7 @@ class PrintReport(extension.Extension):
 
     def get_log_report(
             self,
-            manager: _BaseExtensionsManager,
+            manager: ExtensionsManagerProtocol,
     ) -> log_report_module.LogReport:
         log_report = self._log_report
         if isinstance(log_report, str):
@@ -140,7 +140,7 @@ class PrintReport(extension.Extension):
             self._header = header  # printed at the first call
             self._templates = templates
 
-    def __call__(self, manager: _BaseExtensionsManager) -> None:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         log_report = self.get_log_report(manager)
         log = log_report.log
 

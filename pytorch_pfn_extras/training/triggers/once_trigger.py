@@ -1,12 +1,9 @@
 # mypy: ignore-errors
 
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict
 
 from pytorch_pfn_extras.training import trigger
-
-
-if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 class OnceTrigger(trigger.Trigger):
@@ -36,7 +33,7 @@ class OnceTrigger(trigger.Trigger):
     def finished(self) -> bool:
         return not (self._flag_first or self._flag_resumed)
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> bool:
         fire = not self.finished
         self._flag_resumed = False
         self._flag_first = False

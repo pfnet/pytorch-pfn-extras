@@ -3,10 +3,10 @@
 from typing import Sequence, Union, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import trigger
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
     from pytorch_pfn_extras.training._trigger_util import UnitLiteral
 
 
@@ -37,7 +37,7 @@ class ManualScheduleTrigger(trigger.Trigger):
         self.points = (points if isinstance(points, list) else [points])
         self.unit = unit
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> bool:
         """Decides whether the extension should be called on this iteration.
 
         Args:

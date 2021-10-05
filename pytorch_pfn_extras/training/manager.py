@@ -14,6 +14,7 @@ from pytorch_pfn_extras import writing
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training import _manager_protocol
 from pytorch_pfn_extras.training import _util as util_module
 from pytorch_pfn_extras.training._transform_model import (
     default_transform_model, _TransformModel,
@@ -56,6 +57,45 @@ class _ManagerExecutionProxy:
     @property
     def _iters_per_epoch(self) -> int:
         return self._manager._iters_per_epoch
+
+    @property
+    def models(self) -> Dict[str, torch.nn.Module]:
+        raise RuntimeError('Models are not available during execution phase.')
+
+    @property
+    def raw_models(self) -> Mapping[str, torch.nn.Module]:
+        raise RuntimeError('Models are not available during execution phase.')
+
+    @property
+    def optimizers(self) -> Mapping[str, torch.optim.Optimizer]:
+        raise RuntimeError('Optimizers are not available during execution phase.')
+
+    @property
+    def elapsed_time(self) -> float:
+        return self._manager.elapsed_time
+
+    @property
+    def is_before_training(self) -> bool:
+        return self._manager.is_before_training
+
+    @property
+    def stop_trigger(self) -> bool:
+        return self._manager.stop_trigger
+
+    @property
+    def out(self) -> str:
+        return self._manager.out
+
+    @property
+    def writer(self) -> Optional[writing.Writer]:
+        return self._manager.writer
+
+    @property
+    def reporter(self) -> reporting.Reporter:
+        return self._manager.reporter
+
+    def get_extension(self, name: str) -> extension_module.Extension:
+        return self._manager.get_extension(name)
 
 
 class _BaseExtensionsManager:
@@ -231,7 +271,7 @@ class _BaseExtensionsManager:
     def _get_proxy_for_trigger(
             self,
             trigger: 'trigger_module.Trigger',
-    ) -> Any:
+    ) -> _manager_protocol.ExtensionsManagerProtocol:
         if isinstance(trigger, trigger_module.IntervalTrigger):
             return _ManagerExecutionProxy(self)
         return self
@@ -389,7 +429,7 @@ class _BaseExtensionsManager:
             if ((not completed and not is_async)
                     or (completed and is_async and only_iterations)):
                 continue
-            manager = self
+            manager: _manager_protocol.ExtensionsManagerProtocol = self
             if is_async:
                 manager = self._get_proxy_for_trigger(entry.trigger)
             if entry.trigger(manager):

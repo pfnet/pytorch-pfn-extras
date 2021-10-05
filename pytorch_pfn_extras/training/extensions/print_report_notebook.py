@@ -10,7 +10,7 @@ from pytorch_pfn_extras.training.extensions.print_report import PrintReport
 
 from pytorch_pfn_extras.training.extensions import log_report \
     as log_report_module
-from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 class PrintReportNotebook(PrintReport):
@@ -44,14 +44,14 @@ class PrintReportNotebook(PrintReport):
         )
         self._widget = HTML()
 
-    def initialize(self, manager: _BaseExtensionsManager) -> None:
+    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         display(self._widget)
 
     @property
     def widget(self) -> HTML:
         return self._widget
 
-    def __call__(self, manager: _BaseExtensionsManager) -> None:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         log_report = self.get_log_report(manager)
         df = log_report.to_dataframe()
         if self._infer_entries:

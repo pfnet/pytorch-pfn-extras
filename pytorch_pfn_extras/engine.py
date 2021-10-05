@@ -61,7 +61,7 @@ class _Engine:
             ((extension, name, trigger, priority),
              dict(call_before_training=call_before_training, **kwargs)))
 
-    def _setup_manager(self, iters_per_epoch: int) -> None:
+    def _setup_manager(self, iters_per_epoch: int) -> 'training.ExtensionsManager':
         from pytorch_pfn_extras.training import ExtensionsManager
         self._manager = ExtensionsManager(
             self._models, iters_per_epoch=iters_per_epoch, **self._kwargs)
@@ -69,6 +69,7 @@ class _Engine:
             self._manager.extend(*ex_args, **ex_kwargs)
         if self._manager_state is not None:
             self.manager.load_state_dict(self._manager_state)
+        return self._manager
 
     @property
     def manager(self) -> 'training.ExtensionsManager':

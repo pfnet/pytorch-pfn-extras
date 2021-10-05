@@ -1,8 +1,6 @@
-from typing import Any, Callable, Dict, Union, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Dict, Union, Optional, Tuple
 
-
-if TYPE_CHECKING:
-    from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 class Trigger:
@@ -21,19 +19,19 @@ class Trigger:
     def state_dict(self) -> Dict[str, Any]:
         return {}
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> bool:
         raise NotImplementedError
 
 
 class _CallableTrigger(Trigger):
-    def __init__(self, func: Callable[['_BaseExtensionsManager'], bool]) -> None:
+    def __init__(self, func: Callable[[ExtensionsManagerProtocol], bool]) -> None:
         self.func = func
 
-    def __call__(self, manager: '_BaseExtensionsManager') -> bool:
+    def __call__(self, manager: ExtensionsManagerProtocol) -> bool:
         return self.func(manager)
 
 
-TriggerFunc = Callable[['_BaseExtensionsManager'], bool]
+TriggerFunc = Callable[[ExtensionsManagerProtocol], bool]
 
 # TODO: Use `Literal['epoch', 'iteration']` after Py3.7 is dropped
 UnitLiteral = str
@@ -82,5 +80,5 @@ def get_trigger(trigger: TriggerLike) -> Trigger:
         return interval_trigger.IntervalTrigger(*trigger)
 
 
-def _never_fire_trigger(manager: '_BaseExtensionsManager') -> bool:
+def _never_fire_trigger(manager: ExtensionsManagerProtocol) -> bool:
     return False

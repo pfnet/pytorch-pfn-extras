@@ -11,7 +11,7 @@ import torch
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training.extensions import util
-from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 _MetricType = Callable[[Any, Any, Any], None]
@@ -152,7 +152,7 @@ class Evaluator(extension.Extension):
 
     def __call__(
             self,
-            manager: Optional[_BaseExtensionsManager] = None,
+            manager: Optional[ExtensionsManagerProtocol] = None,
     ) -> Optional[Dict[str, _Scalar]]:
         """Executes the evaluator extension.
 
