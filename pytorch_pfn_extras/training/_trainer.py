@@ -245,3 +245,7 @@ class Trainer(pytorch_pfn_extras.engine._Engine):
             # In handlers that support a completely Async model train_epoch_end
             # Will take care of completing pending work
             self.handler.train_epoch_end(self)
+
+
+# For backward compatibility
+_Trainer = Trainer

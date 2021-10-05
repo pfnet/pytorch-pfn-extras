@@ -139,3 +139,7 @@ class Evaluator:
         # This will report to the trainer main reporter
         self.handler.eval_loop_end(self)
         reporting.report(self._summary.compute_mean())
+
+
+# For backward compatibility
+_Evaluator = Evaluator
