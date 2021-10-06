@@ -52,7 +52,7 @@ class _LogBuffer:
         self._log = []
         self._offset = 0
 
-    def _normalize(self) -> None:
+    def _trim(self) -> None:
         min_looker_index = min(self.lookers.values())
         if min_looker_index > self._offset:
             self._log = self._log[min_looker_index - self._offset:]
@@ -68,7 +68,7 @@ class _LogBuffer:
         if looker_id not in self.lookers:
             raise ValueError(f'looker {looker_id} is not registered')
         self.lookers[looker_id] = len(self._log) + self._offset
-        self._normalize()
+        self._trim()
 
     def emit_new_looker(self) -> '_LogLooker':
         looker_id = len(self.lookers)
@@ -203,8 +203,6 @@ class LogReport(extension.Extension):
             if self._postprocess is not None:
                 self._postprocess(stats_cpu)
 
-            if self._append:
-                self._log_looker.clear()
             self._log_buffer.append(stats_cpu)
 
             # write to the log file
@@ -214,6 +212,8 @@ class LogReport(extension.Extension):
                 savefun = LogWriterSaveFunc(self._format, self._append)
                 writer(log_name, out, self._log_looker.get(),
                        savefun=savefun, append=self._append)
+                if self._append:
+                    self._log_looker.clear()
 
             # reset the summary for the next output
             self._init_summary()

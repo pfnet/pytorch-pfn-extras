@@ -116,7 +116,7 @@ class PrintReport(extension.Extension):
             raise TypeError('log report has a wrong type %s' %
                             type(log_report))
 
-    def initialize(self, manager: _BaseExtensionsManager) -> None:
+    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         log_report = self.get_log_report(manager)
         self._log_looker = log_report._log_buffer.emit_new_looker()
 

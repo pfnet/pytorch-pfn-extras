@@ -115,8 +115,6 @@ class ProfileReport(extension.Extension):
             out = OrderedDict(
                 [(k, stats_cpu[k]) for k in sorted(stats_cpu.keys())])
 
-            if self._append:
-                self._log = []
             self._log.append(out)
 
             # write to the log file
@@ -126,6 +124,8 @@ class ProfileReport(extension.Extension):
                     self._format, self._append)
                 writer(log_name, out, self._log,
                        savefun=savefun, append=self._append)
+                if self._append:
+                    self._log = []
 
     def state_dict(self):
         state = {}
