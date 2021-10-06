@@ -6,7 +6,6 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECK
 
 import torch
 
-from pytorch_pfn_extras import handler as handler_module
 from pytorch_pfn_extras import training
 from pytorch_pfn_extras.training import extension as extension
 from pytorch_pfn_extras.training import trigger as trigger_module
@@ -17,6 +16,7 @@ from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProto
 from pytorch_pfn_extras.training.trigger import Trigger, TriggerLike
 
 if TYPE_CHECKING:
+    from pytorch_pfn_extras import handler as handler_module
     from pytorch_pfn_extras.training._evaluator import Evaluator
     from pytorch_pfn_extras.profiler._time_summary import _ReportNotification
 
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 class _Engine:
     def __init__(
             self,
-            handler: handler_module.BaseHandler,
+            handler: 'handler_module.BaseHandler',
             models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
             **kwargs: Any,
     ) -> None:
