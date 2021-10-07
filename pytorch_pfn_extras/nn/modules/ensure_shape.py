@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import torch
 
 
-class EnsureShapeAndDtype(torch.nn.Module):
+class Ensure(torch.nn.Module):
     """Module to check the shape of a tensor.
 
     Args:
@@ -19,11 +19,11 @@ class EnsureShapeAndDtype(torch.nn.Module):
 
     def __init__(
             self,
+            *,
             shape: Optional[Tuple[int]] = None,
             dtype: Optional[torch.dtype] = None,
-            *,
-            broadcastable: Optional[bool] = False,
-            can_cast: Optional[bool] = False,
+            broadcastable: bool = False,
+            can_cast: bool = False,
     ):
         super().__init__()  # type: ignore[no-untyped-call]
         if shape is None and dtype is None:
@@ -37,7 +37,7 @@ class EnsureShapeAndDtype(torch.nn.Module):
         c_shape = None
         if shape is not None and None in shape:
             c_shape = tuple(
-                x if x is not None else 1  # type: ignore[unreachable]
+                x if x is not None else 1
                 for x in shape
             )
             self._broadcastable = True
@@ -91,12 +91,12 @@ class EnsureShapeAndDtype(torch.nn.Module):
         return input
 
 
-def ensure_shape_and_dtype(
+def ensure(
         tensor: torch.Tensor,
-        shape: Optional[Tuple[int]],
+        shape: Optional[Tuple[int]] = None,
         dtype: Optional[torch.dtype] = None,
-        broadcastable: Optional[bool] = False,
-        can_cast: Optional[bool] = False
+        broadcastable: bool = False,
+        can_cast: bool = False
 ) -> None:
     """Checks the shape and type of a tensor.
 
@@ -110,6 +110,6 @@ def ensure_shape_and_dtype(
            rules.
        can_cast: Check if the input tensor can be casted to the provided type.
     """
-    EnsureShapeAndDtype(
-        shape, dtype,
+    Ensure(
+        shape=shape, dtype=dtype,
         broadcastable=broadcastable, can_cast=can_cast)(tensor)

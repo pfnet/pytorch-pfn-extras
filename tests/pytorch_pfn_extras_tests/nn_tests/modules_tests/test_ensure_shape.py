@@ -1,36 +1,38 @@
 import pytest
 import torch
 
-from pytorch_pfn_extras.nn import EnsureShapeAndDtype, ensure_shape_and_dtype
+from pytorch_pfn_extras.nn import Ensure, ensure
 
 
-class TestEnsureShapeAndDtype:
+class TestEnsure:
     def test_wrong_initialization(self):
         with pytest.raises(ValueError, match='both arguments'):
-            EnsureShapeAndDtype(None, None)
+            Ensure(shape=None, dtype=None)
 
     @pytest.mark.parametrize(
         'shape', [(), (1,), (1, 1), (2,), (2, 4), (2, 3, 4)]
     )
     def test_valid_shape(self, shape):
         tensor = torch.zeros(shape)
-        module = EnsureShapeAndDtype(shape)
+        module = Ensure(shape=shape)
         module(tensor)
         # Use the function version
-        ensure_shape_and_dtype(tensor, shape)
+        ensure(tensor, shape)
 
     @pytest.mark.parametrize(
         'shape', [(), (1,), (1, 1), (2,), (2, 4), (2, 3, 4)]
     )
     def test_invalid_shape(self, shape):
         tensor = torch.zeros((1, 2, 3))
-        module = EnsureShapeAndDtype(shape)
+        module = Ensure(shape=shape)
         with pytest.raises(ValueError, match='input shape is'):
             module(tensor)
         with pytest.raises(ValueError, match='input shape is'):
-            ensure_shape_and_dtype(tensor, shape)
+            ensure(tensor, shape)
 
     @pytest.mark.parametrize('shape_t, shape_c', [
+        ((), (2,)),
+        ((3,), ()),
         ((1,), (2,)),
         ((1, 1), (2, 1)),
         ((1, 1), (2,)),
@@ -40,7 +42,7 @@ class TestEnsureShapeAndDtype:
     ])
     def test_broadcastable_shape(self, shape_t, shape_c):
         tensor = torch.zeros(shape_t)
-        module = EnsureShapeAndDtype(shape_c, broadcastable=True)
+        module = Ensure(shape=shape_c, broadcastable=True)
         module(tensor)
 
     @pytest.mark.parametrize('shape_t, shape_c', [
@@ -52,7 +54,7 @@ class TestEnsureShapeAndDtype:
     ])
     def test_nonbroadcastable_shape(self, shape_t, shape_c):
         tensor = torch.zeros(shape_t)
-        module = EnsureShapeAndDtype(shape_c, broadcastable=True)
+        module = Ensure(shape=shape_c, broadcastable=True)
         with pytest.raises(ValueError, match='non broadcastable'):
             module(tensor)
 
@@ -65,7 +67,7 @@ class TestEnsureShapeAndDtype:
     ])
     def test_unknown_shape(self, shape_t, shape_c):
         tensor = torch.zeros(shape_t)
-        module = EnsureShapeAndDtype(shape_c)
+        module = Ensure(shape=shape_c)
         module(tensor)
 
     @pytest.mark.parametrize('shape_t, shape_c', [
@@ -75,7 +77,7 @@ class TestEnsureShapeAndDtype:
     ])
     def test_invalid_unknown_shape(self, shape_t, shape_c):
         tensor = torch.zeros(shape_t)
-        module = EnsureShapeAndDtype(shape_c)
+        module = Ensure(shape=shape_c)
         with pytest.raises(ValueError, match='non broadcastable'):
             module(tensor)
 
@@ -84,9 +86,9 @@ class TestEnsureShapeAndDtype:
     )
     def test_valid_dtypes(self, dtype):
         tensor = torch.zeros(1, dtype=dtype)
-        module = EnsureShapeAndDtype(None, dtype)
+        module = Ensure(shape=None, dtype=dtype)
         module(tensor)
-        ensure_shape_and_dtype(tensor, None, dtype)
+        ensure(tensor, None, dtype)
 
     @pytest.mark.parametrize('dtype_t, dtype_c', [
         (torch.int32, torch.int16),
@@ -96,7 +98,7 @@ class TestEnsureShapeAndDtype:
     ])
     def test_invalid_dtypes(self, dtype_t, dtype_c):
         tensor = torch.zeros(1, dtype=dtype_t)
-        module = EnsureShapeAndDtype(None, dtype_c)
+        module = Ensure(shape=None, dtype=dtype_c)
         with pytest.raises(ValueError, match='input dtype'):
             module(tensor)
 
@@ -107,7 +109,7 @@ class TestEnsureShapeAndDtype:
     ])
     def test_dtypes_with_cast(self, dtype_t, dtype_c):
         tensor = torch.zeros(1, dtype=dtype_t)
-        module = EnsureShapeAndDtype(None, dtype_c, can_cast=True)
+        module = Ensure(shape=None, dtype=dtype_c, can_cast=True)
         module(tensor)
 
     @pytest.mark.parametrize('dtype_t, dtype_c', [
@@ -116,7 +118,7 @@ class TestEnsureShapeAndDtype:
     ])
     def test_invalid_dtypes_with_cast(self, dtype_t, dtype_c):
         tensor = torch.zeros(1, dtype=dtype_t)
-        module = EnsureShapeAndDtype(None, dtype_c, can_cast=True)
+        module = Ensure(shape=None, dtype=dtype_c, can_cast=True)
         with pytest.raises(ValueError, match='be casted to'):
             module(tensor)
 
@@ -124,9 +126,9 @@ class TestEnsureShapeAndDtype:
         shape = (10, 5)
         dtype = torch.float32
         tensor = torch.zeros(shape, dtype=dtype)
-        module = EnsureShapeAndDtype(shape, dtype)
+        module = Ensure(shape=shape, dtype=dtype)
         module(tensor)
-        ensure_shape_and_dtype(tensor, shape, dtype)
+        ensure(tensor, shape, dtype)
 
     # Too many warnings to list them all
     @pytest.mark.filterwarnings('ignore')
@@ -134,7 +136,7 @@ class TestEnsureShapeAndDtype:
         shape = (10, 5)
         dtype = torch.float32
         tensor = torch.zeros(shape, dtype=dtype)
-        module = EnsureShapeAndDtype(shape, dtype)
+        module = Ensure(shape=shape, dtype=dtype)
         jit_module = torch.jit.trace(module, (tensor,))
         jit_module(tensor)
 
@@ -151,7 +153,7 @@ class TestEnsureShapeAndDtype:
         shape = (10, 5)
         dtype = torch.float32
         tensor = torch.zeros(shape, dtype=dtype)
-        module = EnsureShapeAndDtype(shape, dtype)
+        module = Ensure(shape=shape, dtype=dtype)
         jit_module = torch.jit.script(module)
         jit_module(tensor)
 
