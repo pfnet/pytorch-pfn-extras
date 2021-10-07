@@ -1,8 +1,19 @@
+import os
+from packaging import version
+
+import pytest
 import torch
 
 import pytorch_pfn_extras as ppe
 
 
+_profiler_available = (
+    os.name != 'nt'
+    or version.Version(torch.__version__) >= version.Version("1.9")
+)
+
+
+@pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 def test_record():
     model = torch.nn.Linear(30, 40)
     x = torch.arange(30, dtype=torch.float32)
@@ -16,6 +27,7 @@ def test_record():
     assert 'aten::linear' in keys
 
 
+@pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 def test_record_without_tag():
     model = torch.nn.Linear(30, 40)
     x = torch.arange(30, dtype=torch.float32)
@@ -29,6 +41,7 @@ def test_record_without_tag():
     assert any(k.endswith('test_record_without_tag') for k in keys)
 
 
+@pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 def test_record_function():
     model = torch.nn.Linear(30, 40)
 
@@ -45,6 +58,7 @@ def test_record_function():
     assert 'my_tag_2' in keys
 
 
+@pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 def test_record_function_without_tag():
     model = torch.nn.Linear(30, 40)
     x = torch.arange(30, dtype=torch.float32)
@@ -61,6 +75,7 @@ def test_record_function_without_tag():
     assert 'my_run' in keys
 
 
+@pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 def test_record_iterable():
     model = torch.nn.Linear(30, 40)
 
@@ -78,6 +93,7 @@ def test_record_iterable():
     assert 'my_tag_3-2' in keys
 
 
+@pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 def test_record_iterable_without_tag():
     model = torch.nn.Linear(30, 40)
 
