@@ -20,7 +20,7 @@ class Ensure(torch.nn.Module):
     def __init__(
             self,
             *,
-            shape: Optional[Tuple[Optional[int]]] = None,
+            shape: Optional[Tuple[int, ...]] = None,
             dtype: Optional[torch.dtype] = None,
             broadcastable: bool = False,
             can_cast: bool = False,
@@ -93,7 +93,7 @@ class Ensure(torch.nn.Module):
 
 def ensure(
         tensor: torch.Tensor,
-        shape: Optional[Tuple[Optional[int]]] = None,
+        shape: Optional[Tuple[int, ...]] = None,
         dtype: Optional[torch.dtype] = None,
         broadcastable: bool = False,
         can_cast: bool = False
