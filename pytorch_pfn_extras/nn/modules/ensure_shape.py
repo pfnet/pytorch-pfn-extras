@@ -20,7 +20,7 @@ class Ensure(torch.nn.Module):
     def __init__(
             self,
             *,
-            shape: Optional[Tuple[int, ...]] = None,
+            shape: Optional[Tuple[Optional[int], ...]] = None,
             dtype: Optional[torch.dtype] = None,
             broadcastable: bool = False,
             can_cast: bool = False,
@@ -34,15 +34,15 @@ class Ensure(torch.nn.Module):
         self._can_cast = can_cast
         # Check if there are Nones in the shape and replace them by 1s
         # so we can compare the shapes using broadcast semantics
-        c_shape = None
-        if shape is not None and None in shape:
-            c_shape = tuple(
-                x if x is not None else 1  # type: ignore[unreachable]
-                for x in shape
+        c_shape: Optional[Tuple[int, ...]] = None
+        if shape is not None:
+            non_none_tuple = tuple(
+                [x if x is not None else 1
+                 for x in shape]
             )
-            self._broadcastable = True
-        else:
-            c_shape = shape
+            if None in shape:
+                self._broadcastable = True
+            c_shape = non_none_tuple
 
         self._shape = None
         if c_shape is not None:
@@ -93,7 +93,7 @@ class Ensure(torch.nn.Module):
 
 def ensure(
         tensor: torch.Tensor,
-        shape: Optional[Tuple[int, ...]] = None,
+        shape: Optional[Tuple[Optional[int], ...]] = None,
         dtype: Optional[torch.dtype] = None,
         broadcastable: bool = False,
         can_cast: bool = False
