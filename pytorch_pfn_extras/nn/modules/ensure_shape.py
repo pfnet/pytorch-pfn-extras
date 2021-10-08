@@ -37,7 +37,7 @@ class Ensure(torch.nn.Module):
         c_shape = None
         if shape is not None and None in shape:
             c_shape = tuple(
-                x if x is not None else 1
+                x if x is not None else 1  # type: ignore[unreachable]
                 for x in shape
             )
             self._broadcastable = True
