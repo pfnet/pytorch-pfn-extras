@@ -145,6 +145,13 @@ class LogReport(extension.Extension):
             `savefun` defined. The writer can override the save location in
             the :class:`pytorch_pfn_extras.training.ExtensionsManager` object
 
+    .. note::
+
+        Enabling `append=True` reduces size of snapshots (and thus reduces the
+        time needed to take snapshots). Note that extensions relying on the
+        logs from past iterations may behave differently; for example,
+        when resuming from a snapshot, PrintReport will not show logs of
+        iterations already done.
     """
 
     def __init__(self, keys=None, trigger=(1, 'epoch'), postprocess=None,
