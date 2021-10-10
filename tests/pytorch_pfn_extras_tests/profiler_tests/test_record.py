@@ -14,9 +14,11 @@ _profiler_available = (
 
 
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
-def test_record():
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+def test_record(device):
     model = torch.nn.Linear(30, 40)
-    x = torch.arange(30, dtype=torch.float32)
+    model.to(device)
+    x = torch.arange(30, dtype=torch.float32).to(device)
 
     with torch.profiler.profile() as prof:
         with ppe.profiler.record('my_tag_1'):
@@ -28,9 +30,11 @@ def test_record():
 
 
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
-def test_record_without_tag():
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+def test_record_without_tag(device):
     model = torch.nn.Linear(30, 40)
-    x = torch.arange(30, dtype=torch.float32)
+    model.to(device)
+    x = torch.arange(30, dtype=torch.float32).to(device)
 
     with torch.profiler.profile() as prof:
         with ppe.profiler.record(None):
@@ -42,15 +46,17 @@ def test_record_without_tag():
 
 
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
-def test_record_function():
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+def test_record_function(device):
     model = torch.nn.Linear(30, 40)
+    model.to(device)
 
     @ppe.profiler.record_function('my_tag_2')
     def my_run(x):
         model(x)
 
     with torch.profiler.profile() as prof:
-        x = torch.arange(30, dtype=torch.float32)
+        x = torch.arange(30, dtype=torch.float32).to(device)
         my_run(x)
 
     keys = [event.key for event in prof.key_averages()]
@@ -59,9 +65,11 @@ def test_record_function():
 
 
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
-def test_record_function_without_tag():
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+def test_record_function_without_tag(device):
     model = torch.nn.Linear(30, 40)
-    x = torch.arange(30, dtype=torch.float32)
+    model.to(device)
+    x = torch.arange(30, dtype=torch.float32).to(device)
 
     @ppe.profiler.record_function(None)
     def my_run(x):
@@ -76,10 +84,12 @@ def test_record_function_without_tag():
 
 
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
-def test_record_iterable():
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+def test_record_iterable(device):
     model = torch.nn.Linear(30, 40)
+    model.to(device)
 
-    x = torch.arange(30, dtype=torch.float32)
+    x = torch.arange(30, dtype=torch.float32).to(device)
     iters = [x, x, x]
 
     with torch.profiler.profile() as prof:
@@ -94,10 +104,12 @@ def test_record_iterable():
 
 
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
-def test_record_iterable_without_tag():
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+def test_record_iterable_without_tag(device):
     model = torch.nn.Linear(30, 40)
+    model.to(device)
 
-    x = torch.arange(30, dtype=torch.float32)
+    x = torch.arange(30, dtype=torch.float32).to(device)
     iters = [x, x, x]
 
     with torch.profiler.profile() as prof:
