@@ -6,13 +6,12 @@ from typing import (
 
 import torch
 
+from pytorch_pfn_extras.training._trainer import Trainer
+from pytorch_pfn_extras.training._evaluator import Evaluator
+
 _RUNTIME_TAG_NAME = '_ppe_runtime'
 
 DeviceLike = Union[str, torch.device]
-
-if TYPE_CHECKING:
-    from pytorch_pfn_extras.training._trainer import Trainer
-    from pytorch_pfn_extras.training._evaluator import Evaluator
 
 
 class BaseRuntime:
@@ -127,7 +126,7 @@ class BaseRuntime:
 
     def train_pre_step(
             self,
-            trainer: 'Trainer',
+            trainer: Trainer,
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -150,7 +149,7 @@ class BaseRuntime:
 
     def train_post_step(
             self,
-            trainer: 'Trainer',
+            trainer: Trainer,
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -196,7 +195,7 @@ class BaseRuntime:
 
     def eval_pre_step(
             self,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -216,7 +215,7 @@ class BaseRuntime:
 
     def eval_post_step(
             self,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -290,7 +289,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_pre_step(
             self,
-            trainer: 'Trainer',
+            trainer: Trainer,
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -299,7 +298,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_post_step(
             self,
-            trainer: 'Trainer',
+            trainer: Trainer,
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -309,7 +308,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_pre_step(
             self,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
@@ -318,7 +317,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_post_step(
             self,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
             module: torch.nn.Module,
             batch_idx: int,
             batch: Any,
