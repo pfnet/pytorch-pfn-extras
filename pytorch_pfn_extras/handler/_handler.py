@@ -10,9 +10,9 @@ import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.handler._logic import BaseLogic
 from pytorch_pfn_extras.training._trainer import Trainer
+from pytorch_pfn_extras.training._evaluator import Evaluator
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras.training._evaluator import Evaluator
     from pytorch_pfn_extras.runtime import BaseRuntime
 
 
@@ -88,7 +88,7 @@ class BaseHandler:
     def train_validation_begin(
             self,
             trainer: Trainer,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
     ) -> None:
         """A method called when starting a validation.
 
@@ -103,7 +103,7 @@ class BaseHandler:
     def train_validation_end(
             self,
             trainer: Trainer,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
     ) -> None:
         """A method called after validation.
 
@@ -150,7 +150,7 @@ class BaseHandler:
 
     def eval_setup(
             self,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
             loader: Iterable[Any]
     ) -> None:
         """A method called only once when starting a training run.
@@ -164,7 +164,7 @@ class BaseHandler:
         # given.
         pass
 
-    def eval_loop_begin(self, evaluator: 'Evaluator') -> None:
+    def eval_loop_begin(self, evaluator: Evaluator) -> None:
         """A method called before each evaluation step.
 
         Args:
@@ -176,7 +176,7 @@ class BaseHandler:
 
     def eval_step(
             self,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
             batch_idx: int,
             batch: Any,
             complete_fn: Callable[[int, Any], None],
@@ -190,7 +190,7 @@ class BaseHandler:
         # Do an evaluation iteration.
         pass
 
-    def eval_loop_end(self, evaluator: 'Evaluator') -> None:
+    def eval_loop_end(self, evaluator: Evaluator) -> None:
         """A method called after running all steps of the evaluation.
 
         .. seealso:
@@ -202,7 +202,7 @@ class BaseHandler:
 
     def eval_post_step(
             self,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
             batch_idx: int,
             batch: Any,
             outputs: Any,
@@ -356,7 +356,7 @@ class Handler(BaseHandler):
     def train_validation_begin(
             self,
             trainer: Trainer,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
     ) -> None:
         """A method called when starting a validation.
 
@@ -371,7 +371,7 @@ class Handler(BaseHandler):
     def train_validation_end(
             self,
             trainer: Trainer,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
     ) -> None:
         """A method called after validation.
 
@@ -447,7 +447,7 @@ class Handler(BaseHandler):
 
     def eval_setup(
             self,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
             loader: Iterable[Any]
     ) -> None:
         """Called only once when starting a training run.
@@ -462,7 +462,7 @@ class Handler(BaseHandler):
         self._setup(evaluator.models, loader)
 
     def _complete_eval_step(
-            self, evaluator: 'Evaluator', outs: Any, block: bool,
+            self, evaluator: Evaluator, outs: Any, block: bool,
             sn: str, sm: torch.nn.Module, rt: 'BaseRuntime',
     ) -> None:
         # This call is deferred
@@ -474,7 +474,7 @@ class Handler(BaseHandler):
 
     def eval_step(
             self,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
             batch_idx: int,
             batch: Any,
             complete_fn: Callable[[int, Any], None],
@@ -511,7 +511,7 @@ class Handler(BaseHandler):
 
     def eval_post_step(
             self,
-            evaluator: 'Evaluator',
+            evaluator: Evaluator,
             batch_idx: int,
             batch: Any,
             outputs: Any,
@@ -532,7 +532,7 @@ class Handler(BaseHandler):
         for out in self._eval_report_keys:
             reporting.report({"val/{}".format(out): outputs[out]})
 
-    def eval_loop_end(self, evaluator: 'Evaluator') -> None:
+    def eval_loop_end(self, evaluator: Evaluator) -> None:
         """A method called after running all steps of the evaluation.
 
         Args:
