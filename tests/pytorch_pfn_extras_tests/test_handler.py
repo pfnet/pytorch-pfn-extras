@@ -56,9 +56,6 @@ class MockRuntime(ppe.runtime.BaseRuntime):
         self._eval_post_step_called = True
         self._called_module = module
 
-    def get_pending_result(self, module, blocking):
-        pass
-
 
 class MockModule(torch.nn.Module):
     def __init__(self):

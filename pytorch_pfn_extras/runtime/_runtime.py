@@ -1,7 +1,7 @@
 # mypy: ignore-errors
 
 from typing import (
-    Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
+    Any, Dict, Generator, Iterable, Optional, Tuple, Union
 )
 
 import torch
@@ -235,25 +235,6 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def get_pending_result(
-            self,
-            module: torch.nn.Module,
-            blocking: bool,
-    ) -> List[torch.Tensor]:
-        """The method called to retrieve the result of a asynchronous call.
-
-        Args:
-            module (torch.nn.Module): A module.
-            blocking (bool): A flag to determine wether to wait for
-                an asynchronous call completion or returns None.
-
-        Returns: (list of torch.Tensor):
-            The list of output tensors of the oldest async operation.
-            Will return `None` if `blocking=False` and no asynchronous
-            call is complete.
-        """
-        raise NotImplementedError()
-
 
 class PyTorchRuntime(BaseRuntime):
     """A collections of callback functions for the devices that PyTorch
@@ -322,13 +303,6 @@ class PyTorchRuntime(BaseRuntime):
             batch: Any,
             outs: Any,
     ) -> None:
-        pass
-
-    def get_pending_result(
-            self,
-            module: torch.nn.Module,
-            blocking: bool,
-    ) -> List[torch.Tensor]:
         pass
 
 
