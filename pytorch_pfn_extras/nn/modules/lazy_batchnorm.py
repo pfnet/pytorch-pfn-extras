@@ -1,5 +1,7 @@
 # mypy: ignore-errors
 
+from typing import Any, Optional
+
 import torch
 
 from pytorch_pfn_extras.nn.modules.lazy import LazyInitializationMixin
@@ -13,7 +15,7 @@ class _LazyBatchNorm(
 
     lazy_parameter_names = ('weight', 'bias')
 
-    def __init__(self, num_features, *args, **kwargs):
+    def __init__(self, num_features: Optional[int], *args: Any, **kwargs: Any) -> None:
         super().__init__(num_features or 0, *args, **kwargs)
         if not self.affine:
             raise ValueError(
@@ -31,7 +33,7 @@ class _LazyBatchNorm(
         if self.lazy_parmeters_determined:
             super().reset_parameters()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(self.weight, UninitializedParameter):
             self.num_features = input.shape[-1]
             if self.affine:

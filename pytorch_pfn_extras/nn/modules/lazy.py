@@ -1,10 +1,13 @@
 # mypy: ignore-errors
 
 import inspect
-from typing import Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import warnings
 
 import torch
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.runtime._runtime import DeviceLike
 
 
 class LazyInitializationMixin:
@@ -37,7 +40,7 @@ class LazyInitializationMixin:
     lazy_buffer_names: Tuple[str, ...] = ()
     lazy_parameter_names: Tuple[str, ...] = ()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self._lazy_ready = False
 
         super().__init__(*args, **kwargs)
@@ -50,7 +53,7 @@ class LazyInitializationMixin:
         self._lazy_ready = True
 
     @property
-    def lazy_parmeters_determined(self):
+    def lazy_parmeters_determined(self) -> List[bool]:
         """Returns if all lazy parameters are determined.
 
         Subclasses can perform parameters initialization after all lazy
@@ -61,7 +64,7 @@ class LazyInitializationMixin:
             not isinstance(getattr(self, x), UninitializedParameter)
             for x in self.lazy_parameter_names])
 
-    def state_dict(self, *args, **kwargs):
+    def state_dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Returns a dictionary containing a whole state of the module.
 
         This function overrides the default behavior to exclude uninitialized
@@ -127,7 +130,7 @@ class LazyInitializationMixin:
 
 class UninitializedParameter(torch.nn.Parameter):
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Uninitialized lazy parameter'
 
     def share_memory_(self):
@@ -137,7 +140,7 @@ class UninitializedParameter(torch.nn.Parameter):
             '`module.share_memory()`.')
 
     @property
-    def is_leaf(self):
+    def is_leaf(self) -> bool:
         # Hacky workaround to detect use of uninitialized lazy parameters.
         # This overrides ``is_leaf`` attribute which should always be ``True``
         # for parameters; optimizers check for this attribute and raise an
@@ -149,7 +152,12 @@ class UninitializedParameter(torch.nn.Parameter):
     Maybe you forgot to run forward before passing `module.parameters()` to the optimizer?''')  # NOQA
         return True
 
-    def materialize(self, shape, device=None, dtype=None):
+    def materialize(
+            self,
+            shape: Tuple[int, ...],
+            device: Optional['DeviceLike'] = None,
+            dtype: Optional[torch.dtype] = None,
+    ):
         r"""Create a Parameter with the same properties of the uninitialized
         one. Given a shape, it materializes a parameter in the same device
         and with the same `dtype` as the current one or the specified ones in

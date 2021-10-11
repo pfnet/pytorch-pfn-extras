@@ -1,5 +1,7 @@
 # mypy: ignore-errors
 
+from typing import Any, Optional
+
 import torch
 
 from pytorch_pfn_extras.nn.modules.lazy import LazyInitializationMixin
@@ -10,13 +12,13 @@ class _LazyConvNd(LazyInitializationMixin):
 
     lazy_parameter_names = ('weight',)
 
-    def __init__(self, in_channels, *args, **kwargs):
+    def __init__(self, in_channels: Optional[int], *args: Any, **kwargs: Any) -> None:
         super().__init__(in_channels or 0, *args, **kwargs)
         if in_channels is None:
             self.in_channels = None
             self.weight = UninitializedParameter()
 
-    def forward(self, input):
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         if isinstance(self.weight, UninitializedParameter):
             self.in_channels = input.shape[1]
             if self.transposed:
@@ -29,7 +31,7 @@ class _LazyConvNd(LazyInitializationMixin):
             self.reset_parameters()
         return super().forward(input)
 
-    def reset_parameters(self):
+    def reset_parameters(self) -> bool:
         # Defer initialization of parameters until shape of all parameters
         # are ready.
         if self.lazy_parmeters_determined:
