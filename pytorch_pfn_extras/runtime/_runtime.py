@@ -6,8 +6,7 @@ from typing import (
 
 import torch
 
-from pytorch_pfn_extras.training._trainer import Trainer
-from pytorch_pfn_extras.training._evaluator import Evaluator
+from pytorch_pfn_extras.training import Evaluator, Trainer
 
 _RUNTIME_TAG_NAME = '_ppe_runtime'
 

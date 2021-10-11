@@ -9,8 +9,7 @@ import torch
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.handler._logic import BaseLogic
-from pytorch_pfn_extras.training._trainer import Trainer
-from pytorch_pfn_extras.training._evaluator import Evaluator
+from pytorch_pfn_extras.training import Evaluator, Trainer
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.runtime import BaseRuntime
