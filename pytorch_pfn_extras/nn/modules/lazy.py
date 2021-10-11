@@ -1,7 +1,6 @@
-# mypy: ignore-errors
-
 import inspect
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Dict, Optional, Tuple, Union, TYPE_CHECKING
+from typing_extensions import Protocol
 import warnings
 
 import torch
@@ -10,7 +9,44 @@ if TYPE_CHECKING:
     from pytorch_pfn_extras.runtime._runtime import DeviceLike
 
 
-class LazyInitializationMixin:
+class _LazyModuleProtocol(Protocol):
+    _lazy_ready: bool
+    lazy_buffer_names: Tuple[str, ...]
+    lazy_parameter_names: Tuple[str, ...]
+
+    def __init__(self, *args: Any, **kawrgs: Any) -> None:
+        ...
+
+    def register_buffer(self, name: str, tensor: Optional[torch.Tensor]) -> None:
+        ...
+
+    def register_parameter(
+            self, name: str, param: Optional[torch.nn.Parameter]) -> None:
+        ...
+
+    def reset_parameters(self) -> None:
+        ...
+
+    def _register_load_state_dict_pre_hook(self, hook: Any) -> None:
+        ...
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        ...
+
+    def state_dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+        ...
+
+    def _lazy_load_hook(  # type: ignore[no-untyped-def]
+            self, state_dict, prefix, local_metadata, strict,
+            missing_keys, unexpected_keys, error_msgs):
+        ...
+
+    @property
+    def lazy_parmeters_determined(self) -> bool:
+        ...
+
+
+class LazyInitializationMixin():
 
     """A mixin for modules that lazily initialize buffers and parameters.
 
@@ -40,10 +76,10 @@ class LazyInitializationMixin:
     lazy_buffer_names: Tuple[str, ...] = ()
     lazy_parameter_names: Tuple[str, ...] = ()
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self: _LazyModuleProtocol, *args: Any, **kwargs: Any) -> None:
         self._lazy_ready = False
 
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # type: ignore[misc]
 
         for name in self.lazy_buffer_names:
             self.register_buffer(name, torch.Tensor([]))
@@ -53,7 +89,7 @@ class LazyInitializationMixin:
         self._lazy_ready = True
 
     @property
-    def lazy_parmeters_determined(self) -> List[bool]:
+    def lazy_parmeters_determined(self) -> bool:
         """Returns if all lazy parameters are determined.
 
         Subclasses can perform parameters initialization after all lazy
@@ -64,7 +100,8 @@ class LazyInitializationMixin:
             not isinstance(getattr(self, x), UninitializedParameter)
             for x in self.lazy_parameter_names])
 
-    def state_dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    def state_dict(
+            self: _LazyModuleProtocol, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Returns a dictionary containing a whole state of the module.
 
         This function overrides the default behavior to exclude uninitialized
@@ -75,13 +112,13 @@ class LazyInitializationMixin:
 
         See comments of ``_lazy_load_hook`` for details.
         """
-        destination = super().state_dict(*args, **kwargs)
+        destination = super().state_dict(*args, **kwargs)  # type: ignore[misc]
         for name in self.lazy_parameter_names:
             if isinstance(getattr(self, name), UninitializedParameter):
                 del destination[name]
-        return destination
+        return destination  # type: ignore[no-any-return]
 
-    def _lazy_load_hook(
+    def _lazy_load_hook(  # type: ignore[no-untyped-def]
             self, state_dict, prefix, local_metadata, strict,
             missing_keys, unexpected_keys, error_msgs):
         """load_state_dict pre-hook function for lazy buffers and parameters.
@@ -133,20 +170,21 @@ class UninitializedParameter(torch.nn.Parameter):
     def __repr__(self) -> str:
         return 'Uninitialized lazy parameter'
 
-    def share_memory_(self):
+    def share_memory_(self) -> 'UninitializedParameter':
         raise RuntimeError(
             'Can\'t share memory on an unitialized parameter. '
             'Run forward to initialize the network before calling '
             '`module.share_memory()`.')
 
     @property
-    def is_leaf(self) -> bool:
+    def is_leaf(self) -> bool:  # type: ignore[override]
         # Hacky workaround to detect use of uninitialized lazy parameters.
         # This overrides ``is_leaf`` attribute which should always be ``True``
         # for parameters; optimizers check for this attribute and raise an
         # error if non-leaf tensors are detected.
         frame = inspect.currentframe()
-        if frame.f_back.f_globals['__package__'].startswith('torch.optim'):
+        package_name = frame.f_back.f_globals['__package__']  # type: ignore
+        if package_name.startswith('torch.optim'):
             warnings.warn('''
     Use of uninitialized lazy parameter in Optimizer has been detected.
     Maybe you forgot to run forward before passing `module.parameters()` to the optimizer?''')  # NOQA
@@ -157,7 +195,7 @@ class UninitializedParameter(torch.nn.Parameter):
             shape: Tuple[int, ...],
             device: Optional['DeviceLike'] = None,
             dtype: Optional[torch.dtype] = None,
-    ):
+    ) -> None:
         r"""Create a Parameter with the same properties of the uninitialized
         one. Given a shape, it materializes a parameter in the same device
         and with the same `dtype` as the current one or the specified ones in
@@ -177,4 +215,7 @@ class UninitializedParameter(torch.nn.Parameter):
         if dtype is None:
             dtype = self.data.dtype
         self.data = torch.empty(shape, device=device, dtype=dtype)
-        self.__class__ = torch.nn.Parameter
+        self.__class__ = torch.nn.Parameter  # type: ignore[assignment]
+
+
+_ParameterType = Union[torch.nn.Parameter, UninitializedParameter]

@@ -16,9 +16,9 @@ class LazyLinear(LazyInitializationMixin, torch.nn.Linear):  # type: ignore[misc
     lazy_parameter_names = ('weight',)
 
     def __init__(self, in_features: Optional[int], *args: Any, **kwargs: Any) -> None:
-        super().__init__(in_features or 0, *args, **kwargs)
+        super().__init__(in_features or 0, *args, **kwargs)  # type: ignore[misc]
         if in_features is None:
-            self.in_features = None  # type: ignore[assignment]
+            self.in_feature = None
             self.weight = UninitializedParameter()
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
