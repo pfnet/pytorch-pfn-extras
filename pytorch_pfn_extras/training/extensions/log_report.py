@@ -179,7 +179,7 @@ class LogReport(extension.Extension):
             else:
                 format = 'json'
 
-        if format not in ('json', 'json-lines', 'yaml'):
+        if self._log_name is not None and format not in ('json', 'json-lines', 'yaml'):
             raise ValueError(f'unsupported log format: {format}')
 
         self._append = append
