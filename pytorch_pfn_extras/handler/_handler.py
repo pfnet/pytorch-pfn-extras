@@ -15,6 +15,23 @@ if TYPE_CHECKING:
     from pytorch_pfn_extras.runtime import BaseRuntime
 
 
+class DeferredResult:
+    """
+    Protocol that is used for models that work asynchronously
+    """
+    def done(self) -> bool:
+        """Returns `True` when a deferred result is available."""
+        raise NotImplementedError("done must be implemented")
+
+    def wait(self) -> None:
+        """Does a blocking wait until the result is available."""
+        raise NotImplementedError("wait must be implemented")
+
+    def get(self) -> Optional[Any]:
+        """Returns the result when its available."""
+        raise NotImplementedError("get must be implemented")
+
+
 class BaseHandler:
 
     def __init__(
@@ -257,7 +274,6 @@ class Handler(BaseHandler):
         super().consume_options(options)
         self._eval_report_keys = options.pop('eval_report_keys', [])
         self._train_report_keys = options.pop('train_report_keys', [])
-        self._async = options.pop('async', False)
 
     def _runtime_iterator(
             self,
@@ -301,13 +317,6 @@ class Handler(BaseHandler):
             load = loaders.get(sn, None)
             rt.initialize_module(sm, load, optim)
 
-        # Split model can't be used with async unless
-        # we just rewrite the model forward to defer part of its execution
-        # until the result is available
-        if self._async and len(self._ppe_modules) != 1:
-            raise RuntimeError("Async mode is not supported in models "
-                               "splitted across different devices")
-
     def train_setup(self, trainer: Trainer, loader: Iterable[Any]) -> None:
         """A method called only once when starting a training run.
 
@@ -341,14 +350,15 @@ class Handler(BaseHandler):
         Args:
             trainer (Trainer): The trainer that calls this method.
         """
-        if self._async:
-            while self.pending_iters:
-                # TODO(ecastill) block until we get the result
-                for sn, sm, rt in self._runtime_iterator(trainer.models):
-                    outs = rt.get_pending_result(sm, True)
-                    if outs is not None:
-                        self._complete_train_step(
-                            trainer, outs, True, sn, sm, rt)
+        while self.pending_iters:
+            # TODO(ecastill) block until we get the result
+            for sn, sm, rt in self._runtime_iterator(trainer.models):
+                outs, _, _, _, = self.pending_iters[sn][0]
+                if not outs.done():
+                    outs.wait()
+                outs = outs.get()
+                self._complete_train_step(
+                    trainer, outs, True, sn, sm, rt)
 
         self._logic.train_epoch_end(trainer.models, trainer.epoch)
 
@@ -391,10 +401,10 @@ class Handler(BaseHandler):
             self, trainer: Trainer, outs: Any, block: bool,
             sn: str, sm: torch.nn.Module, rt: 'BaseRuntime',
     ) -> None:
-        idx, batch, cback = self.pending_iters[sn][0]
+        _, idx, batch, cback = self.pending_iters[sn][0]
         self.pending_iters[sn] = self.pending_iters[sn][1:]
         # Since async mode is not supported with device splitting
-        # we now that there is only ONE submodule, so we
+        # we know that there is only ONE submodule, so we
         # can asure that now we can step the optimizers
         self._logic.train_step_optimizers(
             trainer.models, trainer.optimizers, idx)
@@ -427,17 +437,22 @@ class Handler(BaseHandler):
         outs = self._logic.train_step(
             trainer.models, trainer.optimizers, batch_idx, batch)
 
-        if self._async:
+        if isinstance(outs, DeferredResult):
             # async returns inmediately
             # Check if there is a completed iteration
             # If we enqueue everything first, we will blow up with
             # memory due to the dataloaders being in the background
             # We need to call the tagged runtimes since async mode
             # require different treatment depending on the device.
+            if len(self._ppe_modules) != 1:
+                raise RuntimeError("Async mode is not supported in models "
+                                   "splitted across different devices")
             for sn, sm, rt in self._runtime_iterator(trainer.models):
-                self.pending_iters[sn].append((batch_idx, batch, complete_fn))
-                outs = rt.get_pending_result(sm, False)
-                if outs is not None:
+                self.pending_iters[sn].append(
+                    (outs, batch_idx, batch, complete_fn))
+                outs, _, _, _, = self.pending_iters[sn][0]
+                if outs.done():
+                    outs = outs.get()
                     self._complete_train_step(trainer, outs, False, sn, sm, rt)
         else:
             self._logic.train_step_optimizers(
@@ -465,7 +480,7 @@ class Handler(BaseHandler):
             sn: str, sm: torch.nn.Module, rt: 'BaseRuntime',
     ) -> None:
         # This call is deferred
-        idx, batch, cback = self.pending_iters[sn][0]
+        _, idx, batch, cback = self.pending_iters[sn][0]
         self.pending_iters[sn] = self.pending_iters[sn][1:]
         if len(self.pending_iters[sn]) == 0:
             del self.pending_iters[sn]
@@ -494,17 +509,22 @@ class Handler(BaseHandler):
 
         outs = self._logic.eval_step(evaluator.models, batch_idx, batch)
 
-        if self._async:
+        if isinstance(outs, DeferredResult):
             # Is async returns inmediately
             # Check if there is a completed iteration
             # If we enqueue everything first, we will blow up with
             # memory due to the dataloaders being in the background
+            if len(self._ppe_modules) != 1:
+                raise RuntimeError("Async mode is not supported in models "
+                                   "splitted across different devices")
             for sn, sm, rt in self._runtime_iterator(evaluator.models):
-                self.pending_iters[sn].append((batch_idx, batch, complete_fn))
-                outs = rt.get_pending_result(sm, False)
-                if outs is not None:
+                self.pending_iters[sn].append(
+                    (outs, batch_idx, batch, complete_fn))
+                outs, _, _, _, = self.pending_iters[sn][0]
+                if outs.done():
+                    outs = outs.get()
                     self._complete_eval_step(
-                        evaluator, outs, False, sn, sm, rt)
+                         evaluator, outs, False, sn, sm, rt)
         else:
             complete_fn(batch_idx, outs)
 
@@ -537,13 +557,13 @@ class Handler(BaseHandler):
         Args:
             evaluator (Evaluator): The evaluator.
         """
-        if self._async:
-            while self.pending_iters:
-                for sn, sm, rt in self._runtime_iterator(evaluator.models):
-                    outs = rt.get_pending_result(sm, True)
-                    if outs is not None:
-                        self._complete_eval_step(
-                            evaluator, outs, True, sn, sm, rt)
+        while self.pending_iters:
+            for sn, sm, rt in self._runtime_iterator(evaluator.models):
+                outs, _, _, _, = self.pending_iters[sn][0]
+                if not outs.done():
+                    outs.wait()
+                outs = outs.get()
+                self._complete_eval_step(evaluator, outs, True, sn, sm, rt)
 
     def train_post_step(
             self,

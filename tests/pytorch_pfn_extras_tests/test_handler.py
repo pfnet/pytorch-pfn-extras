@@ -157,7 +157,6 @@ class TestHandlerTrainSync(HandlerTester):
     def test_train_epoch_end(self):
         handler, trainer, _ = self._get_handler()
         # Should check that the handler completes
-        assert not handler._async
         assert not handler.pending_iters
         handler.train_epoch_end(trainer)
         assert not handler.pending_iters
@@ -248,26 +247,38 @@ class TestHandlerValidationSync(HandlerTester):
         self._assert_called(module, to_move, 'eval_post_step')
 
 
-class AsyncRuntime(MockRuntime):
-    def __init__(self, device, options):
-        super().__init__(device, options)
-        # Returns a result once every 10 items
+class AsyncResult(ppe.handler.DeferredResult):
+    def __init__(self):
         self._period = 10
         self._count = 0
+        self._done = False
 
-    def get_pending_result(self, module, blocking):
-        self._count = (self._count + 1) % self._period
-        if self._count == 0 or blocking:
+    def done(self):
+        self._count += 1
+        if self._count == self._period:
+            self._done = True
+        return self._done
+
+    def wait(self):
+        self._done = True
+
+    def get(self):
+        if self._done or (self._count == self._period):
             return 1
         return None
 
 
+class AsyncModel(torch.nn.Module):
+    def forward(self, *args, **kwargs):
+        return AsyncResult()
+
+
 class TestAsyncHandler:
     def _get_handler(self, options):
-        ppe.runtime.runtime_registry.register('test_rt', AsyncRuntime)
+        ppe.runtime.runtime_registry.register('test_rt', MockRuntime)
         logic = MockLogic()
         handler = ppe.handler.Handler(
-            logic, AsyncRuntime('test_rt', {}), options
+            logic, MockRuntime('test_rt', {}), options
         )
         return handler
 
@@ -275,6 +286,7 @@ class TestAsyncHandler:
         options = {'eval_report_keys': ['output'], 'async': True}
         trainer = MockTrainer()
         handler = self._get_handler(options)
+        trainer.models['main'] = AsyncModel()
         ppe.to(trainer.models['main'], 'test_rt')
         prev_batch_idx = 0
 
@@ -298,6 +310,7 @@ class TestAsyncHandler:
         options = {'eval_report_keys': ['output'], 'async': True}
         handler = self._get_handler(options)
         evaluator = MockEvaluator()
+        evaluator.models['main'] = AsyncModel()
         ppe.to(evaluator.models['main'], 'test_rt')
         prev_batch_idx = 0
 
@@ -321,10 +334,29 @@ class TestAsyncHandler:
         options = {'eval_report_keys': ['output'], 'async': True}
         trainer = MockTrainer()
         handler = self._get_handler(options)
+        amodel = AsyncModel()
+        amodel.sm1 = trainer.models['main'].sm1
+        amodel.sm2 = trainer.models['main'].sm2
+        trainer.models['main'] = amodel
         ppe.to(trainer.models['main'].sm1, 'test_rt')
         ppe.to(trainer.models['main'].sm2, 'cpu')
+        handler._setup(trainer.models, [], None)
+
+        def callback(batch_idx, outs, is_deferred):
+            pass
+
         with pytest.raises(RuntimeError, match='models splitted'):
-            handler._setup(trainer.models, [], None)
+            handler.train_step(trainer, 0, None, callback)
+
+        evaluator = MockEvaluator()
+        handler = self._get_handler(options)
+        evaluator.models['main'] = amodel
+        ppe.to(evaluator.models['main'].sm1, 'test_rt')
+        ppe.to(evaluator.models['main'].sm2, 'cpu')
+        handler._setup(evaluator.models, [], None)
+
+        with pytest.raises(RuntimeError, match='models splitted'):
+            handler.eval_step(trainer, 0, None, callback)
 
 
 @pytest.mark.gpu
