@@ -175,7 +175,7 @@ class LogReport(extension.Extension):
         elif format not in ('json', 'json-lines', 'yaml'):
             raise ValueError(f'unsupported log format: {format}')
 
-        self._log_name = filename
+        self._filename = filename
         self._append = append
         self._format = format
         self._init_summary()
@@ -210,14 +210,13 @@ class LogReport(extension.Extension):
             self._log_buffer.append(stats_cpu)
 
             # write to the log file
-            if self._log_name is not None:
-                log_name = self._log_name.format(**stats_cpu)
-                out = manager.out
-                savefun = LogWriterSaveFunc(self._format, self._append)
-                writer(log_name, out, self._log_looker.get(),
-                       savefun=savefun, append=self._append)
-                if self._append:
-                    self._log_looker.clear()
+            log_name = self._filename.format(**stats_cpu)
+            out = manager.out
+            savefun = LogWriterSaveFunc(self._format, self._append)
+            writer(log_name, out, self._log_looker.get(),
+                   savefun=savefun, append=self._append)
+            if self._append:
+                self._log_looker.clear()
 
             # reset the summary for the next output
             self._init_summary()
