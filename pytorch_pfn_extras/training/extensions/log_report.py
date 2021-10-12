@@ -165,23 +165,20 @@ class LogReport(extension.Extension):
         # to deal with a string.
         self._writer = kwargs.get('writer', None)
 
-        log_name = kwargs.get('log_name', 'log')
         if filename is None:
-            filename = log_name
-        del log_name  # avoid accidental use
-        self._log_name = filename
+            filename = kwargs.get('log_name', 'log')
 
-        if format is None and filename is not None:
+        if format is None:
             if filename.endswith('.jsonl'):
                 format = 'json-lines'
             elif filename.endswith('.yaml'):
                 format = 'yaml'
             else:
                 format = 'json'
-
-        if self._log_name is not None and format not in ('json', 'json-lines', 'yaml'):
+        elif format not in ('json', 'json-lines', 'yaml'):
             raise ValueError(f'unsupported log format: {format}')
 
+        self._log_name = filename
         self._append = append
         self._format = format
         self._init_summary()
