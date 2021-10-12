@@ -132,10 +132,7 @@ class LogReport(extension.Extension):
         filename (str): Name of the log file under the output directory. It can
             be a format string: the last result dictionary is passed for the
             formatting. For example, users can use '{iteration}' to separate
-            the log files for different iterations. If the log name is None, it
-            does not output the log to any file.
-            For historical reasons ``log_name`` is also accepted as an alias
-            of this argument.
+            the log files for different iterations. (default: ``'log'``)
         append (bool, optional): If the file is JSON Lines or YAML, contents
             will be appended instead of rewritting the file every call.
         format (str, optional): accepted values are `'json'`, `'json-lines'`
@@ -166,7 +163,7 @@ class LogReport(extension.Extension):
         self._writer = kwargs.get('writer', None)
 
         if filename is None:
-            filename = kwargs.get('log_name', 'log')
+            filename = 'log'
 
         if format is None:
             if filename.endswith('.jsonl'):
