@@ -5,6 +5,7 @@ from typing import (
 )
 
 import torch
+from typing_extensions import Protocol, runtime_checkable
 
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras import reporting
@@ -15,7 +16,8 @@ if TYPE_CHECKING:
     from pytorch_pfn_extras.runtime import BaseRuntime
 
 
-class DeferredResult:
+@runtime_checkable
+class DeferredResult(Protocol):
     """
     Protocol that is used for models that work asynchronously
     """
@@ -23,7 +25,7 @@ class DeferredResult:
         """Returns `True` when a deferred result is available."""
         raise NotImplementedError("done must be implemented")
 
-    def wait(self) -> None:
+    def wait(self) -> 'DeferredResult':
         """Does a blocking wait until the result is available."""
         raise NotImplementedError("wait must be implemented")
 
