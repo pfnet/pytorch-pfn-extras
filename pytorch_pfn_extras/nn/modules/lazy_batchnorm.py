@@ -14,7 +14,7 @@ class _LazyBatchNorm(  # type: ignore[misc]
     lazy_parameter_names = ('weight', 'bias')
 
     def __init__(self, num_features: Optional[int], *args: Any, **kwargs: Any) -> None:
-        super().__init__(num_features or 0, *args, **kwargs)  # type: ignore[misc]
+        super().__init__(num_features or 0, *args, **kwargs)
         if not self.affine:
             raise ValueError(
                 'LazyBatchNorm is not compatible with affine=False.'

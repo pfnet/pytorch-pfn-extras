@@ -1,49 +1,11 @@
 import inspect
-from typing import Any, Dict, Optional, Tuple, Union, TYPE_CHECKING
-from typing_extensions import Protocol
+from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 import warnings
 
 import torch
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.runtime._runtime import DeviceLike
-
-
-class _LazyModuleProtocol(Protocol):
-    _lazy_ready: bool
-    lazy_buffer_names: Tuple[str, ...]
-    lazy_parameter_names: Tuple[str, ...]
-
-    def __init__(self, *args: Any, **kawrgs: Any) -> None:
-        ...
-
-    def register_buffer(self, name: str, tensor: Optional[torch.Tensor]) -> None:
-        ...
-
-    def register_parameter(
-            self, name: str, param: Optional[torch.nn.Parameter]) -> None:
-        ...
-
-    def reset_parameters(self) -> None:
-        ...
-
-    def _register_load_state_dict_pre_hook(self, hook: Any) -> None:
-        ...
-
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        ...
-
-    def state_dict(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
-        ...
-
-    def _lazy_load_hook(  # type: ignore[no-untyped-def]
-            self, state_dict, prefix, local_metadata, strict,
-            missing_keys, unexpected_keys, error_msgs):
-        ...
-
-    @property
-    def lazy_parmeters_determined(self) -> bool:
-        ...
 
 
 class LazyInitializationMixin():
@@ -76,10 +38,10 @@ class LazyInitializationMixin():
     lazy_buffer_names: Tuple[str, ...] = ()
     lazy_parameter_names: Tuple[str, ...] = ()
 
-    def __init__(self: _LazyModuleProtocol, *args: Any, **kwargs: Any) -> None:
+    def __init__(self: Any, *args: Any, **kwargs: Any) -> None:
         self._lazy_ready = False
 
-        super().__init__(*args, **kwargs)  # type: ignore[misc]
+        super().__init__(*args, **kwargs)  # type: ignore[call-arg]
 
         for name in self.lazy_buffer_names:
             self.register_buffer(name, torch.Tensor([]))
@@ -101,7 +63,7 @@ class LazyInitializationMixin():
             for x in self.lazy_parameter_names])
 
     def state_dict(
-            self: _LazyModuleProtocol, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+            self: Any, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Returns a dictionary containing a whole state of the module.
 
         This function overrides the default behavior to exclude uninitialized
@@ -216,6 +178,3 @@ class UninitializedParameter(torch.nn.Parameter):
             dtype = self.data.dtype
         self.data = torch.empty(shape, device=device, dtype=dtype)
         self.__class__ = torch.nn.Parameter  # type: ignore[assignment]
-
-
-_ParameterType = Union[torch.nn.Parameter, UninitializedParameter]

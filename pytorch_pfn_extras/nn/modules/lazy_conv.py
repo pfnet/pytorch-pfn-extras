@@ -1,41 +1,24 @@
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 import torch
 
 from pytorch_pfn_extras.nn.modules.lazy import (
-    LazyInitializationMixin, UninitializedParameter, _LazyModuleProtocol, _ParameterType
+    LazyInitializationMixin, UninitializedParameter
 )
-
-
-class _LazyConvProtocol(_LazyModuleProtocol):
-
-    transposed: bool
-    in_channels: Optional[int]
-    out_channels: int
-    groups: int
-    kernel_size: Tuple[int, ...]
-    weight: _ParameterType
 
 
 class _LazyConvNd(LazyInitializationMixin):
 
     lazy_parameter_names = ('weight',)
 
-    def __init__(  # type: ignore[misc]
-            self: '_LazyConvProtocol',
-            in_channels: Optional[int],
-            *args: Any,
-            **kwargs: Any,
-    ) -> None:
-        super().__init__(in_channels or 0, *args, **kwargs)  # type: ignore
+    def __init__(
+            self: Any, in_channels: Optional[int], *args: Any, **kwargs: Any) -> None:
+        super().__init__(in_channels or 0, *args, **kwargs)
         if in_channels is None:
             self.in_channels: Optional[int] = None
             self.weight = UninitializedParameter()
 
-    def forward(  # type: ignore[misc]
-            self: '_LazyConvProtocol',
-            input: torch.Tensor,
-    ) -> torch.Tensor:
+    def forward(self: Any, input: torch.Tensor) -> torch.Tensor:
         if isinstance(self.weight, UninitializedParameter):
             self.in_channels = input.shape[1]
             if self.transposed:
@@ -48,7 +31,7 @@ class _LazyConvNd(LazyInitializationMixin):
             self.reset_parameters()
         return super().forward(input)  # type: ignore
 
-    def reset_parameters(self: '_LazyConvProtocol') -> None:  # type: ignore[misc]
+    def reset_parameters(self: Any) -> None:
         # Defer initialization of parameters until shape of all parameters
         # are ready.
         if self.lazy_parmeters_determined:
