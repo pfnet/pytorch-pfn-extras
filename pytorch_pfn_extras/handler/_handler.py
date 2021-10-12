@@ -26,11 +26,14 @@ class DeferredResult(Protocol):
         raise NotImplementedError("done must be implemented")
 
     def wait(self) -> 'DeferredResult':
-        """Does a blocking wait until the result is available."""
+        """Does a blocking wait until the result is available.
+
+        Returns self to allow chaining calls once the wait is over.
+        """
         raise NotImplementedError("wait must be implemented")
 
     def get(self) -> Optional[Any]:
-        """Returns the result when its available."""
+        """Returns the result when its available. ``None`` if its not ready"""
         raise NotImplementedError("get must be implemented")
 
 
@@ -462,7 +465,6 @@ class Handler(BaseHandler):
             # We need to call the tagged runtimes since async mode
             # require different treatment depending on the device.
             if len(self._ppe_modules) != 1:
-                print(self._ppe_modules)
                 raise RuntimeError("Async mode is not supported in models "
                                    "splitted across different devices")
             for sn, sm, rt in self._runtime_iterator(trainer.models):
