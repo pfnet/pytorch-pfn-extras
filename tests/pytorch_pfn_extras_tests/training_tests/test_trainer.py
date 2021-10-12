@@ -122,7 +122,7 @@ def test_train_with_evaluator(device, progress_bar, path):
         device=device, evaluator=evaluator, extensions=extensions,
         out_dir=path
     )
-    mpath = 'pytorch_pfn_extras.training._evaluator._Evaluator.run'
+    mpath = 'pytorch_pfn_extras.training._evaluator.Evaluator.run'
     with mock.patch(mpath) as patched:
         trainer.run(data, data)
         assert patched.call_count == 20
@@ -151,7 +151,7 @@ def test_evaluator_trigger(evaluator_trigger, path):
         device=device, evaluator=(evaluator, evaluator_trigger[1]),
         extensions=extensions, out_dir=path
     )
-    path = 'pytorch_pfn_extras.training._evaluator._Evaluator.run'
+    path = 'pytorch_pfn_extras.training._evaluator.Evaluator.run'
     with mock.patch(path) as patched:
         trainer.run(data, data)
         assert patched.call_count == evaluator_trigger[0]

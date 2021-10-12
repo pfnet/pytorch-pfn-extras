@@ -121,8 +121,8 @@ class OutputsComparer:
         """
         e_type = type(next(iter(engines.values())))
         if e_type not in (
-            _trainer._Trainer,
-            _evaluator._Evaluator,
+            _trainer.Trainer,
+            _evaluator.Evaluator,
         ):
             raise ValueError(f"Engine type {e_type} is not supported")
         if not all((isinstance(e, e_type) for e in engines.values())):

@@ -37,7 +37,7 @@ def _progress_bar(
         yield lambda i: None
 
 
-class _Evaluator:
+class Evaluator:
     def __init__(
             self,
             handler: 'BaseHandler',
@@ -139,3 +139,7 @@ class _Evaluator:
         # This will report to the trainer main reporter
         self.handler.eval_loop_end(self)
         reporting.report(self._summary.compute_mean())
+
+
+# For backward compatibility
+_Evaluator = Evaluator

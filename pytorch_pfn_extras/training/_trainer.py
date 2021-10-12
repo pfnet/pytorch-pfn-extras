@@ -1,11 +1,12 @@
+# mypy: ignore-errors
+
 import queue
 import time
-from typing import Any, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import torch
 
-import pytorch_pfn_extras.engine
-import pytorch_pfn_extras.training
+from pytorch_pfn_extras import training
 from pytorch_pfn_extras.training import extension as extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 import pytorch_pfn_extras.reporting as reporting
@@ -15,22 +16,101 @@ from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProto
 from pytorch_pfn_extras.training.trigger import Trigger, TriggerLike
 
 if TYPE_CHECKING:
-    import pytorch_pfn_extras.handler as handler_module
-    from pytorch_pfn_extras.training._evaluator import _Evaluator
+    from pytorch_pfn_extras import handler as handler_module
+    from pytorch_pfn_extras.training._evaluator import Evaluator
     from pytorch_pfn_extras.profiler._time_summary import _ReportNotification
 
 
-class _Trainer(pytorch_pfn_extras.engine._Engine):
+class _Engine:
+    def __init__(
+            self,
+            handler: 'handler_module.BaseHandler',
+            models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+            **kwargs: Any,
+    ) -> None:
+        self.handler = handler
+        self._manager: Optional['training.ExtensionsManager'] = None
+
+        # The followings are used when setting up a manager instance
+        if not isinstance(models, dict):
+            if not isinstance(models, torch.nn.Module):
+                raise ValueError(
+                    'model must be an instance of dict or toch.nn.Module')
+            self._models = {'main': models}
+        else:
+            self._models = models
+        self._kwargs = kwargs
+        self._extensions: List[  # list of (args, kwargs)
+            Tuple[Tuple['training.Extension', Optional[str],
+                        'TriggerLike', Optional[int]],
+                  Dict[str, Any]]] = []
+        self._manager_state: Optional[Dict[str, Any]] = None
+
+    def extend(
+            self,
+            extension: 'training.Extension',
+            name: Optional[str] = None,
+            trigger: 'TriggerLike' = None,
+            priority: Optional[int] = None,
+            *,
+            call_before_training: bool = False,
+            **kwargs: Any,
+    ) -> None:
+        if self._manager is not None:
+            raise RuntimeError('cannot extend after starting the engine')
+        self._extensions.append(
+            ((extension, name, trigger, priority),
+             dict(call_before_training=call_before_training, **kwargs)))
+
+    def _setup_manager(self, iters_per_epoch: int) -> 'training.ExtensionsManager':
+        from pytorch_pfn_extras.training import ExtensionsManager
+        self._manager = ExtensionsManager(
+            self._models, iters_per_epoch=iters_per_epoch, **self._kwargs)
+        for ex_args, ex_kwargs in self._extensions:
+            self._manager.extend(*ex_args, **ex_kwargs)
+        if self._manager_state is not None:
+            self.manager.load_state_dict(self._manager_state)
+        return self._manager
+
+    @property
+    def manager(self) -> 'training.ExtensionsManager':
+        if self._manager is None:
+            raise RuntimeError('the engine is not started yet')
+        return self._manager
+
+    @property
+    def models(self) -> Dict[str, torch.nn.Module]:
+        # TODO(kmaehashi): do we need this convenient interface for handlers?
+        return self.manager.raw_models
+
+    @property
+    def optimizers(self) -> Dict[str, torch.optim.Optimizer]:
+        return self.manager.optimizers
+
+    def state_dict(self) -> Dict[str, Any]:
+        return self.manager.state_dict()
+
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
+        if self._manager is None:
+            self._manager_state = to_load
+            return
+        self.manager.load_state_dict(to_load)
+
+    def run(self, *args: Any, **kwargs: Any) -> None:
+        raise NotImplementedError
+
+
+class Trainer(_Engine):
     def __init__(
             self,
             handler: 'handler_module.BaseHandler',
             *,
-            evaluator: Optional[Union['_Evaluator', Tuple['_Evaluator', TriggerLike]]],
+            evaluator: Optional[Union['Evaluator', Tuple['Evaluator', TriggerLike]]],
             **kwargs: Any,
     ):
         super().__init__(handler, **kwargs)
         if isinstance(evaluator, tuple):
-            self.evaluator: Optional['_Evaluator'] = None
+            self.evaluator: Optional['Evaluator'] = None
             self.evaluator, trigger = evaluator
             self.evaluator_trigger = trigger_module.get_trigger(trigger)
         else:
@@ -145,7 +225,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
                 to ``Evaluator.run()``
 
         .. seealso::
-            - :meth:`pytorch_pfn_extras.training._evaluator._Evaluator`
+            - :meth:`pytorch_pfn_extras.training._evaluator.Evaluator`
         """
         if train_len is None:
             train_len = len(train_loader)  # type: ignore[arg-type]
@@ -154,7 +234,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
         self._eval_len = eval_len
 
         class _EvaluatorExt:
-            def __init__(self, trainer: '_Trainer') -> None:
+            def __init__(self, trainer: 'Trainer') -> None:
                 self.name = 'Evaluator'
                 self.needs_model_state = True
                 self._trainer = trainer
@@ -245,3 +325,7 @@ class _Trainer(pytorch_pfn_extras.engine._Engine):
             # In handlers that support a completely Async model train_epoch_end
             # Will take care of completing pending work
             self.handler.train_epoch_end(self)
+
+
+# For backward compatibility
+_Trainer = Trainer
