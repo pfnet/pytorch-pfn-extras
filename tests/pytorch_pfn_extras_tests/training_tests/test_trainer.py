@@ -209,15 +209,26 @@ def test_train_result_equal(device, path):
         assert torch.equal(a, e)
 
 
-class DeferRuntime(ppe.runtime.PyTorchRuntime):
-    def move_module(self, module):
-        return module.to('cpu')
+class AsyncResult(ppe.handler.DeferredResult):
+    def __init__(self, value):
+        self._period = 4
+        self._count = 0
+        self._done = False
+        self._value = value
 
-    def move_tensor(self, tensor):
-        return tensor.to('cpu')
+    def done(self):
+        self._count += 1
+        if self._count == self._period:
+            self._done = True
+        return self._done
 
-    def get_pending_result(self, module, block):
-        return module.get_pending_out(block)
+    def wait(self):
+        self._done = True
+
+    def get(self):
+        if self._done or (self._count == self._period):
+            return self._value
+        return None
 
 
 class MyModelWithLossAsync(MyModelWithLossFn):
@@ -225,19 +236,9 @@ class MyModelWithLossAsync(MyModelWithLossFn):
         super().__init__(model)
         self._current_it = 0
         self._outs = []
-        self._pending_called = False
 
     def forward(self, x, t):
-        self._outs.append(super().forward(x, t))
-
-    def get_pending_out(self, block):
-        # Retrieve the out once every 4 times if block == False
-        self._pending_called = True
-        self._current_it += 1
-        out = None
-        if block or self._current_it % 4 == 0:
-            out, self._outs = self._outs[0], self._outs[1:]
-        return out
+        return AsyncResult(super().forward(x, t))
 
 
 def test_trainer_defer(path):
@@ -251,58 +252,49 @@ def test_trainer_defer(path):
         def __call__(self, manager):
             self.called += 1
 
-    device = 'async-cpu'
+    device = 'cpu'
     model = MyModel()
     model_with_loss = MyModelWithLossAsync(model)
-    # Register the handler
-    ppe.runtime.runtime_registry.register(device, DeferRuntime)
     ppe.to(model_with_loss, device)
-
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
         [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
 
     extensions = [Extension(True), Extension(False)]
-    options = {'async': True}
 
     trainer = engine.create_trainer(
-        model_with_loss, optimizer, 2, options=options,
-        device=device, extensions=extensions,
-        out_dir=path
+        model_with_loss, optimizer, 2, device=device,
+        extensions=extensions, out_dir=path
     )
     trainer.run(data, data)
     assert trainer.manager.iteration == 200
     assert trainer.manager.execution == 200
     assert extensions[0].called == 200
     assert extensions[1].called == 200
-    assert model_with_loss._pending_called
 
 
 def test_trainer_defer_wrong_order(path):
     class WrongOrderHandler(ppe.handler.Handler):
         def _complete_train_step(self, trainer, outs, block, sn, sm, rt):
-            idx, batch, cback = self.pending_iters[sn][0]
-            if idx < 10:
-                super()._complete_train_step(trainer, outs, block, sn, sm, rt)
+            p_iter = self.pending_iters[sn][0]
+            if p_iter.idx < 10:
+                super()._complete_train_step(
+                    trainer, p_iter.deferred, block, sn, sm, rt)
             else:
-                cback(90, None, is_deferred=block)
+                p_iter.cback(90, None, is_deferred=block)
 
-    device = 'async-cpu'
+    device = 'cpu'
     model = MyModel()
     model_with_loss = MyModelWithLossAsync(model)
-    # Register the handler
-    ppe.runtime.runtime_registry.register(device, DeferRuntime)
     ppe.to(model_with_loss, device)
+    # Register the handler
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
         [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
 
-    options = {'async': True}
-
     trainer = engine.create_trainer(
-        model_with_loss, optimizer, 2, options=options,
-        device=device, handler_class=WrongOrderHandler,
-        out_dir=path
+        model_with_loss, optimizer, 2, device=device,
+        handler_class=WrongOrderHandler, out_dir=path
     )
     with pytest.raises(RuntimeError, match="Completed a not expected"):
         trainer.run(data, data)
