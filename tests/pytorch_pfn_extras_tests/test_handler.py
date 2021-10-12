@@ -280,7 +280,7 @@ class TestAsyncHandler:
         return handler
 
     def test_train_step_async(self):
-        options = {'eval_report_keys': ['output'], 'async': True}
+        options = {'eval_report_keys': ['output']}
         trainer = MockTrainer()
         handler = self._get_handler(options)
         trainer.models['main'] = AsyncModel()
@@ -304,7 +304,7 @@ class TestAsyncHandler:
         assert len(handler.pending_iters['main']) == 0
 
     def test_eval_step_async(self):
-        options = {'eval_report_keys': ['output'], 'async': True}
+        options = {'eval_report_keys': ['output']}
         handler = self._get_handler(options)
         evaluator = MockEvaluator()
         evaluator.models['main'] = AsyncModel()
@@ -328,7 +328,7 @@ class TestAsyncHandler:
         assert len(handler.pending_iters['main']) == 0
 
     def test_setup_multi_device_split_invalid(self):
-        options = {'eval_report_keys': ['output'], 'async': True}
+        options = {'eval_report_keys': ['output']}
         trainer = MockTrainer()
         handler = self._get_handler(options)
         amodel = AsyncModel()

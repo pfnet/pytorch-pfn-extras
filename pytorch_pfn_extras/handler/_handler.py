@@ -280,8 +280,6 @@ class Handler(BaseHandler):
                     A list of names of outputs that are given as inputs
                     of ``reporting.report`` after each training step.
                     Default is an empty list.
-                * ``'async'`` (bool):
-                    If ``True``, async mode is enabled. Default is ``False``.
         """
         super().__init__(logic, options)
         self.pending_iters: Dict[str, PendingIters] = defaultdict(list)
