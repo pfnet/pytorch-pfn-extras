@@ -292,6 +292,8 @@ class Handler(BaseHandler):
         super().consume_options(options)
         self._eval_report_keys = options.pop('eval_report_keys', [])
         self._train_report_keys = options.pop('train_report_keys', [])
+        # Consume this argument for backward compatibility
+        options.pop('async', False)
 
     def _runtime_iterator(
             self,
