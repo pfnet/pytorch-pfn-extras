@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 from typing import (
     Any, Callable, Dict, List, Optional, Type, Union, TYPE_CHECKING
 )
@@ -34,7 +32,7 @@ def create_trainer(
         logic: Optional[handler_module.Logic] = None,
         transform_model: Callable[
             [str, torch.nn.Module], torch.nn.Module] = default_transform_model,
-        handler_class: Optional[Type[handler_module.BaseHandler]] = None,
+        handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Dict[str, Any]] = None,
 ) -> 'Trainer':
@@ -119,7 +117,7 @@ def create_evaluator(
         device: 'DeviceLike' = 'cpu',
         metrics: Optional[List['MetricType']] = None,
         logic: Optional[handler_module.Logic] = None,
-        handler_class: Optional[Type[handler_module.BaseHandler]] = None,
+        handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Dict[str, Any]] = None,
 ) -> 'Evaluator':
