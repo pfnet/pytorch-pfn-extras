@@ -305,4 +305,10 @@ class TimeSummary:
                 self.complete_report(tag, use_cuda, begin_event, begin)
 
 
-time_summary = TimeSummary(auto_init=False)
+_thread_local = threading.local()
+
+
+def get_time_summary() -> TimeSummary:
+    if not hasattr(_thread_local, 'time_summary'):
+        _thread_local.time_summary = TimeSummary(auto_init=False)
+    return _thread_local.time_summary

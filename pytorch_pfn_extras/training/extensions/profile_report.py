@@ -7,7 +7,7 @@ from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training.extensions import log_report
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.profiler import time_summary
+from pytorch_pfn_extras.profiler._time_summary import get_time_summary
 
 
 class ProfileReport(extension.Extension):
@@ -54,8 +54,9 @@ class ProfileReport(extension.Extension):
         format=None,
         **kwargs,
     ):
+        self.time_summary = get_time_summary()
         # Initializes global TimeSummary.
-        time_summary.initialize()
+        self.time_summary.initialize()
 
         if store_keys is None:
             self._store_keys = store_keys
@@ -87,7 +88,7 @@ class ProfileReport(extension.Extension):
 
     def __call__(self, manager):
         if manager.is_before_training or self._trigger(manager):
-            with time_summary.summary(clear=True) as s:
+            with self.time_summary.summary(clear=True) as s:
                 st, additional = s
                 stats = st.make_statistics()
                 stats.update(additional)
