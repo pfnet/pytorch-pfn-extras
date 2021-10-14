@@ -22,13 +22,15 @@ if TYPE_CHECKING:
     from pytorch_pfn_extras.profiler._time_summary import _ReportNotification
 
 
-class _Engine:
+class Trainer:
     def __init__(
             self,
             handler: 'handler_module.BaseHandler',
+            *,
+            evaluator: Optional[Union['Evaluator', Tuple['Evaluator', TriggerLike]]],
             models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
             **kwargs: Any,
-    ) -> None:
+    ):
         self.handler = handler
         self._manager: Optional['training.ExtensionsManager'] = None
 
@@ -46,6 +48,15 @@ class _Engine:
                         'TriggerLike', Optional[int]],
                   Dict[str, Any]]] = []
         self._manager_state: Optional[Dict[str, Any]] = None
+
+        if isinstance(evaluator, tuple):
+            self.evaluator: Optional['Evaluator'] = None
+            self.evaluator, trigger = evaluator
+            self.evaluator_trigger = trigger_module.get_trigger(trigger)
+        else:
+            self.evaluator = evaluator
+            self.evaluator_trigger = trigger_module.get_trigger((1, 'epoch'))
+        self.val_loader = None
 
     def extend(
             self,
@@ -96,28 +107,6 @@ class _Engine:
             self._manager_state = to_load
             return
         self.manager.load_state_dict(to_load)
-
-    def run(self, *args: Any, **kwargs: Any) -> None:
-        raise NotImplementedError
-
-
-class Trainer(_Engine):
-    def __init__(
-            self,
-            handler: 'handler_module.BaseHandler',
-            *,
-            evaluator: Optional[Union['Evaluator', Tuple['Evaluator', TriggerLike]]],
-            **kwargs: Any,
-    ):
-        super().__init__(handler, **kwargs)
-        if isinstance(evaluator, tuple):
-            self.evaluator: Optional['Evaluator'] = None
-            self.evaluator, trigger = evaluator
-            self.evaluator_trigger = trigger_module.get_trigger(trigger)
-        else:
-            self.evaluator = evaluator
-            self.evaluator_trigger = trigger_module.get_trigger((1, 'epoch'))
-        self.val_loader = None
 
     @property
     def epoch(self) -> int:
