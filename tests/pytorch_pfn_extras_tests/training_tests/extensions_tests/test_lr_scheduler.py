@@ -1,3 +1,5 @@
+import tempfile
+
 import pytest
 import torch
 
@@ -58,15 +60,17 @@ def test_reduce_lr_on_plateau():
         optim, patience=1, verbose=True)
     ext = ppe.training.extensions.LRScheduler(sched, trigger=(1, 'iteration'))
 
-    manager = ppe.training.ExtensionsManager(
-        {}, {'main': optim}, 1, extensions=[ext], iters_per_epoch=4)
-    manager.extend(ppe.training.extensions.LogReport(
-        log_name=None, trigger=(1, "iteration")))
-    for _ in range(4):
-        with manager.run_iteration():
-            ppe.reporting.report({'val/loss': 1.0})
-    lr = optim.param_groups[0]["lr"]
-    assert lr == pytest.approx(1e-1)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        manager = ppe.training.ExtensionsManager(
+            {}, {'main': optim}, 1, extensions=[ext], iters_per_epoch=4,
+            out_dir=tmpdir)
+        manager.extend(ppe.training.extensions.LogReport(
+            filename=None, trigger=(1, "iteration")))
+        for _ in range(4):
+            with manager.run_iteration():
+                ppe.reporting.report({'val/loss': 1.0})
+        lr = optim.param_groups[0]["lr"]
+        assert lr == pytest.approx(1e-1)
 
 
 def test_reduce_lr_on_plateau_no_report():

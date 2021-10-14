@@ -46,6 +46,7 @@ class PrintReportNotebook(PrintReport):
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         display(self._widget)
+        super(PrintReportNotebook, self).initialize(manager)
 
     @property
     def widget(self) -> HTML:

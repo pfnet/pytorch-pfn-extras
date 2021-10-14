@@ -2,6 +2,7 @@
 
 import collections
 import json
+from typing import List
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
@@ -28,13 +29,9 @@ class LogWriterSaveFunc:
                     'LogReport does not support json format with append mode.')
             log = json.dumps(target, indent=4)
         elif self._format == 'json-lines':
-            if self._append:
-                target = [target[-1]]
             # Add a new line at the end for subsequent appends
             log = '\n'.join([json.dumps(x) for x in target]) + '\n'
         elif self._format == 'yaml':
-            if self._append:
-                target = [target[-1]]
             import yaml
 
             # This is to dump ordered dicts as regular dicts
@@ -46,6 +43,54 @@ class LogWriterSaveFunc:
         else:
             raise ValueError('Unknown format: {}'.format(self._format))
         file_o.write(bytes(log.encode('ascii')))
+
+
+class _LogBuffer:
+
+    def __init__(self) -> None:
+        self.lookers = {}
+        self._log = []
+        self._offset = 0
+
+    def _trim(self) -> None:
+        min_looker_index = min(self.lookers.values())
+        if min_looker_index > self._offset:
+            self._log = self._log[min_looker_index - self._offset:]
+            self._offset = min_looker_index
+
+    def append(self, observation) -> None:
+        self._log.append(observation)
+
+    def _get(self, looker_id: int) -> List[str]:
+        return self._log[self.lookers[looker_id] - self._offset:]
+
+    def _clear(self, looker_id: int) -> None:
+        if looker_id not in self.lookers:
+            raise ValueError(f'looker {looker_id} is not registered')
+        self.lookers[looker_id] = len(self._log) + self._offset
+        self._trim()
+
+    def emit_new_looker(self) -> '_LogLooker':
+        looker_id = len(self.lookers)
+        assert looker_id not in self.lookers
+        self.lookers[looker_id] = len(self._log) + self._offset
+        return _LogLooker(self, looker_id)
+
+    def size(self) -> int:
+        return len(self._log)
+
+
+class _LogLooker:
+
+    def __init__(self, log_buffer: _LogBuffer, looker_id: int) -> None:
+        self._log_buffer = log_buffer
+        self._looker_id = looker_id
+
+    def get(self) -> List[str]:
+        return self._log_buffer._get(self._looker_id)
+
+    def clear(self) -> None:
+        return self._log_buffer._clear(self._looker_id)
 
 
 class LogReport(extension.Extension):
@@ -100,6 +145,13 @@ class LogReport(extension.Extension):
             `savefun` defined. The writer can override the save location in
             the :class:`pytorch_pfn_extras.training.ExtensionsManager` object
 
+    .. note::
+
+        Enabling `append=True` reduces size of snapshots (and thus reduces the
+        time needed to take snapshots). Note that extensions relying on the
+        logs from past iterations may behave differently; for example,
+        when resuming from a snapshot, PrintReport will not show logs of
+        iterations already done.
     """
 
     def __init__(self, keys=None, trigger=(1, 'epoch'), postprocess=None,
@@ -107,25 +159,26 @@ class LogReport(extension.Extension):
         self._keys = keys
         self._trigger = trigger_module.get_trigger(trigger)
         self._postprocess = postprocess
-        self._log = []
+        self._log_buffer = _LogBuffer()
+        self._log_looker = self._log_buffer.emit_new_looker()
         # When using a writer, it needs to have a savefun defined
         # to deal with a string.
         self._writer = kwargs.get('writer', None)
 
-        log_name = kwargs.get('log_name', 'log')
         if filename is None:
-            filename = log_name
-        del log_name  # avoid accidental use
-        self._log_name = filename
+            filename = kwargs.get('log_name', 'log')
 
-        if format is None and filename is not None:
+        if format is None:
             if filename.endswith('.jsonl'):
                 format = 'json-lines'
             elif filename.endswith('.yaml'):
                 format = 'yaml'
             else:
                 format = 'json'
+        elif format not in ('json', 'json-lines', 'yaml'):
+            raise ValueError(f'unsupported log format: {format}')
 
+        self._log_name = filename
         self._append = append
         self._format = format
         self._init_summary()
@@ -157,15 +210,17 @@ class LogReport(extension.Extension):
             if self._postprocess is not None:
                 self._postprocess(stats_cpu)
 
-            self._log.append(stats_cpu)
+            self._log_buffer.append(stats_cpu)
 
             # write to the log file
             if self._log_name is not None:
                 log_name = self._log_name.format(**stats_cpu)
                 out = manager.out
                 savefun = LogWriterSaveFunc(self._format, self._append)
-                writer(log_name, out, self._log,
+                writer(log_name, out, self._log_looker.get(),
                        savefun=savefun, append=self._append)
+                if self._append:
+                    self._log_looker.clear()
 
             # reset the summary for the next output
             self._init_summary()
@@ -173,7 +228,7 @@ class LogReport(extension.Extension):
     @property
     def log(self):
         """The current list of observation dictionaries."""
-        return self._log
+        return self._log_looker.get()
 
     def state_dict(self):
         state = {}
@@ -184,14 +239,14 @@ class LogReport(extension.Extension):
             state['_summary'] = self._summary.state_dict()
         except KeyError:
             pass
-        state['_log'] = json.dumps(self._log)
+        state['_log'] = json.dumps(self._log_buffer._log)
         return state
 
     def load_state_dict(self, to_load):
         if hasattr(self._trigger, 'load_state_dict'):
             self._trigger.load_state_dict(to_load['_trigger'])
         self._summary.load_state_dict(to_load['_summary'])
-        self._log = json.loads(to_load['_log'])
+        self._log_buffer._log = json.loads(to_load['_log'])
 
     def _init_summary(self):
         self._summary = reporting.DictSummary()
@@ -201,4 +256,4 @@ class LogReport(extension.Extension):
             raise ImportError(
                 "Need to install pandas to use `to_dataframe` method."
             )
-        return pandas.DataFrame(self._log)
+        return pandas.DataFrame(self._log_looker.get())
