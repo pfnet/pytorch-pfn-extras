@@ -132,10 +132,7 @@ class LogReport(extension.Extension):
         filename (str): Name of the log file under the output directory. It can
             be a format string: the last result dictionary is passed for the
             formatting. For example, users can use '{iteration}' to separate
-            the log files for different iterations. If the log name is None, it
-            does not output the log to any file.
-            For historical reasons ``log_name`` is also accepted as an alias
-            of this argument.
+            the log files for different iterations. (default: ``'log'``)
         append (bool, optional): If the file is JSON Lines or YAML, contents
             will be appended instead of rewritting the file every call.
         format (str, optional): accepted values are `'json'`, `'json-lines'`
@@ -166,7 +163,7 @@ class LogReport(extension.Extension):
         self._writer = kwargs.get('writer', None)
 
         if filename is None:
-            filename = kwargs.get('log_name', 'log')
+            filename = 'log'
 
         if format is None:
             if filename.endswith('.jsonl'):
@@ -178,7 +175,7 @@ class LogReport(extension.Extension):
         elif format not in ('json', 'json-lines', 'yaml'):
             raise ValueError(f'unsupported log format: {format}')
 
-        self._log_name = filename
+        self._filename = filename
         self._append = append
         self._format = format
         self._init_summary()
@@ -213,14 +210,13 @@ class LogReport(extension.Extension):
             self._log_buffer.append(stats_cpu)
 
             # write to the log file
-            if self._log_name is not None:
-                log_name = self._log_name.format(**stats_cpu)
-                out = manager.out
-                savefun = LogWriterSaveFunc(self._format, self._append)
-                writer(log_name, out, self._log_looker.get(),
-                       savefun=savefun, append=self._append)
-                if self._append:
-                    self._log_looker.clear()
+            log_name = self._filename.format(**stats_cpu)
+            out = manager.out
+            savefun = LogWriterSaveFunc(self._format, self._append)
+            writer(log_name, out, self._log_looker.get(),
+                   savefun=savefun, append=self._append)
+            if self._append:
+                self._log_looker.clear()
 
             # reset the summary for the next output
             self._init_summary()
