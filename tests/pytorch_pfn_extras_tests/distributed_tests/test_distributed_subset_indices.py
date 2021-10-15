@@ -1,3 +1,5 @@
+import torch
+
 from pytorch_pfn_extras.distributed import create_distributed_subset_indices
 
 
