@@ -20,6 +20,17 @@ def create_distributed_subset_indices(
     shuffle: bool = True,
     seed: Optional[int] = None,
 ) -> List[int]:
+    """Returns a indices of a dataset to be used for the current process.
+
+    Args:
+        num_total_samples: The size of the dataset.
+        num_replicas: Number of processes participating in the training.
+            By default, ``torch.distributed.get_world_size()`` is used.
+        rank: Rank of the current process within `num_replicas`.
+            By default, ``torch.distributed.get_rank()`` is used.
+        shuffle: If ``True`` (default), shuffle the indices.
+        seed: Random seed used to shuffle.
+    """
     if num_replicas is None:
         num_replicas = torch.distributed.get_world_size()  # type: ignore
     if rank is None:
