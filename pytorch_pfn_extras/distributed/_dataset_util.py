@@ -35,12 +35,12 @@ def create_distributed_subset_indices(
         num_replicas = torch.distributed.get_world_size()  # type: ignore
     if rank is None:
         rank = torch.distributed.get_rank()  # type: ignore
-    if seed is None:
-        seed = _shared_random_seed()
 
     indices = list(range(num_total_samples))
-    rng = np.random.RandomState(seed)
     if shuffle:
+        if seed is None:
+            seed = _shared_random_seed()
+        rng = np.random.RandomState(seed)
         rng.shuffle(indices)
     n_sub_samples = (num_total_samples + num_replicas - 1) // num_replicas
     b = num_total_samples * rank // num_replicas
