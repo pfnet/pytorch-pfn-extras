@@ -90,7 +90,7 @@ def get_default_comparer(rtol=1e-07, atol=0, equal_nan=True, msg=None):
 _default_comparer = get_default_comparer()
 
 
-class ThreadComparer:
+class _ComparerBase:
     def __init__(
             self, engines, *,
             compare_fn=_default_comparer,
@@ -197,7 +197,7 @@ class ThreadComparer:
                         name, to_compare, target, target_1, target_2)
 
 
-class OutputsComparer(ThreadComparer):
+class OutputsComparer(_ComparerBase):
     def __init__(
             self, engines, to_compare_keys=None, *,
             compare_fn=_default_comparer,
@@ -240,7 +240,7 @@ class OutputsComparer(ThreadComparer):
         self.targets[handle.name] = {key: outputs[key] for key in keys}
 
 
-class ModelComparer(ThreadComparer):
+class ModelComparer(_ComparerBase):
     def __init__(
             self, engines, to_compare_keys=None, *,
             compare_fn=_default_comparer,
