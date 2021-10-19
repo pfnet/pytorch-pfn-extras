@@ -204,3 +204,64 @@ def test_compare_concurrency_wrong(engine_fn):
             comp.compare({"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)})
         else:
             comp.compare({"cpu": train_1, "gpu": train_2})
+
+
+class ModelForComparer(torch.nn.Module):
+    def __init__(self, *args):
+        super().__init__()
+        self.model = torch.nn.Sequential(
+            torch.nn.Conv2d(10, 10, 3, 3),
+            torch.nn.ReLU(),
+            torch.nn.BatchNorm2d(10),
+            torch.nn.Linear(3, 1),
+        )
+
+    def forward(self, x):
+        return {"y": self.model(x).sum()}
+
+
+def test_model_comparer():
+    model_cpu = ModelForComparer()
+    model_gpu = ModelForComparer()
+    # Make the models to have the same initial weights
+    model_gpu.load_state_dict(model_cpu.state_dict())
+    ppe.to(model_gpu, device='cuda:0')
+
+    optimizer_cpu = torch.optim.SGD(model_cpu.parameters(), lr=0.01)
+    trainer_cpu = ppe.engine.create_trainer(
+        model_cpu, optimizer_cpu, 1, device='cpu')
+    optimizer_gpu = torch.optim.SGD(model_gpu.parameters(), lr=0.01)
+    trainer_gpu = ppe.engine.create_trainer(
+        model_gpu, optimizer_gpu, 1, device='cuda:0')
+    compare_fn = ppe.utils.comparer.get_default_comparer(rtol=1e-2, atol=1e-2)
+    comp = ppe.utils.comparer.ModelComparer(
+        {"cpu": trainer_cpu, "gpu": trainer_gpu},
+        compare_fn=compare_fn
+    )
+
+    train_1 = list(torch.ones(2, 10, 10, 10) for _ in range(10))
+    train_2 = list(torch.ones(2, 10, 10, 10) for _ in range(10))
+    comp.compare({"cpu": train_1, "gpu": train_2})
+
+
+def test_model_comparer_invalid():
+    model_cpu = ModelForComparer()
+    model_gpu = ModelForComparer()
+    ppe.to(model_gpu, device='cuda:0')
+
+    optimizer_cpu = torch.optim.SGD(model_cpu.parameters(), lr=0.01)
+    trainer_cpu = ppe.engine.create_trainer(
+        model_cpu, optimizer_cpu, 1, device='cpu')
+    optimizer_gpu = torch.optim.SGD(model_gpu.parameters(), lr=0.01)
+    trainer_gpu = ppe.engine.create_trainer(
+        model_gpu, optimizer_gpu, 1, device='cuda:0')
+    compare_fn = ppe.utils.comparer.get_default_comparer(rtol=1e-2, atol=1e-2)
+    comp = ppe.utils.comparer.ModelComparer(
+        {"cpu": trainer_cpu, "gpu": trainer_gpu},
+        compare_fn=compare_fn
+    )
+
+    train_1 = list(torch.ones(2, 10, 10, 10) for _ in range(10))
+    train_2 = list(torch.ones(2, 10, 10, 10) for _ in range(10))
+    with pytest.raises(AssertionError):
+        comp.compare({"cpu": train_1, "gpu": train_2})
