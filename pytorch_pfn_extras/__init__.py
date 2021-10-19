@@ -6,6 +6,7 @@ from pytorch_pfn_extras import config  # NOQA
 from pytorch_pfn_extras import cuda  # NOQA
 from pytorch_pfn_extras import dataset  # NOQA
 from pytorch_pfn_extras import dataloaders  # NOQA
+from pytorch_pfn_extras import distributed  # NOQA
 from pytorch_pfn_extras import engine  # NOQA
 from pytorch_pfn_extras import handler  # NOQA
 from pytorch_pfn_extras import nn  # NOQA
