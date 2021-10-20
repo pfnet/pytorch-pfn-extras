@@ -11,6 +11,8 @@ class _LazyBatchNorm(  # type: ignore[misc]
     torch.nn.modules.batchnorm._BatchNorm
 ):
 
+    running_mean: Any
+    running_var: Any
     lazy_parameter_names = ('weight', 'bias')
 
     def __init__(self, num_features: Optional[int], *args: Any, **kwargs: Any) -> None:
