@@ -127,6 +127,8 @@ Lazy Modules
 .. autosummary::
    :toctree: generated/
 
+   nn.Ensure
+   nn.ensure
    nn.LazyLinear
    nn.LazyConv1d
    nn.LazyConv2d

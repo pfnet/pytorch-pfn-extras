@@ -25,6 +25,7 @@ class Net(nn.Module):
         x = x.flatten(start_dim=1)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
+        ppe.nn.ensure(x, shape=(None, 10))
         return F.log_softmax(x, dim=1)
 
 
