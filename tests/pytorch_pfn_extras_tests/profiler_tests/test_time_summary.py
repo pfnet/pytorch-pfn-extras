@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from pytorch_pfn_extras.profiler import TimeSummary, time_summary
+from pytorch_pfn_extras.profiler import TimeSummary, get_time_summary
 
 
 def test_report():
@@ -59,6 +59,7 @@ def test_report_from_other_process():
 
 
 def worker1():
+    time_summary = get_time_summary()
     with time_summary.report("foo"):
         pass
 
@@ -67,6 +68,7 @@ def worker1():
     sys.platform == 'win32',
     reason='Multiprocessing not fully supported on Windows')
 def test_global_summary():
+    time_summary = get_time_summary()
     time_summary.initialize()
     p = mp.Process(target=worker1)
     p.start()
