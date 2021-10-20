@@ -1,5 +1,6 @@
 # mypy: ignore-errors
 
+import collections
 import re
 import threading
 import concurrent.futures
@@ -8,7 +9,9 @@ import torch.testing
 
 from pytorch_pfn_extras import handler as _handler_module
 from pytorch_pfn_extras.training import _trainer
+from pytorch_pfn_extras.training import manager as manager_module
 from pytorch_pfn_extras.training import _evaluator
+from pytorch_pfn_extras.training import trigger as trigger_module
 
 
 class _ComparableHandler(_handler_module.BaseHandler):
@@ -90,209 +93,161 @@ def get_default_comparer(rtol=1e-07, atol=0, equal_nan=True, msg=None):
 _default_comparer = get_default_comparer()
 
 
-class _ComparerBase:
+class Comparer:
+
     def __init__(
-            self, engines, *,
+            self,
+            *,
+            trigger=None,
             compare_fn=_default_comparer,
             concurrency=None,
+            outputs=True,
+            params=False,
     ):
-        e_type = type(next(iter(engines.values())))
-        if e_type not in (
-            _trainer.Trainer,
-            _evaluator.Evaluator,
-        ):
-            raise ValueError(f"Engine type {e_type} is not supported")
-        if not all((isinstance(e, e_type) for e in engines.values())):
-            raise ValueError("All the engines must be of the same type")
-
-        self.engines = engines  # Need to wrap the handle with ours
-        # If to_compare_key is None, then we compare all
-        self.barrier = threading.Barrier(len(engines))
-        self.report_lock = threading.Lock()
-        self.compare_fn = compare_fn
+        self._engine_type = None
+        self._engines = collections.OrderedDict()
+        self._compare_fn = compare_fn
+        self._targets = {}
+        self._output_keys = (outputs,) if isinstance(outputs, str) else outputs
+        self._param_keys = (params,) if isinstance(params, str) else params
+        self._preprocessed_keys = None
         self._finalized = False
-        self._semaphore = threading.Semaphore(
-            len(engines) if concurrency is None else concurrency)
-        self.targets = {}
-        # engines must be a dict
-        for name, engine in engines.items():
-            engine.handler = _ComparableHandler(
-                engine.handler, name, self.compare_targets
-            )
+        self._concurrency = concurrency
+        self._barrier = None
+        self._report_lock = threading.Lock()
+        self._semaphore = None
+
+        if trigger is None:
+            self._trigger = trigger_module.get_trigger((1, "epoch"))
+        else:
+            self._engine_type = _trainer.Trainer
+            self._trigger = trigger_module.get_trigger(trigger)
+
+    def _preprocess_keys(self, model):
+        if self._param_keys is False:
+            return []
+        sdict = model.state_dict()
+        if self._param_keys is True:
+            return list(sdict.keys())
+        preprocessed_keys = []
+        for tc_k in self._param_keys:
+            matched = False
+            for sd_k in sdict.keys():
+                if re.match(tc_k, sd_k) is not None:
+                    preprocessed_keys.append(sd_k)
+                    matched = True
+            if not matched:
+                raise ValueError(
+                    f'didnt find a match for {tc_k} in the model')
+        return preprocessed_keys
+
+    def _add_target(self, handle, models, outputs):
+        targets = {}
+
+        # Preprocess
+        if self._output_keys is True:
+            self._output_keys = list(outputs.keys())
+        elif self._output_keys is False:
+            self._output_keys = []
+
+        if self._preprocessed_keys is None:
+            self._preprocessed_keys = self._preprocess_keys(models['main'])
+
+        targets.update({key: outputs[key] for key in self._output_keys})
+        if len(self._preprocessed_keys) > 0:
+            sdict = models['main'].state_dict()
+            targets.update({key: sdict[key] for key in self._preprocessed_keys})
+        self._targets[handle.name] = targets
 
     def _assert_incompatible_trigger(self, condition):
         if not condition:
-            raise ValueError('Engines have different triggers.')
+            raise ValueError("Engines have different triggers.")
 
-    def run_engine(self, engine, loaders):
+    def _compare_outs(self):
+        names = list(self._engines.keys())
+        backend1 = names[0]
+        for backend2 in names[1:]:
+            for val_name in self._targets[backend1].keys():
+                out1 = self._targets[backend1][val_name]
+                out2 = self._targets[backend2][val_name]
+                self._compare_fn(backend1, backend2, val_name, out1, out2)
+
+    def _compare_targets(self, handle, models, batch_idx, outputs):
+        engine, _, _ = self._engines[handle.name]
+        if hasattr(engine, "manager"):
+            class _ManagerProxy(manager_module._ManagerProxy):
+                @property
+                def iteration(self) -> int:
+                    return self._manager.iteration + 1
+
+            manager = _ManagerProxy(engine.manager)
+            if not self._trigger(manager):
+                return
+
+        # Save the outputs of this iteration
+        with self._report_lock:
+            self._add_target(handle, models, outputs)
+            if len(self._targets.keys()) == len(self._engines.keys()):
+                # all outputs have been filled, lets compare and reset
+                self._compare_outs()
+                self._targets = {}
+            self._assert_incompatible_trigger(not self._finalized)
+
+        # Excplicitly synchronize
+        self._semaphore.release()
+        self._barrier.wait()
+        self._semaphore.acquire()
+
+    def add_engine(self, name, engine, *args, **kwargs):
+        type_engine = type(engine)
+
+        if type_engine not in (_trainer.Trainer, _evaluator.Evaluator):
+            raise ValueError(f"Engine type {type_engine} is not supported")
+
+        if self._engine_type is None:
+            self._engine_type = type_engine
+        elif type_engine != self._engine_type:
+            raise ValueError("All the engines must be of the same type")
+
+        if name in self._engines.keys():
+            raise ValueError(f"Engine {engine} already registered")
+
+        self._engines[name] = engine, args, kwargs
+        engine.handler = _ComparableHandler(engine.handler, name, self._compare_targets)
+
+    def run_engine(self, engine, args, kwargs):
         try:
             self._semaphore.acquire()
-            if isinstance(loaders, tuple):
-                engine.run(*loaders)
-            elif isinstance(loaders, dict):
-                engine.run(**loaders)
-            else:
-                engine.run(loaders)
-            with self.report_lock:
+            engine.run(*args, **kwargs)
+            with self._report_lock:
                 self._finalized = True
-                self._assert_incompatible_trigger(len(self.targets) == 0)
+                self._assert_incompatible_trigger(len(self._targets) == 0)
         except Exception:
-            self.barrier.abort()
+            self._barrier.abort()
             raise
         finally:
             self._semaphore.release()
 
-    def compare(self, loaders, n_iters=None):
+    def dump(self, engine, dir, train_loader, val_loader):
+        raise NotImplementedError
+
+    def compare(self):
         """Compares outputs.
 
         Args:
             loaders (dict of loaders):
                 Data loaders used as input for each engine.
         """
-        # n_iters is the number of iterations that we wait for
-        # compare
-        self.n_iters = n_iters
-        # We need to use a thread pool because is not easy at all to sync
-        # the run method of different engines to compare every n iterations
-        for name in self.engines.keys():
-            if name not in loaders:
-                raise KeyError(f"'{name}' is not in `loaders`")
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=len(self.engines)
-        ) as executor:
+        n_workers = len(self._engines)
+        self._barrier = threading.Barrier(n_workers)
+        self._semaphore = threading.Semaphore(
+            n_workers if self._concurrency is None else self._concurrency)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
             futures = []
-            for name, engine in self.engines.items():
-                futures.append(executor.submit(
-                    self.run_engine, engine, loaders[name]))
+            for _, (engine, args, kwargs) in self._engines.items():
+                futures.append(executor.submit(self.run_engine, engine, args, kwargs))
             for future in concurrent.futures.as_completed(futures):
                 future.result()
 
-    def _add_target(self, handle, models, outputs):
-        raise NotImplementedError('Comparers must override _add_target')
-
-    def compare_targets(self, handle, models, batch_idx, outputs):
-        if (self.n_iters is None) or (handle.iteration % self.n_iters == 0):
-            # Save the outputs of this iteration
-            with self.report_lock:
-                self._add_target(handle, models, outputs)
-                if len(self.targets.keys()) == len(self.engines.keys()):
-                    # all outputs have been filled, lets compare and reset
-                    self._compare_targets()
-                    self.targets = {}
-                self._assert_incompatible_trigger(not self._finalized)
-            # Excplicitly synchronize
-            self._semaphore.release()
-            self.barrier.wait()
-            self._semaphore.acquire()
-
-    def _compare_targets(self):
-        names = list(self.targets.keys())
-        for i, name in enumerate(names):
-            for target in self.targets[name]:
-                for j in range(i + 1, len(names)):
-                    to_compare = names[j]
-                    target_1 = self.targets[name][target]
-                    target_2 = self.targets[to_compare][target]
-                    self.compare_fn(
-                        name, to_compare, target, target_1, target_2)
-
-
-class OutputsComparer(_ComparerBase):
-    def __init__(
-            self, engines, to_compare_keys=None, *,
-            compare_fn=_default_comparer,
-            concurrency=None,
-    ):
-        """A class for comparison of iteration outputs.
-
-        This class is mainly used to compare results between different devices.
-
-        Args:
-            engines (dict of Engines):
-                Trainers or Evaluators to compare outputs.
-            to_compare_keys (tuple of str, optional):
-                A set of keys of output dict to compare.
-            compare_fn (function):
-                Comparison function. Default is ``get_default_comparer()``.
-            concurrency (int, optional):
-                The upper bound limit on the number of workers that run concurrently.
-                If ``None``, inferred from the size of ``engines``.
-
-        Examples:
-            >>> trainer_cpu = ppe.engine.create_trainer(
-                    model, optimizer, 1, device='cpu')
-            >>> trainer_gpu = ppe.engine.create_trainer(
-                    model, optimizer, 1, device='cuda:0')
-            >>> comp = ppe.utils.comparer.OutputsComparer(
-                    {"cpu": trainer_cpu, "gpu": trainer_gpu})
-            >>> comp.compare({"cpu": loader, "gpu": loader}])
-        """
-        # If to_compare_key is None, then we compare all
-        super().__init__(engines, compare_fn=compare_fn, concurrency=concurrency)
-        self.to_compare_keys = to_compare_keys
-
-    def _add_target(self, handle, models, outputs):
-        keys = (
-            self.to_compare_keys
-            if self.to_compare_keys is not None
-            else outputs.keys()
-        )
-        self.targets[handle.name] = {key: outputs[key] for key in keys}
-
-
-class ModelComparer(_ComparerBase):
-    def __init__(
-            self, engines, to_compare_keys=None, *,
-            compare_fn=_default_comparer,
-            concurrency=None,
-    ):
-        """A class for comparison of iteration model parameters.
-
-        This class is mainly used to compare results between different devices.
-
-        Args:
-            engines (dict of Engines):
-                Trainers or Evaluators to compare outputs.
-            to_compare_keys (tuple of str, optional):
-                A set of keys of model parameters to compare.
-            compare_fn (function):
-                Comparison function. Default is ``get_default_comparer()``.
-            concurrency (int, optional):
-                The upper bound limit on the number of workers that run concurrently.
-                If ``None``, inferred from the size of ``engines``.
-
-        Examples:
-            >>> trainer_cpu = ppe.engine.create_trainer(
-                    model, optimizer, 1, device='cpu')
-            >>> trainer_gpu = ppe.engine.create_trainer(
-                    model, optimizer, 1, device='cuda:0')
-            >>> comp = ppe.utils.comparer.ModelComparer(
-                    {"cpu": trainer_cpu, "gpu": trainer_gpu})
-            >>> comp.compare({"cpu": loader, "gpu": loader}])
-        """
-        # If to_compare_key is None, then we compare all
-        super().__init__(engines, compare_fn=compare_fn, concurrency=concurrency)
-        self.to_compare_keys = to_compare_keys
-        self._preprocessed_keys = None
-
-    def _preprocess_keys(self, sdict):
-        if self.to_compare_keys is None:
-            self._preprocessed_keys = list(sdict.keys())
-        else:
-            self._preprocessed_keys = []
-            for tc_k in self.to_compare_keys:
-                matched = False
-                for sd_k in sdict.keys():
-                    if re.match(tc_k, sd_k) is not None:
-                        self._preprocessed_keys.append(sd_k)
-                        matched = True
-                if not matched:
-                    raise ValueError(
-                        f'didnt find a match for {tc_k} in the model')
-
-    def _add_target(self, handle, models, outputs):
-        sdict = models['main'].state_dict()
-        if self._preprocessed_keys is None:
-            self._preprocess_keys(sdict)
-        self.targets[handle.name] = {
-            key: sdict[key] for key in self._preprocessed_keys}
+    def compare_with_dump(self, dir):
+        raise NotImplementedError
