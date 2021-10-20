@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from pytorch_pfn_extras.runtime._runtime import DeviceLike
 
 
-class LazyInitializationMixin():
+class LazyInitializationMixin:
 
     """A mixin for modules that lazily initialize buffers and parameters.
 
