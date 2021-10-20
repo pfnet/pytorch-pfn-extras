@@ -10,7 +10,7 @@ import pytorch_pfn_extras as ppe
 
 
 def _body():
-    with ppe.profiler.time_summary.report("iter-time"):
+    with ppe.profiler.get_time_summary().report("iter-time"):
         time.sleep(0.1)
 
 

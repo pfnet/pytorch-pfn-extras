@@ -5,7 +5,7 @@ import types
 
 import torch
 
-from pytorch_pfn_extras.profiler._time_summary import time_summary, _ReportNotification
+from pytorch_pfn_extras.profiler import _time_summary
 
 
 def _infer_tag_name(frame: Optional[types.FrameType], depth: int) -> str:
@@ -26,7 +26,7 @@ def record(
         tag: Optional[str],
         metric: Optional[str] = None,
         use_cuda: bool = False,
-) -> Generator[_ReportNotification, None, None]:
+) -> Generator[_time_summary._ReportNotification, None, None]:
     if tag is None:
         tag = _infer_tag_name(inspect.currentframe(), depth=2)
 
@@ -37,6 +37,7 @@ def record(
         torch.cuda.nvtx.range_push(tag)  # type: ignore[no-untyped-call]
     try:
         with torch.autograd.profiler.record_function(tag):
+            time_summary = _time_summary.get_time_summary()
             with time_summary.report(metric, use_cuda) as ntf:
                 yield ntf
     finally:
