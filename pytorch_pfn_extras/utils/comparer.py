@@ -104,6 +104,33 @@ class Comparer:
             outputs=True,
             params=False,
     ):
+        """A class for comparison of iteration outputs and model parameters.
+
+        This class is mainly used to compare results between different devices.
+
+        Args:
+            trigger (Trigger):
+                Trigger object that determines when to compare values.
+            compare_fn (function):
+                Comparison function. Default is ``get_default_comparer()``.
+            concurrency (int, optional):
+                The upper bound limit on the number of workers that run concurrently.
+                If ``None``, inferred from the size of ``engines``.
+            outputs (tuple of str or bool):
+                A set of keys of output dict to compare.
+            params (tuple of str or bool):
+                A set of keys of model parameters to compare.
+
+        Examples:
+            >>> trainer_cpu = ppe.engine.create_trainer(
+                    model, optimizer, 1, device='cpu')
+            >>> trainer_gpu = ppe.engine.create_trainer(
+                    model, optimizer, 1, device='cuda:0')
+            >>> comp = ppe.utils.comparer.Comparer()
+            >>> comp.add_engine("cpu", engine_cpu, train_1, eval_1)
+            >>> comp.add_engine("gpu", engine_gpu, train_2, eval_2)
+            >>> comp.compare()
+        """
         self._engine_type = None
         self._engines = collections.OrderedDict()
         self._compare_fn = compare_fn
