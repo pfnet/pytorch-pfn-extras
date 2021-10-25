@@ -27,7 +27,8 @@ def create_trainer(
         out_dir: str = 'result',
         stop_trigger: 'TriggerLike' = None,
         writer: Optional['writing.Writer'] = None,
-        evaluator: Optional[Union['Evaluator', Tuple['Evaluator', TriggerLike]]] = None,
+        evaluator: Optional[
+            Union['Evaluator', Tuple['Evaluator', 'TriggerLike']]] = None,
         device: 'DeviceLike' = 'cpu',
         logic: Optional[handler_module.Logic] = None,
         transform_model: Callable[
