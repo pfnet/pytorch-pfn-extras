@@ -24,6 +24,10 @@ class ExtensionsManagerProtocol(Protocol):
         ...
 
     @property
+    def _iters_per_epoch(self) -> int:
+        ...
+
+    @property
     def models(self) -> Dict[str, torch.nn.Module]:
         ...
 
