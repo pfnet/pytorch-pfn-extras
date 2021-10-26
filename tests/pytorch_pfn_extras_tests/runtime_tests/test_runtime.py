@@ -16,7 +16,7 @@ class TestPytorchRuntime:
                   torch.zeros(1),
                   object()])
     def test_convert_batch(self, device, batch):
-        rt = ppe.runtime.PyTorchRuntime(device)
+        rt = ppe.runtime.PyTorchRuntime(device, {})
         cbatch = rt.convert_batch(batch)
         if isinstance(cbatch, dict):
             for _, v in cbatch.items():
@@ -31,14 +31,14 @@ class TestPytorchRuntime:
 
     @pytest.mark.parametrize('device', ['cpu', 'cuda'])
     def test_move_module(self, device):
-        rt = ppe.runtime.PyTorchRuntime(device)
+        rt = ppe.runtime.PyTorchRuntime(device, {})
         module = torch.nn.Linear(1, 1)
         module = rt.move_module(module)
         assert module.weight.device.type == device
 
     @pytest.mark.parametrize('device', ['cpu', 'cuda'])
     def test_move_tensor(self, device):
-        rt = ppe.runtime.PyTorchRuntime(device)
+        rt = ppe.runtime.PyTorchRuntime(device, {})
         tensor = torch.zeros(10)
         tensor = rt.move_tensor(tensor)
         assert tensor.device.type == device
