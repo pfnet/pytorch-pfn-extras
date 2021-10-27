@@ -32,7 +32,7 @@ class BaseRuntime:
     def __init__(
             self,
             device_spec: DeviceLike,
-            options: Optional[Dict[str, Any]] = None,
+            options: Dict[str, Any],
     ) -> None:
         self.device_spec = device_spec
         self.options = options

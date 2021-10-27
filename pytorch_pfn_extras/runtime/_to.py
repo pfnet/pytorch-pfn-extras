@@ -44,8 +44,8 @@ def to(
     Returns:
         A `torch.Tensor` with the specified device.
     """
-
-    # device None returns the fallback device
+    if config is None:
+        config = {}
     if runtime_class is None:
         registry = ppe.runtime.runtime_registry
         runtime_class = registry.get_runtime_class_for_device_spec(device)
