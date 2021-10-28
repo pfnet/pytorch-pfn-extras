@@ -414,14 +414,16 @@ def test_trainer_dict_input(device, progress_bar, path):
 class Input(typing.NamedTuple):
     x: torch.Tensor
     t: torch.Tensor
+    v: str
 
 
 class Output(typing.NamedTuple):
     y: torch.Tensor
     loss: torch.Tensor
+    v: str
 
 
-class MyModelWithLossNamedTupleOutput(torch.nn.Module):
+class ModelNamedTupleIO(torch.nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
@@ -431,7 +433,7 @@ class MyModelWithLossNamedTupleOutput(torch.nn.Module):
         prefix = 'train' if self.training else 'val'
         loss = F.l1_loss(y, input.t)
         ppe.reporting.report({prefix + '/loss': loss})
-        return Output(y, loss)
+        return Output(y, loss, input.v)
 
 
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
@@ -439,10 +441,10 @@ class MyModelWithLossNamedTupleOutput(torch.nn.Module):
 def test_trainer_namedtuple_input(device, progress_bar, path):
     model = MyModel()
     ppe.to(model, device)
-    model_with_loss = MyModelWithLossNamedTupleOutput(model)
+    model_with_loss = ModelNamedTupleIO(model)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
-        [Input(torch.rand(20,), torch.rand(10,)) for i in range(10)])
+        [Input(torch.rand(20,), torch.rand(10,), str(i)) for i in range(10)])
     extensions = _make_extensions()
 
     evaluator = engine.create_evaluator(
