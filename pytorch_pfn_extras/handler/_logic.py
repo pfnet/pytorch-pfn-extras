@@ -199,9 +199,10 @@ class Logic(BaseLogic):
         return model(batch)
 
     def _normalize_outputs(self, outputs: Any) -> Dict[str, Any]:
+        target: Dict[str, Any]
         if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
             # namedtuple
-            target = outputs._asdict()
+            target = outputs._asdict()  # type: ignore[attr-defined]
         elif isinstance(outputs, dict):
             target = outputs
         elif isinstance(outputs, (list, tuple)):
