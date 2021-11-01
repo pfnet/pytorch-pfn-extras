@@ -190,6 +190,7 @@ class Logic(BaseLogic):
 
     def _forward(self, model: torch.nn.Module, batch: Any) -> Any:
         if isinstance(batch, tuple) and hasattr(batch, '_fields'):
+            # namedtuple
             return model(batch)
         if isinstance(batch, dict):
             return model(**batch)
@@ -198,9 +199,10 @@ class Logic(BaseLogic):
         return model(batch)
 
     def _normalize_outputs(self, outputs: Any) -> Dict[str, Any]:
+        target: Dict[str, Any]
         if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
-            fields = outputs._fields  # type: ignore[attr-defined]
-            target = {k: getattr(outputs, k) for k in fields}
+            # namedtuple
+            target = outputs._asdict()  # type: ignore[attr-defined]
         elif isinstance(outputs, dict):
             target = outputs
         elif isinstance(outputs, (list, tuple)):

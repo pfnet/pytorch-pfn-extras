@@ -32,7 +32,7 @@ class BaseRuntime:
     def __init__(
             self,
             device_spec: DeviceLike,
-            options: Optional[Dict[str, Any]] = None,
+            options: Dict[str, Any],
     ) -> None:
         self.device_spec = device_spec
         self.options = options
@@ -51,13 +51,10 @@ class BaseRuntime:
         # this should be called with the runtime associated to a model
         # or a model part
         if isinstance(args, tuple) and hasattr(args, '_fields'):
-            return args.__class__(
-                **{k: self.move_tensor(getattr(args, k)) for k in args._fields})
+            # namedtuple
+            return args._replace(**self._convert_batch_dict(args._asdict()))
         if isinstance(args, dict):
-            return {
-                k: self.move_tensor(v) if isinstance(v, torch.Tensor) else v
-                for k, v in args.items()
-            }
+            return self._convert_batch_dict(args)
         if isinstance(args, (list, tuple)):
             return [
                 self.move_tensor(v) if isinstance(v, torch.Tensor) else v
@@ -66,6 +63,12 @@ class BaseRuntime:
         if isinstance(args, torch.Tensor):
             return self.move_tensor(args)
         return args
+
+    def _convert_batch_dict(self, args: dict) -> dict:
+        return {
+            k: self.move_tensor(v) if isinstance(v, torch.Tensor) else v
+            for k, v in args.items()
+        }
 
     def move_module(self, module: torch.nn.Module) -> torch.nn.Module:
         """Transfers the module to the specific device.

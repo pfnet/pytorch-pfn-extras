@@ -35,7 +35,7 @@ TriggerFunc = Callable[[ExtensionsManagerProtocol], bool]
 
 # TODO: Use `Literal['epoch', 'iteration']` after Py3.7 is dropped
 UnitLiteral = str
-TriggerLike = Optional[Union[Trigger, TriggerFunc, Tuple[int, UnitLiteral]]]
+TriggerLike = Optional[Union[Trigger, TriggerFunc, Tuple[float, UnitLiteral]]]
 
 
 def get_trigger(trigger: TriggerLike) -> Trigger:

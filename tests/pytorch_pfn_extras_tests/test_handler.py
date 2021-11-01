@@ -363,7 +363,7 @@ class TestHandlerAutocast:
         trainer = MockTrainer()
         logic = ppe.handler.Logic(options={'autocast': autocast})
         handler = ppe.handler.Handler(
-            logic, ppe.runtime.PyTorchRuntime('cuda'), {}
+            logic, ppe.runtime.PyTorchRuntime('cuda', {}), {}
         )
 
         completed = False
