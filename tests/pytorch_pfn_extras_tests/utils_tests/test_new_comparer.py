@@ -1,3 +1,5 @@
+import typing
+
 import pytest
 import torch
 
@@ -19,21 +21,21 @@ class Model(torch.nn.Module):
         return {"a": a, "iter": self.iter}
 
 
-def _get_trainer(device, ret_val):
-    model = Model(device, ret_val)
+def _get_trainer(device, ret_val, model_class=Model):
+    model = model_class(device, ret_val)
     optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
     trainer = ppe.engine.create_trainer(model, optimizer, 1, device=device)
     return trainer
 
 
-def _get_evaluator(device, ret_val):
-    model = Model(device, ret_val)
+def _get_evaluator(device, ret_val, model_class=Model):
+    model = model_class(device, ret_val)
     evaluator = ppe.engine.create_evaluator(model, device=device)
     return evaluator
 
 
-def _get_trainer_with_evaluator(device, ret_val):
-    model = Model(device, ret_val)
+def _get_trainer_with_evaluator(device, ret_val, model_class=Model):
+    model = model_class(device, ret_val)
     optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
     evaluator = ppe.engine.create_evaluator(model, device=device)
     trainer = ppe.engine.create_trainer(
@@ -260,3 +262,72 @@ def test_model_comparer_invalid():
     comp.add_engine("gpu", trainer_gpu, train_2)
     with pytest.raises(AssertionError):
         comp.compare()
+
+
+class ModelRetTuple(torch.nn.Module):
+    def __init__(self, device, ret_val):
+        super().__init__()
+        self.w = torch.nn.Parameter(torch.zeros(10))
+        self.device = device
+        self.ret_val = ret_val
+
+    def forward(self, x):
+        a = torch.tensor(self.ret_val, device=self.device)
+        a.requires_grad = True
+        return (a, x)
+
+
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+def test_compare_tuple_output(engine_fn):
+    engine_cpu = engine_fn("cpu", 1.0, model_class=ModelRetTuple)
+    engine_gpu = engine_fn("cuda:0", 1.0, model_class=ModelRetTuple)
+    comp = ppe.utils.comparer.Comparer()
+    train_1 = list(torch.ones(10) for _ in range(10))
+    train_2 = list(torch.ones(10) for _ in range(10))
+    if engine_fn is _get_trainer_with_evaluator:
+        eval_1 = list(torch.ones(10) for _ in range(10))
+        eval_2 = list(torch.ones(10) for _ in range(10))
+        comp.add_engine("cpu", engine_cpu, train_1, eval_1)
+        comp.add_engine("gpu", engine_gpu, train_2, eval_2)
+    else:
+        comp.add_engine("cpu", engine_cpu, train_1)
+        comp.add_engine("gpu", engine_gpu, train_2)
+    comp.compare()
+
+
+class Output(typing.NamedTuple):
+    a: torch.Tensor
+    x: torch.Tensor
+
+
+class ModelRetNamedTuple(torch.nn.Module):
+    def __init__(self, device, ret_val):
+        super().__init__()
+        self.w = torch.nn.Parameter(torch.zeros(10))
+        self.device = device
+        self.ret_val = ret_val
+
+    def forward(self, x):
+        a = torch.tensor(self.ret_val, device=self.device)
+        a.requires_grad = True
+        return Output(a, x)
+
+
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+def test_compare_namedtuple_output(engine_fn):
+    engine_cpu = engine_fn("cpu", 1.0, model_class=ModelRetNamedTuple)
+    engine_gpu = engine_fn("cuda:0", 1.0, model_class=ModelRetNamedTuple)
+    comp = ppe.utils.comparer.Comparer()
+    train_1 = list(torch.ones(10) for _ in range(10))
+    train_2 = list(torch.ones(10) for _ in range(10))
+    if engine_fn is _get_trainer_with_evaluator:
+        eval_1 = list(torch.ones(10) for _ in range(10))
+        eval_2 = list(torch.ones(10) for _ in range(10))
+        comp.add_engine("cpu", engine_cpu, train_1, eval_1)
+        comp.add_engine("gpu", engine_gpu, train_2, eval_2)
+    else:
+        comp.add_engine("cpu", engine_cpu, train_1)
+        comp.add_engine("gpu", engine_gpu, train_2)
+    comp.compare()

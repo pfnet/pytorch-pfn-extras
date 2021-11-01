@@ -236,6 +236,7 @@ class OutputsComparer(_ComparerBase):
         self.to_compare_keys = to_compare_keys
 
     def _add_target(self, handle, models, outputs):
+        outputs = handle._handler._logic._normalize_outputs(outputs)
         keys = (
             self.to_compare_keys
             if self.to_compare_keys is not None
@@ -295,6 +296,7 @@ class ModelComparer(_ComparerBase):
                         f'didnt find a match for {tc_k} in the model')
 
     def _add_target(self, handle, models, outputs):
+        outputs = handle._handler._logic._normalize_outputs(outputs)
         sdict = models['main'].state_dict()
         if self._preprocessed_keys is None:
             self._preprocess_keys(sdict)
@@ -389,6 +391,7 @@ class Comparer:
             self._trigger = trigger_module.get_trigger(trigger)
 
     def _add_target(self, handler, models, outputs):
+        outputs = handler._handler._logic._normalize_outputs(outputs)
         targets = {}
 
         outputs = _filter(self._output_keys, lambda: outputs)
