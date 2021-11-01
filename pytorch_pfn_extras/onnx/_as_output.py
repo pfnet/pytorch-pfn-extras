@@ -18,7 +18,7 @@ class _Outputs:
     def __init__(self) -> None:
         self._values = []
 
-    def clear(self):
+    def clear(self) -> None:
         self._values.clear()
 
     @property
