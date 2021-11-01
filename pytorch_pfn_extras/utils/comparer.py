@@ -4,6 +4,7 @@ import collections
 import re
 import threading
 import concurrent.futures
+from typing import Any, Callable, Dict, Sequence, Union
 
 import torch.testing
 
@@ -303,6 +304,34 @@ class ModelComparer(_ComparerBase):
 
 # New comparer interface
 
+def _filter(
+        keys: Union[bool, str, Sequence[str]],
+        get_dict: Callable[[], Dict[str, Any]],
+) -> Dict[str, Any]:
+    if keys is False:
+        return {}
+    if keys is True:
+        return get_dict()
+
+    if isinstance(keys, str):
+        keys = (keys,)
+    if isinstance(keys, (tuple, list)):
+        if len(keys) == 0:
+            return {}
+        sdict = get_dict()
+        ret = {}
+        for tc_k in keys:
+            for sd_k in sdict.keys():
+                if re.match(tc_k, sd_k) is not None:
+                    ret[sd_k] = sdict[sd_k]
+                    break
+            else:
+                raise ValueError(f'didnt find a match for {tc_k} in the model')
+        return ret
+
+    raise ValueError(f'Unsupported type: {type(keys)}')
+
+
 class Comparer:
 
     def __init__(
@@ -345,9 +374,8 @@ class Comparer:
         self._engines = collections.OrderedDict()
         self._compare_fn = compare_fn
         self._targets = {}
-        self._output_keys = (outputs,) if isinstance(outputs, str) else outputs
-        self._param_keys = (params,) if isinstance(params, str) else params
-        self._preprocessed_keys = None
+        self._output_keys = outputs
+        self._param_keys = params
         self._finalized = False
         self._concurrency = concurrency
         self._barrier = None
@@ -360,40 +388,14 @@ class Comparer:
             self._engine_type = _trainer.Trainer
             self._trigger = trigger_module.get_trigger(trigger)
 
-    def _preprocess_keys(self, model):
-        if self._param_keys is False:
-            return []
-        sdict = model.state_dict()
-        if self._param_keys is True:
-            return list(sdict.keys())
-        preprocessed_keys = []
-        for tc_k in self._param_keys:
-            matched = False
-            for sd_k in sdict.keys():
-                if re.match(tc_k, sd_k) is not None:
-                    preprocessed_keys.append(sd_k)
-                    matched = True
-            if not matched:
-                raise ValueError(
-                    f'didnt find a match for {tc_k} in the model')
-        return preprocessed_keys
-
     def _add_target(self, handle, models, outputs):
         targets = {}
 
-        # Preprocess
-        if self._output_keys is True:
-            self._output_keys = list(outputs.keys())
-        elif self._output_keys is False:
-            self._output_keys = []
+        outputs = _filter(self._output_keys, lambda: outputs)
+        targets.update({'output/' + k: v for k, v in outputs.items()})
 
-        if self._preprocessed_keys is None:
-            self._preprocessed_keys = self._preprocess_keys(models['main'])
-
-        targets.update({key: outputs[key] for key in self._output_keys})
-        if len(self._preprocessed_keys) > 0:
-            sdict = models['main'].state_dict()
-            targets.update({key: sdict[key] for key in self._preprocessed_keys})
+        params = _filter(self._param_keys, models['main'].state_dict)
+        targets.update({'param_' + k: v for k, v in params.items()})
         self._targets[handle.name] = targets
 
     def _assert_incompatible_trigger(self, condition):
@@ -403,8 +405,12 @@ class Comparer:
     def _compare_outs(self):
         names = list(self._engines.keys())
         backend1 = names[0]
+        keys1 = sorted(self._targets[backend1].keys())
         for backend2 in names[1:]:
-            for val_name in self._targets[backend1].keys():
+            keys2 = sorted(self._targets[backend2].keys())
+            if keys1 != keys2:
+                raise ValueError(f'{backend1}: {keys1} != {backend2} {keys2}')
+            for val_name in keys1:
                 out1 = self._targets[backend1][val_name]
                 out2 = self._targets[backend2][val_name]
                 self._compare_fn(backend1, backend2, val_name, out1, out2)
