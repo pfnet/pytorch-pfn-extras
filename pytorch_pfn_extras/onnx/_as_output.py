@@ -18,6 +18,9 @@ class _Outputs:
     def __init__(self) -> None:
         self._values = []
 
+    def clear(self):
+        self._values.clear()
+
     @property
     def values(self) -> List[_Output]:
         return self._values
@@ -62,6 +65,7 @@ class _ModuleWithAdditionalOutputs(torch.nn.Module):
         self.outputs = outputs
 
     def forward(self, *args: Any, **kwargs: Any) -> Any:
+        self.outputs.clear()
         out = self.module(*args, **kwargs)
         if len(self.outputs.values) == 0:
             return out
