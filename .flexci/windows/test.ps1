@@ -23,6 +23,13 @@ if ($test -eq "torch18") {
     RunOrDie python -m pip install -U pip "setuptools<59.6"
     RunOrDieWithRetry 3 python -m pip install torch==1.9.* torchvision==0.10.* -f https://download.pytorch.org/whl/cu111/torch_stable.html
 
+} elseif ($test -eq "torch110") {
+    # PyTorch 1.10 + Python 3.9
+    ActivateCUDA 11.3
+    ActivatePython 3.9
+    RunOrDie python -m pip install -U pip setuptools
+    RunOrDieWithRetry 3 python -m pip install torch==1.10.* torchvision==0.11.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
+
 } else {
     throw "Unsupported test variant: $test"
 }
