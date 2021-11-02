@@ -388,21 +388,21 @@ class Comparer:
             self._engine_type = _trainer.Trainer
             self._trigger = trigger_module.get_trigger(trigger)
 
-    def _add_target(self, handle, models, outputs):
+    def _add_target(self, handler, models, outputs):
         targets = {}
 
         outputs = _filter(self._output_keys, lambda: outputs)
-        targets.update({'output/' + k: v for k, v in outputs.items()})
+        targets.update({'output:' + k: v for k, v in outputs.items()})
 
         params = _filter(self._param_keys, models['main'].state_dict)
-        targets.update({'param_' + k: v for k, v in params.items()})
-        self._targets[handle.name] = targets
+        targets.update({'param:' + k: v for k, v in params.items()})
+        self._targets[handler.name] = targets
 
     def _assert_incompatible_trigger(self, condition):
         if not condition:
             raise ValueError("Engines have different triggers.")
 
-    def _compare_outs(self):
+    def _compare_outputs(self):
         names = list(self._engines.keys())
         backend1 = names[0]
         keys1 = sorted(self._targets[backend1].keys())
@@ -415,8 +415,8 @@ class Comparer:
                 out2 = self._targets[backend2][val_name]
                 self._compare_fn(backend1, backend2, val_name, out1, out2)
 
-    def _compare_targets(self, handle, models, batch_idx, outputs):
-        engine, _, _ = self._engines[handle.name]
+    def _compare_targets(self, handler, models, batch_idx, outputs):
+        engine, _, _ = self._engines[handler.name]
         if hasattr(engine, "manager"):
             class _ManagerProxy(manager_module._ManagerProxy):
                 @property
@@ -429,10 +429,10 @@ class Comparer:
 
         # Save the outputs of this iteration
         with self._report_lock:
-            self._add_target(handle, models, outputs)
+            self._add_target(handler, models, outputs)
             if len(self._targets.keys()) == len(self._engines.keys()):
                 # all outputs have been filled, lets compare and reset
-                self._compare_outs()
+                self._compare_outputs()
                 self._targets = {}
             self._assert_incompatible_trigger(not self._finalized)
 
@@ -453,12 +453,12 @@ class Comparer:
             raise ValueError("All the engines must be of the same type")
 
         if name in self._engines.keys():
-            raise ValueError(f"Engine {engine} already registered")
+            raise ValueError(f"Engine named {name} already registered")
 
         self._engines[name] = engine, args, kwargs
         engine.handler = _ComparableHandler(engine.handler, name, self._compare_targets)
 
-    def run_engine(self, engine, args, kwargs):
+    def _run_engine(self, engine, args, kwargs):
         try:
             self._semaphore.acquire()
             engine.run(*args, **kwargs)
@@ -488,7 +488,7 @@ class Comparer:
         with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
             futures = []
             for _, (engine, args, kwargs) in self._engines.items():
-                futures.append(executor.submit(self.run_engine, engine, args, kwargs))
+                futures.append(executor.submit(self._run_engine, engine, args, kwargs))
             for future in concurrent.futures.as_completed(futures):
                 future.result()
 
