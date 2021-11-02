@@ -377,10 +377,10 @@ class Comparer:
         self._output_keys = outputs
         self._param_keys = params
         self._finalized = False
-        self._concurrency = concurrency
-        self._barrier = None
-        self._report_lock = threading.Lock()
-        self._semaphore = None
+        self._concurrency = concurrency  # Upper limit of semaphore size
+        self._semaphore = None  # Sempaphore for training step execution
+        self._barrier = None  # Synchronizes iteration timing
+        self._report_lock = threading.Lock()  # Locks `Comparer._add_target`
 
         if trigger is None:
             self._trigger = trigger_module.get_trigger((1, "epoch"))
@@ -409,7 +409,9 @@ class Comparer:
         for backend2 in names[1:]:
             keys2 = sorted(self._targets[backend2].keys())
             if keys1 != keys2:
-                raise ValueError(f'{backend1}: {keys1} != {backend2} {keys2}')
+                raise ValueError(
+                    'Reported variable names incompatible\n'
+                    f'{backend1}: {keys1}\n{backend2}: {keys2}')
             for val_name in keys1:
                 out1 = self._targets[backend1][val_name]
                 out2 = self._targets[backend2][val_name]
@@ -421,6 +423,8 @@ class Comparer:
             class _ManagerProxy(manager_module._ManagerProxy):
                 @property
                 def iteration(self) -> int:
+                    # `Comparer._compare_targets` will be called
+                    # before `iteration` is incremented.
                     return self._manager.iteration + 1
 
             manager = _ManagerProxy(engine.manager)
@@ -442,6 +446,16 @@ class Comparer:
         self._semaphore.acquire()
 
     def add_engine(self, name, engine, *args, **kwargs):
+        """Add an engine to compare variables.
+
+        Args:
+            name (str):
+                Engine name.
+            engine (Trainer or Evaluator):
+                An engine to compare variables.
+            *args and **kwargs:
+                Arguments passed to ``engine.run``.
+        """
         type_engine = type(engine)
 
         if type_engine not in (_trainer.Trainer, _evaluator.Evaluator):
@@ -476,10 +490,6 @@ class Comparer:
 
     def compare(self):
         """Compares outputs.
-
-        Args:
-            loaders (dict of loaders):
-                Data loaders used as input for each engine.
         """
         n_workers = len(self._engines)
         self._barrier = threading.Barrier(n_workers)
