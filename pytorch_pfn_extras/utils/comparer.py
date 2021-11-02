@@ -442,8 +442,10 @@ class Comparer:
 
         # Excplicitly synchronize
         self._semaphore.release()
-        self._barrier.wait()
-        self._semaphore.acquire()
+        try:
+            self._barrier.wait()
+        finally:
+            self._semaphore.acquire()
 
     def add_engine(self, name, engine, *args, **kwargs):
         """Add an engine to compare variables.
@@ -473,8 +475,8 @@ class Comparer:
         engine.handler = _ComparableHandler(engine.handler, name, self._compare_targets)
 
     def _run_engine(self, engine, args, kwargs):
+        self._semaphore.acquire()
         try:
-            self._semaphore.acquire()
             engine.run(*args, **kwargs)
             with self._report_lock:
                 self._finalized = True
