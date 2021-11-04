@@ -89,7 +89,7 @@ class _CustomComparer:
         self.n_iters = n_iters
 
     def __call__(self, eng_name_1, eng_name_2, out_name, out_1, out_2):
-        assert out_name in ("iter")
+        assert out_name in ("iter",)
         assert eng_name_1 in ("cpu", "gpu")
         assert eng_name_1 != eng_name_2
         assert out_1 == out_2

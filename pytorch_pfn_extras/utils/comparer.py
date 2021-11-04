@@ -14,6 +14,11 @@ from pytorch_pfn_extras.training import _trainer
 from pytorch_pfn_extras.training import manager as manager_module
 from pytorch_pfn_extras.training import _evaluator
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.onnx import as_output
+
+
+_thread_local = threading.local()
+_intermediate_prefix = "intermedaite__"
 
 
 class _ComparableHandler(_handler_module.BaseHandler):
@@ -43,7 +48,9 @@ class _ComparableHandler(_handler_module.BaseHandler):
         return self._handler.train_validation_end(trainer, evaluator)
 
     def train_step(self, trainer, batch_idx, batch, complete_fn):
-        return self._handler.train_step(trainer, batch_idx, batch, complete_fn)
+        _thread_local.intermediate_values = {}
+        self._handler.train_step(trainer, batch_idx, batch, complete_fn)
+        del _thread_local.intermediate_values
 
     def train_post_step(self, trainer, batch_idx, batch, outputs):
         class _ManagerProxy(manager_module._ManagerProxy):
@@ -63,8 +70,9 @@ class _ComparableHandler(_handler_module.BaseHandler):
         return self._handler.eval_loop_begin(evaluator)
 
     def eval_step(self, evaluator, batch_idx, batch, complete_fn):
-        return self._handler.eval_step(
-            evaluator, batch_idx, batch, complete_fn)
+        _thread_local.intermediate_values = {}
+        self._handler.eval_step(evaluator, batch_idx, batch, complete_fn)
+        del _thread_local.intermediate_values
 
     def eval_loop_end(self, evaluator):
         return self._handler.eval_loop_end(evaluator)
@@ -413,7 +421,10 @@ class Comparer:
         targets = {}
 
         outputs = _filter(self._output_keys, lambda: outputs)
-        targets.update({'output:' + k: v for k, v in outputs.items()})
+        targets.update({
+            k if k.startswith(_intermediate_prefix) else 'output:' + k: v
+            for k, v in outputs.items()})
+        targets.update(_thread_local.intermediate_values)
 
         params = _filter(self._param_keys, models['main'].state_dict)
         targets.update({'param:' + k: v for k, v in params.items()})
@@ -508,6 +519,14 @@ class Comparer:
     def compare(self):
         """Compares outputs.
         """
+        old_backward_outputs = {
+            name: engine.handler._handler._logic.backward_outputs
+            for name, (engine, _, _) in self._engines.items()}
+        for engine, _, _ in self._engines.values():
+            logic = engine.handler._handler._logic
+            if logic.backward_outputs is None:
+                logic.backward_outputs = ['out0']
+
         n_workers = len(self._engines)
         self._barrier = threading.Barrier(n_workers)
         self._semaphore = threading.Semaphore(
@@ -519,5 +538,14 @@ class Comparer:
             for future in concurrent.futures.as_completed(futures):
                 future.result()
 
+        for name, (engine, _, _) in self._engines.items():
+            engine.handler._handler._logic.backward_outputs = old_backward_outputs[name]
+
     def compare_with_dump(self, dir):
         raise NotImplementedError
+
+
+def intermediate_value(value: torch.Tensor, name: str) -> None:
+    as_output(_intermediate_prefix + name, value)
+    if hasattr(_thread_local, 'intermediate_values'):
+        _thread_local.intermediate_values[_intermediate_prefix + name] = value

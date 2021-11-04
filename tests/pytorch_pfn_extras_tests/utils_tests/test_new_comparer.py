@@ -346,3 +346,55 @@ def test_jit_runtime_model_comparer_invalid(engine_fn):
     comp.add_engine('jit', engine_jit, *loaders_jit)
     with pytest.raises(AssertionError):
         comp.compare()
+
+
+class ModelForIntermediateValue(torch.nn.Module):
+    def __init__(self, device, intermediate_value):
+        super().__init__()
+        self.model = torch.nn.Linear(20, 10)
+        self.hidden = torch.nn.Parameter(torch.full((10,), intermediate_value))
+
+    def forward(self, x, t):
+        y = self.model(x)
+        ppe.utils.comparer.intermediate_value(y + self.hidden, 'y')
+        loss = F.l1_loss(y, t)
+        return loss
+
+
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+def test_compare_intermediate(engine_fn):
+    loader = torch.utils.data.DataLoader(
+        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+    ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
+    engine_cpu, loaders_cpu = engine_fn(
+        ModelForIntermediateValue, "cpu", [1.0], loader)
+    engine_gpu, loaders_gpu = engine_fn(
+        ModelForIntermediateValue, "cuda:0", [1.0], loader)
+    engine_jit, loaders_jit = engine_fn(
+        ModelForIntermediateValue, "jit-cpu", [1.0], loader)
+    comp = ppe.utils.comparer.Comparer()
+    comp.add_engine('cpu', engine_cpu, *loaders_cpu)
+    comp.add_engine('gpu', engine_gpu, *loaders_gpu)
+    comp.add_engine('jit', engine_jit, *loaders_jit)
+    comp.compare()
+
+
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+def test_compare_intermediate_invalid(engine_fn):
+    loader = torch.utils.data.DataLoader(
+        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+    ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
+    engine_cpu, loaders_cpu = engine_fn(
+        ModelForIntermediateValue, "cpu", [1.0], loader)
+    engine_gpu, loaders_gpu = engine_fn(
+        ModelForIntermediateValue, "cuda:0", [1.0], loader)
+    engine_jit, loaders_jit = engine_fn(
+        ModelForIntermediateValue, "jit-cpu", [0.5], loader)
+    comp = ppe.utils.comparer.Comparer()
+    comp.add_engine('cpu', engine_cpu, *loaders_cpu)
+    comp.add_engine('gpu', engine_gpu, *loaders_gpu)
+    comp.add_engine('jit', engine_jit, *loaders_jit)
+    with pytest.raises(AssertionError):
+        comp.compare()
