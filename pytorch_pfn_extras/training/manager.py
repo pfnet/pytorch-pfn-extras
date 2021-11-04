@@ -31,18 +31,13 @@ class IterationNotification:
         self._is_completed = False
 
 
-class _ManagerExecutionProxy:
-    """
-    Object that is passed to the triggers of extensions depending if they
-    require to measure executions when using async mode
-    Note that in sync mode execution == iteration
-    """
+class _ManagerProxy:
     def __init__(self, manager: '_BaseExtensionsManager') -> None:
         self._manager = manager
 
     @property
     def iteration(self) -> int:
-        return self._manager.execution
+        return self._manager.iteration
 
     @property
     def epoch(self) -> int:
@@ -60,15 +55,15 @@ class _ManagerExecutionProxy:
 
     @property
     def models(self) -> Dict[str, torch.nn.Module]:
-        raise RuntimeError('Models are not available during execution phase.')
+        return self._manager.models
 
     @property
     def raw_models(self) -> Mapping[str, torch.nn.Module]:
-        raise RuntimeError('Models are not available during execution phase.')
+        return self._manager.raw_models
 
     @property
     def optimizers(self) -> Mapping[str, torch.optim.Optimizer]:
-        raise RuntimeError('Optimizers are not available during execution phase.')
+        return self._manager.optimizers
 
     @property
     def elapsed_time(self) -> float:
@@ -96,6 +91,29 @@ class _ManagerExecutionProxy:
 
     def get_extension(self, name: str) -> extension_module.Extension:
         return self._manager.get_extension(name)
+
+
+class _ManagerExecutionProxy(_ManagerProxy):
+    """
+    Object that is passed to the triggers of extensions depending if they
+    require to measure executions when using async mode
+    Note that in sync mode execution == iteration
+    """
+    @property
+    def iteration(self) -> int:
+        return self._manager.execution
+
+    @property
+    def models(self) -> Dict[str, torch.nn.Module]:
+        raise RuntimeError('Models are not available during execution phase.')
+
+    @property
+    def raw_models(self) -> Mapping[str, torch.nn.Module]:
+        raise RuntimeError('Models are not available during execution phase.')
+
+    @property
+    def optimizers(self) -> Mapping[str, torch.optim.Optimizer]:
+        raise RuntimeError('Optimizers are not available during execution phase.')
 
 
 class _BaseExtensionsManager:
