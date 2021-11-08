@@ -23,6 +23,20 @@ def torch_autocast(enabled: bool = True) -> Generator[None, None, None]:
         yield
 
 
+def _normalize_outputs(outputs: Any) -> Dict[str, Any]:
+    target: Dict[str, Any]
+    if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
+        # namedtuple
+        target = outputs._asdict()  # type: ignore[attr-defined]
+    elif isinstance(outputs, dict):
+        target = outputs
+    elif isinstance(outputs, (list, tuple)):
+        target = {str(i): out for i, out in enumerate(outputs)}
+    else:
+        target = {"0": outputs}
+    return target
+
+
 class BaseLogic:
     def __init__(self, options: Optional[Dict[str, Any]] = None):
         super().__init__()
@@ -198,21 +212,8 @@ class Logic(BaseLogic):
             return model(*batch)
         return model(batch)
 
-    def _normalize_outputs(self, outputs: Any) -> Dict[str, Any]:
-        target: Dict[str, Any]
-        if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
-            # namedtuple
-            target = outputs._asdict()  # type: ignore[attr-defined]
-        elif isinstance(outputs, dict):
-            target = outputs
-        elif isinstance(outputs, (list, tuple)):
-            target = {str(i): out for i, out in enumerate(outputs)}
-        else:
-            target = {"0": outputs}
-        return target
-
     def _backward(self, outputs: Dict[str, Any]) -> None:
-        target = self._normalize_outputs(outputs)
+        target = _normalize_outputs(outputs)
 
         for k, v in target.items():
             # This is to avoid errors when the trained models returns
@@ -277,7 +278,7 @@ class Logic(BaseLogic):
             outs = self._forward(models[self.model_name], batch)
             to_back_outs = outs
             if self._grad_scaler is not None:
-                to_back_outs = self._normalize_outputs(outs)
+                to_back_outs = _normalize_outputs(outs)
                 assert (
                     len(to_back_outs) == 1
                 ), "loss scaling with multiple outputs is not supported"

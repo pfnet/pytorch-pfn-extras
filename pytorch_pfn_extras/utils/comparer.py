@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, Sequence, Union
 import torch.testing
 
 from pytorch_pfn_extras import handler as _handler_module
+from pytorch_pfn_extras.handler import _logic
 from pytorch_pfn_extras.training import _trainer
 from pytorch_pfn_extras.training import manager as manager_module
 from pytorch_pfn_extras.training import _evaluator
@@ -236,6 +237,7 @@ class OutputsComparer(_ComparerBase):
         self.to_compare_keys = to_compare_keys
 
     def _add_target(self, handle, models, outputs):
+        outputs = _logic._normalize_outputs(outputs)
         keys = (
             self.to_compare_keys
             if self.to_compare_keys is not None
@@ -295,6 +297,7 @@ class ModelComparer(_ComparerBase):
                         f'didnt find a match for {tc_k} in the model')
 
     def _add_target(self, handle, models, outputs):
+        outputs = _logic._normalize_outputs(outputs)
         sdict = models['main'].state_dict()
         if self._preprocessed_keys is None:
             self._preprocess_keys(sdict)
@@ -389,6 +392,7 @@ class Comparer:
             self._trigger = trigger_module.get_trigger(trigger)
 
     def _add_target(self, handler, models, outputs):
+        outputs = _logic._normalize_outputs(outputs)
         targets = {}
 
         outputs = _filter(self._output_keys, lambda: outputs)
