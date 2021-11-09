@@ -374,9 +374,18 @@ class Handler(BaseHandler):
             # TODO(ecastill) block until we get the result
             for sn, sm, rt in self._runtime_iterator(trainer.models):
                 p_iter = self.pending_iters[sn][0]
-                if not p_iter.deferred.done():
-                    p_iter.deferred.wait()
-                outs = p_iter.deferred.get()
+                if isinstance(p_iter.deferred, dict):
+                    complete = False
+                    outs = {} 
+                    for k, v in p_iter.deferred.items():
+                       if isinstance(v, DeferredResult):
+                           if not v.done():
+                               v.wait()
+                       outs[k] = v
+                else:
+                    if not p_iter.deferred.done():
+                        p_iter.deferred.wait()
+                    outs = p_iter.deferred.get()
                 self._complete_train_step(
                     trainer, outs, True, sn, sm, rt)
 
@@ -432,6 +441,45 @@ class Handler(BaseHandler):
             del self.pending_iters[sn]
         p_iter.cback(p_iter.idx, outs, is_deferred=block)
 
+    def _check_and_complete_deferred(self, outs, batch_idx, batch, engine, complete_fn, complete_step_fn):
+        has_deferred = isinstance(outs, DeferredResult)
+        if isinstance(outs, dict):
+            for k, v in outs.items():
+                has_deferred = has_deferred or isinstance(v, DeferredResult)
+
+        if has_deferred:
+            # async returns inmediately
+            # Check if there is a completed iteration
+            # If we enqueue everything first, we will blow up with
+            # memory due to the dataloaders being in the background
+            # We need to call the tagged runtimes since async mode
+            # require different treatment depending on the device.
+            if len(self._ppe_modules) != 1:
+                raise RuntimeError("Async mode is not supported in models "
+                                   "splitted across different devices")
+            for sn, sm, rt in self._runtime_iterator(engine.models):
+                self.pending_iters[sn].append(
+                    _DeferredIteration(outs, batch_idx, batch, complete_fn))
+                p_iter = self.pending_iters[sn][0]
+                if isinstance(p_iter.deferred, dict):
+                    complete = False
+                    t_outs = {} 
+                    for k, v in p_iter.deferred.items():
+                       if isinstance(v, DeferredResult):
+                           if not v.done():
+                               return
+                       t_outs[k] = v
+                else:
+                    if p_iter.deferred.done():
+                        t_outs = p_iter.deferred.get()
+                complete_step_fn(
+                    engine, t_outs, False, sn, sm, rt)
+        else:
+            if isinstance(engine, Trainer):
+                self._logic.train_step_optimizers(
+                    trainer.models, trainer.optimizers, batch_idx)
+            complete_fn(batch_idx, outs)
+
     def train_step(
             self,
             trainer: Trainer,
@@ -457,28 +505,7 @@ class Handler(BaseHandler):
         outs = self._logic.train_step(
             trainer.models, trainer.optimizers, batch_idx, batch)
 
-        if isinstance(outs, DeferredResult):
-            # async returns inmediately
-            # Check if there is a completed iteration
-            # If we enqueue everything first, we will blow up with
-            # memory due to the dataloaders being in the background
-            # We need to call the tagged runtimes since async mode
-            # require different treatment depending on the device.
-            if len(self._ppe_modules) != 1:
-                raise RuntimeError("Async mode is not supported in models "
-                                   "splitted across different devices")
-            for sn, sm, rt in self._runtime_iterator(trainer.models):
-                self.pending_iters[sn].append(
-                    _DeferredIteration(outs, batch_idx, batch, complete_fn))
-                p_iter = self.pending_iters[sn][0]
-                if p_iter.deferred.done():
-                    t_outs = p_iter.deferred.get()
-                    self._complete_train_step(
-                        trainer, t_outs, False, sn, sm, rt)
-        else:
-            self._logic.train_step_optimizers(
-                trainer.models, trainer.optimizers, batch_idx)
-            complete_fn(batch_idx, outs)
+        self._check_and_complete_deferred(outs, batch_idx, batch, trainer, complete_fn, self._complete_train_step)
 
     def eval_setup(
             self,
@@ -530,24 +557,7 @@ class Handler(BaseHandler):
 
         outs = self._logic.eval_step(evaluator.models, batch_idx, batch)
 
-        if isinstance(outs, DeferredResult):
-            # Is async returns inmediately
-            # Check if there is a completed iteration
-            # If we enqueue everything first, we will blow up with
-            # memory due to the dataloaders being in the background
-            if len(self._ppe_modules) != 1:
-                raise RuntimeError("Async mode is not supported in models "
-                                   "splitted across different devices")
-            for sn, sm, rt in self._runtime_iterator(evaluator.models):
-                self.pending_iters[sn].append(
-                    _DeferredIteration(outs, batch_idx, batch, complete_fn))
-                p_iter = self.pending_iters[sn][0]
-                if p_iter.deferred.done():
-                    t_outs = p_iter.deferred.get()
-                    self._complete_eval_step(
-                        evaluator, t_outs, False, sn, sm, rt)
-        else:
-            complete_fn(batch_idx, outs)
+        self._check_and_complete_deferred(outs, batch_idx, batch, evaluator, complete_fn, self._complete_eval_step)
 
     def eval_post_step(
             self,
@@ -579,13 +589,30 @@ class Handler(BaseHandler):
             evaluator (Evaluator): The evaluator.
         """
         while self.pending_iters:
+            # TODO(ecastill) block until we get the result
             for sn, sm, rt in self._runtime_iterator(evaluator.models):
                 p_iter = self.pending_iters[sn][0]
-                if not p_iter.deferred.done():
-                    p_iter.deferred.wait()
-                outs = p_iter.deferred.get()
-                self._complete_eval_step(evaluator, outs, True, sn, sm, rt)
+                if isinstance(p_iter.deferred, dict):
+                    complete = False
+                    outs = {} 
+                    for k, v in p_iter.deferred.items():
+                       if isinstance(v, DeferredResult):
+                           if not v.done():
+                               v.wait()
+                       outs[k] = v
+                else:
+                    if not p_iter.deferred.done():
+                        p_iter.deferred.wait()
+                    outs = p_iter.deferred.get()
+                self._complete_eval_step(
+                    evaluator, outs, True, sn, sm, rt)
 
+
+    def preprocess_eval_outs(self, evaluator: Evaluator, outputs: Any) -> None:
+        for _, sm, rt in self._runtime_iterator(evaluator.models):
+            rt.preprocess_eval_outputs(evaluator, sm, outputs)
+    
+       
     def train_post_step(
             self,
             trainer: Trainer,
