@@ -114,9 +114,10 @@ def test_comparer_n_iters(engine_fn):
         comp.compare(
             {"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)},
             n_iters=n_iters)
+        assert comp.compare_fn.times_called == 6
     else:
         comp.compare({"cpu": train_1, "gpu": train_2}, n_iters=n_iters)
-    assert comp.compare_fn.times_called == 3
+        assert comp.compare_fn.times_called == 3
 
 
 @pytest.mark.parametrize("engine_fn", [
