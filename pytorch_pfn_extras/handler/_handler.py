@@ -371,7 +371,6 @@ class Handler(BaseHandler):
             trainer (Trainer): The trainer that calls this method.
         """
         while self.pending_iters:
-            # TODO(ecastill) block until we get the result
             for sn, sm, rt in self._runtime_iterator(trainer.models):
                 t_outs = self._get_deferred_outputs(
                     self.pending_iters[sn][0], True)
@@ -607,7 +606,6 @@ class Handler(BaseHandler):
             evaluator (Evaluator): The evaluator.
         """
         while self.pending_iters:
-            # TODO(ecastill) block until we get the result
             for sn, sm, rt in self._runtime_iterator(evaluator.models):
                 t_outs = self._get_deferred_outputs(
                     self.pending_iters[sn][0], True)
