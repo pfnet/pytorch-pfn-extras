@@ -84,7 +84,6 @@ class Evaluator:
         x = self._inputs.get()
         observed = self._observed.get()
         with self._reporter.scope(observed):
-            self.handler.preprocess_eval_outs(self, outs)
             outs = self._process_metrics(x, outs)
             self.handler.eval_post_step(self, idx, x, outs)
         self._summary.add(observed)
