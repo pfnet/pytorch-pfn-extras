@@ -78,17 +78,20 @@ def get_default_comparer(rtol=1e-07, atol=0, equal_nan=True, msg=None):
         msg (str): Error message to be printed in case of failure.
     """
     def compare_fn(backend1, backend2, name, val1, val2):
-        err_msg = msg or f" comparing {backend1} and {backend2} in {name}"
-        torch.testing.assert_allclose(
-            # TODO select the device where
-            # the tensors will be compared?
-            val1.cpu().detach(),
-            val2.cpu().detach(),
-            rtol=rtol,
-            atol=atol,
-            equal_nan=equal_nan,
-            msg=err_msg,
-        )
+        try:
+            torch.testing.assert_allclose(
+                # TODO select the device where
+                # the tensors will be compared?
+                val1.cpu().detach(),
+                val2.cpu().detach(),
+                rtol=rtol,
+                atol=atol,
+                equal_nan=equal_nan,
+            )
+        except AssertionError as e:
+            err_msg = msg or f"Comparing '{backend1}' and '{backend2}' in '{name}'"
+            raise AssertionError(err_msg + '\n' + str(e))
+
     return compare_fn
 
 
