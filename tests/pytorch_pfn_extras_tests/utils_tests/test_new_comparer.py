@@ -168,7 +168,7 @@ def test_compare_concurrency_wrong(engine_fn):
 
 
 class ModelForComparer(torch.nn.Module):
-    def __init__(self, *args):
+    def __init__(self, device):
         super().__init__()
         self.model = torch.nn.Sequential(
             torch.nn.Conv2d(10, 10, 3, 3),
@@ -186,8 +186,8 @@ class ModelForComparer(torch.nn.Module):
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_model_comparer(engine_fn):
     loader = list(torch.ones(2, 10, 10, 10) for _ in range(10))
-    engine_cpu, loaders_cpu = engine_fn(ModelForComparer, "cpu", [1.0], loader)
-    engine_gpu, loaders_gpu = engine_fn(ModelForComparer, "cuda:0", [1.0], loader)
+    engine_cpu, loaders_cpu = engine_fn(ModelForComparer, "cpu", [], loader)
+    engine_gpu, loaders_gpu = engine_fn(ModelForComparer, "cuda:0", [], loader)
     comp = ppe.utils.comparer.Comparer(outputs=["a"])
     compare_fn = ppe.utils.comparer.get_default_comparer(rtol=1e-2, atol=1e-2)
     comp = ppe.utils.comparer.Comparer(compare_fn=compare_fn, params=True)
@@ -200,10 +200,8 @@ def test_model_comparer(engine_fn):
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_model_comparer_invalid(engine_fn):
     loader = list(torch.ones(2, 10, 10, 10) for _ in range(10))
-    engine_cpu, loaders_cpu = engine_fn(
-        ModelForComparer, "cpu", [1.0], loader, seed=0)
-    engine_gpu, loaders_gpu = engine_fn(
-        ModelForComparer, "cuda:0", [1.0], loader, seed=1)
+    engine_cpu, loaders_cpu = engine_fn(ModelForComparer, "cpu", [], loader, seed=0)
+    engine_gpu, loaders_gpu = engine_fn(ModelForComparer, "cuda:0", [], loader, seed=1)
     comp = ppe.utils.comparer.Comparer(outputs=["a"])
     compare_fn = ppe.utils.comparer.get_default_comparer(rtol=1e-2, atol=1e-2)
     comp = ppe.utils.comparer.Comparer(compare_fn=compare_fn, params=True)
