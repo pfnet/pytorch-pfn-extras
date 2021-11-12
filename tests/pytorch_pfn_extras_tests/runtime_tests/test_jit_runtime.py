@@ -29,8 +29,10 @@ class JITRuntime(ppe.runtime.PyTorchRuntime):
             self.forward = self._orig_forward
 
             with trace(self) as (new_module, outputs):
-                warnings.simplefilter('ignore')
-                self._traced_mod = torch.jit.trace_module(new_module, {"forward": args})
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    self._traced_mod = torch.jit.trace_module(
+                        new_module, {"forward": args})
                 self._names = [out.name for out in outputs.values]
 
             self.forward = new_forward
