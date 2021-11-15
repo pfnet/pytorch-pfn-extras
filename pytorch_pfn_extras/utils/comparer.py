@@ -17,11 +17,12 @@ from pytorch_pfn_extras.training import trigger as trigger_module
 
 
 class _ComparableHandler(_handler_module.BaseHandler):
-    def __init__(self, handler, name, save_outs_cb):
+    def __init__(self, handler, name, save_outs_cb, trigger=None):
         self._handler = handler
         self._save_outs_cb = save_outs_cb
         self.name = name
         self.iteration = 0
+        self._trigger = trigger
 
     def convert_batch(self, args):
         return self._handler.convert_batch(args)
@@ -35,8 +36,8 @@ class _ComparableHandler(_handler_module.BaseHandler):
     def train_epoch_end(self, trainer):
         return self._handler.train_epoch_end(trainer)
 
-    def train_validation_begin(self, evaluator):
-        return self._handler.train_validation_begin(evaluator)
+    def train_validation_begin(self, trainer, evaluator):
+        return self._handler.train_validation_begin(trainer, evaluator)
 
     def train_validation_end(self, trainer, evaluator):
         return self._handler.train_validation_end(trainer, evaluator)
@@ -45,9 +46,18 @@ class _ComparableHandler(_handler_module.BaseHandler):
         return self._handler.train_step(trainer, batch_idx, batch, complete_fn)
 
     def train_post_step(self, trainer, batch_idx, batch, outputs):
+        class _ManagerProxy(manager_module._ManagerProxy):
+            @property
+            def iteration(self) -> int:
+                # `Comparer._compare_targets` will be called
+                # before `iteration` is incremented.
+                return self._manager.iteration + 1
+
+        manager = _ManagerProxy(trainer.manager)
         self._handler.train_post_step(trainer, batch_idx, batch, outputs)
-        self.iteration += 1
-        return self._save_outs_cb(self, trainer.models, batch_idx, outputs)
+        if self._trigger is None or self._trigger(manager):
+            self.iteration += 1
+            return self._save_outs_cb(self, trainer.models, batch_idx, outputs)
 
     def eval_loop_begin(self, evaluator):
         return self._handler.eval_loop_begin(evaluator)
@@ -127,6 +137,10 @@ class _ComparerBase:
             engine.handler = _ComparableHandler(
                 engine.handler, name, self.compare_targets
             )
+            child_evaluator = getattr(engine, 'evaluator', None)
+            if child_evaluator is not None:
+                # For trainer with evaluator
+                child_evaluator.handler = engine.handler
 
     def _assert_incompatible_trigger(self, condition):
         if not condition:
@@ -425,19 +439,6 @@ class Comparer:
                 self._compare_fn(backend1, backend2, val_name, out1, out2)
 
     def _compare_targets(self, handler, models, batch_idx, outputs):
-        engine, _, _ = self._engines[handler.name]
-        if hasattr(engine, "manager"):
-            class _ManagerProxy(manager_module._ManagerProxy):
-                @property
-                def iteration(self) -> int:
-                    # `Comparer._compare_targets` will be called
-                    # before `iteration` is incremented.
-                    return self._manager.iteration + 1
-
-            manager = _ManagerProxy(engine.manager)
-            if not self._trigger(manager):
-                return
-
         # Save the outputs of this iteration
         with self._report_lock:
             self._add_target(handler, models, outputs)
@@ -478,8 +479,15 @@ class Comparer:
         if name in self._engines.keys():
             raise ValueError(f"Engine named {name} already registered")
 
+        engine.handler = _ComparableHandler(
+            engine.handler, name, self._compare_targets, self._trigger)
+
+        child_evaluator = getattr(engine, 'evaluator', None)
+        if child_evaluator is not None:
+            # For trainer with evaluator
+            child_evaluator.handler = engine.handler
+
         self._engines[name] = engine, args, kwargs
-        engine.handler = _ComparableHandler(engine.handler, name, self._compare_targets)
 
     def _run_engine(self, engine, args, kwargs):
         self._semaphore.acquire()
