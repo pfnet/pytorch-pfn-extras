@@ -2,6 +2,7 @@ import contextlib
 from typing import (
     Any, Dict, Generator, Iterable, Optional,
 )
+from pytorch_pfn_extras.handler._code_block import update_parameters
 
 _amp_enabled = False
 
@@ -273,6 +274,16 @@ class Logic(BaseLogic):
             batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
                 Input tensors feeded to the model of the current step.
         """
+        module = list(models.values())[0]
+        optimizer = list(optimizers.values())[0]
+
+        return update_parameters(
+            module,
+            optimizer,
+            None,  # backprop_from should be an opt
+            None,
+        )(batch)
+
         with torch_autocast(enabled=self._autocast):
             optimizers[self.model_name].zero_grad()
             outs = self._forward(models[self.model_name], batch)

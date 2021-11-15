@@ -238,6 +238,13 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
+    def execute(
+            self,
+            code_block,
+            batch: Any,
+    ) -> Any:
+        raise NotImplementedError()
+
 
 class PyTorchRuntime(BaseRuntime):
     """A collections of callback functions for the devices that PyTorch
@@ -307,6 +314,39 @@ class PyTorchRuntime(BaseRuntime):
             outs: Any,
     ) -> None:
         pass
+
+    def execute(
+            self,
+            code_block,
+            batch: Any,
+    ) -> Any:
+        # Run forward, backward and optimize steps depending on codeblock opts
+        def _scale(x):
+            return x
+
+        if code_block.optimizer is not None:
+            code_block.optimizer.zero_grad()
+
+        # with autocast
+        out = code_block.func(**batch)
+        if code_block.backprop:
+            if code_block.backprop_from is None:
+                for v in out.values():
+                    _scale(v).backward()
+            else:
+                _scale(out[code_block.backprop_from]).backward()
+
+        if code_block.optimizer is None:
+            return out
+
+        # if grad_scaler is not None:
+        #     grad_scaler.step(code_block.optimizer)
+        #     grad_scaler.update()
+        # else:
+        #     code_block.optimizer.step()
+        code_block.optimizer.step()
+
+        return out
 
 
 def _module_runtime_tag(module: torch.nn.Module) -> BaseRuntime:
