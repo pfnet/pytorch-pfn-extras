@@ -337,6 +337,10 @@ class Handler(BaseHandler):
             load = loaders.get(sn, None)
             rt.initialize_module(sm, load, optim)
 
+        if len(self._ppe_modules) == 0:
+            raise RuntimeError(
+                'call `ppe.to(module, device)` before starting the training')
+
     def train_setup(self, trainer: Trainer, loader: Iterable[Any]) -> None:
         """A method called only once when starting a training run.
 
