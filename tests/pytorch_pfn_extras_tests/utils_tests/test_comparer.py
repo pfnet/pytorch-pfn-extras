@@ -23,6 +23,7 @@ class Model(torch.nn.Module):
 
 def _get_trainer(device, ret_val, model_class=Model):
     model = model_class(device, ret_val)
+    ppe.to(model, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
     trainer = ppe.engine.create_trainer(model, optimizer, 1, device=device)
     return trainer
@@ -30,12 +31,14 @@ def _get_trainer(device, ret_val, model_class=Model):
 
 def _get_evaluator(device, ret_val, model_class=Model):
     model = model_class(device, ret_val)
+    ppe.to(model, device)
     evaluator = ppe.engine.create_evaluator(model, device=device)
     return evaluator
 
 
 def _get_trainer_with_evaluator(device, ret_val, model_class=Model):
     model = model_class(device, ret_val)
+    ppe.to(model, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
     evaluator = ppe.engine.create_evaluator(model, device=device)
     trainer = ppe.engine.create_trainer(
@@ -114,9 +117,10 @@ def test_comparer_n_iters(engine_fn):
         comp.compare(
             {"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)},
             n_iters=n_iters)
+        assert comp.compare_fn.times_called == 6
     else:
         comp.compare({"cpu": train_1, "gpu": train_2}, n_iters=n_iters)
-    assert comp.compare_fn.times_called == 3
+        assert comp.compare_fn.times_called == 3
 
 
 @pytest.mark.parametrize("engine_fn", [
@@ -139,16 +143,16 @@ def test_comparer_kwargs(engine_fn):
         comp.compare({"cpu": train_1, "gpu": train_2})
 
 
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
-def test_comparer_incompat_trigger(engine_fn):
+def test_comparer_incompat_trigger():
     model_cpu = Model("cpu", 1.0)
+    ppe.to(model_cpu, 'cpu')
     optimizer_cpu = torch.optim.SGD(model_cpu.parameters(), lr=1.0)
     trainer_cpu = ppe.engine.create_trainer(
         model_cpu, optimizer_cpu, 1, device="cpu",
     )
 
     model_gpu = Model("cuda:0", 1.0)
+    ppe.to(model_gpu, 'cuda:0')
     optimizer_gpu = torch.optim.SGD(model_gpu.parameters(), lr=1.0)
     trainer_gpu = ppe.engine.create_trainer(
         model_gpu, optimizer_gpu, 1, device="cuda:0",
@@ -161,12 +165,7 @@ def test_comparer_incompat_trigger(engine_fn):
     train_1 = list(torch.ones(10) for _ in range(10))
     train_2 = list(torch.ones(10) for _ in range(10))
     with pytest.raises(ValueError):
-        if engine_fn is _get_trainer_with_evaluator:
-            eval_1 = list(torch.ones(10) for _ in range(10))
-            eval_2 = list(torch.ones(10) for _ in range(10))
-            comp.compare({"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)})
-        else:
-            comp.compare({"cpu": train_1, "gpu": train_2})
+        comp.compare({"cpu": (train_1,), "gpu": (train_2,)})
 
 
 @pytest.mark.parametrize("engine_fn", [
@@ -225,6 +224,8 @@ class ModelForComparer(torch.nn.Module):
 def test_model_comparer():
     model_cpu = ModelForComparer()
     model_gpu = ModelForComparer()
+    ppe.to(model_cpu, 'cpu')
+    ppe.to(model_gpu, 'cuda:0')
     # Make the models to have the same initial weights
     model_gpu.load_state_dict(model_cpu.state_dict())
     ppe.to(model_gpu, device='cuda:0')
@@ -249,6 +250,7 @@ def test_model_comparer():
 def test_model_comparer_invalid():
     model_cpu = ModelForComparer()
     model_gpu = ModelForComparer()
+    ppe.to(model_cpu, 'cpu')
     ppe.to(model_gpu, device='cuda:0')
 
     optimizer_cpu = torch.optim.SGD(model_cpu.parameters(), lr=0.01)

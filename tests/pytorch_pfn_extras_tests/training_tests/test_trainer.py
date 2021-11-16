@@ -83,7 +83,24 @@ def test_trainer(device, path):
         device=device, extensions=extensions,
         out_dir=path,
     )
-    trainer.run(data, data)
+    trainer.run(data)
+
+
+def test_trainer_no_to(path):
+    model = MyModel()
+    model_with_loss = MyModelWithLossFn(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
+    extensions = _make_extensions()
+
+    trainer = engine.create_trainer(
+        model_with_loss, optimizer, 20,
+        device='cpu', extensions=extensions,
+        out_dir=path,
+    )
+    with pytest.raises(RuntimeError, match="ppe.to"):
+        trainer.run(data, data)
 
 
 def test_trainer_invalid_options(path):
@@ -161,8 +178,6 @@ def test_evaluator_trigger(evaluator_trigger, path):
 def test_train_result_equal(device, path):
     train_data = torch.utils.data.DataLoader(
         [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
-    eval_data = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(5)])
     data = torch.utils.data.DataLoader(
         [(torch.rand(20,),) for i in range(30)])
 
@@ -178,7 +193,7 @@ def test_train_result_equal(device, path):
             device=device, extensions=extensions,
             out_dir=path
         )
-        trainer.run(train_data, eval_data)
+        trainer.run(train_data)
 
         model.eval()
         with torch.no_grad():
@@ -266,7 +281,7 @@ def test_trainer_defer(path):
         model_with_loss, optimizer, 2, device=device,
         extensions=extensions, out_dir=path
     )
-    trainer.run(data, data)
+    trainer.run(data)
     assert trainer.manager.iteration == 200
     assert trainer.manager.execution == 200
     assert extensions[0].called == 200
@@ -297,7 +312,7 @@ def test_trainer_defer_wrong_order(path):
         handler_class=WrongOrderHandler, out_dir=path
     )
     with pytest.raises(RuntimeError, match="Completed a not expected"):
-        trainer.run(data, data)
+        trainer.run(data)
 
 
 def _compare_states(s1, s2):
@@ -348,16 +363,16 @@ class TestTrainerState:
         trainer = self._get_trainer(20, path)
         data = torch.utils.data.DataLoader(
             [(torch.ones(20,), torch.ones(10,)) for i in range(10)])
-        trainer.run(data, data)
+        trainer.run(data)
         # State to be compared to
         state = trainer.state_dict()
         torch.manual_seed(0)
         new_trainer = self._get_trainer(10, path)
-        new_trainer.run(data, data)
+        new_trainer.run(data)
         assert not _compare_states(state, new_trainer.state_dict())
         new_trainer = self._get_trainer(20, path)
         new_trainer.load_state_dict(trainer.state_dict())
-        new_trainer.run(data, data)
+        new_trainer.run(data)
         assert _compare_states(state, new_trainer.state_dict())
 
     def test_trainer_autoload(self, path):
@@ -365,7 +380,7 @@ class TestTrainerState:
         data = torch.utils.data.DataLoader(
             [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
         trainer.extend(ppe.training.extensions.snapshot())
-        trainer.run(data, data)
+        trainer.run(data)
 
         new_trainer = self._get_trainer(20, path)
         new_trainer.extend(ppe.training.extensions.snapshot(autoload=True))

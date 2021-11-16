@@ -265,9 +265,36 @@ class AsyncResult(ppe.handler.DeferredResult):
         return None
 
 
+class AsyncResult2(ppe.handler.DeferredResult):
+    # This class is needed to test multiple entries when
+    # dealing with dicts of deferred results
+    # if everyone has different counters, we dont have a common
+    # step for all of them, as their `done` method may not be called
+    # every iteration because the handler does an early return if a single
+    # async object is not done
+    def done(self):
+        return True
+
+    def wait(self):
+        return self
+
+    def get(self):
+        return 2
+
+
 class AsyncModel(torch.nn.Module):
     def forward(self, *args, **kwargs):
         return AsyncResult()
+
+
+class AsyncModelDictOfAsync(torch.nn.Module):
+    def forward(self, *args, **kwargs):
+        return {'out': AsyncResult()}
+
+
+class AsyncModelDictOfMultiAsync(torch.nn.Module):
+    def forward(self, *args, **kwargs):
+        return {'out1': AsyncResult(), 'out2': AsyncResult2(), 'out3': 3}
 
 
 class TestAsyncHandler:
@@ -279,20 +306,25 @@ class TestAsyncHandler:
         )
         return handler
 
-    def test_train_step_async(self):
+    @pytest.mark.parametrize(
+        'model_cls',
+        [AsyncModel, AsyncModelDictOfAsync, AsyncModelDictOfMultiAsync]
+    )
+    def test_train_step_async(self, model_cls):
         options = {'eval_report_keys': ['output']}
         trainer = MockTrainer()
         handler = self._get_handler(options)
-        trainer.models['main'] = AsyncModel()
+        trainer.models['main'] = model_cls()
         ppe.to(trainer.models['main'], 'test_rt')
         prev_batch_idx = 0
 
         def callback(batch_idx, outs, is_deferred):
+            print(batch_idx, outs)
             nonlocal prev_batch_idx
             # Check that iterations complete in order
             assert prev_batch_idx == batch_idx
             prev_batch_idx += 1
-            assert outs == 1
+            assert outs in (1, {'out': 1}, {'out1': 1, 'out2': 2, 'out3': 3})
 
         for i in range(40):
             handler.train_step(trainer, i, None, callback)

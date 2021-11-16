@@ -35,7 +35,7 @@ def _get_trainer(
     return trainer, (loader,)
 
 
-def _get_evaluator(model_class, device, args, loader, *, seed=0):
+def _get_evaluator(model_class, device, args, loader, *, seed=0, max_epochs=None):
     torch.manual_seed(seed)
     model = model_class(device, *args)
     ppe.to(model, device)
@@ -92,16 +92,17 @@ class _CustomComparer:
         assert eng_name_1 in ("cpu", "gpu")
         assert eng_name_1 != eng_name_2
         if out_name == "output:iter":
-            self.times_called += 1
             assert out_1 == out_2
-            assert out_1 == self.times_called * self.n_iters
+            expected = [3, 6, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+            assert out_1 == expected[self.times_called]
+            self.times_called += 1
         else:
             assert out_1.cpu() == out_2.cpu()
 
 
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_trainer_with_evaluator])
-def test_comparer_n_iters(engine_fn):
+def test_comparer_trigger(engine_fn):
     n_iters = 3
     loader = list(torch.ones(10) for _ in range(10))
     trainer_cpu, loaders_cpu = engine_fn(Model, "cpu", [1.0], loader, max_epochs=1)
@@ -112,7 +113,10 @@ def test_comparer_n_iters(engine_fn):
     comp.add_engine("cpu", trainer_cpu, *loaders_cpu)
     comp.add_engine("gpu", trainer_gpu, *loaders_gpu)
     comp.compare()
-    assert compare_fn.times_called == 3
+    if engine_fn is _get_trainer_with_evaluator:
+        assert compare_fn.times_called == 13
+    else:
+        assert compare_fn.times_called == 3
 
 
 @pytest.mark.parametrize("engine_fn", [
