@@ -75,7 +75,7 @@ class _ComparableHandler(_handler_module.BaseHandler):
         return self._save_outs_cb(self, evaluator.models, batch_idx, outputs)
 
 
-def get_default_comparer(rtol=1e-07, atol=0, equal_nan=True, msg=None):
+def get_default_comparer(rtol=1e-05, atol=0, equal_nan=True, msg=None):
     """Creates default comparer function.
 
     The created function will compare the outputs by using
