@@ -86,6 +86,23 @@ def test_trainer(device, path):
     trainer.run(data, data)
 
 
+def test_trainer_no_to(path):
+    model = MyModel()
+    model_with_loss = MyModelWithLossFn(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
+    extensions = _make_extensions()
+
+    trainer = engine.create_trainer(
+        model_with_loss, optimizer, 20,
+        device='cpu', extensions=extensions,
+        out_dir=path,
+    )
+    with pytest.raises(RuntimeError, match="ppe.to"):
+        trainer.run(data, data)
+
+
 def test_trainer_invalid_options(path):
     device = 'cpu'
     model = MyModel()
