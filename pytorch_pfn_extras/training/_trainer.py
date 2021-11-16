@@ -2,6 +2,7 @@
 
 import queue
 import time
+import warnings
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import torch
@@ -253,7 +254,12 @@ class Trainer(_Engine):
                     priority=extension.PRIORITY_WRITER,
                 )
             self.handler.train_setup(self, train_loader)
-            if self.evaluator is not None:
+            if self.evaluator is None:
+                if val_loader is not None:
+                    warnings.warn(
+                        '`val_loader` is given whereas the evaluator is missing.',
+                        UserWarning)
+            else:
                 if val_loader is None:
                     raise ValueError('`val_loader` is required')
                 self.evaluator.handler.eval_setup(self.evaluator, val_loader)

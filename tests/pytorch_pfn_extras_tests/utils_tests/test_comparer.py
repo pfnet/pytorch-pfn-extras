@@ -140,9 +140,7 @@ def test_comparer_kwargs(engine_fn):
         comp.compare({"cpu": train_1, "gpu": train_2})
 
 
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
-def test_comparer_incompat_trigger(engine_fn):
+def test_comparer_incompat_trigger():
     model_cpu = Model("cpu", 1.0)
     optimizer_cpu = torch.optim.SGD(model_cpu.parameters(), lr=1.0)
     trainer_cpu = ppe.engine.create_trainer(
@@ -162,12 +160,7 @@ def test_comparer_incompat_trigger(engine_fn):
     train_1 = list(torch.ones(10) for _ in range(10))
     train_2 = list(torch.ones(10) for _ in range(10))
     with pytest.raises(ValueError):
-        if engine_fn is _get_trainer_with_evaluator:
-            eval_1 = list(torch.ones(10) for _ in range(10))
-            eval_2 = list(torch.ones(10) for _ in range(10))
-            comp.compare({"cpu": (train_1, eval_1), "gpu": (train_2, eval_2)})
-        else:
-            comp.compare({"cpu": train_1, "gpu": train_2})
+        comp.compare({"cpu": (train_1,), "gpu": (train_2,)})
 
 
 @pytest.mark.parametrize("engine_fn", [
