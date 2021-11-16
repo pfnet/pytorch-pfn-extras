@@ -26,6 +26,7 @@ def test_evaluator_with_metric(device, accuracy):
         [{'x': torch.rand(20), 't': torch.rand(1)} for i in range(10)],
         batch_size=10)
 
+    ppe.to(model, device)
     evaluator = engine.create_evaluator(
         model, device=device,
         metrics=[ppe.training.metrics.AccuracyMetric('t', 'y')],

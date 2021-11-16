@@ -136,8 +136,7 @@ def main():
         options={'train_report_keys': ['loss']}
     )
 
-    if use_cuda:
-        ppe.to(model_with_loss, args.device)
+    ppe.to(model_with_loss, args.device)
 
     # Lets load the snapshot
     if args.snapshot is not None:
