@@ -1,12 +1,14 @@
 # mypy: ignore-errors
 
-import json
 from collections import OrderedDict
+import json
+from typing import Any, Dict, Iterable, Optional
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training.extensions import log_report
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 from pytorch_pfn_extras.profiler._time_summary import get_time_summary
 
 
@@ -45,14 +47,14 @@ class ProfileReport(extension.Extension):
         templates (str): template string for print values.
     """
     def __init__(
-        self,
-        store_keys=None,
-        report_keys=None,
-        trigger=(1, "epoch"),
-        filename=None,
-        append=False,
-        format=None,
-        **kwargs,
+            self,
+            store_keys: Optional[Iterable[str]] = None,
+            report_keys: Optional[Iterable[str]] = None,
+            trigger: trigger_module.TriggerLike = (1, "epoch"),
+            filename: Optional[str] = None,
+            append: bool = False,
+            format: Optional[str] = None,
+            **kwargs: Any,
     ):
         self.time_summary = get_time_summary()
         # Initializes global TimeSummary.
@@ -86,7 +88,7 @@ class ProfileReport(extension.Extension):
         self._append = append
         self._format = format
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if manager.is_before_training or self._trigger(manager):
             with self.time_summary.summary(clear=True) as s:
                 st, additional = s
@@ -128,14 +130,14 @@ class ProfileReport(extension.Extension):
                 if self._append:
                     self._log = []
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         state = {}
         if hasattr(self._trigger, "state_dict"):
             state["_trigger"] = self._trigger.state_dict()
         state["_log"] = json.dumps(self._log)
         return state
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         if hasattr(self._trigger, "load_state_dict"):
             self._trigger.load_state_dict(to_load["_trigger"])
         self._log = json.loads(to_load["_log"])

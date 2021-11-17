@@ -1,8 +1,7 @@
-# mypy: ignore-errors
-
 import torch
 
 from pytorch_pfn_extras.training import extension
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 class FailOnNonNumber(extension.Extension):
@@ -16,7 +15,7 @@ class FailOnNonNumber(extension.Extension):
 
     needs_model_state = True
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         for name, model in manager.models.items():
             for param in model.parameters():
                 if (not torch.isfinite(param).all()

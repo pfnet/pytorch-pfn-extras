@@ -1,5 +1,6 @@
 # mypy: ignore-errors
 
+from typing import Any, Optional, Tuple, Union
 import warnings
 
 import numpy
@@ -7,6 +8,7 @@ import torch
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 _available = None
@@ -200,13 +202,23 @@ grid=True)
             the :class:`pytorch_pfn_extras.training.ExtensionsManager` object
     """
 
-    def __init__(self, targets, max_sample_size=1000,
-                 report_data=True, report_grad=True,
-                 plot_mean=True, plot_std=True,
-                 percentile_sigmas=(
-                     0, 0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87, 100),
-                 trigger=(1, 'epoch'), filename=None,
-                 figsize=None, marker=None, grid=True, **kwargs):
+    def __init__(
+            self,
+            targets: Any,
+            max_sample_size: int = 1000,
+            report_data: bool = True,
+            report_grad: bool = True,
+            plot_mean: bool = True,
+            plot_std: bool = True,
+            percentile_sigmas: Union[float, Tuple[float, ...]] = (
+                0, 0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87, 100),
+            trigger: trigger_module.TriggerLike = (1, 'epoch'),
+            filename: Optional[str] = None,
+            figsize: Optional[Tuple[int, ...]] = None,
+            marker: Optional[str] = None,
+            grid: bool = True,
+            **kwargs: Any,
+    ):
 
         _check_available()
 
@@ -260,11 +272,11 @@ grid=True)
         self._samples = Reservoir(max_sample_size, data_shape=self._data_shape)
 
     @staticmethod
-    def available():
+    def available() -> bool:
         _check_available()
         return _available
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if _available:
             # Dynamically import pyplot to call matplotlib.use()
             # after importing pytorch_pfn_extras.training.extensions
@@ -298,7 +310,11 @@ grid=True)
         if self._trigger(manager):
             self.save_plot_using_module(plt, manager)
 
-    def save_plot_using_module(self, plt, manager):
+    def save_plot_using_module(
+            self,
+            plt: Any,
+            manager: ExtensionsManagerProtocol,
+    ) -> None:
         nrows = int(self._plot_mean or self._plot_std) \
             + int(self._plot_percentile)
         ncols = len(self._keys)

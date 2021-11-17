@@ -1,12 +1,16 @@
 # mypy: ignore-errors
 
 import os
+import types
+from typing import Any, Optional
 
 import torch
 import torch.distributed
 
 from pytorch_pfn_extras import logging
 from pytorch_pfn_extras.training import extension
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+from pytorch_pfn_extras import writing
 
 
 logger = logging._get_root_logger()
@@ -95,7 +99,7 @@ def _find_stale_snapshots(fmt, path, n_retains, fs):
     return
 
 
-def snapshot_object(target, filename, savefun=None, **kwargs):
+def snapshot_object(target: Any, filename: str, savefun: Any = None, **kwargs: Any):
     """snapshot_object(target, filename, savefun=None, \
 *, condition=None, writer=None, snapshot_on_error=False, \
 n_retains=-1, autoload=False)
@@ -159,16 +163,18 @@ n_retains=-1, autoload=False)
                     **kwargs)
 
 
-def snapshot(savefun=None,
-             filename='snapshot_iter_{.iteration}',
-             *,
-             target=None,
-             condition=None,
-             writer=None,
-             snapshot_on_error=False,
-             n_retains=-1,
-             autoload=False,
-             saver_rank=None):
+def snapshot(
+        savefun: Any = None,
+        filename: str = 'snapshot_iter_{.iteration}',
+        *,
+        target: Any = None,
+        condition: Any = None,
+        writer: Optional[writing.Writer] = None,
+        snapshot_on_error: bool = False,
+        n_retains: int = -1,
+        autoload: bool = False,
+        saver_rank: Optional[int] = None,
+):
     """
     Returns a trainer extension to take snapshots of the trainer.
 
@@ -283,7 +289,7 @@ trigger=(1, 'epoch'))
         autoload=autoload, saver_rank=saver_rank, savefun=savefun)
 
 
-def _always_true():
+def _always_true() -> bool:
     return True
 
 
@@ -306,10 +312,16 @@ class _Snapshot(extension.Extension):
     needs_model_state = True
 
     def __init__(
-            self, target=None, condition=None, writer=None,
-            filename='snapshot_iter_{.iteration}',
-            snapshot_on_error=False, n_retains=-1, autoload=False,
-            savefun=None):
+            self,
+            target: Any = None,
+            condition: Any = None,
+            writer: Optional[writing.Writer] = None,
+            filename: str = 'snapshot_iter_{.iteration}',
+            snapshot_on_error: bool = False,
+            n_retains: int = -1,
+            autoload: bool = False,
+            savefun: Any = None,
+    ):
         if condition is None:
             condition = _always_true
         self._target = target
@@ -321,7 +333,7 @@ class _Snapshot(extension.Extension):
         self.autoload = autoload
         self._savefun = savefun
 
-    def initialize(self, manager):
+    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         target = manager if self._target is None else self._target
         outdir = manager.out
         writer = manager.writer if self.writer is None else self.writer
@@ -360,7 +372,7 @@ class _Snapshot(extension.Extension):
             # built-in writer, a cleanup method that is to be
             # triggered right after creation of new snapshot file, is
             # injected here.
-            def _cleanup():
+            def _cleanup() -> None:
                 files = _find_stale_snapshots(self.filename, outdir,
                                               self.n_retains, writer.fs)
                 for file in files:
@@ -370,16 +382,21 @@ class _Snapshot(extension.Extension):
 
         return loaded_fn
 
-    def on_error(self, manager, exc, tb):
+    def on_error(
+            self,
+            manager: ExtensionsManagerProtocol,
+            exc: Exception,
+            tb: Optional[types.TracebackType],
+    ) -> None:
         super().on_error(manager, exc, tb)
         if self._snapshot_on_error:
             self._make_snapshot(manager)
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if self.condition():
             self._make_snapshot(manager)
 
-    def _make_snapshot(self, manager):
+    def _make_snapshot(self, manager: ExtensionsManagerProtocol) -> None:
         target = manager if self._target is None else self._target
         writer = manager.writer if self.writer is None else self.writer
         self.writer = writer
@@ -399,7 +416,7 @@ class _Snapshot(extension.Extension):
         outdir = manager.out
         writer(filename, outdir, serialized_target, savefun=self._savefun)
 
-    def finalize(self):
+    def finalize(self) -> None:
         if hasattr(self.writer, 'finalize'):
             self.writer.finalize()
 
@@ -422,10 +439,17 @@ class _DistributedSnapshot(_Snapshot):
     priority = extension.PRIORITY_SNAPSHOT
 
     def __init__(
-            self, target=None, condition=None, writer=None,
-            filename='snapshot_iter_{.iteration}',
-            snapshot_on_error=False, n_retains=-1, autoload=False,
-            saver_rank=0, savefun=None):
+            self,
+            target: Any = None,
+            condition: Any = None,
+            writer: Optional[writing.Writer] = None,
+            filename: str = 'snapshot_iter_{.iteration}',
+            snapshot_on_error: bool = False,
+            n_retains: int = -1,
+            autoload: bool = False,
+            saver_rank: int = 0,
+            savefun: Any = None,
+    ):
         super().__init__(target, condition, writer, filename,
                          snapshot_on_error, n_retains,
                          autoload, savefun)
@@ -440,11 +464,11 @@ class _DistributedSnapshot(_Snapshot):
             raise ValueError('Distributed snapshot requires a saver rank'
                              ' in the range [0-{})'.format(self._size))
 
-    def __call__(self, trainer):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if self.condition():
             # on distributed environments only the designed rank
             # saves the snapshot
             if self._rank == self._saver_rank:
-                self._make_snapshot(trainer)
+                self._make_snapshot(manager)
             if self._size > 1:
                 torch.distributed.barrier()

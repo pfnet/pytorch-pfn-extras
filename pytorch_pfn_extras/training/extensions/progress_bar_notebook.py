@@ -3,11 +3,13 @@
 import datetime
 import sys
 import time
+from typing import Any
 
 from IPython.core.display import display
 from ipywidgets import HTML, FloatProgress, HBox, VBox  # NOQA
 
 from pytorch_pfn_extras.training import extension, trigger  # NOQA
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 class ProgressBarNotebook(extension.Extension):
@@ -33,8 +35,13 @@ class ProgressBarNotebook(extension.Extension):
 
     """
 
-    def __init__(self, training_length=None, update_interval=100,
-                 bar_length=50, out=sys.stdout):
+    def __init__(
+            self,
+            training_length: Any = None,
+            update_interval: int = 100,
+            bar_length: int = 50,
+            out: Any = sys.stdout,
+    ):
         self._training_length = training_length
         if training_length is not None:
             self._init_status_template()
@@ -67,7 +74,7 @@ class ProgressBarNotebook(extension.Extension):
         self.update(manager.iteration, manager.epoch_detail)
         display(self._widget)
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         length, unit = self._training_length
 
         iteration, epoch_detail = manager.iteration, manager.epoch_detail
@@ -80,16 +87,16 @@ class ProgressBarNotebook(extension.Extension):
         if iteration % self._update_interval == 0 or is_finished:
             self.update(iteration, epoch_detail)
 
-    def finalize(self):
+    def finalize(self) -> None:
         if self._total_bar.value != 1:
             self._total_bar.bar_style = 'warning'
             self._epoch_bar.bar_style = 'warning'
 
     @property
-    def widget(self):
+    def widget(self) -> VBox:
         return self._widget
 
-    def update(self, iteration, epoch_detail):
+    def update(self, iteration: int, epoch_detail: float):
         length, unit = self._training_length
 
         recent_timing = self._recent_timing
@@ -137,7 +144,7 @@ class ProgressBarNotebook(extension.Extension):
         if len(recent_timing) > 100:
             del recent_timing[0]
 
-    def _init_status_template(self):
+    def _init_status_template(self) -> None:
         self._status_template = (
             '{iteration:10} iter, {epoch} epoch / %s %ss<br />' %
             self._training_length)

@@ -2,9 +2,11 @@
 
 import datetime
 import sys
+from typing import Any
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training.extensions import util
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 class ProgressBar(extension.Extension):
@@ -27,8 +29,13 @@ class ProgressBar(extension.Extension):
 
     """
 
-    def __init__(self, training_length=None, update_interval=100,
-                 bar_length=50, out=sys.stdout):
+    def __init__(
+            self,
+            training_length: Any = None,
+            update_interval: int = 100,
+            bar_length: int = 50,
+            out: Any = sys.stdout,
+    ):
         self._training_length = training_length
         self._update_interval = update_interval
         self._bar_length = bar_length
@@ -36,7 +43,7 @@ class ProgressBar(extension.Extension):
         self._pbar = _ManagerProgressBar(
             self._training_length, self._bar_length, self._out)
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if self._pbar.manager is None:
             self._pbar.manager = manager
 
@@ -45,7 +52,7 @@ class ProgressBar(extension.Extension):
         if iteration % self._update_interval == 0:
             self._pbar.update()
 
-    def finalize(self):
+    def finalize(self) -> None:
         self._pbar.close()
 
 

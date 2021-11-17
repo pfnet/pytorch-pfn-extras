@@ -1,9 +1,13 @@
 # mypy: ignore-errors
 
+from typing import Any
+
+import torch.optim
+
 from pytorch_pfn_extras.training import extension
 
 
-def observe_value(observation_key, target_func):
+def observe_value(observation_key: str, target_func: Any) -> Any:
     """Returns an extension to continuously record a value.
 
     Args:
@@ -27,7 +31,11 @@ def observe_value(observation_key, target_func):
     return _observe_value
 
 
-def observe_lr(optimizer, param_group=0, observation_key='lr'):
+def observe_lr(
+        optimizer: torch.optim.Optimizer,
+        param_group: int = 0,
+        observation_key: str = 'lr',
+) -> Any:
     """Returns an extension to record the learning rate.
 
     Args:

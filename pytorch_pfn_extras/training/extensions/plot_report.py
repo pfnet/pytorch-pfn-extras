@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 
 import json
+from typing import Any, Dict, Iterable, Optional
 import warnings
 
 import numpy
@@ -8,6 +9,7 @@ import numpy
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 _available = None
 
@@ -113,9 +115,17 @@ filename='plot.png', marker='x', grid=True)
 
     """
 
-    def __init__(self, y_keys, x_key='iteration', trigger=(1, 'epoch'),
-                 postprocess=None, filename=None, marker='x',
-                 grid=True, **kwargs):
+    def __init__(
+            self,
+            y_keys: Iterable[str],
+            x_key: str = 'iteration',
+            trigger: trigger_module.TriggerLike = (1, 'epoch'),
+            postprocess: Any = None,
+            filename: Optional[str] = None,
+            marker: str = 'x',
+            grid: bool = True,
+            **kwargs: Any,
+    ):
 
         file_name = kwargs.get('file_name', 'plot.png')
         if filename is None:
@@ -139,11 +149,11 @@ filename='plot.png', marker='x', grid=True)
         self._writer = kwargs.get('writer', None)
 
     @staticmethod
-    def available():
+    def available() -> bool:
         _check_available()
         return _available
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if _available:
             # Dynamically import pyplot to call matplotlib.use()
             # after importing pytorch_pfn_extras.training.extensions
@@ -209,13 +219,13 @@ filename='plot.png', marker='x', grid=True)
 
             self._init_summary()
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         state = {'_plot_{}'.format(self._file_name): json.dumps(self._data)}
         return state
 
-    def load_state_dict(self, to_load):
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         key = '_plot_{}'.format(self._file_name)
         self._data = json.loads(to_load[key])
 
-    def _init_summary(self):
+    def _init_summary(self) -> reporting.DictSummary:
         self._summary = reporting.DictSummary()
