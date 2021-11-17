@@ -6,6 +6,21 @@ import torch
 
 @dataclass
 class CodeBlock:
+    """Class that is used to specify and apply actions to a ``torch.nn.Module``.
+
+    CodeBlocks are used in Logic classes to write device agnostic codes, as
+    the device runtime is in charge of doing the execution of the module with
+    the actions requested from the codeblock
+
+    Args:
+       func: The module to be operated according to the specified options.
+       optimizer: The Optimizer that will be used for parameter update.
+       backprop: Flag to specify if gradients are to be calculated.
+       backprop_from: Select a single output from the block execution to perform
+           the gradient calculation/
+       backprop_to: Name of the values where backpropagation will be stopped.
+       state: Data that can be used during the CodeBlock execution.
+    """
     func: torch.nn.Module
     optimizer: Optional[torch.optim.Optimizer]
     backprop: bool
@@ -42,6 +57,19 @@ def update_parameters(
     backprop_from: Optional[str] = None,
     backprop_to: Optional[Set[str]] = None,
 ) -> CodeBlock:
+    """
+    ``CodeBlock`` that given a ``torch.nn.Module`` or another ``CodeBlock``
+    performs the forward, backward passes and applies the optimizer step.
+
+    Args:
+       block: ``torch.nn.Module`` or ``CodeBlock`` to update the parameters.
+       optimizer: The Optimizer that will be used for parameter update.
+       backprop_from: Select a single output from the block execution to perform
+           the gradient calculation/
+       backprop_to: Name of the values where backpropagation will be stopped.
+
+    Returns: A ``CodeBlock`` object.
+    """
     if isinstance(block, CodeBlock):
         func = block.func
         state = block.state
@@ -66,6 +94,15 @@ def update_parameters(
 def forward(
     block: Union[torch.nn.Module, CodeBlock],
 ) -> CodeBlock:
+    """
+    ``CodeBlock`` that given a ``torch.nn.Module`` or another ``CodeBlock``
+    performs the forward pass.
+
+    Args:
+       block: ``torch.nn.Module`` or ``CodeBlock`` to update the parameters.
+
+    Returns: A ``CodeBlock`` object.
+    """
     if isinstance(block, CodeBlock):
         func = block.func
         state = block.state
