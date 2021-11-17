@@ -343,7 +343,57 @@ class Logic(BaseLogic):
         return outs
 
 
-class CodeBlockLogic(Logic):
+class CodeBlockLogic(BaseLogic):
+    def __init__(
+            self,
+            model_name: str = 'main',
+            options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """A set of methods that defines the training logic.
+
+        Args:
+            model_name (str): Name of the model. Default is ``'main'``.
+            options (dict, optional): The configuration options.
+
+                * ``'backward_outputs'`` (list of str):
+                    A list of names of outputs that require compution of
+                    the gradient.
+                * ``'autocast'`` (bool):
+                    If ``True``, ``torch.cuda.amp.autocast`` is enabled.
+                    Default is ``False``.
+                * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
+                    A gradient scaler that outputs are applied to.
+        """
+        super().__init__(options)
+        self.model_name = model_name
+
+    def consume_options(self, options: Dict[str, Any]) -> None:
+        super().consume_options(options)
+
+        self.backward_outputs = options.pop('backward_outputs', None)
+        if self.backward_outputs is not None:
+            assert isinstance(self.backward_outputs, str)
+
+    def train_epoch_begin(
+            self,
+            models: Dict[str, torch.nn.Module],
+            epoch: int,
+            loader: Iterable[Any],
+    ) -> None:
+        """A method called when starting a new epoch of training.
+
+        Args:
+            epoch (int): Number of epochs already finished.
+            models (dict of torch.nn.Module): The models.
+            loader (torch.utils.data.DataLoader): The data loder.
+        """
+        model = models[self.model_name]
+        model.train()
+        if hasattr(loader, 'sampler') and hasattr(
+                loader.sampler, 'set_epoch'):  # type: ignore[attr-defined]
+            # Needed for `torch.utils.data.DistributedSampler`
+            loader.sampler.set_epoch(epoch)  # type: ignore[attr-defined]
+
     def train_step(
             self,
             models: Dict[str, torch.nn.Module],
@@ -366,15 +416,27 @@ class CodeBlockLogic(Logic):
             batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
                 Input tensors feeded to the model of the current step.
         """
-        module = list(models.values())[0]
-        optimizer = list(optimizers.values())[0]
+        module = models[self.model_name]
+        optimizer = optimizers[self.model_name]
 
         return update_parameters(
             module,
             optimizer,
-            None,  # backprop_from should be an opt
+            self.backward_outputs,
             None,
         )(batch)
+
+    def train_validation_begin(
+            self,
+            models: Dict[str, torch.nn.Module],
+    ) -> None:
+        """A method called when starting a validation.
+
+        Args:
+            models (dict of torch.nn.Module): The models.
+        """
+        model = models[self.model_name]
+        model.eval()
 
     def eval_step(
             self,
