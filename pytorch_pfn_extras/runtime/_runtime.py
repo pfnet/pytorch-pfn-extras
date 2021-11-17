@@ -1,4 +1,5 @@
 # mypy: ignore-errors
+import contextlib
 
 from typing import (
     Any, Dict, Generator, Iterable, Optional, Tuple, Union
@@ -7,6 +8,26 @@ from typing import (
 import torch
 
 from pytorch_pfn_extras.training import Evaluator, Trainer
+
+_amp_enabled = False
+
+
+try:
+    import torch.cuda.amp
+    _amp_enabled = torch.cuda.is_available() and hasattr(
+        torch.cuda.amp, 'autocast')
+except ImportError:
+    pass
+
+
+@contextlib.contextmanager
+def _autocast(enabled: bool = True) -> Generator[None, None, None]:
+    if _amp_enabled:
+        with torch.cuda.amp.autocast(enabled):  # type: ignore[no-untyped-call]
+            yield
+    else:
+        yield
+
 
 _RUNTIME_TAG_NAME = '_ppe_runtime'
 
@@ -254,6 +275,24 @@ class PyTorchRuntime(BaseRuntime):
         device_spec (torch.device or str): The device.
     """
 
+    def __init__(
+            self,
+            device_spec: DeviceLike,
+            options: Dict[str, Any],
+    ) -> None:
+        super().__init__(device_spec, options)
+        self._grad_scaler = options.get('grad_scaler', None)
+        self._autocast = options.get('autocast', False)
+        if not _amp_enabled:
+            if self._grad_scaler is not None or self._autocast:
+                raise RuntimeError('Requested AMP features but torch.cuda.amp'
+                                   ' is not enabled')
+
+        if self._grad_scaler is not None:
+            if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
+                raise RuntimeError('grad_scaler should be a '
+                                   'torch.cuda.amp.GradScaler object')
+
     def move_module(self, module: torch.nn.Module) -> torch.nn.Module:
         return module.to(self.device_spec)
 
@@ -321,14 +360,21 @@ class PyTorchRuntime(BaseRuntime):
             batch: Any,
     ) -> Any:
         # Run forward, backward and optimize steps depending on codeblock opts
-        def _scale(x):
-            return x
+        if self._grad_scaler is None:
+            def _scale(x):
+                return x
+        else:
+            def _scale(x):
+                return self._grad_scaler.scale(x)
 
         if code_block.optimizer is not None:
             code_block.optimizer.zero_grad()
 
         # with autocast
-        out = code_block.func(**batch)
+        with _autocast(enabled=self._autocast):
+            out = code_block.func(**batch)
+
+        # codeblocks return Dicts-per-se so it is not necessary to normalize
         if code_block.backprop:
             if code_block.backprop_from is None:
                 for v in out.values():
@@ -339,12 +385,11 @@ class PyTorchRuntime(BaseRuntime):
         if code_block.optimizer is None:
             return out
 
-        # if grad_scaler is not None:
-        #     grad_scaler.step(code_block.optimizer)
-        #     grad_scaler.update()
-        # else:
-        #     code_block.optimizer.step()
-        code_block.optimizer.step()
+        if self._grad_scaler is not None:
+            self._grad_scaler.step(code_block.optimizer)
+            self._grad_scaler.update()
+        else:
+            code_block.optimizer.step()
 
         return out
 
