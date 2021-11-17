@@ -87,8 +87,7 @@ def create_trainer(
     runtime_options = dict(
         runtime_options if runtime_options
         else options.pop('runtime', {}))
-    logic = handler_module.CodeBlockLogic() if logic is None else logic
-    # logic = handler_module.Logic() if logic is None else logic
+    logic = handler_module.Logic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
@@ -159,8 +158,7 @@ def create_evaluator(
     runtime_options = dict(
         runtime_options if runtime_options
         else options.pop('runtime', {}))
-    logic = handler_module.CodeBlockLogic() if logic is None else logic
-    # logic = handler_module.Logic() if logic is None else logic
+    logic = handler_module.Logic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(

@@ -456,3 +456,26 @@ def test_trainer_namedtuple_input(device, progress_bar, path):
         out_dir=path
     )
     trainer.run(data, data)
+
+
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+@pytest.mark.parametrize('progress_bar', [True, False])
+def test_trainer_with_code_block(device, progress_bar, path):
+    model = MyModel()
+    model_with_loss = MyModelWithLossDictOutput(model)
+    ppe.to(model_with_loss, device)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [{'x': torch.rand(20,), 't': torch.rand(10,)} for i in range(10)])
+    extensions = _make_extensions()
+
+    evaluator = engine.create_evaluator(
+        model_with_loss, device=device, progress_bar=progress_bar,
+        logic=ppe.handler.CodeBlockLogic())
+
+    trainer = engine.create_trainer(
+        model_with_loss, optimizer, 20,
+        device=device, evaluator=evaluator, extensions=extensions,
+        out_dir=path, logic=ppe.handler.CodeBlockLogic()
+    )
+    trainer.run(data, data)
