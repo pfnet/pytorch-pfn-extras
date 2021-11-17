@@ -2,7 +2,7 @@ import contextlib
 from typing import (
     Any, Dict, Generator, Iterable, Optional,
 )
-from pytorch_pfn_extras.handler._code_block import update_parameters
+from pytorch_pfn_extras.handler._code_block import forward, update_parameters
 
 _amp_enabled = False
 
@@ -349,5 +349,5 @@ class Logic(BaseLogic):
                 Input tensors feeded to the model of the current step.
         """
         model = models[self.model_name]
-        outs = self._forward(model, batch)
+        outs = forward(model)(batch)
         return outs

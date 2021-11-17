@@ -60,3 +60,25 @@ def update_parameters(
         state,
         runtime,
     )
+
+
+def forward(
+    block: Union[Callable, CodeBlock],
+) -> CodeBlock:
+    if isinstance(block, CodeBlock):
+        func = block.func
+        state = block.state
+        runtime = block.runtime
+    else:
+        func = block
+        state = {}
+        runtime = block._ppe_runtime
+    return CodeBlock(
+        func,
+        None,
+        False,
+        None,
+        None,
+        state,
+        runtime,
+    )
