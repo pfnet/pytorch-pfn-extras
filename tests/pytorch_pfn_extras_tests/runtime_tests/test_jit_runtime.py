@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 
 import pytorch_pfn_extras as ppe
+import pytorch_pfn_extras.utils.comparer as _comp
 from pytorch_pfn_extras.onnx._as_output import trace
 
 
@@ -26,7 +27,7 @@ class JITRuntime(ppe.runtime.PyTorchRuntime):
                 )
 
             new_forward = self.forward
-            self.forward = self._orig_forward
+            self.forward = self._forward_with_init
 
             with trace(self) as (new_module, outputs):
                 with warnings.catch_warnings():
@@ -38,7 +39,13 @@ class JITRuntime(ppe.runtime.PyTorchRuntime):
             self.forward = new_forward
             return self.forward(*args)
 
+        def forward_with_init(self, *args, **kwargs):
+            # `module.forward` is called multiple times while tracing.
+            _comp._thread_local.intermediates = _comp._Intermediates({}, {})
+            return self._orig_forward(*args, **kwargs)
+
         module._orig_forward = module.forward
+        module._forward_with_init = types.MethodType(forward_with_init, module)
         module.forward = types.MethodType(new_forward, module)
 
         def new_state_dict(self, *args, **kwargs):

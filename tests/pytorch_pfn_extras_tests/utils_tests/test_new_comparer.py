@@ -356,7 +356,8 @@ class ModelForIntermediateValue(torch.nn.Module):
 
     def forward(self, x, t):
         y = self.model(x)
-        ppe.utils.comparer.intermediate_value(y + self.hidden, 'y')
+        for i in range(5):
+            ppe.utils.comparer.intermediate_value('y', y + self.hidden + i)
         loss = F.l1_loss(y, t)
         return loss
 
@@ -368,11 +369,11 @@ def test_compare_intermediate(engine_fn):
         [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(
-        ModelForIntermediateValue, "cpu", [1.0], loader)
+        ModelForIntermediateValue, "cpu", [10.0], loader)
     engine_gpu, loaders_gpu = engine_fn(
-        ModelForIntermediateValue, "cuda:0", [1.0], loader)
+        ModelForIntermediateValue, "cuda:0", [10.0], loader)
     engine_jit, loaders_jit = engine_fn(
-        ModelForIntermediateValue, "jit-cpu", [1.0], loader)
+        ModelForIntermediateValue, "jit-cpu", [10.0], loader)
     comp = ppe.utils.comparer.Comparer()
     comp.add_engine('cpu', engine_cpu, *loaders_cpu)
     comp.add_engine('gpu', engine_gpu, *loaders_gpu)
@@ -387,11 +388,11 @@ def test_compare_intermediate_invalid(engine_fn):
         [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(
-        ModelForIntermediateValue, "cpu", [1.0], loader)
+        ModelForIntermediateValue, "cpu", [10.0], loader)
     engine_gpu, loaders_gpu = engine_fn(
-        ModelForIntermediateValue, "cuda:0", [1.0], loader)
+        ModelForIntermediateValue, "cuda:0", [10.0], loader)
     engine_jit, loaders_jit = engine_fn(
-        ModelForIntermediateValue, "jit-cpu", [0.5], loader)
+        ModelForIntermediateValue, "jit-cpu", [11.1], loader)
     comp = ppe.utils.comparer.Comparer()
     comp.add_engine('cpu', engine_cpu, *loaders_cpu)
     comp.add_engine('gpu', engine_gpu, *loaders_gpu)
