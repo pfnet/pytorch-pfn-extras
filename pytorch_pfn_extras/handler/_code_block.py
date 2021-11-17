@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Set, Union
+from typing import Any, Dict, Optional, Set, Union
 
 import torch
 
 
 @dataclass
 class CodeBlock:
-    func: Callable[[Dict[str, Any]], Dict[str, Any]]
+    func: torch.nn.Module
     optimizer: Optional[torch.optim.Optimizer]
     backprop: bool
     backprop_from: Optional[str]
@@ -37,7 +37,7 @@ class CodeBlock:
 
 
 def update_parameters(
-    block: Union[Callable, CodeBlock],
+    block: Union[torch.nn.Module, CodeBlock],
     optimizer: torch.optim.Optimizer,
     backprop_from: Optional[str] = None,
     backprop_to: Optional[Set[str]] = None,
@@ -48,6 +48,7 @@ def update_parameters(
         runtime = block.runtime
         assert not block.backprop
     else:
+        assert isinstance(block, torch.nn.Module)
         func = block
         state = {}
         runtime = block._ppe_runtime
@@ -63,16 +64,17 @@ def update_parameters(
 
 
 def forward(
-    block: Union[Callable, CodeBlock],
+    block: Union[torch.nn.Module, CodeBlock],
 ) -> CodeBlock:
     if isinstance(block, CodeBlock):
         func = block.func
         state = block.state
         runtime = block.runtime
     else:
+        assert isinstance(block, torch.nn.Module)
         func = block
         state = {}
-        runtime = block._ppe_runtime
+        runtime = getattr(block, '_ppe_runtime', None)
     return CodeBlock(
         func,
         None,

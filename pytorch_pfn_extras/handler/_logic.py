@@ -274,16 +274,6 @@ class Logic(BaseLogic):
             batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
                 Input tensors feeded to the model of the current step.
         """
-        module = list(models.values())[0]
-        optimizer = list(optimizers.values())[0]
-
-        return update_parameters(
-            module,
-            optimizer,
-            None,  # backprop_from should be an opt
-            None,
-        )(batch)
-
         with torch_autocast(enabled=self._autocast):
             optimizers[self.model_name].zero_grad()
             outs = self._forward(models[self.model_name], batch)
@@ -333,6 +323,58 @@ class Logic(BaseLogic):
         """
         model = models[self.model_name]
         model.eval()
+
+    def eval_step(
+            self,
+            models: Dict[str, torch.nn.Module],
+            batch_idx: int,
+            batch: Any,
+    ) -> Any:
+        """A method for an evaluation step.
+
+        Args:
+            models (dict of torch.nn.Module): The models.
+            batch_idx (int): Number of steps already finished.
+            batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
+                Input tensors feeded to the model of the current step.
+        """
+        model = models[self.model_name]
+        outs = self._forward(model, batch)
+        return outs
+
+
+class CodeBlockLogic(Logic):
+    def train_step(
+            self,
+            models: Dict[str, torch.nn.Module],
+            optimizers: Dict[str, torch.optim.Optimizer],
+            batch_idx: int,
+            batch: Any,
+    ) -> Any:
+        """A method invokes the model forward and backward passes.
+
+        Optimizing is left to `train_step_optimizers` since maybe the user
+        would like to aggregate the gradients of several iterations.
+
+        Args:
+            models (dict of torch.nn.Module):
+                The models.
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of training steps already finished.
+            batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
+                Input tensors feeded to the model of the current step.
+        """
+        module = list(models.values())[0]
+        optimizer = list(optimizers.values())[0]
+
+        return update_parameters(
+            module,
+            optimizer,
+            None,  # backprop_from should be an opt
+            None,
+        )(batch)
 
     def eval_step(
             self,

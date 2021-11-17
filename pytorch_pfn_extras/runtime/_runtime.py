@@ -7,6 +7,7 @@ from typing import (
 
 import torch
 
+from pytorch_pfn_extras.handler._code_block import CodeBlock
 from pytorch_pfn_extras.training import Evaluator, Trainer
 
 _amp_enabled = False
@@ -261,9 +262,19 @@ class BaseRuntime:
 
     def execute(
             self,
-            code_block,
+            code_block: CodeBlock,
             batch: Any,
     ) -> Any:
+        """Method called by the CodeBlocks API to do device dependent execution.
+
+        Args:
+            code_block (CodeBlock): The codeblock requesting execution.
+            batch (dict of str, torch.Tensor):
+                The input tensors of this batch.
+
+        Returns:
+            The results of executing the codeblock on this runtime.
+        """
         raise NotImplementedError()
 
 
@@ -356,7 +367,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def execute(
             self,
-            code_block,
+            code_block: CodeBlock,
             batch: Any,
     ) -> Any:
         # Run forward, backward and optimize steps depending on codeblock opts
