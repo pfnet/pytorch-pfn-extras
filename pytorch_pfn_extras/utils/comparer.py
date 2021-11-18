@@ -14,6 +14,12 @@ from pytorch_pfn_extras.training import _trainer
 from pytorch_pfn_extras.training import manager as manager_module
 from pytorch_pfn_extras.training import _evaluator
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.onnx import as_output
+
+
+_thread_local = threading.local()
+_intermediate_prefix = "intermedaite:"
+_Intermediates = collections.namedtuple('_Intermediates', ['values', 'counts'])
 
 
 class _ComparableHandler(_handler_module.BaseHandler):
@@ -43,7 +49,9 @@ class _ComparableHandler(_handler_module.BaseHandler):
         return self._handler.train_validation_end(trainer, evaluator)
 
     def train_step(self, trainer, batch_idx, batch, complete_fn):
-        return self._handler.train_step(trainer, batch_idx, batch, complete_fn)
+        _thread_local.intermediates = _Intermediates({}, {})
+        self._handler.train_step(trainer, batch_idx, batch, complete_fn)
+        del _thread_local.intermediates
 
     def train_post_step(self, trainer, batch_idx, batch, outputs):
         class _ManagerProxy(manager_module._ManagerProxy):
@@ -63,8 +71,9 @@ class _ComparableHandler(_handler_module.BaseHandler):
         return self._handler.eval_loop_begin(evaluator)
 
     def eval_step(self, evaluator, batch_idx, batch, complete_fn):
-        return self._handler.eval_step(
-            evaluator, batch_idx, batch, complete_fn)
+        _thread_local.intermediates = _Intermediates({}, {})
+        self._handler.eval_step(evaluator, batch_idx, batch, complete_fn)
+        del _thread_local.intermediates
 
     def eval_loop_end(self, evaluator):
         return self._handler.eval_loop_end(evaluator)
@@ -413,7 +422,10 @@ class Comparer:
         targets = {}
 
         outputs = _filter(self._output_keys, lambda: outputs)
-        targets.update({'output:' + k: v for k, v in outputs.items()})
+        targets.update({
+            k if k.startswith(_intermediate_prefix) else 'output:' + k: v
+            for k, v in outputs.items()})
+        targets.update(_thread_local.intermediates.values)
 
         params = _filter(self._param_keys, models['main'].state_dict)
         targets.update({'param:' + k: v for k, v in params.items()})
@@ -521,3 +533,14 @@ class Comparer:
 
     def compare_with_dump(self, dir):
         raise NotImplementedError
+
+
+def intermediate_value(name: str, value: torch.Tensor) -> None:
+    if not hasattr(_thread_local, 'intermediates'):
+        return
+    value = value.detach()
+    count = _thread_local.intermediates.counts.get('name', 0)
+    _thread_local.intermediates.counts['name'] = count + 1
+    name = _intermediate_prefix + name + f'_{count}'
+    as_output(name, value)
+    _thread_local.intermediates.values[name] = value
