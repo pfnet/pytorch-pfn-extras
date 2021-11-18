@@ -1,8 +1,6 @@
-# mypy: ignore-errors
-
 import datetime
 import sys
-from typing import Any
+from typing import Any, List, Optional
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training.extensions import util
@@ -58,14 +56,14 @@ class ProgressBar(extension.Extension):
 
 class _ManagerProgressBar(util.ProgressBar):
 
-    def __init__(self, training_length, bar_length, out):
+    def __init__(self, training_length: Any, bar_length: int, out: Any) -> None:
         super().__init__(out)
         self.training_length = training_length
         self.bar_length = bar_length
-        self.progress_template = None
-        self.manager = None
+        self.progress_template: Optional[str] = None
+        self.manager: Optional[ExtensionsManagerProtocol] = None
 
-    def get_lines(self):
+    def get_lines(self) -> List[str]:
         assert self.manager is not None
         lines = []
 
@@ -74,7 +72,7 @@ class _ManagerProgressBar(util.ProgressBar):
 
         if self.training_length is None:
             t = self.manager._stop_trigger
-            self.training_length = t.get_training_length()
+            self.training_length = t.get_training_length()  # type: ignore[attr-defined]
         length, unit = self.training_length
 
         if unit == 'iteration':

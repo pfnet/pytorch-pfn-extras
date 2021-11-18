@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 from typing import Any, Dict
 
 from pytorch_pfn_extras import reporting
@@ -71,7 +69,7 @@ class MicroAverage(extension.Extension):
             denominator_key: str,
             result_key: str,
             trigger: trigger_module.TriggerLike = (1, 'epoch'),
-    ):
+    ) -> None:
         self._trigger = trigger_module.get_trigger(trigger)
 
         self._numerator_key = numerator_key
@@ -81,7 +79,7 @@ class MicroAverage(extension.Extension):
         self._denominator = 0.
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-        observation = manager.observation
+        observation: Any = manager.observation
         if not (self._numerator_key in observation
                 and self._denominator_key in observation):
             return

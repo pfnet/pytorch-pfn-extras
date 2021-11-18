@@ -1,7 +1,5 @@
-# mypy: ignore-errors
-
 import json
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 import warnings
 
 import numpy
@@ -14,14 +12,14 @@ from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProto
 _available = None
 
 
-def matplotlib_savefun(target, file_o):
+def matplotlib_savefun(target: Tuple[Any, Any, Any], file_o: Any) -> None:
     fig, leg, plt = target
     fig.savefig(file_o, bbox_extra_artists=(leg,), bbox_inches='tight')
     fig.clf()
     plt.close(fig)
 
 
-def _try_import_matplotlib():
+def _try_import_matplotlib() -> None:
     global matplotlib, _available
     try:
         import matplotlib  # NOQA
@@ -30,7 +28,7 @@ def _try_import_matplotlib():
         _available = False
 
 
-def _check_available():
+def _check_available() -> None:
     if _available is None:
         _try_import_matplotlib()
 
@@ -117,7 +115,7 @@ filename='plot.png', marker='x', grid=True)
 
     def __init__(
             self,
-            y_keys: Iterable[str],
+            y_keys: Union[Iterable[str], str],
             x_key: str = 'iteration',
             trigger: trigger_module.TriggerLike = (1, 'epoch'),
             postprocess: Any = None,
@@ -145,12 +143,13 @@ filename='plot.png', marker='x', grid=True)
         self._grid = grid
         self._postprocess = postprocess
         self._init_summary()
-        self._data = {k: [] for k in y_keys}
+        self._data: Dict[str, List[Tuple[Any, Any]]] = {k: [] for k in y_keys}
         self._writer = kwargs.get('writer', None)
 
     @staticmethod
     def available() -> bool:
         _check_available()
+        assert _available is not None
         return _available
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
@@ -164,11 +163,7 @@ filename='plot.png', marker='x', grid=True)
         keys = self._y_keys
         observation = manager.observation
         summary = self._summary
-
-        if keys is None:
-            summary.add(observation)
-        else:
-            summary.add({k: observation[k] for k in keys if k in observation})
+        summary.add({k: observation[k] for k in keys if k in observation})
 
         writer = manager.writer if self._writer is None else self._writer
 
@@ -198,15 +193,15 @@ filename='plot.png', marker='x', grid=True)
                 if len(xy) == 0:
                     continue
 
-                xy = numpy.array(xy)
-                a.plot(xy[:, 0], xy[:, 1], marker=self._marker, label=k)
+                xy_ary = numpy.array(xy)
+                a.plot(xy_ary[:, 0], xy_ary[:, 1], marker=self._marker, label=k)
 
             if a.has_data():
                 if self._postprocess is not None:
                     self._postprocess(f, a, summary)
                 leg = a.legend(
                     bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-                writer(self._file_name, manager.out, (f, leg, plt),
+                writer(self._file_name, manager.out, (f, leg, plt),  # type: ignore
                        savefun=matplotlib_savefun)
             else:
                 print(
@@ -227,5 +222,5 @@ filename='plot.png', marker='x', grid=True)
         key = '_plot_{}'.format(self._file_name)
         self._data = json.loads(to_load[key])
 
-    def _init_summary(self) -> reporting.DictSummary:
+    def _init_summary(self) -> None:
         self._summary = reporting.DictSummary()

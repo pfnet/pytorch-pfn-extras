@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 import collections
 import json
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
@@ -19,11 +17,11 @@ except ImportError:
 
 class LogWriterSaveFunc:
 
-    def __init__(self, format, append):
+    def __init__(self, format: str, append: bool) -> None:
         self._format = format
         self._append = append
 
-    def __call__(self, target, file_o):
+    def __call__(self, target: Dict[str, Any], file_o: Any) -> None:
         if self._format == 'json':
             if self._append:
                 raise ValueError(
@@ -36,9 +34,10 @@ class LogWriterSaveFunc:
             import yaml
 
             # This is to dump ordered dicts as regular dicts
-            def dict_representer(dumper, data):
+            def dict_representer(dumper: Any, data: Any) -> Any:
                 return dumper.represent_dict(data.items())
-            yaml.add_representer(collections.OrderedDict, dict_representer)
+            yaml.add_representer(  # type: ignore[no-untyped-call]
+                collections.OrderedDict, dict_representer)
             # yaml.add_constructor(_mapping_tag, dict_constructor)
             log = yaml.dump(target)
         else:
@@ -49,8 +48,8 @@ class LogWriterSaveFunc:
 class _LogBuffer:
 
     def __init__(self) -> None:
-        self.lookers = {}
-        self._log = []
+        self.lookers: Dict[int, int] = {}
+        self._log: List[Any] = []
         self._offset = 0
 
     def _trim(self) -> None:
@@ -59,10 +58,10 @@ class _LogBuffer:
             self._log = self._log[min_looker_index - self._offset:]
             self._offset = min_looker_index
 
-    def append(self, observation) -> None:
+    def append(self, observation: Any) -> None:
         self._log.append(observation)
 
-    def _get(self, looker_id: int) -> List[str]:
+    def _get(self, looker_id: int) -> List[Any]:
         return self._log[self.lookers[looker_id] - self._offset:]
 
     def _clear(self, looker_id: int) -> None:
@@ -87,7 +86,7 @@ class _LogLooker:
         self._log_buffer = log_buffer
         self._looker_id = looker_id
 
-    def get(self) -> List[str]:
+    def get(self) -> List[Any]:
         return self._log_buffer._get(self._looker_id)
 
     def clear(self) -> None:
@@ -154,7 +153,7 @@ class LogReport(extension.Extension):
 
     def __init__(
             self,
-            keys: Iterable[str] = None,
+            keys: Optional[Iterable[str]] = None,
             trigger: trigger_module.TriggerLike = (1, 'epoch'),
             postprocess: Optional[Callable[[Mapping[str, Any]], None]] = None,
             filename: Optional[str] = None,
@@ -200,7 +199,7 @@ class LogReport(extension.Extension):
         else:
             summary.add({k: observation[k] for k in keys if k in observation})
 
-        writer = manager.writer if self._writer is None else self._writer
+        writer: Any = manager.writer if self._writer is None else self._writer
 
         if manager.is_before_training or self._trigger(manager):
             # output the result
@@ -231,12 +230,12 @@ class LogReport(extension.Extension):
             self._init_summary()
 
     @property
-    def log(self) -> str:
+    def log(self) -> List[str]:
         """The current list of observation dictionaries."""
         return self._log_looker.get()
 
     def state_dict(self) -> Dict[str, Any]:
-        state = {}
+        state: Dict[str, Any] = {}
         if hasattr(self._trigger, 'state_dict'):
             state['_trigger'] = self._trigger.state_dict()
 

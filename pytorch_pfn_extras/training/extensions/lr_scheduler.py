@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 from typing import Any, Dict, Optional
 
 from pytorch_pfn_extras.training import extension
@@ -8,7 +6,7 @@ from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProto
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
-def _get_value_from_log_report(manager, key):
+def _get_value_from_log_report(manager: ExtensionsManagerProtocol, key: Any) -> Any:
     # Find and return the latest reported "key" from LogReport
     if key is None:
         return None
@@ -20,7 +18,7 @@ def _get_value_from_log_report(manager, key):
     return manager.observation[key]
 
 
-def _default_stepper(manager, scheduler):
+def _default_stepper(manager: ExtensionsManagerProtocol, scheduler: Any) -> None:
     if isinstance(scheduler, ReduceLROnPlateau):
         LRScheduler.step_by_value('val/loss')(manager, scheduler)
     else:
@@ -50,7 +48,7 @@ class LRScheduler(extension.Extension):
             stepper: Any = _default_stepper,
             trigger: trigger_module.TriggerLike = (1, 'epoch'),
             is_async: bool = True,
-    ):
+    ) -> None:
         self.scheduler = scheduler
         self.trigger = trigger_module.get_trigger(trigger)
         self.stepper = stepper
@@ -61,7 +59,7 @@ class LRScheduler(extension.Extension):
 
     @staticmethod
     def step_by_value(key: Optional[str]) -> Any:
-        def _stepper(manager, scheduler):
+        def _stepper(manager: ExtensionsManagerProtocol, scheduler: Any) -> None:
             scheduler.step(_get_value_from_log_report(manager, key))
         return _stepper
 

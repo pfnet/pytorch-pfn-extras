@@ -4,6 +4,7 @@ from typing_extensions import Protocol
 import torch
 
 if TYPE_CHECKING:
+    from pytorch_pfn_extras.training import trigger as trigger_module
     from pytorch_pfn_extras.training.extension import Extension
     from pytorch_pfn_extras import writing
     from pytorch_pfn_extras import reporting
@@ -52,6 +53,10 @@ class ExtensionsManagerProtocol(Protocol):
         ...
 
     @property
+    def _stop_trigger(self) -> 'trigger_module.Trigger':
+        ...
+
+    @property
     def out(self) -> str:
         ...
 
@@ -64,4 +69,8 @@ class ExtensionsManagerProtocol(Protocol):
         ...
 
     def get_extension(self, name: str) -> 'Extension':
+        ...
+
+    @property
+    def observation(self) -> 'reporting.Observation':
         ...

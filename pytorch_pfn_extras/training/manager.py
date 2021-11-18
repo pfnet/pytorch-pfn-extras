@@ -78,6 +78,10 @@ class _ManagerProxy:
         return self._manager.stop_trigger
 
     @property
+    def _stop_trigger(self) -> trigger_module.Trigger:
+        return self._manager._stop_trigger
+
+    @property
     def out(self) -> str:
         return self._manager.out
 
@@ -91,6 +95,10 @@ class _ManagerProxy:
 
     def get_extension(self, name: str) -> extension_module.Extension:
         return self._manager.get_extension(name)
+
+    @property
+    def observation(self) -> reporting.Observation:
+        return self._manager.observation
 
 
 class _ManagerExecutionProxy(_ManagerProxy):

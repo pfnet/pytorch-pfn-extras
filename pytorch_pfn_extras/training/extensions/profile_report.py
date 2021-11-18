@@ -1,8 +1,6 @@
-# mypy: ignore-errors
-
 from collections import OrderedDict
 import json
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
@@ -68,7 +66,7 @@ class ProfileReport(extension.Extension):
             ]
         self._report_keys = report_keys
         self._trigger = trigger_module.get_trigger(trigger)
-        self._log = []
+        self._log: List[Any] = []
 
         log_name = kwargs.get("log_name", "log")
         if filename is None:
@@ -123,15 +121,16 @@ class ProfileReport(extension.Extension):
             # write to the log file
             if self._log_name is not None:
                 log_name = self._log_name.format(**out)
+                assert self._format is not None
                 savefun = log_report.LogWriterSaveFunc(
                     self._format, self._append)
-                writer(log_name, out, self._log,
+                writer(log_name, out, self._log,  # type: ignore
                        savefun=savefun, append=self._append)
                 if self._append:
                     self._log = []
 
     def state_dict(self) -> Dict[str, Any]:
-        state = {}
+        state: Dict[str, Any] = {}
         if hasattr(self._trigger, "state_dict"):
             state["_trigger"] = self._trigger.state_dict()
         state["_log"] = json.dumps(self._log)

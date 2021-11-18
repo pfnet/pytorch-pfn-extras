@@ -1,9 +1,7 @@
-# mypy: ignore-errors
-
 import datetime
 import sys
 import time
-from typing import Any
+from typing import Any, List, Tuple
 
 from IPython.core.display import display
 from ipywidgets import HTML, FloatProgress, HBox, VBox  # NOQA
@@ -46,7 +44,7 @@ class ProgressBarNotebook(extension.Extension):
         if training_length is not None:
             self._init_status_template()
         self._update_interval = update_interval
-        self._recent_timing = []
+        self._recent_timing: List[Tuple[float, float, float]] = []
 
         self._total_bar = FloatProgress(description='total',
                                         min=0, max=1, value=0,
@@ -62,7 +60,7 @@ class ProgressBarNotebook(extension.Extension):
                              HBox([self._epoch_bar, self._epoch_html]),
                              self._status_html])
 
-    def initialize(self, manager):
+    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         if self._training_length is None:
             t = manager._stop_trigger
             if not isinstance(t, trigger.IntervalTrigger):
@@ -96,7 +94,7 @@ class ProgressBarNotebook(extension.Extension):
     def widget(self) -> VBox:
         return self._widget
 
-    def update(self, iteration: int, epoch_detail: float):
+    def update(self, iteration: int, epoch_detail: float) -> None:
         length, unit = self._training_length
 
         recent_timing = self._recent_timing
