@@ -278,6 +278,13 @@ class PyTorchRuntime(BaseRuntime):
 
     Args:
         device_spec (torch.device or str): The device.
+        options (dict, optional): The configuration options.
+
+            * ``'autocast'`` (bool):
+                If ``True``, ``torch.cuda.amp.autocast`` is enabled.
+                Default is ``False``.
+            * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
+                A gradient scaler that outputs are applied to.
     """
 
     def __init__(
@@ -387,14 +394,10 @@ class PyTorchRuntime(BaseRuntime):
                     if (
                         isinstance(v, torch.Tensor)
                         and v.grad_fn is not None
+                        and v.numel() == 1
                         and (
-                            (
-                                v.numel() == 1
-                                and (
-                                    v.dtype.is_floating_point
-                                    or v.dtype.is_complex
-                                )
-                            )
+                            v.dtype.is_floating_point
+                            or v.dtype.is_complex
                         )
                     ):
                         _scale(v).backward()

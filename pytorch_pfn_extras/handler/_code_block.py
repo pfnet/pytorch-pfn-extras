@@ -17,7 +17,7 @@ class CodeBlock:
        optimizer: The Optimizer that will be used for parameter update.
        backprop: Flag to specify if gradients are to be calculated.
        backprop_from: Select a single output from the block execution to perform
-           the gradient calculation/
+           the gradient calculation.
        backprop_to: Name of the values where backpropagation will be stopped.
        state: Data that can be used during the CodeBlock execution.
     """
@@ -58,14 +58,15 @@ def update_parameters(
     backprop_to: Optional[Set[str]] = None,
 ) -> CodeBlock:
     """
-    ``CodeBlock`` that given a ``torch.nn.Module`` or another ``CodeBlock``
-    performs the forward, backward passes and applies the optimizer step.
+    Returns a ``CodeBlock`` that performs the forward, backward passes and
+    applies the optimizer step for the given ``torch.nn.Module`` or another
+    ``CodeBlock``.
 
     Args:
        block: ``torch.nn.Module`` or ``CodeBlock`` to update the parameters.
        optimizer: The Optimizer that will be used for parameter update.
        backprop_from: Select a single output from the block execution to perform
-           the gradient calculation/
+           the gradient calculation.
        backprop_to: Name of the values where backpropagation will be stopped.
 
     Returns: A ``CodeBlock`` object.
@@ -81,13 +82,13 @@ def update_parameters(
         state = {}
         runtime = block._ppe_runtime
     return CodeBlock(
-        func,
-        optimizer,
-        True,
-        backprop_from,
-        backprop_to,
-        state,
-        runtime,
+        func=func,
+        optimizer=optimizer,
+        backprop=True,
+        backprop_from=backprop_from,
+        backprop_to=backprop_to,
+        state=state,
+        runtime=runtime,
     )
 
 
@@ -95,8 +96,8 @@ def forward(
     block: Union[torch.nn.Module, CodeBlock],
 ) -> CodeBlock:
     """
-    ``CodeBlock`` that given a ``torch.nn.Module`` or another ``CodeBlock``
-    performs the forward pass.
+    Returns a ``CodeBlock`` that performs the forward pass for the given
+    ``torch.nn.Module`` or another ``CodeBlock``.
 
     Args:
        block: ``torch.nn.Module`` or ``CodeBlock`` to update the parameters.
@@ -113,11 +114,11 @@ def forward(
         state = {}
         runtime = getattr(block, '_ppe_runtime', None)
     return CodeBlock(
-        func,
-        None,
-        False,
-        None,
-        None,
-        state,
-        runtime,
+        func=func,
+        optimizer=None,
+        backprop=False,
+        backprop_from=None,
+        backprop_to=None,
+        state=state,
+        runtime=runtime,
     )

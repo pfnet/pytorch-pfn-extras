@@ -358,11 +358,6 @@ class CodeBlockLogic(BaseLogic):
                 * ``'backward_outputs'`` (list of str):
                     A list of names of outputs that require compution of
                     the gradient.
-                * ``'autocast'`` (bool):
-                    If ``True``, ``torch.cuda.amp.autocast`` is enabled.
-                    Default is ``False``.
-                * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
-                    A gradient scaler that outputs are applied to.
         """
         super().__init__(options)
         self.model_name = model_name
