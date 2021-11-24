@@ -67,6 +67,9 @@ class _ComparableHandler(_handler_module.BaseHandler):
             self.iteration += 1
             return self._save_outs_cb(self, trainer.models, batch_idx, outputs)
 
+    def eval_setup(self, evaluator, loader):
+        return self._handler.eval_setup(evaluator, loader)
+
     def eval_loop_begin(self, evaluator):
         return self._handler.eval_loop_begin(evaluator)
 
