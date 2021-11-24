@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 import sys
 from typing import Any, IO, List, Optional, Union
 

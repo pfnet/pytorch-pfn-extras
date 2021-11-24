@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 from copy import deepcopy
 import os
 import sys
@@ -90,7 +88,7 @@ class PrintReport(extension.Extension):
             self._infer_entries = False
         self._entries = entries
         self._log_report = log_report
-        self._log_looker = None
+        self.__log_looker: Optional[log_report_module._LogLooker] = None
         self._out = out
 
         # format information
@@ -116,9 +114,14 @@ class PrintReport(extension.Extension):
             raise TypeError('log report has a wrong type %s' %
                             type(log_report))
 
+    @property
+    def _log_looker(self) -> log_report_module._LogLooker:
+        assert self.__log_looker is not None
+        return self.__log_looker
+
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         log_report = self.get_log_report(manager)
-        self._log_looker = log_report._log_buffer.emit_new_looker()
+        self.__log_looker = log_report._log_buffer.emit_new_looker()
 
     def _update_entries(self, log_report: log_report_module.LogReport) -> None:
         updated_flag = False

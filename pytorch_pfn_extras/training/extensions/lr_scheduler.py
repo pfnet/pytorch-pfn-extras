@@ -1,11 +1,12 @@
-# mypy: ignore-errors
+from typing import Any, Dict, Optional
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
-def _get_value_from_log_report(manager, key):
+def _get_value_from_log_report(manager: ExtensionsManagerProtocol, key: Any) -> Any:
     # Find and return the latest reported "key" from LogReport
     if key is None:
         return None
@@ -17,7 +18,7 @@ def _get_value_from_log_report(manager, key):
     return manager.observation[key]
 
 
-def _default_stepper(manager, scheduler):
+def _default_stepper(manager: ExtensionsManagerProtocol, scheduler: Any) -> None:
     if isinstance(scheduler, ReduceLROnPlateau):
         LRScheduler.step_by_value('val/loss')(manager, scheduler)
     else:
@@ -42,26 +43,28 @@ class LRScheduler(extension.Extension):
     """
 
     def __init__(
-            self, scheduler, *,
-            stepper=_default_stepper,
-            trigger=(1, 'epoch'),
-            is_async=True):
+            self,
+            scheduler: Any, *,
+            stepper: Any = _default_stepper,
+            trigger: trigger_module.TriggerLike = (1, 'epoch'),
+            is_async: bool = True,
+    ) -> None:
         self.scheduler = scheduler
         self.trigger = trigger_module.get_trigger(trigger)
         self.stepper = stepper
         self.is_async = is_async
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         self.stepper(manager, self.scheduler)
 
     @staticmethod
-    def step_by_value(key):
-        def _stepper(manager, scheduler):
+    def step_by_value(key: Optional[str]) -> Any:
+        def _stepper(manager: ExtensionsManagerProtocol, scheduler: Any) -> None:
             scheduler.step(_get_value_from_log_report(manager, key))
         return _stepper
 
-    def state_dict(self):
+    def state_dict(self) -> Dict[str, Any]:
         return {'scheduler': self.scheduler.state_dict()}
 
-    def load_state_dict(self, state):
+    def load_state_dict(self, state: Dict[str, Any]) -> None:
         self.scheduler.load_state_dict(state['scheduler'])

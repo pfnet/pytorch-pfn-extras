@@ -1,10 +1,11 @@
-# mypy: ignore-errors
+from typing import Any, Optional
 
 import torch
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 _default_statistics = {
@@ -80,9 +81,16 @@ class ParameterStatistics(extension.Extension):
 
     default_statistics = _default_statistics
 
-    def __init__(self, links, statistics='default',
-                 report_params=True, report_grads=True, prefix=None,
-                 trigger=(1, 'epoch'), skip_nan_params=False):
+    def __init__(
+            self,
+            links: Any,
+            statistics: Any = 'default',
+            report_params: bool = True,
+            report_grads: bool = True,
+            prefix: Optional[str] = None,
+            trigger: trigger_module.TriggerLike = (1, 'epoch'),
+            skip_nan_params: bool = False,
+    ):
 
         if not isinstance(links, (list, tuple)):
             links = links,
@@ -106,7 +114,7 @@ class ParameterStatistics(extension.Extension):
         self._summary = reporting.DictSummary()
         self._skip_nan_params = skip_nan_params
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         """Execute the statistics extension.
 
         Collect statistics for the current state of parameters.
@@ -132,7 +140,7 @@ class ParameterStatistics(extension.Extension):
                         if (self._skip_nan_params
                             and (
                                 torch.isnan(params).any())):
-                            value = float('nan')
+                            value: Any = float('nan')
                         else:
                             value = function(params)
                         key = self.report_key_template.format(
@@ -156,7 +164,7 @@ class ParameterStatistics(extension.Extension):
             reporting.report(self._summary.compute_mean())
             self._summary = reporting.DictSummary()  # Clear summary
 
-    def register_statistics(self, name, function):
+    def register_statistics(self, name: str, function: Any) -> None:
         """Register a function to compute a certain statistic.
 
         The registered function will be called each time the extension runs and

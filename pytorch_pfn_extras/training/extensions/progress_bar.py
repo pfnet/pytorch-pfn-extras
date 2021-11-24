@@ -1,10 +1,10 @@
-# mypy: ignore-errors
-
 import datetime
 import sys
+from typing import Any, List, Optional
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training.extensions import util
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 class ProgressBar(extension.Extension):
@@ -27,8 +27,13 @@ class ProgressBar(extension.Extension):
 
     """
 
-    def __init__(self, training_length=None, update_interval=100,
-                 bar_length=50, out=sys.stdout):
+    def __init__(
+            self,
+            training_length: Any = None,
+            update_interval: int = 100,
+            bar_length: int = 50,
+            out: Any = sys.stdout,
+    ):
         self._training_length = training_length
         self._update_interval = update_interval
         self._bar_length = bar_length
@@ -36,7 +41,7 @@ class ProgressBar(extension.Extension):
         self._pbar = _ManagerProgressBar(
             self._training_length, self._bar_length, self._out)
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if self._pbar.manager is None:
             self._pbar.manager = manager
 
@@ -45,20 +50,20 @@ class ProgressBar(extension.Extension):
         if iteration % self._update_interval == 0:
             self._pbar.update()
 
-    def finalize(self):
+    def finalize(self) -> None:
         self._pbar.close()
 
 
 class _ManagerProgressBar(util.ProgressBar):
 
-    def __init__(self, training_length, bar_length, out):
+    def __init__(self, training_length: Any, bar_length: int, out: Any) -> None:
         super().__init__(out)
         self.training_length = training_length
         self.bar_length = bar_length
-        self.progress_template = None
-        self.manager = None
+        self.progress_template: Optional[str] = None
+        self.manager: Optional[ExtensionsManagerProtocol] = None
 
-    def get_lines(self):
+    def get_lines(self) -> List[str]:
         assert self.manager is not None
         lines = []
 
@@ -67,7 +72,7 @@ class _ManagerProgressBar(util.ProgressBar):
 
         if self.training_length is None:
             t = self.manager._stop_trigger
-            self.training_length = t.get_training_length()
+            self.training_length = t.get_training_length()  # type: ignore[attr-defined]
         length, unit = self.training_length
 
         if unit == 'iteration':

@@ -1,5 +1,4 @@
-# mypy: ignore-errors
-
+from typing import Any, Dict, Optional, Tuple, Union
 import warnings
 
 import numpy
@@ -7,25 +6,30 @@ import torch
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
-_available = None
+matplotlib: Any = None
+_available: Optional[bool] = None
+_plot_color: Any = None
+_plot_color_trans: Any = None
+_plot_common_kwargs: Any = None
 
 
-def percentile(a, q, axis):
+def percentile(a: torch.Tensor, q: Union[float, Tuple[float, ...]], axis: int) -> Any:
     # fallback to numpy
     return torch.Tensor(
-        numpy.percentile(a.cpu().numpy(), q, axis))
+        numpy.percentile(a.cpu().numpy(), q, axis))  # type: ignore[no-untyped-call]
 
 
-def matplotlib_savefun(target, file_o):
+def matplotlib_savefun(target: Tuple[Any, Any], file_o: Any) -> None:
     fig, plt = target
     fig.savefig(file_o)
     fig.clf()
     plt.close(fig)
 
 
-def _try_import_matplotlib():
+def _try_import_matplotlib() -> None:
     global matplotlib, _available
     global _plot_color, _plot_color_trans, _plot_common_kwargs
     try:
@@ -46,7 +50,7 @@ def _try_import_matplotlib():
             'alpha': 0.2, 'linewidth': 0, 'color': _plot_color_trans}
 
 
-def _check_available():
+def _check_available() -> None:
     if _available is None:
         _try_import_matplotlib()
 
@@ -57,7 +61,7 @@ def _check_available():
                       '  $ pip install matplotlib\n')
 
 
-def _unpack_variables(x, memo=None):
+def _unpack_variables(x: Any, memo: Any = None) -> Any:
     if memo is None:
         memo = ()
     if isinstance(x, torch.Tensor):
@@ -74,13 +78,18 @@ class Reservoir:
 
     """Reservoir sample with a fixed sized buffer."""
 
-    def __init__(self, size, data_shape, dtype=numpy.float32):
+    def __init__(
+            self,
+            size: int,
+            data_shape: Tuple[int, ...],
+            dtype: Any = numpy.float32,
+    ) -> None:
         self.size = size
         self.data = numpy.zeros((size,) + data_shape, dtype=dtype)
         self.idxs = numpy.zeros((size,), dtype=numpy.int32)
         self.counter = 0
 
-    def add(self, x, idx=None):
+    def add(self, x: Any, idx: Any = None) -> None:
         if self.counter < self.size:
             self.data[self.counter] = x
             self.idxs[self.counter] = idx or self.counter
@@ -91,7 +100,7 @@ class Reservoir:
             self.idxs[i] = idx or self.counter
         self.counter += 1
 
-    def get_data(self):
+    def get_data(self) -> Tuple[Any, Any]:
         idxs = self.idxs[:min(self.counter, self.size)]
         sorted_args = numpy.argsort(idxs)
         return idxs[sorted_args], self.data[sorted_args]
@@ -101,12 +110,17 @@ class Statistician:
 
     """Helper to compute basic NumPy-like statistics."""
 
-    def __init__(self, collect_mean, collect_std, percentile_sigmas):
+    def __init__(
+            self,
+            collect_mean: bool,
+            collect_std: bool,
+            percentile_sigmas: Union[float, Tuple[float, ...]],
+    ) -> None:
         self.collect_mean = collect_mean
         self.collect_std = collect_std
         self.percentile_sigmas = percentile_sigmas
 
-    def __call__(self, x, axis=0, dtype=None):
+    def __call__(self, x: Any, axis: Any = 0, dtype: Any = None) -> Dict[str, Any]:
         if axis is None:
             axis = tuple(range(x.ndim))
         elif not isinstance(axis, (tuple, list)):
@@ -114,7 +128,7 @@ class Statistician:
 
         return self.collect(x, axis)
 
-    def collect(self, x, axis):
+    def collect(self, x: Any, axis: int) -> Dict[str, Any]:
         out = dict()
 
         if self.collect_mean:
@@ -200,13 +214,23 @@ grid=True)
             the :class:`pytorch_pfn_extras.training.ExtensionsManager` object
     """
 
-    def __init__(self, targets, max_sample_size=1000,
-                 report_data=True, report_grad=True,
-                 plot_mean=True, plot_std=True,
-                 percentile_sigmas=(
-                     0, 0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87, 100),
-                 trigger=(1, 'epoch'), filename=None,
-                 figsize=None, marker=None, grid=True, **kwargs):
+    def __init__(
+            self,
+            targets: Any,
+            max_sample_size: int = 1000,
+            report_data: bool = True,
+            report_grad: bool = True,
+            plot_mean: bool = True,
+            plot_std: bool = True,
+            percentile_sigmas: Union[float, Tuple[float, ...]] = (
+                0, 0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87, 100),
+            trigger: trigger_module.TriggerLike = (1, 'epoch'),
+            filename: Optional[str] = None,
+            figsize: Optional[Tuple[int, ...]] = None,
+            marker: Optional[str] = None,
+            grid: bool = True,
+            **kwargs: Any,
+    ):
 
         _check_available()
 
@@ -260,11 +284,12 @@ grid=True)
         self._samples = Reservoir(max_sample_size, data_shape=self._data_shape)
 
     @staticmethod
-    def available():
+    def available() -> bool:
         _check_available()
+        assert _available is not None
         return _available
 
-    def __call__(self, manager):
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if _available:
             # Dynamically import pyplot to call matplotlib.use()
             # after importing pytorch_pfn_extras.training.extensions
@@ -291,14 +316,19 @@ grid=True)
                 if self._plot_percentile:
                     stat_list.append(
                         numpy.atleast_1d(stat_dict['percentile']))
-                stats[i] = numpy.concatenate(stat_list, axis=0)
+                stats[i] = numpy.concatenate(  # type: ignore[no-untyped-call]
+                    stat_list, axis=0)
 
         self._samples.add(stats, idx=manager.iteration)
 
         if self._trigger(manager):
             self.save_plot_using_module(plt, manager)
 
-    def save_plot_using_module(self, plt, manager):
+    def save_plot_using_module(
+            self,
+            plt: Any,
+            manager: ExtensionsManagerProtocol,
+    ) -> None:
         nrows = int(self._plot_mean or self._plot_std) \
             + int(self._plot_percentile)
         ncols = len(self._keys)
@@ -377,5 +407,5 @@ grid=True)
                 ax.grid()
                 ax.set_axisbelow(True)
 
-        writer(self._filename, manager.out, (fig, plt),
+        writer(self._filename, manager.out, (fig, plt),  # type: ignore
                savefun=matplotlib_savefun)
