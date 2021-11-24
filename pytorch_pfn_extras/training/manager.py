@@ -2,6 +2,7 @@ import collections
 import contextlib
 import copy
 from pytorch_pfn_extras.profiler import record
+import pkg_resources
 import time
 from typing import (
     Any, Dict, Iterable, Generator, List, Mapping, Optional, Union, TYPE_CHECKING
@@ -519,12 +520,23 @@ class _BaseExtensionsManager:
                                  for name in self._optimizers}
         to_save['extensions'] = {name: self._extensions[name].state_dict()
                                  for name in self._extensions}
+        import pytorch_pfn_extras as ppe
+        to_save['ppe_version'] = ppe.__version__
         return to_save
 
     def load_state_dict(
             self,
             to_load: Dict[str, Any],
     ) -> None:
+        import pytorch_pfn_extras as ppe
+        if 'ppe_version' not in to_load or (
+            pkg_resources.parse_version(to_load['ppe_version'])
+            < pkg_resources.parse_version(ppe.__version__)
+        ):
+            warnings.warn(
+                'You are trying to load a snapshot file taken using an '
+                ' older ppe version'
+            )
         self._start_iteration = to_load['_start_iteration']
         self.iteration = self._start_iteration
         self._start_execution = to_load.get('_start_execution', self.iteration)

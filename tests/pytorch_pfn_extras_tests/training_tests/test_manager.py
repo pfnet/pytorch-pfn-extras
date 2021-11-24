@@ -3,6 +3,7 @@ import pytest
 import torch
 from torch import nn
 
+import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras import training
 
 
@@ -186,6 +187,7 @@ def test_extensions_manager_state_dict():
     state_dict = manager.state_dict()
 
     assert state_dict == {
+        'ppe_version': ppe.__version__,
         '_start_execution': passed_iteration,
         '_start_iteration': passed_iteration,
         'models': {'model_name': model_state_dict},
@@ -251,6 +253,7 @@ def test_ignite_extensions_manager_state_dict():
     state_dict = manager.state_dict()
 
     assert state_dict == {
+        'ppe_version': ppe.__version__,
         '_start_execution': passed_iteration,
         '_start_iteration': passed_iteration,
         '_epoch_length': iters_per_epoch,
@@ -299,6 +302,7 @@ def test_extensions_manager_with_plain_model_and_optimizer():
     state_dict = manager.state_dict()
 
     assert state_dict == {
+        'ppe_version': ppe.__version__,
         '_start_execution': 0,
         '_start_iteration': 0,
         'models': {'main': model_state_dict},
