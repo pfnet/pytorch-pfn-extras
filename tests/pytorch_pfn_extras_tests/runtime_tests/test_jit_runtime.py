@@ -41,7 +41,10 @@ class JITRuntime(ppe.runtime.PyTorchRuntime):
 
         def forward_with_init(self, *args, **kwargs):
             # `module.forward` is called multiple times while tracing.
-            _comp._thread_local.intermediates = _comp._Intermediates({}, {})
+            handler = getattr(_comp._thread_local, 'handler', None)
+            if handler is not None:
+                handler._intermediate_values[handler._batch_idx] = {}
+                handler._intermediate_counts[handler._batch_idx] = {}
             return self._orig_forward(*args, **kwargs)
 
         module._orig_forward = module.forward
