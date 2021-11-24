@@ -524,19 +524,30 @@ class _BaseExtensionsManager:
         to_save['ppe_version'] = ppe.__version__
         return to_save
 
+    def _check_snapshot_version(self, ppe_version: Optional[str]):
+        import pytorch_pfn_extras as ppe
+        must_warn = ppe_version is None or (
+                pkg_resources.parse_version(ppe_version)
+                != pkg_resources.parse_version(ppe.__version__)
+            )
+
+        if not must_warn:
+            return
+
+        msg = ('You are trying to load a snapshot file taken using a different '
+               'ppe version.\n')
+
+        if ppe_version is not None:
+            msg += (f'Snapshot taken with {ppe_version} '
+                    f'installed: {ppe.__version__}')
+
+        warnings.warn(msg)
+
     def load_state_dict(
             self,
             to_load: Dict[str, Any],
     ) -> None:
-        import pytorch_pfn_extras as ppe
-        if 'ppe_version' not in to_load or (
-            pkg_resources.parse_version(to_load['ppe_version'])
-            < pkg_resources.parse_version(ppe.__version__)
-        ):
-            warnings.warn(
-                'You are trying to load a snapshot file taken using an '
-                ' older ppe version'
-            )
+        self._check_snapshot_version(to_load.get('ppe_version', None))
         self._start_iteration = to_load['_start_iteration']
         self.iteration = self._start_iteration
         self._start_execution = to_load.get('_start_execution', self.iteration)

@@ -216,6 +216,105 @@ def test_extensions_manager_state_dict():
     assert new_optimizer.called_load_state_dict == 1
 
 
+def test_extensions_manager_state_dict_old_ppe_no_version():
+    model_state_dict = object()
+    optimizer_state_dict = object()
+    max_epochs = 5
+    iters_per_epoch = 4
+    passed_iteration = 11
+
+    manager = training.ExtensionsManager(
+        {'model_name': _StateDictModel(state_dict=model_state_dict)},
+        {'optimizer_name': _StateDictObj(state_dict=optimizer_state_dict)},
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+    )
+
+    for _ in range(passed_iteration):
+        with manager.run_iteration():
+            pass
+
+    new_model = _StateDictModel(state_dict_to_be_loaded=model_state_dict)
+    new_optimizer = _StateDictObj(state_dict_to_be_loaded=optimizer_state_dict)
+    manager_2 = training.ExtensionsManager(
+        {'model_name': new_model},
+        {'optimizer_name': new_optimizer},
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+    )
+
+    state_dict = manager.state_dict()
+    del state_dict['ppe_version']
+    with pytest.warns(UserWarning, match='version'):
+        manager_2.load_state_dict(state_dict)
+
+
+def test_extensions_manager_state_dict_old_ppe_version():
+    model_state_dict = object()
+    optimizer_state_dict = object()
+    max_epochs = 5
+    iters_per_epoch = 4
+    passed_iteration = 11
+
+    manager = training.ExtensionsManager(
+        {'model_name': _StateDictModel(state_dict=model_state_dict)},
+        {'optimizer_name': _StateDictObj(state_dict=optimizer_state_dict)},
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+    )
+
+    for _ in range(passed_iteration):
+        with manager.run_iteration():
+            pass
+
+    new_model = _StateDictModel(state_dict_to_be_loaded=model_state_dict)
+    new_optimizer = _StateDictObj(state_dict_to_be_loaded=optimizer_state_dict)
+    manager_2 = training.ExtensionsManager(
+        {'model_name': new_model},
+        {'optimizer_name': new_optimizer},
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+    )
+
+    state_dict = manager.state_dict()
+    state_dict['ppe_version'] = '0.4.0'
+    with pytest.warns(UserWarning, match='version'):
+        manager_2.load_state_dict(state_dict)
+
+
+def test_extensions_manager_state_dict_future_ppe_version():
+    model_state_dict = object()
+    optimizer_state_dict = object()
+    max_epochs = 5
+    iters_per_epoch = 4
+    passed_iteration = 11
+
+    manager = training.ExtensionsManager(
+        {'model_name': _StateDictModel(state_dict=model_state_dict)},
+        {'optimizer_name': _StateDictObj(state_dict=optimizer_state_dict)},
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+    )
+
+    for _ in range(passed_iteration):
+        with manager.run_iteration():
+            pass
+
+    new_model = _StateDictModel(state_dict_to_be_loaded=model_state_dict)
+    new_optimizer = _StateDictObj(state_dict_to_be_loaded=optimizer_state_dict)
+    manager_2 = training.ExtensionsManager(
+        {'model_name': new_model},
+        {'optimizer_name': new_optimizer},
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+    )
+
+    state_dict = manager.state_dict()
+    state_dict['ppe_version'] = '23.0.0'
+    with pytest.warns(UserWarning, match='version'):
+        manager_2.load_state_dict(state_dict)
+
+
 def test_ignite_extensions_manager_state_dict():
 
     try:
