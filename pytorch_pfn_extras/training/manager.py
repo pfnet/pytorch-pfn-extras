@@ -524,7 +524,7 @@ class _BaseExtensionsManager:
         to_save['ppe_version'] = ppe.__version__
         return to_save
 
-    def _check_snapshot_version(self, ppe_version: Optional[str]):
+    def _check_snapshot_version(self, ppe_version: Optional[str]) -> None:
         import pytorch_pfn_extras as ppe
         must_warn = ppe_version is None or (
                 pkg_resources.parse_version(ppe_version)
