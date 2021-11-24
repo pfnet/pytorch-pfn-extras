@@ -263,5 +263,5 @@ class LogReport(extension.Extension):
         return pandas.DataFrame(self._log_looker.get())
 
     def finalize(self) -> None:
-        if self._writer is not None:
+        if self._writer is not None and hasattr(self._writer, 'finalize'):
             self._writer.finalize()

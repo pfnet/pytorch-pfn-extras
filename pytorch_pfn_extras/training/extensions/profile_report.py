@@ -140,3 +140,7 @@ class ProfileReport(extension.Extension):
         if hasattr(self._trigger, "load_state_dict"):
             self._trigger.load_state_dict(to_load["_trigger"])
         self._log = json.loads(to_load["_log"])
+
+    def finalize(self) -> None:
+        if self._writer is not None and hasattr(self._writer, 'finalize'):
+            self._writer.finalize()
