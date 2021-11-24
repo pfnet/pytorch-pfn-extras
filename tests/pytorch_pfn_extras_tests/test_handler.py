@@ -550,6 +550,27 @@ class TestLogic:
 
         assert outs['0'].grad is None
 
+    def test_train_step_backward_invalid(self):
+        logic = ppe.handler.Logic(options={'backward_outputs': 'abcd'})
+        input = torch.rand(1, 1)
+        input.requires_grad = True
+
+        class _DummyModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.l0 = torch.nn.Linear(1, 1)
+
+            def forward(self, x):
+                return {'0': x}
+
+        model = _DummyModel()
+        models = {'main': model}
+        optimizers = {'main': torch.optim.SGD(model.parameters(), 1.0)}
+        assert input.grad is None
+
+        with pytest.raises(RuntimeError, match='backward values'):
+            logic.train_step(models, optimizers, 0, input)
+
     def test_train_step_optimizers(self):
         logic = ppe.handler.Logic()
         models, optimizers, input, out = self._run_step(logic, 'cpu')

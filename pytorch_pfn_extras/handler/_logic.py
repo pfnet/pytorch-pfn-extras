@@ -215,22 +215,35 @@ class Logic(BaseLogic):
 
     def _backward(self, outputs: Dict[str, Any]) -> None:
         target = _normalize_outputs(outputs)
+        backward_outputs = None
+        if type(self.backward_outputs) is str:
+            backward_outputs = set((self.backward_outputs,))
+        elif self.backward_outputs is not None:
+            backward_outputs = set(self.backward_outputs)
 
         for k, v in target.items():
             # This is to avoid errors when the trained models returns
             # tensors others than scalars
             if isinstance(v, torch.Tensor) and v.grad_fn is not None and (
                 (
-                    self.backward_outputs is None
+                    backward_outputs is None
                     and v.numel() == 1
                     and (v.dtype.is_floating_point or v.dtype.is_complex)
                 )
                 or (
-                    self.backward_outputs is not None
-                    and k in self.backward_outputs
+                    backward_outputs is not None
+                    and k in backward_outputs
                 )
             ):
                 v.backward()  # type: ignore[no-untyped-call]
+                if backward_outputs is not None:
+                    backward_outputs.remove(k)
+
+        if backward_outputs is not None and not len(backward_outputs) == 0:
+            raise RuntimeError(
+                'Couldn\'t find requested backward values: '
+                f'{backward_outputs} in {target.keys()}'
+            )
 
     def train_epoch_begin(
             self,
