@@ -70,4 +70,7 @@ class TensorBoardWriter(object):
                 key, value, stats_cpu['iteration'])
 
     def finalize(self) -> None:
-        self._writer.close()  # type: ignore[no-untyped-call]
+        writer = self._writer
+        if writer is not None:
+            writer.close()  # type: ignore[no-untyped-call]
+        self._writer = None
