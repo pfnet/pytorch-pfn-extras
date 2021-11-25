@@ -1,14 +1,36 @@
 # mypy: ignore-errors
+import contextlib
 
-from typing import (
-    Any, Dict, Generator, Iterable, Optional, Tuple, Union
-)
+from typing import Any, Dict, Generator, Iterable, Optional, Tuple, Union
 
 import torch
 
+from pytorch_pfn_extras.handler._code_block import CodeBlock
 from pytorch_pfn_extras.training import Evaluator, Trainer
 
-_RUNTIME_TAG_NAME = '_ppe_runtime'
+_amp_enabled = False
+
+
+try:
+    import torch.cuda.amp
+
+    _amp_enabled = torch.cuda.is_available() and hasattr(
+        torch.cuda.amp, "autocast"
+    )
+except ImportError:
+    pass
+
+
+@contextlib.contextmanager
+def _autocast(enabled: bool = True) -> Generator[None, None, None]:
+    if _amp_enabled:
+        with torch.cuda.amp.autocast(enabled):  # type: ignore[no-untyped-call]
+            yield
+    else:
+        yield
+
+
+_RUNTIME_TAG_NAME = "_ppe_runtime"
 
 DeviceLike = Union[str, torch.device]
 
@@ -30,9 +52,7 @@ class BaseRuntime:
     """
 
     def __init__(
-            self,
-            device_spec: DeviceLike,
-            options: Dict[str, Any],
+        self, device_spec: DeviceLike, options: Dict[str, Any],
     ) -> None:
         self.device_spec = device_spec
         self.options = options
@@ -50,7 +70,7 @@ class BaseRuntime:
 
         # this should be called with the runtime associated to a model
         # or a model part
-        if isinstance(args, tuple) and hasattr(args, '_fields'):
+        if isinstance(args, tuple) and hasattr(args, "_fields"):
             # namedtuple
             return args._replace(**self._convert_batch_dict(args._asdict()))
         if isinstance(args, dict):
@@ -96,10 +116,10 @@ class BaseRuntime:
         raise NotImplementedError()
 
     def initialize_module(
-            self,
-            module: torch.nn.Module,
-            loader_or_batch: Optional[Union[Iterable[Any], torch.Tensor]],
-            optimizer: Optional[torch.optim.Optimizer] = None,
+        self,
+        module: torch.nn.Module,
+        loader_or_batch: Optional[Union[Iterable[Any], torch.Tensor]],
+        optimizer: Optional[torch.optim.Optimizer] = None,
     ) -> None:
         """Initializes the module at the beginning of training or inference.
 
@@ -127,11 +147,11 @@ class BaseRuntime:
         raise NotImplementedError()
 
     def train_pre_step(
-            self,
-            trainer: Trainer,
-            module: torch.nn.Module,
-            batch_idx: int,
-            batch: Any,
+        self,
+        trainer: Trainer,
+        module: torch.nn.Module,
+        batch_idx: int,
+        batch: Any,
     ) -> None:
         """Preprocess of each step.
 
@@ -150,12 +170,12 @@ class BaseRuntime:
         raise NotImplementedError()
 
     def train_post_step(
-            self,
-            trainer: Trainer,
-            module: torch.nn.Module,
-            batch_idx: int,
-            batch: Any,
-            outs: Any,
+        self,
+        trainer: Trainer,
+        module: torch.nn.Module,
+        batch_idx: int,
+        batch: Any,
+        outs: Any,
     ) -> None:
         """Postprocess of each step.
 
@@ -196,11 +216,11 @@ class BaseRuntime:
         raise NotImplementedError()
 
     def eval_pre_step(
-            self,
-            evaluator: Evaluator,
-            module: torch.nn.Module,
-            batch_idx: int,
-            batch: Any,
+        self,
+        evaluator: Evaluator,
+        module: torch.nn.Module,
+        batch_idx: int,
+        batch: Any,
     ) -> None:
         """The method called at the beginning of each evaluation.
 
@@ -216,12 +236,12 @@ class BaseRuntime:
         raise NotImplementedError()
 
     def eval_post_step(
-            self,
-            evaluator: Evaluator,
-            module: torch.nn.Module,
-            batch_idx: int,
-            batch: Any,
-            outs: Any,
+        self,
+        evaluator: Evaluator,
+        module: torch.nn.Module,
+        batch_idx: int,
+        batch: Any,
+        outs: Any,
     ) -> None:
         """The method called at the end of each evaluation.
 
@@ -238,6 +258,19 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
+    def execute(self, code_block: CodeBlock, batch: Any,) -> Any:
+        """Method called by the CodeBlocks API to do device dependent execution.
+
+        Args:
+            code_block (CodeBlock): The codeblock requesting execution.
+            batch (dict of str, torch.Tensor):
+                The input tensors of this batch.
+
+        Returns:
+            The results of executing the codeblock on this runtime.
+        """
+        raise NotImplementedError()
+
 
 class PyTorchRuntime(BaseRuntime):
     """A collections of callback functions for the devices that PyTorch
@@ -245,7 +278,34 @@ class PyTorchRuntime(BaseRuntime):
 
     Args:
         device_spec (torch.device or str): The device.
+        options (dict, optional): The configuration options.
+
+            * ``'autocast'`` (bool):
+                If ``True``, ``torch.cuda.amp.autocast`` is enabled.
+                Default is ``False``.
+            * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
+                A gradient scaler that outputs are applied to.
     """
+
+    def __init__(
+        self, device_spec: DeviceLike, options: Dict[str, Any],
+    ) -> None:
+        super().__init__(device_spec, options)
+        self._grad_scaler = options.get("grad_scaler", None)
+        self._autocast = options.get("autocast", False)
+        if not _amp_enabled:
+            if self._grad_scaler is not None or self._autocast:
+                raise RuntimeError(
+                    "Requested AMP features but torch.cuda.amp"
+                    " is not enabled"
+                )
+
+        if self._grad_scaler is not None:
+            if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
+                raise RuntimeError(
+                    "grad_scaler should be a "
+                    "torch.cuda.amp.GradScaler object"
+                )
 
     def move_module(self, module: torch.nn.Module) -> torch.nn.Module:
         return module.to(self.device_spec)
@@ -254,10 +314,10 @@ class PyTorchRuntime(BaseRuntime):
         return tensor.to(self.device_spec)
 
     def initialize_module(
-            self,
-            module: torch.nn.Module,
-            loader_or_batch: Optional[Union[Iterable[Any], torch.Tensor]],
-            optimizer: Optional[torch.optim.Optimizer] = None,
+        self,
+        module: torch.nn.Module,
+        loader_or_batch: Optional[Union[Iterable[Any], torch.Tensor]],
+        optimizer: Optional[torch.optim.Optimizer] = None,
     ) -> None:
         pass
 
@@ -271,59 +331,108 @@ class PyTorchRuntime(BaseRuntime):
         pass
 
     def train_pre_step(
-            self,
-            trainer: Trainer,
-            module: torch.nn.Module,
-            batch_idx: int,
-            batch: Any,
+        self,
+        trainer: Trainer,
+        module: torch.nn.Module,
+        batch_idx: int,
+        batch: Any,
     ) -> None:
         pass
 
     def train_post_step(
-            self,
-            trainer: Trainer,
-            module: torch.nn.Module,
-            batch_idx: int,
-            batch: Any,
-            outs: Any,
+        self,
+        trainer: Trainer,
+        module: torch.nn.Module,
+        batch_idx: int,
+        batch: Any,
+        outs: Any,
     ) -> None:
         pass
 
     def eval_pre_step(
-            self,
-            evaluator: Evaluator,
-            module: torch.nn.Module,
-            batch_idx: int,
-            batch: Any,
+        self,
+        evaluator: Evaluator,
+        module: torch.nn.Module,
+        batch_idx: int,
+        batch: Any,
     ) -> None:
         pass
 
     def eval_post_step(
-            self,
-            evaluator: Evaluator,
-            module: torch.nn.Module,
-            batch_idx: int,
-            batch: Any,
-            outs: Any,
+        self,
+        evaluator: Evaluator,
+        module: torch.nn.Module,
+        batch_idx: int,
+        batch: Any,
+        outs: Any,
     ) -> None:
         pass
+
+    def execute(self, code_block: CodeBlock, batch: Any,) -> Any:
+        # Run forward, backward and optimize steps depending on codeblock opts
+        if self._grad_scaler is None:
+
+            def _scale(x):
+                return x
+
+        else:
+
+            def _scale(x):
+                return self._grad_scaler.scale(x)
+
+        if code_block.optimizer is not None:
+            code_block.optimizer.zero_grad()
+
+        # with autocast
+        with _autocast(enabled=self._autocast):
+            out = code_block.func(**batch)
+
+        # codeblocks return Dicts-per-se so it is not necessary to normalize
+        if code_block.backprop:
+            if code_block.backprop_from is None:
+                for v in out.values():
+                    if (
+                        isinstance(v, torch.Tensor)
+                        and v.grad_fn is not None
+                        and v.numel() == 1
+                        and (
+                            v.dtype.is_floating_point
+                            or v.dtype.is_complex
+                        )
+                    ):
+                        _scale(v).backward()
+            else:
+                _scale(out[code_block.backprop_from]).backward()
+
+        if code_block.optimizer is None:
+            return out
+
+        if self._grad_scaler is not None:
+            self._grad_scaler.step(code_block.optimizer)
+            self._grad_scaler.update()
+        else:
+            code_block.optimizer.step()
+
+        return out
 
 
 def _module_runtime_tag(module: torch.nn.Module) -> BaseRuntime:
     return getattr(  # type: ignore[no-any-return]
-        module, _RUNTIME_TAG_NAME, None)
+        module, _RUNTIME_TAG_NAME, None
+    )
 
 
 def _set_module_runtime_tag(
-        module: torch.nn.Module, runtime: BaseRuntime) -> None:
+    module: torch.nn.Module, runtime: BaseRuntime
+) -> None:
     return setattr(module, _RUNTIME_TAG_NAME, runtime)
 
 
 def named_runtime_modules(
-        module: torch.nn.Module,
-        module_name: str = '',
-        first_level: bool = True,
-        recursive: bool = True,
+    module: torch.nn.Module,
+    module_name: str = "",
+    first_level: bool = True,
+    recursive: bool = True,
 ) -> Generator[Tuple[str, torch.nn.Module], Tuple[str, torch.nn.Module], None]:
     # This can be invoked with no containarized modules
     # to look for submodules that hold containers

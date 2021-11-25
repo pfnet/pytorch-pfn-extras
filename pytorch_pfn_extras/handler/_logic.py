@@ -2,6 +2,7 @@ import contextlib
 from typing import (
     Any, Dict, Generator, Iterable, Optional,
 )
+from pytorch_pfn_extras.handler._code_block import forward, update_parameters
 
 _amp_enabled = False
 
@@ -339,4 +340,113 @@ class Logic(BaseLogic):
         """
         model = models[self.model_name]
         outs = self._forward(model, batch)
+        return outs
+
+
+class CodeBlockLogic(BaseLogic):
+    def __init__(
+            self,
+            model_name: str = 'main',
+            options: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """A set of methods that defines the training logic.
+
+        Args:
+            model_name (str): Name of the model. Default is ``'main'``.
+            options (dict, optional): The configuration options.
+
+                * ``'backward_outputs'`` (list of str):
+                    A list of names of outputs that require compution of
+                    the gradient.
+        """
+        super().__init__(options)
+        self.model_name = model_name
+
+    def consume_options(self, options: Dict[str, Any]) -> None:
+        super().consume_options(options)
+
+        self.backward_outputs = options.pop('backward_outputs', None)
+        if self.backward_outputs is not None:
+            assert isinstance(self.backward_outputs, str)
+
+    def train_epoch_begin(
+            self,
+            models: Dict[str, torch.nn.Module],
+            epoch: int,
+            loader: Iterable[Any],
+    ) -> None:
+        """A method called when starting a new epoch of training.
+
+        Args:
+            epoch (int): Number of epochs already finished.
+            models (dict of torch.nn.Module): The models.
+            loader (torch.utils.data.DataLoader): The data loder.
+        """
+        model = models[self.model_name]
+        model.train()
+        if hasattr(loader, 'sampler') and hasattr(
+                loader.sampler, 'set_epoch'):  # type: ignore[attr-defined]
+            # Needed for `torch.utils.data.DistributedSampler`
+            loader.sampler.set_epoch(epoch)  # type: ignore[attr-defined]
+
+    def train_step(
+            self,
+            models: Dict[str, torch.nn.Module],
+            optimizers: Dict[str, torch.optim.Optimizer],
+            batch_idx: int,
+            batch: Any,
+    ) -> Any:
+        """A method invokes the model forward and backward passes.
+
+        Optimizing is left to `train_step_optimizers` since maybe the user
+        would like to aggregate the gradients of several iterations.
+
+        Args:
+            models (dict of torch.nn.Module):
+                The models.
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of training steps already finished.
+            batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
+                Input tensors feeded to the model of the current step.
+        """
+        module = models[self.model_name]
+        optimizer = optimizers[self.model_name]
+
+        return update_parameters(
+            module,
+            optimizer,
+            self.backward_outputs,
+            None,
+        )(batch)
+
+    def train_validation_begin(
+            self,
+            models: Dict[str, torch.nn.Module],
+    ) -> None:
+        """A method called when starting a validation.
+
+        Args:
+            models (dict of torch.nn.Module): The models.
+        """
+        model = models[self.model_name]
+        model.eval()
+
+    def eval_step(
+            self,
+            models: Dict[str, torch.nn.Module],
+            batch_idx: int,
+            batch: Any,
+    ) -> Any:
+        """A method for an evaluation step.
+
+        Args:
+            models (dict of torch.nn.Module): The models.
+            batch_idx (int): Number of steps already finished.
+            batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
+                Input tensors feeded to the model of the current step.
+        """
+        model = models[self.model_name]
+        outs = forward(model)(batch)
         return outs
