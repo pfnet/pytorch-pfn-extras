@@ -2,7 +2,6 @@ import collections
 import contextlib
 import copy
 from pytorch_pfn_extras.profiler import record
-import pkg_resources
 import time
 from typing import (
     Any, Dict, Iterable, Generator, List, Mapping, Optional, Union, TYPE_CHECKING
@@ -11,6 +10,7 @@ import warnings
 
 import torch
 
+import pytorch_pfn_extras
 from pytorch_pfn_extras import writing
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension as extension_module
@@ -520,26 +520,21 @@ class _BaseExtensionsManager:
                                  for name in self._optimizers}
         to_save['extensions'] = {name: self._extensions[name].state_dict()
                                  for name in self._extensions}
-        import pytorch_pfn_extras as ppe
-        to_save['ppe_version'] = ppe.__version__
+        to_save['ppe_version'] = pytorch_pfn_extras.__version__
         return to_save
 
     def _check_snapshot_version(self, ppe_version: Optional[str]) -> None:
-        import pytorch_pfn_extras as ppe
-        must_warn = ppe_version is None or (
-                pkg_resources.parse_version(ppe_version)
-                != pkg_resources.parse_version(ppe.__version__)
-            )
+        must_warn = ppe_version is None or (ppe_version != pytorch_pfn_extras.__version__)
 
         if not must_warn:
             return
 
         msg = ('You are trying to load a snapshot file taken using a different '
-               'ppe version.\n')
+               'PPE version.\n')
 
         if ppe_version is not None:
-            msg += (f'Snapshot taken with {ppe_version} '
-                    f'installed: {ppe.__version__}')
+            msg += (f'Snapshot taken with PPE {ppe_version} but '
+                    f'currently using PPE {pytorch_pfn_extras.__version__}')
 
         warnings.warn(msg)
 
