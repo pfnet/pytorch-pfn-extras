@@ -3,6 +3,7 @@ from typing import (
     Any, Dict, Generator, Iterable, Optional,
 )
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
+import warnings
 
 _amp_enabled = False
 
@@ -240,7 +241,7 @@ class Logic(BaseLogic):
                     backward_outputs.remove(k)
 
         if backward_outputs is not None and not len(backward_outputs) == 0:
-            raise RuntimeError(
+            warnings.warn(
                 'Couldn\'t find requested backward values: '
                 f'{backward_outputs} in {target.keys()}'
             )

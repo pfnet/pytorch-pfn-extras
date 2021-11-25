@@ -568,7 +568,7 @@ class TestLogic:
         optimizers = {'main': torch.optim.SGD(model.parameters(), 1.0)}
         assert input.grad is None
 
-        with pytest.raises(RuntimeError, match='backward values'):
+        with pytest.warns(UserWarning, match='backward values'):
             logic.train_step(models, optimizers, 0, input)
 
     def test_train_step_optimizers(self):
