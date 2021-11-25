@@ -421,8 +421,7 @@ class _Snapshot(extension.Extension):
             filename, outdir, serialized_target, savefun=self._savefun)
 
     def finalize(self) -> None:
-        if hasattr(self.writer, 'finalize'):
-            self.writer.finalize()  # type: ignore
+        self.writer.finalize()  # type: ignore
 
 
 class _DistributedSnapshot(_Snapshot):

@@ -142,5 +142,5 @@ class ProfileReport(extension.Extension):
         self._log = json.loads(to_load["_log"])
 
     def finalize(self) -> None:
-        if self._writer is not None and hasattr(self._writer, 'finalize'):
+        if self._writer is not None:
             self._writer.finalize()

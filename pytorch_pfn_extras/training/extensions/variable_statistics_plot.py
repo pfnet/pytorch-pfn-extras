@@ -411,5 +411,5 @@ grid=True)
                savefun=matplotlib_savefun)
 
     def finalize(self) -> None:
-        if self._writer is not None and hasattr(self._writer, 'finalize'):
+        if self._writer is not None:
             self._writer.finalize()

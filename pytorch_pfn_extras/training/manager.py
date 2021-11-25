@@ -675,8 +675,7 @@ class ExtensionsManager(_BaseExtensionsManager):
 
         if self._internal_stop_trigger(self):
             self._finalize_extensions()
-            if hasattr(self.writer, 'finalize'):
-                self.writer.finalize()
+            self.writer.finalize()
 
 
 if TYPE_CHECKING:
