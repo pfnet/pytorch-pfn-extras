@@ -675,6 +675,7 @@ class ExtensionsManager(_BaseExtensionsManager):
 
         if self._internal_stop_trigger(self):
             self._finalize_extensions()
+            self.writer.finalize()
 
 
 if TYPE_CHECKING:

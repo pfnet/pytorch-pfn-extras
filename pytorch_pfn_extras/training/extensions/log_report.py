@@ -261,3 +261,7 @@ class LogReport(extension.Extension):
                 "Need to install pandas to use `to_dataframe` method."
             )
         return pandas.DataFrame(self._log_looker.get())
+
+    def finalize(self) -> None:
+        if self._writer is not None:
+            self._writer.finalize()

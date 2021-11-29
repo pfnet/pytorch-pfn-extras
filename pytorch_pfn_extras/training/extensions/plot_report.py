@@ -224,3 +224,7 @@ filename='plot.png', marker='x', grid=True)
 
     def _init_summary(self) -> None:
         self._summary = reporting.DictSummary()
+
+    def finalize(self) -> None:
+        if self._writer is not None:
+            self._writer.finalize()
