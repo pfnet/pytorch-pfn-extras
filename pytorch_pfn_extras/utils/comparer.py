@@ -27,7 +27,6 @@ class _ComparableHandler(_handler_module.BaseHandler):
         self._handler = handler
         self._save_outs_cb = save_outs_cb
         self.name = name
-        self.iteration = 0
         self._trigger = trigger
 
     def convert_batch(self, args):
@@ -64,7 +63,6 @@ class _ComparableHandler(_handler_module.BaseHandler):
         manager = _ManagerProxy(trainer.manager)
         self._handler.train_post_step(trainer, batch_idx, batch, outputs)
         if self._trigger is None or self._trigger(manager):
-            self.iteration += 1
             return self._save_outs_cb(self, trainer.models, batch_idx, outputs)
 
     def eval_setup(self, evaluator, loader):
@@ -83,7 +81,6 @@ class _ComparableHandler(_handler_module.BaseHandler):
 
     def eval_post_step(self, evaluator, batch_idx, batch, outputs):
         self._handler.eval_post_step(evaluator, batch_idx, batch, outputs)
-        self.iteration += 1
         return self._save_outs_cb(self, evaluator.models, batch_idx, outputs)
 
 
@@ -144,6 +141,7 @@ class _ComparerBase:
         self._semaphore = threading.Semaphore(
             len(engines) if concurrency is None else concurrency)
         self.targets = {}
+        self._iters = {}
         # engines must be a dict
         for name, engine in engines.items():
             engine.handler = _ComparableHandler(
@@ -152,7 +150,9 @@ class _ComparerBase:
             child_evaluator = getattr(engine, 'evaluator', None)
             if child_evaluator is not None:
                 # For trainer with evaluator
-                child_evaluator.handler = engine.handler
+                child_evaluator.handler = _ComparableHandler(
+                    child_evaluator.handler, name, self.compare_targets)
+                # child_evaluator.handler = engine.handler
 
     def _assert_incompatible_trigger(self, condition):
         if not condition:
@@ -186,6 +186,7 @@ class _ComparerBase:
         # n_iters is the number of iterations that we wait for
         # compare
         self.n_iters = n_iters
+        self._iters = {k: 0 for k in self.engines.keys()}
         # We need to use a thread pool because is not easy at all to sync
         # the run method of different engines to compare every n iterations
         for name in self.engines.keys():
@@ -205,7 +206,8 @@ class _ComparerBase:
         raise NotImplementedError('Comparers must override _add_target')
 
     def compare_targets(self, handle, models, batch_idx, outputs):
-        if (self.n_iters is None) or (handle.iteration % self.n_iters == 0):
+        self._iters[handle.name] += 1
+        if (self.n_iters is None) or (self._iters[handle.name] % self.n_iters == 0):
             # Save the outputs of this iteration
             with self.report_lock:
                 self._add_target(handle, models, outputs)
@@ -500,7 +502,8 @@ class Comparer:
         child_evaluator = getattr(engine, 'evaluator', None)
         if child_evaluator is not None:
             # For trainer with evaluator
-            child_evaluator.handler = engine.handler
+            child_evaluator.handler = _ComparableHandler(
+                child_evaluator.handler, name, self._compare_targets, self._trigger)
 
         self._engines[name] = engine, args, kwargs
 
