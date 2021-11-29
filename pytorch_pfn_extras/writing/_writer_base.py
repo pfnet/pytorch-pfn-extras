@@ -232,7 +232,9 @@ class Writer:
         self.finalize()
 
     def finalize(self) -> None:
-        """Finalizes the writer."""
+        """Finalizes the writer.
+
+        Calling this method on already-finalized Writer does nothing."""
         pass
 
     def save(
@@ -372,6 +374,9 @@ class StandardWriter(Writer, Generic[_Worker]):
         raise NotImplementedError
 
     def finalize(self) -> None:
+        if self._finalized:
+            return
+
         if self._worker is None:
             raise RuntimeError('worker is not created')
         try:

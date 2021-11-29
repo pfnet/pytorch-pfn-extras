@@ -27,10 +27,11 @@ class TensorBoardWriter(object):
             stats: Optional[KeysView[str]] = None,
             **kwds: Any
     ) -> None:
-        import torch.utils.tensorboard
+        from torch.utils.tensorboard import SummaryWriter
         self._stats = stats
-        self._writer = torch.utils.tensorboard.SummaryWriter(  # type: ignore[no-untyped-call] # NOQA: B950
-            log_dir=out_dir, **kwds)
+        self._writer: Optional[SummaryWriter] = (
+            SummaryWriter(  # type: ignore[no-untyped-call]
+                log_dir=out_dir, **kwds))
 
     def __del__(self) -> None:
         self.finalize()
@@ -55,6 +56,9 @@ class TensorBoardWriter(object):
             savefun: Ignored.
             append: Ignored.
         """
+        if self._writer is None:
+            raise RuntimeError('TensorBoardWriter already finalized')
+
         stats_cpu = target
         if isinstance(target, list):
             stats_cpu = target[-1]
@@ -70,4 +74,7 @@ class TensorBoardWriter(object):
                 key, value, stats_cpu['iteration'])
 
     def finalize(self) -> None:
-        self._writer.close()  # type: ignore[no-untyped-call]
+        writer = self._writer
+        if writer is not None:
+            writer.close()  # type: ignore[no-untyped-call]
+        self._writer = None
