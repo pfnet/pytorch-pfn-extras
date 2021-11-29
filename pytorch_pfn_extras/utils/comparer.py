@@ -1,6 +1,7 @@
 # mypy: ignore-errors
 
 import collections
+import json
 import re
 import threading
 import concurrent.futures
@@ -8,6 +9,8 @@ from typing import Any, Callable, Dict, Sequence, Union
 
 import torch.testing
 
+import pytorch_pfn_extras as ppe
+from pytorch_pfn_extras import engine as _engine_module
 from pytorch_pfn_extras import handler as _handler_module
 from pytorch_pfn_extras.handler import _logic
 from pytorch_pfn_extras.training import _trainer
@@ -22,7 +25,7 @@ _intermediate_prefix = "intermedaite:"
 
 
 class _ComparableHandler(_handler_module.BaseHandler):
-    def __init__(self, handler, name, save_outs_cb, trigger=None):
+    def __init__(self, handler, name, save_outs_cb, trigger=None, *, dir=None):
         self._handler = handler
         self._save_outs_cb = save_outs_cb
         self.name = name
@@ -30,6 +33,8 @@ class _ComparableHandler(_handler_module.BaseHandler):
         self._intermediate_values = {}
         self._intermediate_counts = {}
         self._batch_idx = None
+        self._dir = dir
+        self._epoch = None
 
     def convert_batch(self, args):
         return self._handler.convert_batch(args)
@@ -40,9 +45,11 @@ class _ComparableHandler(_handler_module.BaseHandler):
     def train_epoch_begin(self, trainer, loader):
         self._handler.train_epoch_begin(trainer, loader)
         _thread_local.handler = self
+        self._epoch = trainer.epoch
 
     def train_epoch_end(self, trainer):
         self._handler.train_epoch_end(trainer)
+        self._epoch = None
 
     def train_validation_begin(self, trainer, evaluator):
         self._handler.train_validation_begin(trainer, evaluator)
@@ -68,7 +75,7 @@ class _ComparableHandler(_handler_module.BaseHandler):
         manager = _ManagerProxy(trainer.manager)
         self._handler.train_post_step(trainer, batch_idx, batch, outputs)
         if self._trigger is None or self._trigger(manager):
-            self._save_outs_cb(self, trainer.models, batch_idx, outputs)
+            self._save_outs_cb(self, trainer, batch_idx, outputs)
 
     def eval_setup(self, evaluator, loader):
         return self._handler.eval_setup(evaluator, loader)
@@ -88,7 +95,7 @@ class _ComparableHandler(_handler_module.BaseHandler):
 
     def eval_post_step(self, evaluator, batch_idx, batch, outputs):
         self._handler.eval_post_step(evaluator, batch_idx, batch, outputs)
-        self._save_outs_cb(self, evaluator.models, batch_idx, outputs)
+        self._save_outs_cb(self, evaluator, batch_idx, outputs)
 
     def _add_intermediate_value(self, name: str, value: torch.Tensor) -> None:
         if self._intermediate_values is None:
@@ -103,7 +110,7 @@ class _ComparableHandler(_handler_module.BaseHandler):
         values[name] = value
 
 
-def get_default_comparer(rtol=1e-05, atol=0, equal_nan=True, msg=None):
+def get_default_comparer(rtol=1e-04, atol=0, equal_nan=True, msg=None):
     """Creates default comparer function.
 
     The created function will compare the outputs by using
@@ -224,12 +231,12 @@ class _ComparerBase:
     def _add_target(self, handle, models, outputs):
         raise NotImplementedError('Comparers must override _add_target')
 
-    def compare_targets(self, handle, models, batch_idx, outputs):
+    def compare_targets(self, handle, engine, batch_idx, outputs):
         self._iters[handle.name] += 1
         if (self.n_iters is None) or (self._iters[handle.name] % self.n_iters == 0):
             # Save the outputs of this iteration
             with self.report_lock:
-                self._add_target(handle, models, outputs)
+                self._add_target(handle, engine.models, outputs)
                 if len(self.targets.keys()) == len(self.engines.keys()):
                     # all outputs have been filled, lets compare and reset
                     self._compare_targets()
@@ -474,11 +481,20 @@ class Comparer:
                 out2 = self._targets[backend2][val_name]
                 self._compare_fn(backend1, backend2, val_name, out1, out2)
 
-    def _compare_targets(self, handler, models, batch_idx, outputs):
+    @staticmethod
+    def _get_filename(engine, batch_idx):
+        name = type(engine).__name__
+        epoch = engine.handler._epoch
+        if epoch is not None:
+            name += f'_epoch_{epoch}'
+        name += f'_iter_{batch_idx}'
+        return name
+
+    def _compare_targets(self, handler, engine, batch_idx, outputs):
         # Save the outputs of this iteration
         with self._report_lock:
             self._targets[handler.name] = self._add_target(
-                handler, models, outputs, batch_idx)
+                handler, engine.models, outputs, batch_idx)
             if len(self._targets.keys()) == len(self._engines.keys()):
                 # all outputs have been filled, lets compare and reset
                 self._compare_outputs()
@@ -527,6 +543,98 @@ class Comparer:
 
         self._engines[name] = engine, args, kwargs
 
+    def _load_dump(self, engine, batch_idx):
+        dir = engine.handler._dir
+        name = self._get_filename(engine, batch_idx)
+        return torch.load(f'{dir}/{name}')
+
+    def _compare_dump(self, handler, engine, batch_idx, outputs):
+        # Save the outputs of this iteration
+        with self._report_lock:
+            self._targets[handler.name] = self._load_dump(engine, batch_idx)
+            if len(self._targets.keys()) == len(self._engines.keys()):
+                # all outputs have been filled, lets compare and reset
+                self._compare_outputs()
+                self._targets = {}
+            self._assert_incompatible_trigger(not self._finalized)
+
+        # Excplicitly synchronize
+        self._semaphore.release()
+        try:
+            self._barrier.wait()
+        finally:
+            self._semaphore.acquire()
+
+    def add_dump(self, name, dir):
+        with open(f'{dir}/summary') as f:
+            summary = json.loads(f.read())
+
+        class DummyModel(torch.nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.param = torch.nn.Parameter(torch.tensor(1.0))
+
+            def forward(self, *args, **kwargs):
+                return ()
+
+        model = DummyModel()
+        ppe.to(model, 'cpu')
+
+        engine = None
+        args = []
+        if summary['evaluator']:
+            engine = _engine_module.create_evaluator(model)
+            args = [[None] * summary['eval_len']]
+        if summary['trainer']:
+            engine = _engine_module.create_trainer(
+                {'main': model},
+                {'main': torch.optim.SGD(model.parameters(), lr=0.01)},
+                summary['max_epochs'],
+                evaluator=engine,
+            )
+            args = [[None] * summary['train_len']] + args
+
+        engine.handler = _ComparableHandler(
+            engine.handler, name, self._compare_dump, self._trigger, dir=dir)
+
+        child_evaluator = getattr(engine, 'evaluator', None)
+        if child_evaluator is not None:
+            # For trainer with evaluator
+            child_evaluator.handler = engine.handler
+
+        self._engines[name] = engine, args, {}
+
+    def _dump_targets(self, dir):
+        def dump_targets(handler, engine, batch_idx, outputs):
+            outputs = _logic._normalize_outputs(outputs)
+            targets = self._add_target(handler, engine.models, outputs, batch_idx)
+            name = self._get_filename(engine, batch_idx)
+            torch.save(targets, f'{dir}/{name}')
+        return dump_targets
+
+    def dump(self, engine, dir, *args, **kwargs):
+        engine.handler = _ComparableHandler(
+            engine.handler, None, self._dump_targets(dir), self._trigger)
+
+        child_evaluator = getattr(engine, 'evaluator', None)
+        if child_evaluator is not None:
+            # For trainer with evaluator
+            child_evaluator.handler = engine.handler
+
+        engine.run(*args, **kwargs)
+        engine.handler = engine.handler._handler
+        summary = {
+            'evaluator': (isinstance(engine, _evaluator.Evaluator)
+                          or getattr(engine, 'evaluator', None) is not None),
+            'trainer': isinstance(engine, _trainer.Trainer),
+            'train_len': getattr(engine, '_train_len', None),
+            'eval_len': engine._eval_len,
+        }
+        if isinstance(engine,_trainer.Trainer):
+            summary['max_epochs'] = engine._manager.max_epochs
+        with open(f'{dir}/summary', 'w') as f:
+            f.write(json.dumps(summary))
+
     def _run_engine(self, engine, args, kwargs):
         self._semaphore.acquire()
         try:
@@ -539,9 +647,6 @@ class Comparer:
             raise
         finally:
             self._semaphore.release()
-
-    def dump(self, engine, dir, train_loader, val_loader):
-        raise NotImplementedError
 
     def compare(self):
         """Compares outputs.
@@ -556,9 +661,6 @@ class Comparer:
                 futures.append(executor.submit(self._run_engine, engine, args, kwargs))
             for future in concurrent.futures.as_completed(futures):
                 future.result()
-
-    def compare_with_dump(self, dir):
-        raise NotImplementedError
 
 
 def intermediate_value(name: str, value: torch.Tensor) -> None:

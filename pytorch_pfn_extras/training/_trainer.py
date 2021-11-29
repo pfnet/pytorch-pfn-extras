@@ -230,7 +230,10 @@ class Trainer(_Engine):
         """
         if train_len is None:
             train_len = len(train_loader)  # type: ignore[arg-type]
+        if eval_len is None and val_loader is not None:
+            eval_len = len(val_loader)
 
+        self._train_len = train_len
         self._val_loader = val_loader
         self._eval_len = eval_len
 
