@@ -1,3 +1,4 @@
+import tempfile
 import typing
 
 import pytest
@@ -415,3 +416,52 @@ def test_compare_async(engine_fn):
     comp.add_engine("cpu", engine_cpu, *loaders_cpu)
     comp.add_engine("gpu", engine_gpu, *loaders_gpu)
     comp.compare()
+
+
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize("model_class", [MyModel, ModelForIntermediateValue])
+@pytest.mark.parametrize("params", [False, True])
+def test_dump(engine_fn, model_class, params):
+    loader = torch.utils.data.DataLoader(
+        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+    ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
+    engine_cpu, loaders_cpu = engine_fn(model_class, "cpu", [1.0], loader)
+    engine_gpu, loaders_gpu = engine_fn(model_class, "cuda:0", [1.0], loader)
+    engine_jit, loaders_jit = engine_fn(model_class, "jit-cpu", [1.0], loader)
+    comp = ppe.utils.comparer.Comparer(params=params)
+    with tempfile.TemporaryDirectory() as tmpdir1, \
+         tempfile.TemporaryDirectory() as tmpdir2, \
+         tempfile.TemporaryDirectory() as tmpdir3:
+        comp.dump(engine_cpu, tmpdir1, *loaders_cpu)
+        comp.dump(engine_gpu, tmpdir2, *loaders_gpu)
+        comp.dump(engine_jit, tmpdir3, *loaders_jit)
+        comp.add_dump('cpu', tmpdir1)
+        comp.add_dump('gpu', tmpdir2)
+        comp.add_dump('jit', tmpdir3)
+        comp.compare()
+
+
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize("model_class", [
+    MyModel, ModelForIntermediateValue])
+def test_dump_invalid(engine_fn, model_class):
+    loader = torch.utils.data.DataLoader(
+        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+    ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
+    engine_cpu, loaders_cpu = engine_fn(model_class, "cpu", [1.0], loader)
+    engine_gpu, loaders_gpu = engine_fn(model_class, "cuda:0", [1.0], loader)
+    engine_jit, loaders_jit = engine_fn(model_class, "jit-cpu", [2.0], loader)
+    comp = ppe.utils.comparer.Comparer()
+    with tempfile.TemporaryDirectory() as tmpdir1, \
+         tempfile.TemporaryDirectory() as tmpdir2, \
+         tempfile.TemporaryDirectory() as tmpdir3:
+        comp.dump(engine_cpu, tmpdir1, *loaders_cpu)
+        comp.dump(engine_gpu, tmpdir2, *loaders_gpu)
+        comp.dump(engine_jit, tmpdir3, *loaders_jit)
+        comp.add_dump('cpu', tmpdir1)
+        comp.add_dump('gpu', tmpdir2)
+        comp.add_dump('jit', tmpdir3)
+        with pytest.raises(AssertionError):
+            comp.compare()
