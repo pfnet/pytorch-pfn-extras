@@ -29,8 +29,9 @@ class TensorBoardWriter(object):
     ) -> None:
         from torch.utils.tensorboard import SummaryWriter
         self._stats = stats
-        self._writer: Optional[SummaryWriter] = SummaryWriter(
-            log_dir=out_dir, **kwds)  # type: ignore[no-untyped-call]
+        self._writer: Optional[SummaryWriter] = (
+            SummaryWriter(  # type: ignore[no-untyped-call]
+                log_dir=out_dir, **kwds))
 
     def __del__(self) -> None:
         self.finalize()
