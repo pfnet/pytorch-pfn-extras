@@ -37,7 +37,7 @@ class TensorBoardWriter(object):
                 'TensorBoardWriter will do nothing.')
             return
         self._stats = stats
-        self._writer: Optional[torch.utils.tensorboard.SummaryWriter] = (
+        self._writer = (
             torch.utils.tensorboard.SummaryWriter(  # type: ignore[no-untyped-call]
                 log_dir=out_dir, **kwds))
 
