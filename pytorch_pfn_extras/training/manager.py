@@ -10,6 +10,7 @@ import warnings
 
 import torch
 
+import pytorch_pfn_extras
 from pytorch_pfn_extras import writing
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension as extension_module
@@ -527,12 +528,30 @@ class _BaseExtensionsManager:
                                  for name in self._optimizers}
         to_save['extensions'] = {name: self._extensions[name].state_dict()
                                  for name in self._extensions}
+        to_save['ppe_version'] = pytorch_pfn_extras.__version__
         return to_save
+
+    def _check_snapshot_version(self, ppe_version: Optional[str]) -> None:
+        must_warn = ppe_version is None or (
+            ppe_version != pytorch_pfn_extras.__version__)
+
+        if not must_warn:
+            return
+
+        msg = ('You are trying to load a snapshot file taken using a different '
+               'PPE version.\n')
+
+        if ppe_version is not None:
+            msg += (f'Snapshot taken with PPE {ppe_version} but '
+                    f'currently using PPE {pytorch_pfn_extras.__version__}')
+
+        warnings.warn(msg)
 
     def load_state_dict(
             self,
             to_load: Dict[str, Any],
     ) -> None:
+        self._check_snapshot_version(to_load.get('ppe_version', None))
         self._start_iteration = to_load['_start_iteration']
         self.iteration = self._start_iteration
         self._start_execution = to_load.get('_start_execution', self.iteration)
