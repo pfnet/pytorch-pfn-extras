@@ -342,6 +342,7 @@ class StandardWriter(Writer, Generic[_Worker]):
             savefun: Optional[_SaveFun] = None,
             append: bool = False
     ) -> None:
+        assert not self._finalized
         if savefun is None:
             savefun = self._savefun
         if self._started:
