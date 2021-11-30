@@ -50,6 +50,7 @@ class _CPUWorker:
         self._initialized = False
         self._queue: Optional[mp.JoinableQueue[Optional[Tuple[str, float]]]] = None
         self._thread: Optional[threading.Thread] = None
+        self._thread_exited = False
 
     def initialize(self) -> None:
         if self._initialized:
@@ -58,17 +59,21 @@ class _CPUWorker:
         self._thread = threading.Thread(target=self._worker, daemon=True)
         self._thread.start()
         self._initialized = True
+        self._thread_exited = False
 
     def finalize(self) -> None:
         if not self._initialized:
             return
         assert self._queue is not None
         assert self._thread is not None
-        self._queue.put(None)
+        # In some situations, (when this runs in a subprocess), the queue might have
+        # been cut in the worker thread before this function is called
+        # due to the non-deterministic shutdown process.
+        if not self._thread_exited:
+            self._queue.put(None)
         self._queue.join()
         self._queue.close()
         self._queue.join_thread()
-        self._thread.join()
         self._initialized = False
 
     def synchronize(self) -> None:
@@ -82,7 +87,13 @@ class _CPUWorker:
     def _worker(self) -> None:
         assert self._queue is not None
         while True:
-            v = self._queue.get()
+            try:
+                v = self._queue.get()
+            # If this runs in a subprocess, the cleanup may throw an EOF here
+            # before the queue cleanup code is executed
+            except EOFError:
+                self._thread_exited = True
+                break
             if v is None:
                 self._queue.task_done()
                 break
@@ -107,6 +118,7 @@ class _CUDAWorker:
         self._queue: Optional['queue.Queue[Optional[_QueueElem]]'] = None
         self._event_lock = threading.Lock()
         self._events: Optional['queue.Queue[torch.cuda.Event]'] = None
+        self._thread_exited = False
 
     def initialize(self) -> None:
         if self._initialized:
@@ -116,15 +128,16 @@ class _CUDAWorker:
         self._thread = threading.Thread(target=self._worker, daemon=True)
         self._thread.start()
         self._initialized = True
+        self._thread_exited = False
 
     def finalize(self) -> None:
         if not self._initialized:
             return
         assert self._queue is not None
         assert self._thread is not None
-        self._queue.put(None)
+        if not self._thread_exited:
+            self._queue.put(None)
         self._queue.join()
-        self._thread.join()
         self._initialized = False
 
     def synchronize(self) -> None:
@@ -143,7 +156,11 @@ class _CUDAWorker:
         assert self._queue is not None
         assert self._events is not None
         while True:
-            v = self._queue.get()
+            try:
+                v = self._queue.get()
+            except EOFError:
+                self._thread_exited = True
+                break
             if v is None:
                 self._queue.task_done()
                 break
