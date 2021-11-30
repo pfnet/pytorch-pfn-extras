@@ -19,7 +19,6 @@ from pytorch_pfn_extras.onnx import as_output
 
 _thread_local = threading.local()
 _intermediate_prefix = "intermedaite:"
-_Intermediates = collections.namedtuple('_Intermediates', ['values', 'counts'])
 
 
 class _ComparableHandler(_handler_module.BaseHandler):
@@ -28,29 +27,35 @@ class _ComparableHandler(_handler_module.BaseHandler):
         self._save_outs_cb = save_outs_cb
         self.name = name
         self._trigger = trigger
+        self._intermediate_values = {}
+        self._intermediate_counts = {}
+        self._batch_idx = None
 
     def convert_batch(self, args):
         return self._handler.convert_batch(args)
 
     def train_setup(self, trainer, loader):
-        return self._handler.train_setup(trainer, loader)
+        self._handler.train_setup(trainer, loader)
 
     def train_epoch_begin(self, trainer, loader):
-        return self._handler.train_epoch_begin(trainer, loader)
+        self._handler.train_epoch_begin(trainer, loader)
+        _thread_local.handler = self
 
     def train_epoch_end(self, trainer):
-        return self._handler.train_epoch_end(trainer)
+        self._handler.train_epoch_end(trainer)
 
     def train_validation_begin(self, trainer, evaluator):
-        return self._handler.train_validation_begin(trainer, evaluator)
+        self._handler.train_validation_begin(trainer, evaluator)
+        _thread_local.handler = self
 
     def train_validation_end(self, trainer, evaluator):
-        return self._handler.train_validation_end(trainer, evaluator)
+        self._handler.train_validation_end(trainer, evaluator)
 
     def train_step(self, trainer, batch_idx, batch, complete_fn):
-        _thread_local.intermediates = _Intermediates({}, {})
+        self._intermediate_values[batch_idx] = {}
+        self._intermediate_counts[batch_idx] = {}
+        self._batch_idx = batch_idx
         self._handler.train_step(trainer, batch_idx, batch, complete_fn)
-        del _thread_local.intermediates
 
     def train_post_step(self, trainer, batch_idx, batch, outputs):
         class _ManagerProxy(manager_module._ManagerProxy):
@@ -63,25 +68,39 @@ class _ComparableHandler(_handler_module.BaseHandler):
         manager = _ManagerProxy(trainer.manager)
         self._handler.train_post_step(trainer, batch_idx, batch, outputs)
         if self._trigger is None or self._trigger(manager):
-            return self._save_outs_cb(self, trainer.models, batch_idx, outputs)
+            self._save_outs_cb(self, trainer.models, batch_idx, outputs)
 
     def eval_setup(self, evaluator, loader):
         return self._handler.eval_setup(evaluator, loader)
 
     def eval_loop_begin(self, evaluator):
-        return self._handler.eval_loop_begin(evaluator)
+        self._handler.eval_loop_begin(evaluator)
+        _thread_local.handler = self
 
     def eval_step(self, evaluator, batch_idx, batch, complete_fn):
-        _thread_local.intermediates = _Intermediates({}, {})
+        self._intermediate_values[batch_idx] = {}
+        self._intermediate_counts[batch_idx] = {}
+        self._batch_idx = batch_idx
         self._handler.eval_step(evaluator, batch_idx, batch, complete_fn)
-        del _thread_local.intermediates
 
     def eval_loop_end(self, evaluator):
-        return self._handler.eval_loop_end(evaluator)
+        self._handler.eval_loop_end(evaluator)
 
     def eval_post_step(self, evaluator, batch_idx, batch, outputs):
         self._handler.eval_post_step(evaluator, batch_idx, batch, outputs)
-        return self._save_outs_cb(self, evaluator.models, batch_idx, outputs)
+        self._save_outs_cb(self, evaluator.models, batch_idx, outputs)
+
+    def _add_intermediate_value(self, name: str, value: torch.Tensor) -> None:
+        if self._intermediate_values is None:
+            return
+        values = self._intermediate_values[self._batch_idx]
+        counts = self._intermediate_counts[self._batch_idx]
+        value = value.detach()
+        count = counts.get('name', 0)
+        counts['name'] = count + 1
+        name = _intermediate_prefix + name + f'_{count}'
+        as_output(name, value)
+        values[name] = value
 
 
 def get_default_comparer(rtol=1e-05, atol=0, equal_nan=True, msg=None):
@@ -422,7 +441,7 @@ class Comparer:
             self._engine_type = _trainer.Trainer
             self._trigger = trigger_module.get_trigger(trigger)
 
-    def _add_target(self, handler, models, outputs):
+    def _add_target(self, handler, models, outputs, batch_idx):
         outputs = _logic._normalize_outputs(outputs)
         targets = {}
 
@@ -430,11 +449,11 @@ class Comparer:
         targets.update({
             k if k.startswith(_intermediate_prefix) else 'output:' + k: v
             for k, v in outputs.items()})
-        targets.update(_thread_local.intermediates.values)
+        targets.update(handler._intermediate_values.pop(batch_idx))
 
         params = _filter(self._param_keys, models['main'].state_dict)
         targets.update({'param:' + k: v for k, v in params.items()})
-        self._targets[handler.name] = targets
+        return targets
 
     def _assert_incompatible_trigger(self, condition):
         if not condition:
@@ -458,7 +477,8 @@ class Comparer:
     def _compare_targets(self, handler, models, batch_idx, outputs):
         # Save the outputs of this iteration
         with self._report_lock:
-            self._add_target(handler, models, outputs)
+            self._targets[handler.name] = self._add_target(
+                handler, models, outputs, batch_idx)
             if len(self._targets.keys()) == len(self._engines.keys()):
                 # all outputs have been filled, lets compare and reset
                 self._compare_outputs()
@@ -542,11 +562,6 @@ class Comparer:
 
 
 def intermediate_value(name: str, value: torch.Tensor) -> None:
-    if not hasattr(_thread_local, 'intermediates'):
+    if not hasattr(_thread_local, 'handler'):
         return
-    value = value.detach()
-    count = _thread_local.intermediates.counts.get('name', 0)
-    _thread_local.intermediates.counts['name'] = count + 1
-    name = _intermediate_prefix + name + f'_{count}'
-    as_output(name, value)
-    _thread_local.intermediates.values[name] = value
+    _thread_local.handler._add_intermediate_value(name, value)
