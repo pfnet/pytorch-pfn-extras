@@ -114,6 +114,12 @@ def main():
     # manager.extend(...) also works
     my_extensions = [
         extensions.LogReport(),
+
+        # Enables TensorBoard support.
+        # Run `tensorboard --logdir runs` to launch the TensorBoard.
+        extensions.LogReport(
+            writer=ppe.writing.TensorBoardWriter(out_dir='runs'),
+            trigger=(1, 'iteration')),
         extensions.ProgressBar(),
         extensions.observe_lr(optimizer=optimizer),
         extensions.ParameterStatistics(model, prefix='model'),
