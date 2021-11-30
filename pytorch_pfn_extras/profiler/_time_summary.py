@@ -82,6 +82,7 @@ class _CPUWorker:
 
     def put(self, name: str, value: float) -> None:
         assert self._queue is not None
+        assert not self._thread_exited
         self._queue.put((name, value))
 
     def _worker(self) -> None:
@@ -150,6 +151,7 @@ class _CUDAWorker:
             events: Tuple[torch.cuda.Event, torch.cuda.Event],
     ) -> None:
         assert self._queue is not None
+        assert not self._thread_exited
         self._queue.put((name, events))
 
     def _worker(self) -> None:
