@@ -68,6 +68,7 @@ class QueueWriter(Writer, Generic[_Worker]):
             savefun: Optional[_SaveFun] = None,
             append: bool = False
     ) -> None:
+        assert not self._finalized
         self._queue.put(
             (self._task, filename, out_dir, target, savefun, append))
 
