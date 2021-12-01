@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 import operator
 from typing import Tuple, TYPE_CHECKING
 import warnings
@@ -146,5 +144,5 @@ class EarlyStoppingTrigger(trigger.Trigger):
     def get_training_length(self) -> Tuple[float, str]:
         return self._max_trigger.get_training_length()
 
-    def may_fire(self, iteration, epoch_length):
+    def may_fire(self, iteration: int, epoch_length: int) -> bool:
         return self._interval_trigger.may_fire(iteration, epoch_length)
