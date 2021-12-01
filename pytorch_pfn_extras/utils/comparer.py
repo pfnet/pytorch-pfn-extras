@@ -24,9 +24,10 @@ _intermediate_prefix = "intermedaite:"
 
 
 class _ComparableHandler(_handler_module.BaseHandler):
-    def __init__(self, handler, name, save_outs_cb, trigger=None, *, dir=None):
+    def __init__(self, handler, name, add_target_cb, compare_cb, trigger=None, *, dir=None):
         self._handler = handler
-        self._save_outs_cb = save_outs_cb
+        self._add_target_cb = add_target_cb
+        self._compare_cb = compare_cb
         self.name = name
         self._trigger = trigger
         self._intermediate_values = {}
@@ -73,7 +74,7 @@ class _ComparableHandler(_handler_module.BaseHandler):
         manager = _ManagerProxy(trainer.manager)
         self._handler.train_post_step(trainer, batch_idx, batch, outputs)
         if self._trigger is None or self._trigger(manager):
-            self._save_outs_cb(self, trainer, batch_idx, outputs)
+            self._compare(trainer, batch_idx, outputs)
 
     def eval_setup(self, evaluator, loader):
         return self._handler.eval_setup(evaluator, loader)
@@ -92,7 +93,12 @@ class _ComparableHandler(_handler_module.BaseHandler):
 
     def eval_post_step(self, evaluator, batch_idx, batch, outputs):
         self._handler.eval_post_step(evaluator, batch_idx, batch, outputs)
-        self._save_outs_cb(self, evaluator, batch_idx, outputs)
+        self._compare(evaluator, batch_idx, outputs)
+
+    def _compare(self, engine, batch_idx, outputs):
+        outputs = _logic._normalize_outputs(outputs)
+        target = self._add_target_cb(self, engine, batch_idx, outputs)
+        self._compare_cb(self, engine, batch_idx, target)
 
     def _reset_intermediate_values(self) -> None:
         self._intermediate_values[self._batch_idx] = {}
@@ -197,13 +203,13 @@ class _ComparerBase:
         # engines must be a dict
         for name, engine in engines.items():
             engine.handler = _ComparableHandler(
-                engine.handler, name, self.compare_targets
+                engine.handler, name, self._get_target, self.compare_targets
             )
             child_evaluator = getattr(engine, 'evaluator', None)
             if child_evaluator is not None:
                 # For trainer with evaluator
                 child_evaluator.handler = _ComparableHandler(
-                    child_evaluator.handler, name, self.compare_targets)
+                    child_evaluator.handler, name, self._get_target, self.compare_targets)
                 # child_evaluator.handler = engine.handler
 
     def _assert_incompatible_trigger(self, condition):
@@ -254,15 +260,15 @@ class _ComparerBase:
             for future in concurrent.futures.as_completed(futures):
                 future.result()
 
-    def _add_target(self, handle, models, outputs):
+    def _get_target(self, handle, models, outputs):
         raise NotImplementedError('Comparers must override _add_target')
 
-    def compare_targets(self, handle, engine, batch_idx, outputs):
-        self._iters[handle.name] += 1
-        if (self.n_iters is None) or (self._iters[handle.name] % self.n_iters == 0):
+    def compare_targets(self, handler, engine, batch_idx, target):
+        self._iters[handler.name] += 1
+        if (self.n_iters is None) or (self._iters[handler.name] % self.n_iters == 0):
             # Save the outputs of this iteration
             with self.report_lock:
-                self._add_target(handle, engine.models, outputs)
+                self.targets[handler.name] = target
                 if len(self.targets.keys()) == len(self.engines.keys()):
                     # all outputs have been filled, lets compare and reset
                     _compare_targets(self.compare_fn, self.targets, batch_idx)
@@ -308,14 +314,13 @@ class OutputsComparer(_ComparerBase):
         super().__init__(engines, compare_fn=compare_fn, concurrency=concurrency)
         self.to_compare_keys = to_compare_keys
 
-    def _add_target(self, handle, models, outputs):
-        outputs = _logic._normalize_outputs(outputs)
+    def _get_target(self, handle, engine, batch_idx, outputs):
         keys = (
             self.to_compare_keys
             if self.to_compare_keys is not None
             else outputs.keys()
         )
-        self.targets[handle.name] = {key: outputs[key] for key in keys}
+        return {key: outputs[key] for key in keys}
 
 
 class ModelComparer(_ComparerBase):
@@ -368,13 +373,11 @@ class ModelComparer(_ComparerBase):
                     raise ValueError(
                         f'didnt find a match for {tc_k} in the model')
 
-    def _add_target(self, handle, models, outputs):
-        outputs = _logic._normalize_outputs(outputs)
-        sdict = models['main'].state_dict()
+    def _get_target(self, handle, engine, batch_idx, outputs):
+        sdict = engine.models['main'].state_dict()
         if self._preprocessed_keys is None:
             self._preprocess_keys(sdict)
-        self.targets[handle.name] = {
-            key: sdict[key] for key in self._preprocessed_keys}
+        return {key: sdict[key] for key in self._preprocessed_keys}
 
 
 # New comparer interface
@@ -455,7 +458,7 @@ class Comparer:
         self._concurrency = concurrency  # Upper limit of semaphore size
         self._semaphore = None  # Sempaphore for training step execution
         self._barrier = None  # Synchronizes iteration timing
-        self._report_lock = threading.Lock()  # Locks `Comparer._add_target`
+        self._report_lock = threading.Lock()  # Locks `Comparer._get_target`
 
         if trigger is None:
             self._trigger = trigger_module.get_trigger((1, "epoch"))
@@ -463,17 +466,15 @@ class Comparer:
             self._engine_type = _trainer.Trainer
             self._trigger = trigger_module.get_trigger(trigger)
 
-    def _add_target(self, handler, models, outputs, batch_idx):
-        outputs = _logic._normalize_outputs(outputs)
+    def _get_target(self, handler, engine, batch_idx, outputs):
         targets = {}
-
         outputs = _filter(self._output_keys, lambda: outputs)
         targets.update({
             k if k.startswith(_intermediate_prefix) else 'output:' + k: v
             for k, v in outputs.items()})
         targets.update(handler._intermediate_values.pop(batch_idx))
 
-        params = _filter(self._param_keys, models['main'].state_dict)
+        params = _filter(self._param_keys, engine.models['main'].state_dict)
         targets.update({'param:' + k: v for k, v in params.items()})
         return targets
 
@@ -490,11 +491,10 @@ class Comparer:
         name += f'_iter_{batch_idx}'
         return name
 
-    def _compare_targets(self, handler, engine, batch_idx, outputs):
+    def _compare_targets(self, handler, engine, batch_idx, target):
         # Save the outputs of this iteration
         with self._report_lock:
-            self._targets[handler.name] = self._add_target(
-                handler, engine.models, outputs, batch_idx)
+            self._targets[handler.name] = target
             if len(self._targets.keys()) == len(self._engines.keys()):
                 # all outputs have been filled, lets compare and reset
                 _compare_targets(self._compare_fn, self._targets, batch_idx)
@@ -533,37 +533,19 @@ class Comparer:
             raise ValueError(f"Engine named {name} already registered")
 
         engine.handler = _ComparableHandler(
-            engine.handler, name, self._compare_targets, self._trigger)
+            engine.handler, name, self._get_target, self._compare_targets, self._trigger)
 
         child_evaluator = getattr(engine, 'evaluator', None)
         if child_evaluator is not None:
             # For trainer with evaluator
             child_evaluator.handler = _ComparableHandler(
-                child_evaluator.handler, name, self._compare_targets, self._trigger)
+                child_evaluator.handler, name, self._get_target, self._compare_targets, self._trigger)
 
         self._engines[name] = engine, args, kwargs
 
-    def _load_dump(self, engine, batch_idx):
-        dir = engine.handler._dir
+    def _load_dump(self, handler, engine, batch_idx, outputs):
         name = self._get_filename(engine, batch_idx)
-        return torch.load(f'{dir}/{name}')
-
-    def _compare_dump(self, handler, engine, batch_idx, outputs):
-        # Save the outputs of this iteration
-        with self._report_lock:
-            self._targets[handler.name] = self._load_dump(engine, batch_idx)
-            if len(self._targets.keys()) == len(self._engines.keys()):
-                # all outputs have been filled, lets compare and reset
-                _compare_targets(self._compare_fn, self._targets, batch_idx)
-                self._targets = {}
-            self._assert_incompatible_trigger(not self._finalized)
-
-        # Excplicitly synchronize
-        self._semaphore.release()
-        try:
-            self._barrier.wait()
-        finally:
-            self._semaphore.acquire()
+        return torch.load(f'{engine.handler._dir}/{name}')
 
     def add_dump(self, name, dir):
         with open(f'{dir}/summary') as f:
@@ -595,31 +577,29 @@ class Comparer:
             args = [[None] * summary['train_len']] + args
 
         engine.handler = _ComparableHandler(
-            engine.handler, name, self._compare_dump, self._trigger, dir=dir)
+            engine.handler, name, self._load_dump, self._compare_targets, self._trigger, dir=dir)
 
         child_evaluator = getattr(engine, 'evaluator', None)
         if child_evaluator is not None:
             # For trainer with evaluator
-            child_evaluator.handler = engine.handler
+            child_evaluator.handler = _ComparableHandler(
+                child_evaluator.handler, name, self._load_dump, self._compare_targets, self._trigger, dir=dir)
 
         self._engines[name] = engine, args, {}
 
-    def _dump_targets(self, dir):
-        def dump_targets(handler, engine, batch_idx, outputs):
-            outputs = _logic._normalize_outputs(outputs)
-            targets = self._add_target(handler, engine.models, outputs, batch_idx)
-            name = self._get_filename(engine, batch_idx)
-            torch.save(targets, f'{dir}/{name}')
-        return dump_targets
+    def _dump_targets(self, handler, engine, batch_idx, target):
+        name = self._get_filename(engine, batch_idx)
+        torch.save(target, f'{engine.handler._dir}/{name}')
 
     def dump(self, engine, dir, *args, **kwargs):
         engine.handler = _ComparableHandler(
-            engine.handler, None, self._dump_targets(dir), self._trigger)
+            engine.handler, None, self._get_target, self._dump_targets, self._trigger, dir=dir)
 
         child_evaluator = getattr(engine, 'evaluator', None)
         if child_evaluator is not None:
             # For trainer with evaluator
-            child_evaluator.handler = engine.handler
+            child_evaluator.handler = _ComparableHandler(
+                child_evaluator.handler, None, self._get_target, self._dump_targets, self._trigger, dir=dir)
 
         engine.run(*args, **kwargs)
         engine.handler = engine.handler._handler
