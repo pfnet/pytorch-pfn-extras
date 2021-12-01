@@ -1,6 +1,6 @@
 from collections import defaultdict
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Optional,
+    Any, Callable, Dict, Generator, Iterable, List, Mapping, Optional,
     Tuple, Union, TYPE_CHECKING,
 )
 
@@ -297,7 +297,7 @@ class Handler(BaseHandler):
 
     def _runtime_iterator(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
     ) -> Generator[ModulesTuple, ModulesTuple, None]:
         if not self._ppe_modules:
             for n, m in models.items():
@@ -311,9 +311,9 @@ class Handler(BaseHandler):
 
     def _setup(
             self,
-            models: Dict[str, torch.nn.Module],
-            loader: Union[Iterable[Any], Dict[str, Iterable[Any]]],
-            optimizers: Optional[Dict[str, torch.optim.Optimizer]] = None,
+            models: Mapping[str, torch.nn.Module],
+            loader: Union[Iterable[Any], Mapping[str, Iterable[Any]]],
+            optimizers: Optional[Mapping[str, torch.optim.Optimizer]] = None,
     ) -> None:
         # This requires loader to be always a dict
         # should be avoided?
