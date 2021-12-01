@@ -19,7 +19,7 @@ class _CheckpointFunction(torch.utils.checkpoint.CheckpointFunction):
     @staticmethod
     def forward(  # type: ignore[override]
             ctx: Any,
-            run_function: torch.nn.Module,
+            run_function: Any,
             preserve_rng_state: bool,
             *args: Any,
     ) -> Any:
