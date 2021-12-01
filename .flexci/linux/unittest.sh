@@ -31,7 +31,6 @@ python mnist_custom_logic.py --batch-size 2048 --test-batch-size 2048 --epochs 1
 popd
 
 # Run pysen
-pysen generate .
 pysen run lint 2> /output/pysen.txt || true
 
 # Run flake8
