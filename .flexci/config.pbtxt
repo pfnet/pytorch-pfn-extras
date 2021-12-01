@@ -23,7 +23,7 @@ configs {
       disk: 10
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: "bash .flexci/linux/script.sh torch18"
   }
@@ -39,7 +39,7 @@ configs {
       disk: 10
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: "bash .flexci/linux/script.sh torch19"
   }
@@ -56,7 +56,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch18"
   }
@@ -73,7 +73,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch19"
   }
