@@ -1,15 +1,14 @@
-# mypy: ignore-errors
-
 import numpy
 import torch
 import torch.utils.dlpack
-from typing import Any, Dict, TypeVar, Union
+from typing import Any, Dict, Union
 
 from pytorch_pfn_extras._cupy import cupy
 from pytorch_pfn_extras._cupy import ensure_cupy
 
 
-_NDArray = TypeVar("_NDArray", numpy.ndarray, cupy.ndarray)
+_NDArray = Any  # TypeVar("_NDArray", numpy.ndarray, cupy.ndarray)
+_NumpyDtype = Any  # numpy.dtype
 
 
 def from_ndarray(ndarray: _NDArray) -> torch.Tensor:
@@ -90,7 +89,7 @@ def get_xp(obj: Union[_NDArray, torch.Tensor]) -> Any:
     raise ValueError(f'unsupported device type: {devtype}')
 
 
-def as_numpy_dtype(torch_dtype: torch.dtype) -> numpy.dtype:
+def as_numpy_dtype(torch_dtype: torch.dtype) -> _NumpyDtype:
     """Returns NumPy dtype for the given PyTorch dtype.
 
     Args:
@@ -106,7 +105,7 @@ def as_numpy_dtype(torch_dtype: torch.dtype) -> numpy.dtype:
     return numpy_dtype
 
 
-def from_numpy_dtype(numpy_dtype: numpy.dtype) -> torch.dtype:
+def from_numpy_dtype(numpy_dtype: _NumpyDtype) -> torch.dtype:
     """Returns PyTorch dtype for the given NumPy dtype.
 
     Args:
@@ -122,7 +121,7 @@ def from_numpy_dtype(numpy_dtype: numpy.dtype) -> torch.dtype:
     return torch_dtype
 
 
-_torch_dtype_mapping: Dict[torch.dtype, numpy.dtype] = {
+_torch_dtype_mapping: Dict[torch.dtype, _NumpyDtype] = {
     # https://pytorch.org/docs/stable/tensors.html
     # https://numpy.org/doc/stable/user/basics.types.html
 
@@ -141,6 +140,6 @@ _torch_dtype_mapping: Dict[torch.dtype, numpy.dtype] = {
     torch.bool: numpy.dtype('bool'),
 }
 
-_numpy_dtype_mapping: Dict[numpy.dtype, torch.dtype] = {
+_numpy_dtype_mapping: Dict[_NumpyDtype, torch.dtype] = {
     v: k for k, v in _torch_dtype_mapping.items()
 }
