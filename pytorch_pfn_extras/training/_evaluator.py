@@ -113,6 +113,7 @@ class Evaluator:
 
         if eval_len is None:
             eval_len = len(loader)  # type: ignore[arg-type]
+        self._eval_len = eval_len
 
         self._summary = reporting.DictSummary()
         observation: Observation = {}
