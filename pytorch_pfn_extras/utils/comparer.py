@@ -121,6 +121,14 @@ class _ComparableHandler(_handler_module.BaseHandler):
         values[name] = value
 
 
+def _overwrite_handler(engine, *args, **kwargs) -> None:
+    engine.handler = _ComparableHandler(engine.handler, *args, **kwargs)
+    evaluator = getattr(engine, 'evaluator', None)
+    if evaluator is not None:
+        # For trainer with evaluator
+        evaluator.handler = _ComparableHandler(evaluator.handler, *args, **kwargs)
+
+
 def get_default_comparer(rtol=1e-04, atol=0, equal_nan=True):
     """Creates default comparer function.
 
@@ -202,15 +210,7 @@ class _ComparerBase:
         self._iters = {}
         # engines must be a dict
         for name, engine in engines.items():
-            engine.handler = _ComparableHandler(
-                engine.handler, name, self._get_target, self.compare_targets
-            )
-            child_evaluator = getattr(engine, 'evaluator', None)
-            if child_evaluator is not None:
-                # For trainer with evaluator
-                child_evaluator.handler = _ComparableHandler(
-                    child_evaluator.handler, name, self._get_target, self.compare_targets)
-                # child_evaluator.handler = engine.handler
+            _overwrite_handler(engine, name, self._get_target, self.compare_targets)
 
     def _assert_incompatible_trigger(self, condition):
         if not condition:
@@ -532,14 +532,7 @@ class Comparer:
         if name in self._engines.keys():
             raise ValueError(f"Engine named {name} already registered")
 
-        engine.handler = _ComparableHandler(
-            engine.handler, name, self._get_target, self._compare_targets, self._trigger)
-
-        child_evaluator = getattr(engine, 'evaluator', None)
-        if child_evaluator is not None:
-            # For trainer with evaluator
-            child_evaluator.handler = _ComparableHandler(
-                child_evaluator.handler, name, self._get_target, self._compare_targets, self._trigger)
+        _overwrite_handler(engine, name, self._get_target, self._compare_targets, self._trigger)
 
         self._engines[name] = engine, args, kwargs
 
@@ -576,14 +569,8 @@ class Comparer:
             )
             args = [[None] * summary['train_len']] + args
 
-        engine.handler = _ComparableHandler(
-            engine.handler, name, self._load_dump, self._compare_targets, self._trigger, dir=dir)
-
-        child_evaluator = getattr(engine, 'evaluator', None)
-        if child_evaluator is not None:
-            # For trainer with evaluator
-            child_evaluator.handler = _ComparableHandler(
-                child_evaluator.handler, name, self._load_dump, self._compare_targets, self._trigger, dir=dir)
+        _overwrite_handler(
+            engine, name, self._load_dump, self._compare_targets, self._trigger, dir=dir)
 
         self._engines[name] = engine, args, {}
 
@@ -592,14 +579,8 @@ class Comparer:
         torch.save(target, f'{engine.handler._dir}/{name}')
 
     def dump(self, engine, dir, *args, **kwargs):
-        engine.handler = _ComparableHandler(
-            engine.handler, None, self._get_target, self._dump_targets, self._trigger, dir=dir)
-
-        child_evaluator = getattr(engine, 'evaluator', None)
-        if child_evaluator is not None:
-            # For trainer with evaluator
-            child_evaluator.handler = _ComparableHandler(
-                child_evaluator.handler, None, self._get_target, self._dump_targets, self._trigger, dir=dir)
+        _overwrite_handler(
+            engine, None, self._get_target, self._dump_targets, self._trigger, dir=dir)
 
         engine.run(*args, **kwargs)
         engine.handler = engine.handler._handler
