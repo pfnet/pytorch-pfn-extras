@@ -2,8 +2,9 @@ import contextlib
 from typing import (
     Any, Dict, Generator, Iterable, Optional,
 )
-from pytorch_pfn_extras.handler._code_block import forward, update_parameters
 import warnings
+
+from pytorch_pfn_extras.handler._code_block import forward, update_parameters
 
 _amp_enabled = False
 
@@ -216,35 +217,33 @@ class Logic(BaseLogic):
 
     def _backward(self, outputs: Dict[str, Any]) -> None:
         target = _normalize_outputs(outputs)
-        backward_outputs = None
-        if type(self.backward_outputs) is str:
-            backward_outputs = set((self.backward_outputs,))
-        elif self.backward_outputs is not None:
-            backward_outputs = set(self.backward_outputs)
+        to_backward = set()
+        if self.backward_outputs is None:
+            for _, v in target.items():
+                if isinstance(v, torch.Tensor) and v.grad_fn is not None and (
+                    (
+                        v.numel() == 1
+                        and (v.dtype.is_floating_point or v.dtype.is_complex)
+                    )
+                ):
+                    to_backward.add(v)
+        else:
+            # If backward is requested, we tried to execute it no matter the
+            # shape or type of the tensor to make the user aware
+            backward_outputs = self.backward_outputs
+            if type(backward_outputs) is str:
+                backward_outputs = (backward_outputs,)
+            for k in backward_outputs:
+                try:
+                    to_backward.add(target[k])
+                except KeyError:
+                    warnings.warn(
+                        'Couldn\'t find requested backward value: '
+                        f'{k} in {target.keys()}'
+                    )
 
-        for k, v in target.items():
-            # This is to avoid errors when the trained models returns
-            # tensors others than scalars
-            if isinstance(v, torch.Tensor) and v.grad_fn is not None and (
-                (
-                    backward_outputs is None
-                    and v.numel() == 1
-                    and (v.dtype.is_floating_point or v.dtype.is_complex)
-                )
-                or (
-                    backward_outputs is not None
-                    and k in backward_outputs
-                )
-            ):
-                v.backward()  # type: ignore[no-untyped-call]
-                if backward_outputs is not None:
-                    backward_outputs.remove(k)
-
-        if backward_outputs is not None and not len(backward_outputs) == 0:
-            warnings.warn(
-                'Couldn\'t find requested backward values: '
-                f'{backward_outputs} in {target.keys()}'
-            )
+        for v in to_backward:
+            v.backward()  # type: ignore[no-untyped-call]
 
     def train_epoch_begin(
             self,
