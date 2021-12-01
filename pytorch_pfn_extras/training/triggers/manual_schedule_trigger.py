@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 from typing import Sequence, Union, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import trigger
