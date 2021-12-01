@@ -424,7 +424,7 @@ def test_compare_async(engine_fn):
 @pytest.mark.parametrize("params", [False, True])
 def test_dump(engine_fn, model_class, params):
     loader = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+        [(torch.rand(20,), torch.rand(10,)) for i in range(5)])
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(model_class, "cpu", [1.0], loader)
     engine_gpu, loaders_gpu = engine_fn(model_class, "cuda:0", [1.0], loader)
@@ -448,7 +448,7 @@ def test_dump(engine_fn, model_class, params):
     MyModel, ModelForIntermediateValue])
 def test_dump_invalid(engine_fn, model_class):
     loader = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+        [(torch.rand(20,), torch.rand(10,)) for i in range(5)])
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(model_class, "cpu", [1.0], loader)
     engine_gpu, loaders_gpu = engine_fn(model_class, "cuda:0", [1.0], loader)
