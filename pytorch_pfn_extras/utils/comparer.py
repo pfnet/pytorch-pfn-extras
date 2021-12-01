@@ -58,9 +58,8 @@ class _ComparableHandler(_handler_module.BaseHandler):
         self._handler.train_validation_end(trainer, evaluator)
 
     def train_step(self, trainer, batch_idx, batch, complete_fn):
-        self._intermediate_values[batch_idx] = {}
-        self._intermediate_counts[batch_idx] = {}
         self._batch_idx = batch_idx
+        self._reset_intermediate_values()
         self._handler.train_step(trainer, batch_idx, batch, complete_fn)
 
     def train_post_step(self, trainer, batch_idx, batch, outputs):
@@ -84,9 +83,8 @@ class _ComparableHandler(_handler_module.BaseHandler):
         _thread_local.handler = self
 
     def eval_step(self, evaluator, batch_idx, batch, complete_fn):
-        self._intermediate_values[batch_idx] = {}
-        self._intermediate_counts[batch_idx] = {}
         self._batch_idx = batch_idx
+        self._reset_intermediate_values()
         self._handler.eval_step(evaluator, batch_idx, batch, complete_fn)
 
     def eval_loop_end(self, evaluator):
@@ -95,6 +93,10 @@ class _ComparableHandler(_handler_module.BaseHandler):
     def eval_post_step(self, evaluator, batch_idx, batch, outputs):
         self._handler.eval_post_step(evaluator, batch_idx, batch, outputs)
         self._save_outs_cb(self, evaluator, batch_idx, outputs)
+
+    def _reset_intermediate_values(self) -> None:
+        self._intermediate_values[self._batch_idx] = {}
+        self._intermediate_counts[self._batch_idx] = {}
 
     def _add_intermediate_value(self, name: str, value: torch.Tensor) -> None:
         if self._intermediate_values is None:
