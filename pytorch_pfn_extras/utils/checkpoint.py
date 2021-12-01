@@ -1,5 +1,6 @@
-# mypy: ignore-errors
+from typing import Any
 
+import torch.nn
 import torch.utils.checkpoint
 
 
@@ -16,13 +17,18 @@ class _CheckpointFunction(torch.utils.checkpoint.CheckpointFunction):
     persistent parameters.
     """
     @staticmethod
-    def forward(ctx, run_function, preserve_rng_state, *args):
+    def forward(  # type: ignore[override]
+            ctx: Any,
+            run_function: torch.nn.Module,
+            preserve_rng_state: bool,
+            *args: Any,
+    ) -> Any:
         _patch_bn_momentum(run_function)
         return super(_CheckpointFunction, _CheckpointFunction).forward(
             ctx, run_function, preserve_rng_state, *args)
 
 
-def _patch_bn_momentum(module):
+def _patch_bn_momentum(module: torch.nn.Module) -> None:
     if not hasattr(module, '_bn_momentum_patched'):
         if isinstance(module, torch.nn.modules.instancenorm._InstanceNorm):
             return
@@ -32,10 +38,10 @@ def _patch_bn_momentum(module):
             module.momentum = 1 - (1 - module.momentum) ** 0.5
         for _, child in module.named_children():
             _patch_bn_momentum(child)
-    module._bn_momentum_patched = True
+    module._bn_momentum_patched = True  # type: ignore[assignment]
 
 
-def checkpoint(function, *args, **kwargs):
+def checkpoint(function: torch.nn.Module, *args: Any, **kwargs: Any) -> Any:
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
     preserve = kwargs.pop('preserve_rng_state', True)
     if kwargs:
