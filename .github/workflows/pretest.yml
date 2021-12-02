@@ -1,0 +1,40 @@
+name: "Pre-review Tests"
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        torch: ['1.8.*', '1.9.*']
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install
+      run: |
+        pip install -U pip wheel
+        pip install 'torch==${{ matrix.torch }}'
+        pip install -v -e .
+
+    - name: Code Style
+      run: |
+        pip install pysen black==21.11b1 flake8==4.0.1 isort==5.10.1 mypy==0.910
+        pip install types-PyYAML
+        pysen run lint
+
+    - name: Code Style (Examples)
+      run: |
+        pysen generate .
+        pushd example
+        mypy . --config-file ../setup.cfg --allow-untyped-defs --allow-untyped-calls
+        popd
