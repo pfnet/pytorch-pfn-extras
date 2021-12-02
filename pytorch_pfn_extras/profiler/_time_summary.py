@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-
 import atexit
 from contextlib import contextmanager
 import os
@@ -18,7 +16,14 @@ Events = Tuple[torch.cuda.Event, torch.cuda.Event]
 
 
 class _ReportNotification:
-    def __init__(self, summary, tag, use_cuda, begin_event, begin):
+    def __init__(
+            self,
+            summary: 'TimeSummary',
+            tag: str,
+            use_cuda: bool,
+            begin_event: Optional[torch.cuda.Event],
+            begin: float,
+    ) -> None:
         self._is_completed = True
         self._summary = summary
         self._tag = tag
@@ -264,12 +269,22 @@ class TimeSummary:
                 self._summary = DictSummary()
                 self._additional_stats = {}
 
-    def complete_report(self, tag, use_cuda, begin_event, begin):
+    def complete_report(
+            self,
+            tag: str,
+            use_cuda: bool,
+            begin_event: Optional[torch.cuda.Event],
+            begin: float,
+    ) -> None:
         end = time.time()
+        assert self._cpu_worker._queue is not None
         self._cpu_worker._queue.put((tag, end - begin))
         if use_cuda:
+            assert self._cuda_worker is not None
+            assert self._cuda_worker._queue is not None
+            assert begin_event is not None
             end_event = self._cuda_worker.get_cuda_event()
-            end_event.record()
+            end_event.record()  # type: ignore[no-untyped-call]
             self._cuda_worker._queue.put(
                 (f"{tag}.cuda", (begin_event, end_event)))
 
@@ -311,4 +326,4 @@ _thread_local = threading.local()
 def get_time_summary() -> TimeSummary:
     if not hasattr(_thread_local, 'time_summary'):
         _thread_local.time_summary = TimeSummary(auto_init=False)
-    return _thread_local.time_summary
+    return _thread_local.time_summary  # type: ignore[no-any-return]
