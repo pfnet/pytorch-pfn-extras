@@ -1,4 +1,3 @@
-# mypy: ignore-errors
 import contextlib
 
 from typing import Any, Dict, Generator, Iterable, Optional, Tuple, Union
@@ -72,7 +71,8 @@ class BaseRuntime:
         # or a model part
         if isinstance(args, tuple) and hasattr(args, "_fields"):
             # namedtuple
-            return args._replace(**self._convert_batch_dict(args._asdict()))
+            return args._replace(  # type: ignore[attr-defined]
+                **self._convert_batch_dict(args._asdict()))  # type: ignore
         if isinstance(args, dict):
             return self._convert_batch_dict(args)
         if isinstance(args, (list, tuple)):
@@ -84,7 +84,7 @@ class BaseRuntime:
             return self.move_tensor(args)
         return args
 
-    def _convert_batch_dict(self, args: dict) -> dict:
+    def _convert_batch_dict(self, args: Dict[str, Any]) -> Dict[str, Any]:
         return {
             k: self.move_tensor(v) if isinstance(v, torch.Tensor) else v
             for k, v in args.items()
@@ -372,13 +372,13 @@ class PyTorchRuntime(BaseRuntime):
         # Run forward, backward and optimize steps depending on codeblock opts
         if self._grad_scaler is None:
 
-            def _scale(x):
+            def _scale(x: torch.Tensor) -> torch.Tensor:
                 return x
 
         else:
 
-            def _scale(x):
-                return self._grad_scaler.scale(x)
+            def _scale(x: torch.Tensor) -> torch.Tensor:
+                return self._grad_scaler.scale(x)  # type: ignore[no-any-return]
 
         if code_block.optimizer is not None:
             code_block.optimizer.zero_grad()
@@ -400,9 +400,9 @@ class PyTorchRuntime(BaseRuntime):
                             or v.dtype.is_complex
                         )
                     ):
-                        _scale(v).backward()
+                        _scale(v).backward()  # type: ignore[no-untyped-call]
             else:
-                _scale(out[code_block.backprop_from]).backward()
+                _scale(out[code_block.backprop_from]).backward()  # type: ignore
 
         if code_block.optimizer is None:
             return out
