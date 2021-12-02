@@ -1,7 +1,5 @@
 import contextlib
-from typing import (
-    Any, Dict, Generator, Iterable, Optional,
-)
+from typing import Any, Dict, Generator, Iterable, Mapping, Optional
 import warnings
 
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
@@ -58,7 +56,7 @@ class BaseLogic:
 
     def train_epoch_begin(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
             epoch: int,
             loader: Iterable[Any],
     ) -> None:
@@ -73,7 +71,7 @@ class BaseLogic:
 
     def train_epoch_end(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
             epoch: int,
     ) -> None:
         """A method called when completing an epoch of training.
@@ -86,8 +84,8 @@ class BaseLogic:
 
     def train_step(
             self,
-            models: Dict[str, torch.nn.Module],
-            optimizers: Dict[str, torch.optim.Optimizer],
+            models: Mapping[str, torch.nn.Module],
+            optimizers: Mapping[str, torch.optim.Optimizer],
             batch_idx: int,
             batch: Any,
     ) -> Any:
@@ -110,8 +108,8 @@ class BaseLogic:
 
     def train_step_optimizers(
             self,
-            models: Dict[str, torch.nn.Module],
-            optimizers: Dict[str, torch.optim.Optimizer],
+            models: Mapping[str, torch.nn.Module],
+            optimizers: Mapping[str, torch.optim.Optimizer],
             batch_idx: int,
     ) -> None:
         """A method in charge of stepping the provided optimizers.
@@ -126,7 +124,7 @@ class BaseLogic:
 
     def train_validation_begin(
             self,
-            models: Dict[str, torch.nn.Module]
+            models: Mapping[str, torch.nn.Module]
     ) -> None:
         """A method called when starting a validation.
 
@@ -137,7 +135,7 @@ class BaseLogic:
 
     def train_validation_end(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
     ) -> None:
         """A method called when the validation completes.
 
@@ -148,7 +146,7 @@ class BaseLogic:
 
     def eval_step(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
             batch_idx: int,
             batch: Any,
     ) -> Any:
@@ -247,7 +245,7 @@ class Logic(BaseLogic):
 
     def train_epoch_begin(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
             epoch: int,
             loader: Iterable[Any],
     ) -> None:
@@ -267,8 +265,8 @@ class Logic(BaseLogic):
 
     def train_step(
             self,
-            models: Dict[str, torch.nn.Module],
-            optimizers: Dict[str, torch.optim.Optimizer],
+            models: Mapping[str, torch.nn.Module],
+            optimizers: Mapping[str, torch.optim.Optimizer],
             batch_idx: int,
             batch: Any,
     ) -> Any:
@@ -304,8 +302,8 @@ class Logic(BaseLogic):
 
     def train_step_optimizers(
             self,
-            models: Dict[str, torch.nn.Module],
-            optimizers: Dict[str, torch.optim.Optimizer],
+            models: Mapping[str, torch.nn.Module],
+            optimizers: Mapping[str, torch.optim.Optimizer],
             batch_idx: int,
     ) -> None:
         """A method in charge of stepping the provided optimizers.
@@ -327,7 +325,7 @@ class Logic(BaseLogic):
 
     def train_validation_begin(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
     ) -> None:
         """A method called when starting a validation.
 
@@ -339,7 +337,7 @@ class Logic(BaseLogic):
 
     def eval_step(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
             batch_idx: int,
             batch: Any,
     ) -> Any:
@@ -384,7 +382,7 @@ class CodeBlockLogic(BaseLogic):
 
     def train_epoch_begin(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
             epoch: int,
             loader: Iterable[Any],
     ) -> None:
@@ -404,8 +402,8 @@ class CodeBlockLogic(BaseLogic):
 
     def train_step(
             self,
-            models: Dict[str, torch.nn.Module],
-            optimizers: Dict[str, torch.optim.Optimizer],
+            models: Mapping[str, torch.nn.Module],
+            optimizers: Mapping[str, torch.optim.Optimizer],
             batch_idx: int,
             batch: Any,
     ) -> Any:
@@ -436,7 +434,7 @@ class CodeBlockLogic(BaseLogic):
 
     def train_validation_begin(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
     ) -> None:
         """A method called when starting a validation.
 
@@ -448,7 +446,7 @@ class CodeBlockLogic(BaseLogic):
 
     def eval_step(
             self,
-            models: Dict[str, torch.nn.Module],
+            models: Mapping[str, torch.nn.Module],
             batch_idx: int,
             batch: Any,
     ) -> Any:

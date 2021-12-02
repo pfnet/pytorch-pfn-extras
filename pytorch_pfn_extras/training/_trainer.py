@@ -1,9 +1,9 @@
-# mypy: ignore-errors
-
 import queue
 import time
 import warnings
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import (
+    Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union, TYPE_CHECKING
+)
 
 import torch
 
@@ -28,7 +28,7 @@ class Trainer:
             handler: 'handler_module.BaseHandler',
             *,
             evaluator: Optional[Union['Evaluator', Tuple['Evaluator', TriggerLike]]],
-            models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+            models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
             **kwargs: Any,
     ):
         self.handler = handler
@@ -91,12 +91,12 @@ class Trainer:
         return self._manager
 
     @property
-    def models(self) -> Dict[str, torch.nn.Module]:
+    def models(self) -> Mapping[str, torch.nn.Module]:
         # TODO(kmaehashi): do we need this convenient interface for handlers?
         return self.manager.raw_models
 
     @property
-    def optimizers(self) -> Dict[str, torch.optim.Optimizer]:
+    def optimizers(self) -> Mapping[str, torch.optim.Optimizer]:
         return self.manager.optimizers
 
     def state_dict(self) -> Dict[str, Any]:
@@ -220,7 +220,7 @@ class Trainer:
         if train_len is None:
             train_len = len(train_loader)  # type: ignore[arg-type]
         if eval_len is None and val_loader is not None:
-            eval_len = len(val_loader)
+            eval_len = len(val_loader)  # type: ignore[arg-type]
 
         self._train_len = train_len
         self._val_loader = val_loader
