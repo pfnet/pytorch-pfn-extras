@@ -543,6 +543,14 @@ class Comparer:
         return torch.load(f'{engine.handler._dir}/{name}')
 
     def add_dump(self, name, dir):
+        """Add an engine to compare variables.
+
+        Args:
+            name (str):
+                The name of dump.
+            dir (str):
+                The directory that the results are saved to.
+        """
         with open(f'{dir}/summary') as f:
             summary = json.loads(f.read())
 
@@ -557,6 +565,7 @@ class Comparer:
         model = DummyModel()
         ppe.to(model, 'cpu')
 
+        # Create a dummy engine
         engine = None
         args = []
         if summary['evaluator']:
@@ -582,6 +591,16 @@ class Comparer:
         torch.save(target, f'{engine.handler._dir}/{name}')
 
     def dump(self, engine, dir, *args, **kwargs):
+        """Add an engine to compare variables.
+
+        Args:
+            engine (Trainer or Evaluator):
+                An engine to compare variables.
+            dir (str):
+                Name of the directory that the results are saved to.
+            *args and **kwargs:
+                Arguments passed to ``engine.run``.
+        """
         _overwrite_handler(
             engine, None, self._get_target, self._dump_targets, self._trigger, dir=dir)
 
