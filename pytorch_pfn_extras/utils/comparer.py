@@ -24,7 +24,8 @@ _intermediate_prefix = "intermedaite:"
 
 
 class _ComparableHandler(_handler_module.BaseHandler):
-    def __init__(self, handler, name, add_target_cb, compare_cb, trigger=None, *, dir=None):
+    def __init__(
+            self, handler, name, add_target_cb, compare_cb, trigger=None, *, dir=None):
         self._handler = handler
         self._add_target_cb = add_target_cb
         self._compare_cb = compare_cb
@@ -532,7 +533,8 @@ class Comparer:
         if name in self._engines.keys():
             raise ValueError(f"Engine named {name} already registered")
 
-        _overwrite_handler(engine, name, self._get_target, self._compare_targets, self._trigger)
+        _overwrite_handler(
+            engine, name, self._get_target, self._compare_targets, self._trigger)
 
         self._engines[name] = engine, args, kwargs
 
@@ -570,7 +572,8 @@ class Comparer:
             args = [[None] * summary['train_len']] + args
 
         _overwrite_handler(
-            engine, name, self._load_dump, self._compare_targets, self._trigger, dir=dir)
+            engine, name, self._load_dump, self._compare_targets,
+            self._trigger, dir=dir)
 
         self._engines[name] = engine, args, {}
 
