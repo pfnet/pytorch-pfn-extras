@@ -214,10 +214,9 @@ class Logic(BaseLogic):
         return model(batch)
 
     def _backward(self, outputs: Dict[str, Any]) -> None:
-        target = _normalize_outputs(outputs)
         to_backward = set()
         if self.backward_outputs is None:
-            for _, v in target.items():
+            for _, v in outputs.items():
                 if isinstance(v, torch.Tensor) and v.grad_fn is not None and (
                     (
                         v.numel() == 1
@@ -233,11 +232,11 @@ class Logic(BaseLogic):
                 backward_outputs = (backward_outputs,)
             for k in backward_outputs:
                 try:
-                    to_backward.add(target[k])
+                    to_backward.add(outputs[k])
                 except KeyError:
                     warnings.warn(
                         'Couldn\'t find requested backward value: '
-                        f'{k} in {target.keys()}'
+                        f'{k} in {outputs.keys()}'
                     )
 
         for v in to_backward:
@@ -288,9 +287,8 @@ class Logic(BaseLogic):
         with torch_autocast(enabled=self._autocast):
             optimizers[self.model_name].zero_grad()
             outs = self._forward(models[self.model_name], batch)
-            to_back_outs = outs
+            to_back_outs = _normalize_outputs(outs)
             if self._grad_scaler is not None:
-                to_back_outs = _normalize_outputs(outs)
                 assert (
                     len(to_back_outs) == 1
                 ), "loss scaling with multiple outputs is not supported"
