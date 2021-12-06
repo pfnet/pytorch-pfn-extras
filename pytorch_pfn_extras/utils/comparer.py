@@ -17,7 +17,6 @@ from pytorch_pfn_extras.training import _trainer
 from pytorch_pfn_extras.training import manager as manager_module
 from pytorch_pfn_extras.training import _evaluator
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.onnx import as_output
 
 
 _thread_local = threading.local()
@@ -106,7 +105,11 @@ class _ComparableHandler(_handler_module.BaseHandler):
         count = counts.get('name', 0)
         counts['name'] = count + 1
         name = _intermediate_prefix + name + f'_{count}'
-        as_output(name, value)
+
+        # Defer importing onnx for performance and to avoid linkage issues.
+        import pytorch_pfn_extras.onnx
+        if pytorch_pfn_extras.onnx.available:
+            pytorch_pfn_extras.onnx.as_output(name, value)
         values[name] = value
 
 
