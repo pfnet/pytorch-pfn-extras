@@ -45,8 +45,6 @@ main() {
       run "${docker_args[@]}" \
           "${PPE_FLEXCI_IMAGE_NAME}:${TARGET}" \
           /src/.flexci/linux/unittest.sh "${TARGET}"
-      gsutil -m -q cp /tmp/output/pysen.txt gs://${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pysen/${CI_JOB_ID}/pysen.txt
-      echo "pysen output: https://storage.cloud.google.com/${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pysen/${CI_JOB_ID}/pysen.txt"
       gsutil -m -q cp -r /tmp/output/htmlcov gs://${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pytest-cov/${CI_JOB_ID}/htmlcov
       echo "pytest-cov output: https://storage.googleapis.com/${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pytest-cov/${CI_JOB_ID}/htmlcov/index.html"
       ;;

@@ -30,17 +30,5 @@ pushd example
 python mnist_custom_logic.py --batch-size 2048 --test-batch-size 2048 --epochs 1
 popd
 
-# Run pysen
-pysen run lint 2> /output/pysen.txt || true
-
-# Run flake8
-flake8 .
-
-# Run mypy
-mypy pytorch_pfn_extras
-pushd example
-mypy . --config-file ../setup.cfg --allow-untyped-defs --allow-untyped-calls
-popd
-
 # Publish coverage report
 mv tests/htmlcov /output/htmlcov
