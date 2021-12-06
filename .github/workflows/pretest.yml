@@ -25,6 +25,8 @@ jobs:
         pip install -U pip wheel
         pip install 'torch==${{ matrix.torch }}'
         pip install -v -e .
+        # Test PPE is importable with minimum dependency
+        python -c 'import pytorch_pfn_extras'
 
     - name: Code Style
       run: |
