@@ -192,6 +192,7 @@ class Logic(BaseLogic):
         self.backward_outputs = options.pop('backward_outputs', None)
         self._grad_scaler = options.pop('grad_scaler', None)
         self._autocast = options.pop('autocast', False)
+        self._backward_fn = options.pop('backward_function', None)
 
         if not _amp_enabled:
             if self._grad_scaler is not None or self._autocast:
@@ -240,7 +241,10 @@ class Logic(BaseLogic):
                     )
 
         for v in to_backward:
-            v.backward()  # type: ignore[no-untyped-call]
+            if self._backward_fn is None:
+                v.backward()  # type: ignore[no-untyped-call]
+            else:
+                self._backward_fn(v)
 
     def train_epoch_begin(
             self,
