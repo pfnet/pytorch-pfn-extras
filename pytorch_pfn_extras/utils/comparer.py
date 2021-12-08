@@ -158,7 +158,7 @@ def _compare_targets(compare_fn, targets, batch_idx):
                 compare_fn(backend1, backend2, val_name, out1, out2)
             except AssertionError as e:
                 raise AssertionError(
-                    f"batch_idx: {batch_idx}"
+                    f"Batch: {batch_idx}\n"
                     f"Comparing '{backend1}' and '{backend2}' in '{val_name}'\n"
                     + str(e))
 
