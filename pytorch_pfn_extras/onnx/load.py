@@ -1,12 +1,15 @@
-# mypy: ignore-errors
-
 import onnx
 import json
 import warnings
 from pathlib import Path
+from typing import Any, IO, Text, Union
 
 
-def load_model(f, format=None, load_external_data=True):
+def load_model(
+        f: Union[IO, Text],
+        format: Any = None,
+        load_external_data: bool = True,
+) -> onnx.ModelProto:
     """Load model from ONNX file.
 
     This is a wrapper to `onnx.load_model` that automatically falls back to
