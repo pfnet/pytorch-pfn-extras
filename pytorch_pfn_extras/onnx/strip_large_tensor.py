@@ -1,11 +1,8 @@
-# mypy: ignore-errors
-
 import argparse
 import json
 import operator
 from functools import reduce
-
-import numpy
+from typing import Any
 
 import onnx.numpy_helper
 import onnx.external_data_helper
@@ -13,18 +10,19 @@ import onnx.external_data_helper
 LARGE_TENSOR_DATA_THRESHOLD = 100
 
 
-def is_large_tensor(tensor, threshold):
+def is_large_tensor(tensor: Any, threshold: int) -> bool:
     size = reduce(operator.mul, tensor.dims, 1)
     return size > threshold
 
 
-def _is_stripped_or_set_external(tensor):
+def _is_stripped_or_set_external(tensor: Any) -> bool:
     for external_data in tensor.external_data:
         if external_data.key != 'location':
             continue
         try:
-            external_value_dict = json.loads(external_data.value)
-            return external_value_dict.get('type', '') == 'stripped'
+            external_value_type = json.loads(external_data.value).get('type', '')
+            assert isinstance(external_value_type, str)
+            return external_value_type == 'stripped'
         except ValueError:
             # Invalid JSON, indicating `external_data.value` contains
             # a file path. Treat the tensor as if it is already stripped.
@@ -32,12 +30,12 @@ def _is_stripped_or_set_external(tensor):
     return False
 
 
-def _strip_raw_data(tensor):
+def _strip_raw_data(tensor: Any) -> Any:
     arr = onnx.numpy_helper.to_array(tensor)
     meta_dict = {}
     meta_dict['type'] = "stripped"
-    meta_dict['average'] = float(numpy.average(arr))
-    meta_dict['variance'] = float(numpy.var(arr))
+    meta_dict['average'] = float(arr.mean())  # type: ignore[assignment]
+    meta_dict['variance'] = float(arr.var())  # type: ignore[assignment]
     if not tensor.HasField("raw_data"):
         tensor.raw_data = onnx.numpy_helper.from_array(arr, tensor.name).raw_data
     onnx.external_data_helper.set_external_data(tensor,
@@ -49,7 +47,8 @@ def _strip_raw_data(tensor):
     return tensor
 
 
-def _strip_large_initializer_raw_data_from_graph(graph, large_tensor_threshold):
+def _strip_large_initializer_raw_data_from_graph(
+        graph: Any, large_tensor_threshold: int) -> None:
     for init in graph.initializer:
         if _is_stripped_or_set_external(init):
             continue
@@ -62,20 +61,21 @@ def _strip_large_initializer_raw_data_from_graph(graph, large_tensor_threshold):
                     attr.g, large_tensor_threshold)
 
 
-def _strip_large_initializer_raw_data(onnx_model, large_tensor_threshold):
+def _strip_large_initializer_raw_data(
+        onnx_model: Any, large_tensor_threshold: int) -> None:
     _strip_large_initializer_raw_data_from_graph(
         onnx_model.graph, large_tensor_threshold)
 
 
-def _strip_large_tensor_tool_impl(onnx_path, out_onnx_path,
-                                  large_tensor_threshold):
+def _strip_large_tensor_tool_impl(
+        onnx_path: str, out_onnx_path: str, large_tensor_threshold: int) -> None:
     onnx_model = onnx.load(onnx_path, load_external_data=False)
     _strip_large_initializer_raw_data(onnx_model, large_tensor_threshold)
     with open(out_onnx_path, 'wb') as fp:
         fp.write(onnx_model.SerializeToString())
 
 
-def _strip_large_tensor_tool():
+def _strip_large_tensor_tool() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('onnx_path', type=str)
     parser.add_argument('--out_onnx_path', type=str, default=None)
