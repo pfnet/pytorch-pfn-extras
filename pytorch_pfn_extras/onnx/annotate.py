@@ -1,7 +1,7 @@
-# mypy: ignore-errors
-
 import contextlib
 import functools
+import types
+from typing import Any, Callable, ContextManager, Dict, Generator, List, Type, Optional
 
 import onnx.helper
 import torch
@@ -12,34 +12,48 @@ import torch.onnx.symbolic_registry as sym_reg
 
 class _AnnotationInit(object):
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.wrap_func_name = 'tou_wrapped_forward_'
         self.len_wrap_func_name = len(self.wrap_func_name)
         self.opname_suffix = '_tou'
 
-        self.attrs_map = {}  # k=tracked_id, v=annotated attrs
+        # k=tracked_id, v=annotated attrs
+        self.attrs_map: Dict[str, Dict[str, Any]] = {}
+
         self.counter = 0  # global counter for each annotation
 
         self.anchor_func_name = 'tou_anchor_'
         self.len_anchor_func_name = len(self.anchor_func_name)
-        self.anchored_node_count = {}  # k=global count, v=number of node
 
-    def setup(self, model, opset_ver):
-        self.model = model
+        # k=global count, v=number of node
+        self.anchored_node_count: Dict[str, str] = {}
+
+    def setup(self, model: nn.Module, opset_ver: int) -> None:
+        self._model: Optional[nn.Module] = model
         # dryrun to register every aten ops
-        sym_reg.register_version('', opset_ver)
+        sym_reg.register_version('', opset_ver)  # type: ignore[no-untyped-call]
         self.opset_ver = opset_ver
 
-    def __enter__(self):
+    @property
+    def model(self) -> nn.Module:
+        assert self._model is not None
+        return self._model
+
+    def __enter__(self) -> '_AnnotationInit':
         return self
 
-    def __exit__(self, type, value, traceback):
-        self.model = None
+    def __exit__(
+            self,
+            type: Optional[Type[BaseException]],
+            value: Optional[BaseException],
+            traceback: Optional[types.TracebackType],
+    ) -> None:
+        self._model = None
         self.attrs_map = {}
         self.counter = 0
         self.anchored_node_count = {}
 
-    def set_annotate(self, onnx_graph):
+    def set_annotate(self, onnx_graph: Any) -> Any:
         for node in onnx_graph.graph.node:
             find_idx = node.doc_string.find(self.wrap_func_name)
             if find_idx < 0:
@@ -48,7 +62,7 @@ class _AnnotationInit(object):
 
         return onnx_graph
 
-    def _edit_attr(self, node, found_idx):
+    def _edit_attr(self, node: Any, found_idx: int) -> None:
         start_idx = found_idx + self.len_wrap_func_name
         next_ub_idx = node.doc_string[start_idx:].find('_')
         tracked_id = node.doc_string[start_idx:start_idx + next_ub_idx]
@@ -58,9 +72,9 @@ class _AnnotationInit(object):
                  self.attrs_map[tracked_id].items()]
         node.attribute.extend(attrs)
 
-    def reorg_anchor(self, onnx_graph):
+    def reorg_anchor(self, onnx_graph: Any) -> Any:
         # inspect all node before editing anchors, need to edit previous node
-        nodes_by_input = {}  # for re-connect nodes
+        nodes_by_input: Dict[int, List[Any]] = {}  # for re-connect nodes
         anchor_nodes = {}  # extract anchors
         dummy_constant_ids = []  # remove them after
         for node in onnx_graph.graph.node:
@@ -100,7 +114,7 @@ class _AnnotationInit(object):
 
         return onnx_graph
 
-    def _edit_anchor(self, node, found_idx):
+    def _edit_anchor(self, node: Any, found_idx: int) -> bool:
         # return enable to delete or not
         assert node.op_type == 'Add'
 
@@ -127,27 +141,27 @@ class _AnnotationInit(object):
 _annotation_init = _AnnotationInit()
 
 
-def init_annotate(model, opset_ver):
+def init_annotate(model: nn.Module, opset_ver: int) -> _AnnotationInit:
     _annotation_init.setup(model, opset_ver)
     return _annotation_init
 
 
 class _Annotation(object):
 
-    def __init__(self, **attrs):
+    def __init__(self, **attrs: Any) -> None:
         self.attrs = attrs
         self.hook_count = _annotation_init.counter
         _annotation_init.counter += 1
-        self.original_forwards = {}
+        self.original_forwards: Dict[str, Callable[..., Any]] = {}
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         _annotation_init.attrs_map[str(self.hook_count)] = self.attrs
 
         # Make wrapped forward method with dynamic name
         # to call other methods, use functools to make partial application
         # By calling this wrapped forward, PyTorch's tracer tracked
         # this function in source history and enable to judge annotated or not.
-        created_func = {}
+        created_func: Dict[str, Any] = {}
         fn_name = '{}{}_'.format(
             _annotation_init.wrap_func_name, self.hook_count)
         wrapped_forward_code = """def {}(fn, *args, **kwargs):
@@ -160,20 +174,25 @@ class _Annotation(object):
             self.original_forwards[name] = original_forward
             wrapped_forward = functools.partial(
                 created_func[fn_name], original_forward)
-            child_module.forward = wrapped_forward
+            child_module.forward = wrapped_forward  # type: ignore[assignment]
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(
+            self,
+            type: Optional[Type[BaseException]],
+            value: Optional[BaseException],
+            traceback: Optional[types.TracebackType],
+    ) -> None:
         for name, child_module in _annotation_init.model.named_children():
-            child_module.forward = self.original_forwards[name]
+            child_module.forward = self.original_forwards[name]  # type: ignore
 
 
 @contextlib.contextmanager
-def _nullcontext():
+def _nullcontext() -> Generator[None, None, None]:
     # contextlib.nullcontext equivalent, needed for Python 3.6 support.
     yield
 
 
-def annotate(**attrs):
+def annotate(**attrs: Any) -> ContextManager[None]:
     """Annotation parameters to the target function.
 
     Usage:
@@ -201,12 +220,12 @@ def annotate(**attrs):
     Args:
         attrs (dict): annotation parameters
     """
-    if torch.onnx.is_in_onnx_export():
+    if torch.onnx.is_in_onnx_export():  # type: ignore[no-untyped-call]
         return _Annotation(**attrs)
     return _nullcontext()
 
 
-def apply_annotation(fn, *args, **attrs):
+def apply_annotation(fn: Callable[..., Any], *args: Any, **attrs: Any) -> Any:
     """Annotation applier to the target function
 
     Usage:
@@ -244,12 +263,12 @@ def apply_annotation(fn, *args, **attrs):
 
     class _DoFunction(nn.Module):
 
-        def __init__(self, fn, *args):
-            super(_DoFunction, self).__init__()
+        def __init__(self, fn: Callable[..., Any], *args: Any) -> None:
+            super(_DoFunction, self).__init__()  # type: ignore[no-untyped-call]
             self.fn = fn
             self.args = args
 
-        def forward(self):
+        def forward(self) -> Any:
             return self.fn(*args)
 
     wrapped_fn = _DoFunction(fn)
@@ -265,14 +284,14 @@ def apply_annotation(fn, *args, **attrs):
 
 class _Anchor(_Annotation):
 
-    def __init__(self, **attrs):
+    def __init__(self, **attrs: Any) -> None:
         super(_Anchor, self).__init__(**attrs)
         self.called_count = -1
         self.started = False
 
-    def _get_anchor_func(self, start_end='s'):
+    def _get_anchor_func(self, start_end: str = 's') -> Any:
         self.called_count += 1
-        created_func = {}
+        created_func: Dict[str, Any] = {}
 
         # wrapped name + start/end + global count + internal count
         fn_name = '{}{}_{}_{}__'.format(
@@ -284,12 +303,12 @@ class _Anchor(_Annotation):
 
         return created_func[fn_name]
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         _annotation_init.attrs_map[str(self.hook_count)] = self.attrs
 
-        def do_forward(fn, *args, **kwargs):
+        def do_forward(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
 
-            def dummy_anchor(fn, x):
+            def dummy_anchor(fn: Callable[..., Any], x: Any) -> Any:
                 zero = torch.zeros((1,), dtype=x.dtype)
                 return fn(x, zero)
 
@@ -337,17 +356,22 @@ class _Anchor(_Annotation):
             self.original_forwards[name] = original_forward
 
             wrapped_forward = functools.partial(do_forward, original_forward)
-            child_module.forward = wrapped_forward
+            child_module.forward = wrapped_forward  # type: ignore[assignment]
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(
+            self,
+            type: Optional[Type[BaseException]],
+            value: Optional[BaseException],
+            traceback: Optional[types.TracebackType],
+    ) -> None:
         for name, child_module in _annotation_init.model.named_children():
-            child_module.forward = self.original_forwards[name]
+            child_module.forward = self.original_forwards[name]  # type: ignore
 
         _annotation_init.anchored_node_count[str(self.hook_count)] = \
             str(self.called_count)
 
 
-def scoped_anchor(**attrs):
+def scoped_anchor(**attrs: Any) -> ContextManager[None]:
     """Add anchor node to the scoped modules
 
     Usage:
@@ -376,6 +400,6 @@ def scoped_anchor(**attrs):
     Args:
         attrs (dict): annotation parameters
     """
-    if torch.onnx.is_in_onnx_export():
+    if torch.onnx.is_in_onnx_export():  # type: ignore[no-untyped-call]
         return _Anchor(**attrs)
     return _nullcontext()
