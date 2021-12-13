@@ -1,5 +1,6 @@
 import argparse
 import json
+import onnx
 import operator
 from functools import reduce
 from typing import Any
@@ -10,12 +11,12 @@ import onnx.external_data_helper
 LARGE_TENSOR_DATA_THRESHOLD = 100
 
 
-def is_large_tensor(tensor: Any, threshold: int) -> bool:
+def is_large_tensor(tensor: onnx.TensorProto, threshold: int) -> bool:
     size = reduce(operator.mul, tensor.dims, 1)
     return size > threshold
 
 
-def _is_stripped_or_set_external(tensor: Any) -> bool:
+def _is_stripped_or_set_external(tensor: onnx.TensorProto) -> bool:
     for external_data in tensor.external_data:
         if external_data.key != 'location':
             continue
@@ -30,7 +31,7 @@ def _is_stripped_or_set_external(tensor: Any) -> bool:
     return False
 
 
-def _strip_raw_data(tensor: Any) -> Any:
+def _strip_raw_data(tensor: onnx.TensorProto) -> onnx.TensorProto:
     arr = onnx.numpy_helper.to_array(tensor)
     meta_dict = {}
     meta_dict['type'] = "stripped"
@@ -48,7 +49,7 @@ def _strip_raw_data(tensor: Any) -> Any:
 
 
 def _strip_large_initializer_raw_data_from_graph(
-        graph: Any, large_tensor_threshold: int) -> None:
+        graph: onnx.GraphProto, large_tensor_threshold: int) -> None:
     for init in graph.initializer:
         if _is_stripped_or_set_external(init):
             continue
@@ -62,7 +63,7 @@ def _strip_large_initializer_raw_data_from_graph(
 
 
 def _strip_large_initializer_raw_data(
-        onnx_model: Any, large_tensor_threshold: int) -> None:
+        onnx_model: onnx.ModelProto, large_tensor_threshold: int) -> None:
     _strip_large_initializer_raw_data_from_graph(
         onnx_model.graph, large_tensor_threshold)
 
