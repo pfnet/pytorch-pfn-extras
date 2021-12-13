@@ -27,7 +27,7 @@ RUN pyenv install ${python_version} && \
 ARG pip_install_torch_args
 ARG pip_install_dep_args
 RUN pip install -U pip && \
-    pip install -U setuptools && \
+    pip install -U setuptools<59.6 && \
     pip install ${pip_install_torch_args} && \
     pip install ${pip_install_dep_args} && \
     pip list
