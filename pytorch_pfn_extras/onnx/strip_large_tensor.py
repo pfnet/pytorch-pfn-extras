@@ -3,7 +3,6 @@ import json
 import onnx
 import operator
 from functools import reduce
-from typing import Any
 
 import onnx.numpy_helper
 import onnx.external_data_helper
