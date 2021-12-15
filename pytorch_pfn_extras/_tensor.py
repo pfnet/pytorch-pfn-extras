@@ -57,6 +57,12 @@ def as_ndarray(tensor: torch.Tensor) -> _NDArray:
         return tensor.detach().numpy()
     elif devtype == 'cuda':
         ensure_cupy()
+        if hasattr(cupy, 'from_dlpack'):
+            # TODO: Avoid using ``torch.utils.dlpack.to_dlpack``.
+            # => return cupy.from_dlpack(tensor)
+            # Blocked by PyTorch 1.10 bug
+            # (https://github.com/pytorch/pytorch/pull/67618)
+            return cupy.from_dlpack(torch.utils.dlpack.to_dlpack(tensor))
         return cupy.fromDlpack(torch.utils.dlpack.to_dlpack(tensor))
     raise ValueError(f'Tensor is on unsupported device: {devtype}')
 
