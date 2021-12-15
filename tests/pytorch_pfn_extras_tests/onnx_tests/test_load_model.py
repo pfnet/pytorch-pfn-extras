@@ -4,7 +4,7 @@ import pytest
 import torch
 
 import pytorch_pfn_extras.onnx as tou
-from tests.pytorch_pfn_extras_tests.onnx.test_export_testcase import Net
+from tests.pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import Net
 
 
 @pytest.mark.filterwarnings("ignore:Named tensors .* experimental:UserWarning")
