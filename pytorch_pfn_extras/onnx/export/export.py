@@ -403,7 +403,10 @@ class _Exporter(_ExporterOptions):
                 attrs[a] = n[a]
         if "inplace" in attrs:
             del attrs["inplace"]
-        sym_outs = sym_func(g, *n.inputs(), **attrs)
+        node_inputs = list(n.inputs())
+        if n.kind() ==  "prim::PythonOp":
+            node_inputs.extend(n.scalar_args())
+        sym_outs = sym_func(g, *node_inputs, **attrs)
         if not isinstance(sym_outs, (list, tuple)):
             sym_outs = [sym_outs]
         assert len(sym_outs) == n.outputsSize(), f"{sym_outs}: {len(sym_outs)} vs {n.outputsSize()}"
