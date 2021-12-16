@@ -132,12 +132,16 @@ class _ExporterOptions:
 
     training: Optional[torch.onnx.TrainingMode] = None
 
+    dynamic_axes: Any = None
+    custom_opsets: Dict = dataclasses.field(default_factory=dict)
+
 
 class _Exporter(_ExporterOptions):
     def __init__(self, model: Callable, inputs: tuple, **opts: Any):
         super().__init__(**opts)
 
         # Load symbolic opset
+        assert self.opset_version is not None
         sym_reg.register_version("", self.opset_version)  # type: ignore[no-untyped-call]
 
         self.original_model = model
@@ -254,10 +258,12 @@ class _Exporter(_ExporterOptions):
         torch._C._jit_pass_erase_number_types(graph)  # type: ignore[attr-defined]
 
         if self.onnx_shape_inference:
-            input_names: List[str] = []  # if self.input_names is None else self.input_names
-            dynamic_axes: Dict[str, Any] = {}  # if self.dynamic_axes is None else self.dynamic_axes
+            if self.input_names is not None:
+                assert len(list(graph.inputs())) == len(self.input_names)
+                for i, n in zip(graph.inputs(), self.input_names):
+                    i.setDebugName(n)
             torch._C._jit_pass_onnx_set_dynamic_input_shape(  # type: ignore[attr-defined]
-                graph, dynamic_axes, input_names
+                graph, self.dynamic_axes, self.input_names
             )
 
         return graph
