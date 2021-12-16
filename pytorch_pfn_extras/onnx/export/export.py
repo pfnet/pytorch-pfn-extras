@@ -632,6 +632,7 @@ class _Exporter(_ExporterOptions):
                 # TODO(twata): Determine foleded nodes from original graph and document it
                 self.node_doc_string[c.node()] = f"Constant folded node: {input_table[k]}"
                 input_table[k].replaceAllUsesWith(c)
+                c.copyMetadata(input_table[k])
                 del input_table[k]
             for _ in range(len(list(self.g.inputs())) - len(input_table)):
                 self.g.eraseInput(len(input_table))
