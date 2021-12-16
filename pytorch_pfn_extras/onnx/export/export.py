@@ -629,6 +629,7 @@ class _Exporter(_ExporterOptions):
                 assert isinstance(t, torch.Tensor)
                 c.node().t_("value", cast(torch.Tensor, t))
                 self.g.prependNode(c.node())
+                # TODO(twata): Determine foleded nodes from original graph and document it
                 self.node_doc_string[c.node()] = f"Constant folded node: {input_table[k]}"
                 input_table[k].replaceAllUsesWith(c)
                 del input_table[k]
