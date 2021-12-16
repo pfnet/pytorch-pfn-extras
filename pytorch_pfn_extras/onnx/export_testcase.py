@@ -135,6 +135,7 @@ def _export(
     opset_ver = kwargs.get('opset_version', None)
     if opset_ver is None:
         opset_ver = _default_onnx_opset_version
+        kwargs['opset_version'] = opset_ver
     strip_doc_string = kwargs.pop('strip_doc_string', True)
     with init_annotate(model, opset_ver) as ann, \
             as_output.trace(model) as (model, outputs), \
