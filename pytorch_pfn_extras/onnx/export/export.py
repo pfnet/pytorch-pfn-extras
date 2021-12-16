@@ -453,12 +453,17 @@ class _Exporter(_ExporterOptions):
             return
 
         f: Optional[Callable] = self.symbolic_function(n)
-        if self.operator_export_type == OperatorExportTypes.ONNX_ATEN or (
+        if self.operator_export_type in [OperatorExportTypes.ONNX_ATEN, OperatorExportTypes.ONNX_FALLTHROUGH] or (
             self.operator_export_type == OperatorExportTypes.ONNX_ATEN_FALLBACK and f is None
         ):
-            v: torch._C.Value = g.op("ATen", *n.inputs(), operator_s=n.kind().split("::")[-1])
-            v.node().copyAttributes(n)
-            return
+            def gen_aten_node(g: torch._C.Graph, *inputs):
+                ret = g.op("ATen", *inputs, outputs=len(list(n.outputs())))
+                v = ret if n.outputsSize() == 1 else ret[-1]
+                v.node().copyAttributes(n)
+                v.node().s_("operator", n.kind().split("::")[-1])
+                return ret
+
+            f = gen_aten_node
         assert f is not None, f"Symbolic function for {n.kind()} not found"
         self.run_symbolic_function(g, n, f)
 
