@@ -150,6 +150,7 @@ def _compare_targets(compare_fn, targets, batch_idx):
             mes += f'{backend}: {sorted(target.keys())}\n'
         raise ValueError(mes)
 
+    err_msg = ''
     for backend2 in names[1:]:
         for val_name in keys:
             out1 = targets[backend1][val_name]
@@ -157,10 +158,11 @@ def _compare_targets(compare_fn, targets, batch_idx):
             try:
                 compare_fn(backend1, backend2, val_name, out1, out2)
             except AssertionError as e:
-                raise AssertionError(
-                    f"Batch: {batch_idx}\n"
+                err_msg += (
                     f"Comparing '{backend1}' and '{backend2}' in '{val_name}'\n"
-                    + str(e))
+                    f"{str(e)}\n")
+    if err_msg:
+        raise AssertionError(f'Batch: {batch_idx}\n' + str(err_msg))
 
 
 class _ComparerBase:
