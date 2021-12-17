@@ -1,5 +1,6 @@
 import dataclasses
 import typing
+import warnings
 from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
 
 import onnx
@@ -556,9 +557,12 @@ class _Exporter(_ExporterOptions):
                     val_tab[_unique_id(v)] = ONNXValueID(self.input_names[idx - self_count])
                 assert (len(list(g.inputs())) - self_count) == len(self.input_names)
             if self.output_names is not None:
+                if len(self.output_names) != len(list(g.outputs())):
+                    warnings.warn(f"Specified output_names ({self.output_names}) count and graph outputs ({list(g.outputs())}) count differ")
                 for idx, v in enumerate(g.outputs()):
+                    if idx >= len(self.output_names):
+                        break
                     val_tab[_unique_id(v)] = ONNXValueID(self.output_names[idx])
-                assert len(list(g.outputs())) == len(self.output_names)
         for n in g.nodes():
             if n.kind() == "prim::GetAttr":
                 continue
