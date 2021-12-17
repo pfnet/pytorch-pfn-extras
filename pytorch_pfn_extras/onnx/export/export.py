@@ -291,12 +291,19 @@ class _Exporter(_ExporterOptions):
         def gen_const(g: torch._C.Graph, value: Any = None) -> torch._C.Value:
             c = g.op("Constant")
             if n.kindOf("value") == "ival":
-                if isinstance(list, n.output().toIValue()):
+                ival = n.output().toIValue()
+                if isinstance(ival, list) and not isinstance(ival[0], (int, float)):
+                    vals = []
+                    for i in ival:
+                        if isinstance(i, torch.Tensor):
+                            vals.append(g.op("Constant", value_t=i))
+                        else:
+                            vals.append(g.op("Constant"))
                     c = g.op("prim::ListConstruct")
-                    for i in n.output().toIValue():
-                        
+                    for v in vals:
+                        c.node().addInput(v)
                 else:
-                    c.node().t_("value", torch.tensor(n.output().toIValue()))
+                    c.node().t_("value", torch.tensor(ival))
             else:
                 c.node().copyAttributes(n)
             return c
