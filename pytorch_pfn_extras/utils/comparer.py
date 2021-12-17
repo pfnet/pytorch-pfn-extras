@@ -140,28 +140,22 @@ def get_default_comparer(rtol=1e-04, atol=0, equal_nan=True):
 _default_comparer = get_default_comparer()
 
 
-def _compare_targets(compare_fn, targets, batch_idx):
+def _compare_targets(compare_fn, targets, baseline, batch_idx):
     names = list(targets.keys())
-    backend1 = names[0]
-    keys = sorted(targets[backend1].keys())
-
-    # Checks if reported variable names are compatible
-    if not all(sorted(target.keys()) == keys for target in targets.values()):
-        mes = f'batch_idx: {batch_idx}\nReported variable names incompatible\n'
-        for backend, target in targets.items():
-            mes += f'{backend}: {sorted(target.keys())}\n'
-        raise ValueError(mes)
+    if baseline is None:
+        baseline = names[0]
+    keys = sorted(targets[baseline].keys())
 
     err_msg = ''
-    for backend2 in names[1:]:
+    for backend in set(names) - set([baseline]):
         for val_name in keys:
-            out1 = targets[backend1][val_name]
-            out2 = targets[backend2][val_name]
+            out1 = targets[baseline][val_name]
+            out2 = targets[backend][val_name]
             try:
-                compare_fn(backend1, backend2, val_name, out1, out2)
+                compare_fn(baseline, backend, val_name, out1, out2)
             except AssertionError as e:
                 err_msg += (
-                    f"Comparing '{backend1}' and '{backend2}' in '{val_name}'\n"
+                    f"Comparing '{baseline}' and '{backend}' in '{val_name}'\n"
                     f"{str(e)}\n")
     if err_msg:
         raise AssertionError(f'Batch: {batch_idx}\n' + str(err_msg))
@@ -263,7 +257,7 @@ class _ComparerBase:
                 self._add_target(handle, engine.models, outputs)
                 if len(self.targets.keys()) == len(self.engines.keys()):
                     # all outputs have been filled, lets compare and reset
-                    _compare_targets(self.compare_fn, self.targets, batch_idx)
+                    _compare_targets(self.compare_fn, self.targets, None, batch_idx)
                     self.targets = {}
                 self._assert_incompatible_trigger(not self._finalized)
             # Excplicitly synchronize
@@ -415,6 +409,7 @@ class Comparer:
             concurrency=None,
             outputs=True,
             params=False,
+            baseline=None,
     ):
         """A class for comparison of iteration outputs and model parameters.
 
@@ -432,6 +427,8 @@ class Comparer:
                 A set of keys of output dict to compare.
             params (tuple of str or bool):
                 A set of keys of model parameters to compare.
+            baseline (str, optional):
+                The baseline engine that is assumed to be correct.
 
         Examples:
             >>> trainer_cpu = ppe.engine.create_trainer(
@@ -449,6 +446,7 @@ class Comparer:
         self._targets = {}
         self._output_keys = outputs
         self._param_keys = params
+        self._baseline = baseline
         self._finalized = False
         self._concurrency = concurrency  # Upper limit of semaphore size
         self._semaphore = None  # Sempaphore for training step execution
@@ -495,7 +493,8 @@ class Comparer:
                 handler, engine.models, outputs, batch_idx)
             if len(self._targets.keys()) == len(self._engines.keys()):
                 # all outputs have been filled, lets compare and reset
-                _compare_targets(self._compare_fn, self._targets, batch_idx)
+                _compare_targets(
+                    self._compare_fn, self._targets, self._baseline, batch_idx)
                 self._targets = {}
             self._assert_incompatible_trigger(not self._finalized)
 
@@ -552,7 +551,8 @@ class Comparer:
             self._targets[handler.name] = self._load_dump(engine, batch_idx)
             if len(self._targets.keys()) == len(self._engines.keys()):
                 # all outputs have been filled, lets compare and reset
-                _compare_targets(self._compare_fn, self._targets, batch_idx)
+                _compare_targets(
+                    self._compare_fn, self._targets, self._baseline, batch_idx)
                 self._targets = {}
             self._assert_incompatible_trigger(not self._finalized)
 
