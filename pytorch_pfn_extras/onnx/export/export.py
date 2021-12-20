@@ -672,6 +672,10 @@ class _Exporter(_ExporterOptions):
         self.run_jit_pass(
             torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects, self.g  # type: ignore[attr-defined]
         )
+        # Run again to remove nodes only depending to aten node
+        self.run_jit_pass(
+            torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects, self.g  # type: ignore[attr-defined]
+        )
 
         self.optimize_onnx(self.g)
 
