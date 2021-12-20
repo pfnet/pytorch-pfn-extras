@@ -21,7 +21,7 @@ from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_large_tensor_tool_
 
 output_dir = 'out'
 
-torch_version = version.Version(torch.__version__)
+torch_version = version.Version(torch.__version__.split("+")[0])
 
 
 class Net(nn.Module):
