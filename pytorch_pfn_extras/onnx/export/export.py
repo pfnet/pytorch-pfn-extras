@@ -320,7 +320,7 @@ class _Exporter(_ExporterOptions):
 
     def handle_constant(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         # Skip None constant node
-        if not n.hasAttribute("value"):
+        if n.mustBeNone():
             return
 
         def gen_const(g: torch._C.Graph, value: Any = None) -> torch._C.Value:
@@ -331,9 +331,11 @@ class _Exporter(_ExporterOptions):
                     vals = []
                     for i in ival:
                         if isinstance(i, torch.Tensor):
-                            vals.append(g.op("Constant", value_t=i))
+                            vals.append(g.op("prim::Constant", value_t=i))
                         else:
-                            vals.append(g.op("Constant"))
+                            assert i is None
+                            vals.append(g.op("prim::Constant"))
+                            vals[-1].setType(torch._C.NoneType.get())
                     c = g.op("prim::ListConstruct")
                     for v in vals:
                         c.node().addInput(v)
