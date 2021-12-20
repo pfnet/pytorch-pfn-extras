@@ -125,6 +125,7 @@ class _ExporterOptions:
     onnx_strict_mode: bool = False
     onnx_check_type: bool = False
     onnx_data_prop: bool = True
+    onnx_lowprecision_cast: bool = True
 
     input_names: Optional[List[str]] = None
     output_names: Optional[List[str]] = None
@@ -184,7 +185,7 @@ class _Exporter(_ExporterOptions):
 
         # torch.jit level preprocess
         # TODO(twata): Pass tot
-        self.g = self.optimize(self.g)
+        self.g = self.optimize_torch(self.g)
         self.log("Optimized graph", self.g)
 
         self.log("Original traced graph", self.traced.graph)
@@ -195,11 +196,11 @@ class _Exporter(_ExporterOptions):
 
     # Run jit pass with post lint
     def run_jit_pass(self, p: Callable, g: torch._C.Graph, *args: object) -> None:
-        p(g)
-        torch._C._jit_pass_lint(g, *args)
+        p(g, *args)
+        torch._C._jit_pass_lint(g)
 
     # torch level graph optimizer based on `to_utils._optimize_graph`
-    def optimize(self, graph: torch._C.Graph) -> torch._C.Graph:
+    def optimize_torch(self, graph: torch._C.Graph) -> torch._C.Graph:
         self.run_jit_pass(torch._C._jit_pass_inline_fork_wait, graph)  # type: ignore[attr-defined]
         if self.torch_constant_prop:
             self.run_jit_pass(torch._C._jit_pass_constant_propagation, graph)  # type: ignore[attr-defined]
@@ -273,6 +274,32 @@ class _Exporter(_ExporterOptions):
         torch._C._jit_pass_onnx_set_dynamic_input_shape(  # type: ignore[attr-defined]
             graph, self.dynamic_axes or {}, input_names or []
         )
+
+        return graph
+
+    # ONNX level graph optimizer
+    def optimize_onnx(self, graph: torch._C.Graph) -> torch._C.Graph:
+        self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
+
+        if self.do_constant_folding and self.opset_version in torch.onnx.constant_folding_opset_versions:
+            folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]
+                graph, self.vars, self.opset_version
+            )
+            # Replace input with constant nodes
+            input_table: Dict[str, torch._C.Value] = {i.debugName(): i for i in graph.inputs()}
+            for k, t in folded.items():
+                c: torch._C.Value = graph.create("onnx::Constant", 1).output()
+                assert isinstance(t, torch.Tensor)
+                c.node().t_("value", cast(torch.Tensor, t))
+                graph.prependNode(c.node())
+                # TODO(twata): Determine foleded nodes from original graph and document it
+                self.node_doc_string[c.node()] = f"Constant folded node: {input_table[k]}"
+                input_table[k].replaceAllUsesWith(c)
+                c.copyMetadata(input_table[k])
+                del input_table[k]
+            for _ in range(len(list(graph.inputs())) - len(input_table)):
+                graph.eraseInput(len(input_table))
+            torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects(graph)  # type: ignore[attr-defined]
 
         return graph
 
@@ -646,25 +673,7 @@ class _Exporter(_ExporterOptions):
             torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects, self.g  # type: ignore[attr-defined]
         )
 
-        if self.do_constant_folding and self.opset_version in torch.onnx.constant_folding_opset_versions:
-            folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]
-                self.g, self.vars, self.opset_version
-            )
-            # Replace input with constant nodes
-            input_table: Dict[str, torch._C.Value] = {i.debugName(): i for i in self.g.inputs()}
-            for k, t in folded.items():
-                c: torch._C.Value = self.g.create("onnx::Constant", 1).output()
-                assert isinstance(t, torch.Tensor)
-                c.node().t_("value", cast(torch.Tensor, t))
-                self.g.prependNode(c.node())
-                # TODO(twata): Determine foleded nodes from original graph and document it
-                self.node_doc_string[c.node()] = f"Constant folded node: {input_table[k]}"
-                input_table[k].replaceAllUsesWith(c)
-                c.copyMetadata(input_table[k])
-                del input_table[k]
-            for _ in range(len(list(self.g.inputs())) - len(input_table)):
-                self.g.eraseInput(len(input_table))
-            torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects(self.g)  # type: ignore[attr-defined]
+        self.optimize_onnx(self.g)
 
         self.log("ONNX graph", self.g)
 

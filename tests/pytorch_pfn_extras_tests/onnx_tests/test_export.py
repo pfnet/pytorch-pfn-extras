@@ -85,3 +85,8 @@ def test_if():
 
     run_model_test(AnyModel(lambda m, x: if_by_shape(x), {}), (torch.arange(3, dtype=torch.float),))
     run_model_test(AnyModel(lambda m, x: if_by_shape(x), {}), (torch.arange(4, dtype=torch.float),))
+
+
+def test_scalar_const():
+    run_model_test(AnyModel(lambda m, x: x * 3.0, {}), (torch.arange(3, dtype=torch.float),))
+    run_model_test(AnyModel(lambda m, x: x * 3.0, {}), (torch.arange(3, dtype=torch.double),))
