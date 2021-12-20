@@ -2,8 +2,8 @@ import tempfile
 from typing import Callable, List, Optional
 
 import onnxruntime as ort
-import pfto
 import torch
+from pytorch_pfn_extras.onnx.export import export as pfto_export
 
 
 def run_model_test(
@@ -53,7 +53,7 @@ def run_model_test(
         input_names = [f"input_{idx}" for idx, _ in enumerate(args)]
     if output_names is None:
         output_names = [f"output_{idx}" for idx, _ in enumerate(expected)]
-    actual = pfto.export(
+    actual = pfto_export(
         model,
         args,
         f,

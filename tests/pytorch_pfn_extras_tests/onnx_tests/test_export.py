@@ -5,7 +5,7 @@ import pytest
 import torch
 from flaky import flaky
 
-from .utils import run_model_test
+from tests.pytorch_pfn_extras_tests.onnx.utils import run_model_test
 
 
 def test_simple():
@@ -37,6 +37,7 @@ def test_conv():
     run_model_test(Net(), (torch.rand(1, 1, 112, 112),), rtol=1e-03)
 
 
+@pytest.mark.filterwarnings("ignore::torch.jit.TracerWarning")
 def test_symbolic_function():
     class Func(torch.autograd.Function):
         @staticmethod
