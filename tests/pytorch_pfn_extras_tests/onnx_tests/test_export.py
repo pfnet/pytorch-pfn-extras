@@ -67,7 +67,7 @@ class AnyModel(torch.nn.Module):
     def __init__(self, fn, params):
         super(AnyModel, self).__init__()
         for name, value in params.items():
-            setattr(self, name, torch.nn.parameter.Parameter(torch.tensor(value)))
+            setattr(self, name, torch.nn.parameter.Parameter(value))
         self.fn = fn
 
     def __call__(self, *args):
