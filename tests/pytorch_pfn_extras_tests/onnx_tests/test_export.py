@@ -90,3 +90,16 @@ def test_if():
 def test_scalar_const():
     run_model_test(AnyModel(lambda m, x: x * 3.0, {}), (torch.arange(3, dtype=torch.float),))
     run_model_test(AnyModel(lambda m, x: x * 3.0, {}), (torch.arange(3, dtype=torch.double),))
+
+
+def _aranges(*shape) -> torch.Tensor:
+    return torch.arange(torch.prod(torch.tensor(shape)), dtype=torch.float).reshape(*shape)
+
+
+@pytest.mark.filterwarnings("ignore::torch.jit.TracerWarning")
+def test_adaptive_max_pool():
+    run_model_test(
+        AnyModel(lambda m, x: torch.nn.functional.adaptive_max_pool2d(x * m.w, 1),
+                 {"w": _aranges(3, 1, 1)}),
+        (_aranges(2, 3, 5, 5) % 9,),
+    )
