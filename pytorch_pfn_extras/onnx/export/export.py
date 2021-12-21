@@ -679,6 +679,10 @@ class _Exporter(_ExporterOptions):
             torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects, self.g  # type: ignore[attr-defined]
         )
 
+        # TODO(twata): Remove unnecessary outputs. Graph#eraseOutput isn't available
+        # while self.g.outputsSize() > len(self.outputs):
+        #     self.g.eraseOutput(self.g.outputsSize() - 1)
+
         self.optimize_onnx(self.g)
 
         self.log("ONNX graph", self.g)
