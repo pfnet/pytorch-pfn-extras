@@ -541,6 +541,23 @@ class _Exporter(_ExporterOptions):
             node_name_counter += 1
             return f"{op}_{node_name_counter}"
 
+        val_tab_rev: Dict[ONNXValueID, TorchValueID] = {v: k for k, v in val_tab.items()}
+        def register_val_name(id: TorchValueID, name: ONNXValueID, shadow: bool = False) -> ONNXValueID:
+            assert id not in val_tab, f"{id} already registered in {g}"
+            if shadow:
+                new_name = name
+                c = 1
+                while new_name in val_tab_rev:
+                    new_name = f"{name}_{c}"
+                    c += 1
+                name = new_name
+            else:
+                assert name not in val_tab_rev, f"{name} already registered in {g}"
+            val_tab_rev[name] = id
+            val_tab[id] = name
+            assert len(val_tab_rev) == len(val_tab)
+            return name
+
         def value_name(v: torch._C.Value) -> ONNXValueID:
             if _unique_id(v) in self.attrs:
                 return self.attrs[_unique_id(v)]
@@ -588,7 +605,7 @@ class _Exporter(_ExporterOptions):
                     if self.is_self(v):  # Skip module's self input
                         self_count += 1
                         continue
-                    val_tab[_unique_id(v)] = ONNXValueID(self.input_names[idx - self_count])
+                    register_val_name(_unique_id(v), ONNXValueID(self.input_names[idx - self_count]))
                 assert (len(list(g.inputs())) - self_count) == len(self.input_names)
             if self.output_names is not None:
                 if len(self.output_names) != len(list(g.outputs())):
@@ -596,7 +613,7 @@ class _Exporter(_ExporterOptions):
                 for idx, v in enumerate(g.outputs()):
                     if idx >= len(self.output_names):
                         break
-                    val_tab[_unique_id(v)] = ONNXValueID(self.output_names[idx])
+                    register_val_name(_unique_id(v), ONNXValueID(self.output_names[idx]))
         for n in g.nodes():
             if n.kind() == "prim::GetAttr":
                 continue
@@ -610,25 +627,25 @@ class _Exporter(_ExporterOptions):
                         k: ONNXValueID = self.attrs[_unique_id(i)]
                         t: torch.Tensor = self.vars[k]
                         onnx_vars[_unique_id(i)] = _tensor_to_proto(t, name=k)
-                k = value_name(i)
+                        register_val_name(_unique_id(i), value_name(i))
+                        continue
                 if _unique_id(i) not in val_tab:
-                    val_tab[_unique_id(i)] = k
+                    register_val_name(_unique_id(v), value_name(i))
 
             for o in n.outputs():
-                k = value_name(o)
                 if _unique_id(o) not in val_tab:
-                    val_tab[_unique_id(o)] = k
+                    register_val_name(_unique_id(o), value_name(o), shadow=True)
 
             def assign_onnx_values(
                 onnx_values: List[str],
                 prefix: str,
                 torch_values: Iterator[torch._C.Value],
             ) -> None:
+                assert len(onnx_values) == 0
                 for v in torch_values:
                     k: ONNXValueID = val_tab.get(_unique_id(v), value_name(v))
-                    if _unique_id(v) in val_tab:
-                        assert val_tab[_unique_id(v)] == k
-                    val_tab[_unique_id(v)] = k
+                    if _unique_id(v) not in val_tab:
+                        register_val_name(_unique_id(v), k)
                     onnx_values.append(k)
 
             new_nd = onnx.NodeProto()
