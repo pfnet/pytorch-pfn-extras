@@ -23,6 +23,13 @@ torch._C.Graph.returnNode = torch._C.Graph.return_node  # type: ignore[attr-defi
 torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defined]
 
 
+def _custom_unpack_list(list_value):
+    list_node = list_value.node()
+    assert list_node.kind() in ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"], f"Unknown list operator: {list_node}"
+    return list(list_node.inputs())
+
+sym_hel._unpack_list = _custom_unpack_list
+
 def _unique_id(v: torch._C.Value) -> TorchValueID:
     return TorchValueID(v.unique())
 
