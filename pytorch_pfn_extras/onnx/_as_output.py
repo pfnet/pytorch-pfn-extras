@@ -74,7 +74,7 @@ class _ModuleWithAdditionalOutputs(torch.nn.Module):
         elif not isinstance(out, list):
             out = list(out)
         out.extend([value for _, value in self.outputs.values])
-        return out
+        return tuple(out)
 
     def state_dict(self, *args, **kwargs):  # type: ignore[no-untyped-def]
         return self.module.state_dict(*args, **kwargs)
