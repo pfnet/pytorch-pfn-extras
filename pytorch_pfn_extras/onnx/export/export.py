@@ -139,7 +139,7 @@ class _ExporterOptions:
 
 
 class _Exporter(_ExporterOptions):
-    def __init__(self, model: Callable, inputs: tuple, **opts: Any):
+    def __init__(self, model: Callable, inputs: Any, **opts: Any):
         super().__init__(**opts)
 
         # Load symbolic opset
@@ -148,6 +148,8 @@ class _Exporter(_ExporterOptions):
 
         self.original_model = model
         self.inputs = inputs
+        if not isinstance(self.inputs, (list, tuple)):
+            self.inputs = (inputs,)
 
         self.attrs: Dict[TorchValueID, ONNXValueID] = {}
         self.node_doc_string: Dict[torch._C.Node, str] = {}
@@ -793,7 +795,7 @@ def export(
     f: Union[str, typing.IO],
     **kwargs: object,
 ) -> Any:
-    ex = _Exporter(model, args, **kwargs)
+    ex = _Exporter(model, inputs=args, **kwargs)
     ex.generate(f)
 
     return ex.outputs
