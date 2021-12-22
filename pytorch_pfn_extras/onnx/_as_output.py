@@ -61,12 +61,12 @@ class _Outputs:
 class _ModuleWithAdditionalOutputs(torch.nn.Module):
     def __init__(self, module: torch.nn.Module, outputs: _Outputs) -> None:
         super().__init__()  # type: ignore[no-untyped-call]
-        self.module = module
+        self._ppe_as_out_module: torch.nn.Module = module
         self.outputs = outputs
 
     def forward(self, *args: Any, **kwargs: Any) -> Any:
         self.outputs.clear()
-        out = self.module(*args, **kwargs)
+        out = self._ppe_as_out_module(*args, **kwargs)
         if len(self.outputs.values) == 0:
             return out
         if isinstance(out, torch.Tensor):
@@ -77,10 +77,10 @@ class _ModuleWithAdditionalOutputs(torch.nn.Module):
         return tuple(out)
 
     def state_dict(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        return self.module.state_dict(*args, **kwargs)
+        return self._ppe_as_out_module.state_dict(*args, **kwargs)
 
     def load_state_dict(self, *args, **kwargs):  # type: ignore[no-untyped-def]
-        return self.module.load_state_dict(*args, **kwargs)
+        return self._ppe_as_out_module.load_state_dict(*args, **kwargs)
 
 
 @contextmanager

@@ -22,6 +22,8 @@ ONNXValueID = typing.NewType("ONNXValueID", str)
 torch._C.Graph.returnNode = torch._C.Graph.return_node  # type: ignore[attr-defined]
 torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defined]
 
+_ppe_ignore_scope: str = "_ppe_as_out_module"
+
 
 def _custom_unpack_list(list_value):
     list_node = list_value.node()
@@ -188,7 +190,7 @@ class _Exporter(_ExporterOptions):
 
         self.outputs = _to_tuple_if_not_sequence(self.traced(*self.inputs))
         self.g: torch._C.Graph = self.traced.inlined_graph
-        self.vars = self.traced.state_dict()
+        self.vars = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
         self.self_id: Optional[TorchValueID] = None
         self.self_name: Optional[str] = None
         first_arg = list(self.g.inputs())[0]
@@ -360,7 +362,7 @@ class _Exporter(_ExporterOptions):
         self.run_symbolic_function(g, n, gen_const)
 
     def handle_getattr(self, g: torch._C.Graph, n: torch._C.Node) -> None:
-        if self.is_self(n.input()):
+        if self.is_self(n.input()) or self.attrs[_unique_id(n.input())] == _ppe_ignore_scope:
             self.attrs[_unique_id(n.output())] = ONNXValueID(n.s("name"))
         else:
             self.attrs[_unique_id(n.output())] = ONNXValueID(
@@ -577,6 +579,7 @@ class _Exporter(_ExporterOptions):
             n: torch._C.Node = v.node() or v.uses()[0].user
             scope: str = self.node_scope.get(n, n.scopeName())
             scope = _remove_prefix(scope.split("/")[-1], "__module.")
+            scope = _remove_prefix(scope, f"{_ppe_ignore_scope}.")
             if len(scope) > 0:
                 scope += "."
             return ONNXValueID(f"{scope}{v.debugName()}")
