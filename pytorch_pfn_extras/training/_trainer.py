@@ -198,14 +198,6 @@ class Trainer:
             record_run_iteration.complete()
             record_iteration.complete()
 
-    def _run_evaluator(self, name: str) -> None:
-        evaluator, _ = self._evaluators[name]
-        if self._val_loader is None:
-            raise ValueError('"val_loader" is not given.')
-        evaluator.handler.train_validation_begin(self, evaluator)
-        evaluator.run(self._val_loader, eval_len=self._eval_len)
-        evaluator.handler.train_validation_end(self, evaluator)
-
     def run(self,
             train_loader: Iterable[Any],
             val_loader: Optional[Iterable[Any]] = None,
@@ -235,17 +227,29 @@ class Trainer:
             eval_len = len(val_loader)  # type: ignore[arg-type]
 
         self._train_len = train_len
-        self._val_loader = val_loader
         self._eval_len = eval_len
 
         class _EvaluatorExt:
-            def __init__(self, trainer: 'Trainer', name: str) -> None:
-                self.name = name
+            def __init__(
+                    self,
+                    trainer: 'Trainer',
+                    evaluator: 'Evaluator',
+                    val_loader: Optional[Iterable[Any]],
+                    eval_len: Optional[int],
+            ) -> None:
                 self.needs_model_state = True
                 self._trainer = trainer
+                self._evaluator = evaluator
+                self._val_loader = val_loader
+                self._eval_len = eval_len
 
             def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-                self._trainer._run_evaluator(self.name)
+                evaluator = self._evaluator
+                if self._val_loader is None:
+                    raise ValueError('"val_loader" is not given.')
+                evaluator.handler.train_validation_begin(self._trainer, evaluator)
+                evaluator.run(self._val_loader, eval_len=self._eval_len)
+                evaluator.handler.train_validation_end(self._trainer, evaluator)
 
         if self._manager is None:
             self._manager = self._setup_manager(train_len)
@@ -253,7 +257,8 @@ class Trainer:
                 # Register the evaluator as an extension to the manager
                 # To be triggered with the correct timing
                 self._manager.extend(
-                    _EvaluatorExt(self, name),
+                    _EvaluatorExt(self, evaluator, val_loader, eval_len),
+                    name=name,
                     trigger=trigger_module.get_trigger(trigger),
                     priority=extension.PRIORITY_WRITER,
                 )
