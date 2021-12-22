@@ -210,16 +210,17 @@ def export_testcase(
         user_meta = {}
 
     os.makedirs(out_dir, exist_ok=True)
+    if isinstance(args, torch.Tensor):
+        args = args,
     input_names = kwargs.pop(
         'input_names',
         ['input_{}'.format(i) for i in range(len(args))])
     assert len(input_names) == len(args)
+    assert not isinstance(args, torch.Tensor)
 
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
         input_names=input_names, **kwargs)
-    if isinstance(args, torch.Tensor):
-        args = args,
     if isinstance(outs, torch.Tensor):
         outs = outs,
 
