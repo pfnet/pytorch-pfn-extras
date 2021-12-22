@@ -78,6 +78,12 @@ def _remove_prefix(text: str, prefix: str) -> str:
     return text[text.startswith(prefix) and len(prefix) :]
 
 
+def _to_tuple_if_not_sequence(v) -> Tuple:
+    if not isinstance(v, (list, tuple)):
+        v = (v,)
+    return v
+
+
 def onnx_node_doc_string(onnx_node: torch._C.Node, torch_node: torch._C.Node) -> str:
     return f"""## Symbolic node
 {onnx_node}
@@ -154,9 +160,7 @@ class _Exporter(_ExporterOptions):
         sym_reg.register_version("", self.opset_version)  # type: ignore[no-untyped-call]
 
         self.original_model = model
-        self.inputs = inputs
-        if not isinstance(self.inputs, (list, tuple)):
-            self.inputs = (inputs,)
+        self.inputs = _to_tuple_if_not_sequence(inputs)
 
         self.attrs: Dict[TorchValueID, ONNXValueID] = {}
         self.node_doc_string: Dict[torch._C.Node, str] = {}
@@ -179,9 +183,7 @@ class _Exporter(_ExporterOptions):
 # Model: {self.traced.original_name}
 """
 
-        self.outputs = self.traced(*self.inputs)
-        if not isinstance(self.outputs, tuple):
-            self.outputs = (self.outputs,)
+        self.outputs = _to_tuple_if_not_sequence(self.traced(*self.inputs))
         self.g: torch._C.Graph = self.traced.inlined_graph
         self.vars = self.traced.state_dict()
         self.self_id: Optional[TorchValueID] = None
@@ -462,9 +464,7 @@ class _Exporter(_ExporterOptions):
         node_inputs = list(n.inputs())
         if n.kind() ==  "prim::PythonOp":
             node_inputs.extend(n.scalar_args())
-        sym_outs = sym_func(g, *node_inputs, **attrs)
-        if not isinstance(sym_outs, (list, tuple)):
-            sym_outs = [sym_outs]
+        sym_outs = _to_tuple_if_not_sequence(sym_func(g, *node_inputs, **attrs))
         assert len(sym_outs) == n.outputsSize(), f"{sym_outs}: {len(sym_outs)} vs {n.outputsSize()}"
 
         def list_added_nodes() -> List[torch._C.Node]:
