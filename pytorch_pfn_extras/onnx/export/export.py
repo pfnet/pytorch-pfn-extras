@@ -187,9 +187,11 @@ class _Exporter(_ExporterOptions):
         self.g: torch._C.Graph = self.traced.inlined_graph
         self.vars = self.traced.state_dict()
         self.self_id: Optional[TorchValueID] = None
+        self.self_name: Optional[str] = None
         first_arg = list(self.g.inputs())[0]
         if first_arg.type().kind() == "ClassType":
             self.self_id = _unique_id(first_arg)
+            self.self_name = first_arg.debugName()
         self.log("Inlined graph", self.g)
 
         to_utils._params_dict = self.vars  # type: ignore[attr-defined]
@@ -272,16 +274,14 @@ class _Exporter(_ExporterOptions):
 
         input_names = self.input_names.copy()
         if input_names is not None:
-            assert len(list(graph.inputs())) == len(input_names) + (0 if self.self_id is None else 1)
-            inputs = list(graph.inputs())
             self_count = 0
+            if self.self_id is not None:
+                input_names.insert(0, self.self_name)
+                self_count = 1
+            assert len(list(graph.inputs())) == len(input_names)
+            inputs = list(graph.inputs())
             for idx, n in enumerate(input_names):
-                if _unique_id(inputs[idx + self_count]) == self.self_id:
-                    self_count += 1
-                    continue
-                inputs[idx + self_count].setDebugName(n)
-            if self_count > 0:
-                input_names.insert(0, inputs[0].debugName())
+                inputs[idx].setDebugName(n)
         torch._C._jit_pass_onnx_set_dynamic_input_shape(  # type: ignore[attr-defined]
             graph, self.dynamic_axes or {}, input_names or []
         )
