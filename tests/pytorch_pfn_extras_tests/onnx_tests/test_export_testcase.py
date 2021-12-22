@@ -53,12 +53,14 @@ def _get_output_dir(d, **kwargs):
     return output_dir
 
 
-def _helper(model, args, d, **kwargs):
+def _helper(model, args, d, use_pfto=True, **kwargs):
     output_dir = _get_output_dir(d)
     if 'training' not in kwargs:
         kwargs['training'] = model.training
     if 'do_constant_folding' not in kwargs:
         kwargs['do_constant_folding'] = False
+    if use_pfto:
+        export_testcase(model, args, output_dir, use_pfto=True, **kwargs)
     export_testcase(model, args, output_dir, **kwargs)
     return output_dir
 
@@ -219,7 +221,9 @@ def test_backward_multiple_input():
     grads = [torch.ones((4, 5, 3)) / 2, torch.ones((1, 5, 3)) / 3]
     output_dir = _helper(model, (input, h), 'backward_multiple_input',
                          output_grad=grads,
-                         output_names=['output0', 'output1'])
+                         output_names=['output0', 'output1'],
+                         # TODO(twata): Fix none and optional input handling
+                         use_pfto=False)
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.isdir(test_data_set_dir)
@@ -355,7 +359,9 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
     output_dir = _helper(
         model, args=(x, unused), d='net_with_unused_input_without_input_names',
         opset_version=11, strip_doc_string=False,
-        keep_initializers_as_inputs=keep_initializers_as_inputs)
+        keep_initializers_as_inputs=keep_initializers_as_inputs,
+        # TODO(twata): Support keep_initializers_as_inputs option
+        use_pfto=False)
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.exists(os.path.join(test_data_set_dir, 'input_0.pb'))
@@ -371,7 +377,9 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
         model, args=(x, unused), d='net_with_unused_input_with_input_names',
         opset_version=11, strip_doc_string=False,
         keep_initializers_as_inputs=keep_initializers_as_inputs,
-        input_names=['x', 'unused'])
+        input_names=['x', 'unused'],
+        # TODO(twata): Support keep_initializers_as_inputs option
+        use_pfto=False)
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.exists(os.path.join(test_data_set_dir, 'input_0.pb'))
