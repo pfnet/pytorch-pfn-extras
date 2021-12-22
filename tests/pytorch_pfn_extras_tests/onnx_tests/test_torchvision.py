@@ -3,7 +3,7 @@ import torch
 import torchvision
 from flaky import flaky
 
-from tests.pytorch_pfn_extras_tests.onnx.utils import run_model_test
+from tests.pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
 
 
 @flaky
