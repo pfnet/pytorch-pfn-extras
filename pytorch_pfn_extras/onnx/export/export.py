@@ -307,16 +307,14 @@ class _Exporter(_ExporterOptions):
         if not (self.verbose or debug):
             return
 
-        s = f"""
-## {title}
-{v}
-"""
+        s = f"""## {title}
+{v}"""
         print(s)
 
         if self.strip_doc_string:
             return
 
-        self.graph_doc_string += s
+        self.graph_doc_string += s + "\n"
 
     def handle_constant(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         # Skip None constant node
