@@ -52,14 +52,14 @@ class Trainer:
                   Dict[str, Any]]] = []
         self._manager_state: Optional[Dict[str, Any]] = None
 
-        self.evaluator = {}
+        self._evaluators: Dict[str, Tuple['Evaluator', TriggerLike]] = {}
         if evaluator is None:
             evaluator = {}
         elif not isinstance(evaluator, collections.abc.Mapping):
             evaluator = {"Evaluator": evaluator}
-        if isinstance(evaluator, dict):
+        if isinstance(evaluator, collections.abc.Mapping):
             for n, e in evaluator.items():
-                self.evaluator[n] = e if isinstance(e, tuple) else (e, (1, 'epoch'))
+                self._evaluators[n] = e if isinstance(e, tuple) else (e, (1, 'epoch'))
         self.val_loader = None
 
     def extend(
@@ -136,6 +136,14 @@ class Trainer:
     def stop_trigger(self, trigger: Trigger) -> None:
         self._stop_trigger = trigger
 
+    @property
+    def evaluator(self) -> Optional['Evaluator']:
+        if len(self._evaluators) == 0:
+            return None
+        if len(self._evaluators) == 1:
+            return next(iter(self._evaluators.values()))[0]
+        raise ValueError('multiple evaluators are registered.')
+
     def get_optimizer(self, name: str) -> torch.optim.Optimizer:
         return self.manager.optimizers[name]
 
@@ -191,7 +199,7 @@ class Trainer:
             record_iteration.complete()
 
     def _run_evaluator(self, name: str) -> None:
-        evaluator, _ = self.evaluator[name]
+        evaluator, _ = self._evaluators[name]
         if self._val_loader is None:
             raise ValueError('"val_loader" is not given.')
         evaluator.handler.train_validation_begin(self, evaluator)
@@ -241,7 +249,7 @@ class Trainer:
 
         if self._manager is None:
             self._manager = self._setup_manager(train_len)
-            for name, (evaluator, trigger) in self.evaluator.items():
+            for name, (evaluator, trigger) in self._evaluators.items():
                 # Register the evaluator as an extension to the manager
                 # To be triggered with the correct timing
                 self._manager.extend(
@@ -250,7 +258,7 @@ class Trainer:
                     priority=extension.PRIORITY_WRITER,
                 )
             self.handler.train_setup(self, train_loader)
-            if len(self.evaluator) == 0:
+            if len(self._evaluators) == 0:
                 if val_loader is not None:
                     warnings.warn(
                         '`val_loader` is given whereas the evaluator is missing.',
@@ -258,8 +266,8 @@ class Trainer:
             else:
                 if val_loader is None:
                     raise ValueError('`val_loader` is required')
-            for _, (evaluator, _) in self.evaluator.items():
-                evaluator.handler.eval_setup(evaluator, val_loader)
+                for _, (evaluator, _) in self._evaluators.items():
+                    evaluator.handler.eval_setup(evaluator, val_loader)
 
         while not self.manager.stop_trigger:
             self.handler.train_epoch_begin(self, train_loader)
