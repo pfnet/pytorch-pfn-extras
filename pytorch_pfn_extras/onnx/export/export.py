@@ -150,6 +150,9 @@ class _ExporterOptions:
     dynamic_axes: Any = None
     custom_opsets: Dict = dataclasses.field(default_factory=dict)
 
+    # TODO(twata): Support this
+    # keep_initializers_as_inputs: bool = False
+
 
 class _Exporter(_ExporterOptions):
     def __init__(self, model: Callable, inputs: Any, **opts: Any):
