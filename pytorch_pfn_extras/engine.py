@@ -1,5 +1,5 @@
 from typing import (
-    Any, Callable, Dict, List, Optional, Tuple, Type, Union, TYPE_CHECKING
+    Any, Callable, Dict, List, Mapping, Optional, Tuple, Type, Union, TYPE_CHECKING
 )
 
 import torch
@@ -27,8 +27,10 @@ def create_trainer(
         out_dir: str = 'result',
         stop_trigger: 'TriggerLike' = None,
         writer: Optional['writing.Writer'] = None,
-        evaluator: Optional[
-            Union['Evaluator', Tuple['Evaluator', 'TriggerLike']]] = None,
+        evaluator: Optional[Union[
+            'Evaluator', Tuple['Evaluator', 'TriggerLike'],
+            Mapping[str, Union['Evaluator', Tuple['Evaluator', 'TriggerLike']]]
+        ]] = None,
         device: 'DeviceLike' = 'cpu',
         logic: Optional[handler_module.Logic] = None,
         transform_model: Callable[

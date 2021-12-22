@@ -1,3 +1,4 @@
+import collections.abc
 import queue
 import time
 import warnings
@@ -27,7 +28,9 @@ class Trainer:
             self,
             handler: 'handler_module.BaseHandler',
             *,
-            evaluator: Optional[Union['Evaluator', Tuple['Evaluator', TriggerLike]]],
+            evaluator: Optional[Union[
+                'Evaluator', Tuple['Evaluator', TriggerLike],
+                Mapping[str, Union['Evaluator', Tuple['Evaluator', TriggerLike]]]]],
             models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
             **kwargs: Any,
     ):
@@ -49,13 +52,14 @@ class Trainer:
                   Dict[str, Any]]] = []
         self._manager_state: Optional[Dict[str, Any]] = None
 
-        if isinstance(evaluator, tuple):
-            self.evaluator: Optional['Evaluator'] = None
-            self.evaluator, trigger = evaluator
-            self.evaluator_trigger = trigger_module.get_trigger(trigger)
-        else:
-            self.evaluator = evaluator
-            self.evaluator_trigger = trigger_module.get_trigger((1, 'epoch'))
+        self.evaluator = {}
+        if evaluator is None:
+            evaluator = {}
+        elif not isinstance(evaluator, collections.abc.Mapping):
+            evaluator = {"Evaluator": evaluator}
+        if isinstance(evaluator, dict):
+            for n, e in evaluator.items():
+                self.evaluator[n] = e if isinstance(e, tuple) else (e, (1, 'epoch'))
         self.val_loader = None
 
     def extend(
@@ -186,15 +190,15 @@ class Trainer:
             record_run_iteration.complete()
             record_iteration.complete()
 
-    def _run_evaluator(self) -> None:
-        assert self.evaluator is not None
+    def _run_evaluator(self, name: str) -> None:
+        evaluator, _ = self.evaluator[name]
         if self._val_loader is None:
             raise ValueError('"val_loader" is not given.')
-        self.evaluator.handler.train_validation_begin(self, self.evaluator)
-        self.evaluator.run(self._val_loader, eval_len=self._eval_len)
-        self.evaluator.handler.train_validation_end(self, self.evaluator)
+        evaluator.handler.train_validation_begin(self, evaluator)
+        evaluator.run(self._val_loader, eval_len=self._eval_len)
+        evaluator.handler.train_validation_end(self, evaluator)
 
-    def run(self,  # type: ignore[override]
+    def run(self,
             train_loader: Iterable[Any],
             val_loader: Optional[Iterable[Any]] = None,
             *,
@@ -227,26 +231,26 @@ class Trainer:
         self._eval_len = eval_len
 
         class _EvaluatorExt:
-            def __init__(self, trainer: 'Trainer') -> None:
-                self.name = 'Evaluator'
+            def __init__(self, trainer: 'Trainer', name: str) -> None:
+                self.name = name
                 self.needs_model_state = True
                 self._trainer = trainer
 
             def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-                self._trainer._run_evaluator()
+                self._trainer._run_evaluator(self.name)
 
         if self._manager is None:
             self._manager = self._setup_manager(train_len)
-            if self.evaluator is not None:
+            for name, (evaluator, trigger) in self.evaluator.items():
                 # Register the evaluator as an extension to the manager
                 # To be triggered with the correct timing
                 self._manager.extend(
-                    _EvaluatorExt(self),
-                    trigger=self.evaluator_trigger,
+                    _EvaluatorExt(self, name),
+                    trigger=trigger_module.get_trigger(trigger),
                     priority=extension.PRIORITY_WRITER,
                 )
             self.handler.train_setup(self, train_loader)
-            if self.evaluator is None:
+            if len(self.evaluator) == 0:
                 if val_loader is not None:
                     warnings.warn(
                         '`val_loader` is given whereas the evaluator is missing.',
@@ -254,7 +258,8 @@ class Trainer:
             else:
                 if val_loader is None:
                     raise ValueError('`val_loader` is required')
-                self.evaluator.handler.eval_setup(self.evaluator, val_loader)
+            for _, (evaluator, _) in self.evaluator.items():
+                evaluator.handler.eval_setup(evaluator, val_loader)
 
         while not self.manager.stop_trigger:
             self.handler.train_epoch_begin(self, train_loader)
