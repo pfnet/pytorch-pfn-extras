@@ -141,6 +141,8 @@ class _ExporterOptions:
     onnx_check_type: bool = False
     onnx_data_prop: bool = True
     onnx_lowprecision_cast: bool = True
+    onnx_peephole: bool = True
+    fixed_batch_size: bool = False
 
     input_names: Optional[List[str]] = None
     output_names: Optional[List[str]] = None
@@ -318,6 +320,9 @@ class _Exporter(_ExporterOptions):
             for _ in range(len(list(graph.inputs())) - len(input_table)):
                 graph.eraseInput(len(input_table))
             torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects(graph)  # type: ignore[attr-defined]
+
+        if self.onnx_peephole:
+            self.run_jit_pass(torch._C._jit_pass_onnx_peephole, graph, self.opset_version, self.fixed_batch_size)
 
         return graph
 
