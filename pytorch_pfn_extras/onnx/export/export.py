@@ -308,10 +308,12 @@ class _Exporter(_ExporterOptions):
                 assert isinstance(t, torch.Tensor)
                 c.node().t_("value", cast(torch.Tensor, t))
                 graph.prependNode(c.node())
-                # TODO(twata): Determine foleded nodes from original graph and document it
+                # TODO(twata): Determine folded nodes from original graph and document it
                 self.node_doc_string[c.node()] = f"Constant folded node: {input_table[k]}"
                 input_table[k].replaceAllUsesWith(c)
                 c.copyMetadata(input_table[k])
+                self.attrs[_unique_id(c)] = k
+                self.vars[k] = t
                 del input_table[k]
             for _ in range(len(list(graph.inputs())) - len(input_table)):
                 graph.eraseInput(len(input_table))
@@ -632,8 +634,11 @@ class _Exporter(_ExporterOptions):
         for n in g.nodes():
             if n.kind() == "prim::GetAttr":
                 continue
-            if n.kind() == "onnx::Constant" and len(n.output().uses()) == 0:
-                continue
+            if n.kind() == "onnx::Constant" :
+                if len(n.output().uses()) == 0:
+                    continue
+                if _unique_id(n.output()) in self.attrs:
+                    continue
             for i in n.inputs():
                 if self.is_self(i):
                     continue
