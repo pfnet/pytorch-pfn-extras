@@ -190,7 +190,7 @@ class _Exporter(_ExporterOptions):
 
         self.outputs = _to_tuple_if_not_sequence(self.traced(*self.inputs))
         self.g: torch._C.Graph = self.traced.inlined_graph
-        self.vars = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
+        self.vars: Dict[str, torch.Tensor] = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
         self.self_id: Optional[TorchValueID] = None
         self.self_name: Optional[str] = None
         first_arg = list(self.g.inputs())[0]
