@@ -89,7 +89,7 @@ def _export_meta(
 
 def _export_util(
         model: torch.nn.Module,
-        args: Tuple[Any, ...],
+        args: Sequence[Any],
         f: IO,
         **kwargs: Any,
 ) -> Any:
@@ -125,7 +125,7 @@ def _export_util(
 
 def _export(
         model: torch.nn.Module,
-        args: Tuple[Any, ...],
+        args: Sequence[Any],
         strip_large_tensor_data: bool = False,
         large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
         **kwargs: Any,
@@ -157,7 +157,7 @@ def _export(
 
 def export(
         model: torch.nn.Module,
-        args: Tuple[Any, ...],
+        args: Sequence[Any],
         f: IO,
         return_output: bool = False,
         strip_large_tensor_data: bool = False,
