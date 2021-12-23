@@ -19,8 +19,9 @@ from pytorch_pfn_extras.profiler import record
 
 logger = logging.getLogger(__name__)
 
+ProcessGroup = dist.ProcessGroup if dist.is_available() else Any
 Tensors = Union[Tuple[torch.Tensor, ...], torch.Tensor]
-DistFunc = Callable[[Sequence[torch.Tensor], Optional[dist.ProcessGroup]], None]
+DistFunc = Callable[[Sequence[torch.Tensor], Optional[ProcessGroup]], None]
 HookFun = Callable[['DistributedDataParallel'], None]
 
 
@@ -76,7 +77,7 @@ def get_foreach_wrapper() -> _ForEachWrapper:
 
 def _reduce(
         values: Sequence[torch.Tensor],
-        group: Optional[dist.ProcessGroup],
+        group: Optional[ProcessGroup],
 ) -> None:
     size = sum([v.numel() for v in values])
 
@@ -101,7 +102,7 @@ def _reduce(
 
 def _broadcast(
         values: Sequence[torch.Tensor],
-        group: Optional[dist.ProcessGroup]
+        group: Optional[ProcessGroup]
 ) -> None:
     with torch.no_grad():  # type: ignore[no-untyped-call]
         coalesced = get_foreach_wrapper().flatten(  # type: ignore[no-untyped-call]
@@ -158,7 +159,7 @@ class DistributedDataParallel(nn.Module):
             module: nn.Module,
             broadcast_buffers: bool = True,
             negotiate_grads: bool = True,
-            process_group: Optional[dist.ProcessGroup] = None,
+            process_group: Optional[ProcessGroup] = None,
             reduce_function: Optional[DistFunc] = None,
             broadcast_function: Optional[DistFunc] = None,
             **kwargs: Any
