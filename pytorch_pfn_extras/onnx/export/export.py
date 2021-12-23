@@ -580,10 +580,10 @@ class _Exporter(_ExporterOptions):
 
             n: torch._C.Node = v.node() or v.uses()[0].user
             scope: str = self.node_scope.get(n, n.scopeName())
-            scope = _remove_prefix(scope.split("/")[-1], "__module.")
-            scope = _remove_prefix(scope, f"{_ppe_ignore_scope}.")
             if len(scope) > 0:
                 scope += "."
+            scope = _remove_prefix(scope.split("/")[-1], "__module.")
+            scope = _remove_prefix(scope, f"{_ppe_ignore_scope}.")
             return ONNXValueID(f"{scope}{v.debugName()}")
 
         def block2subgraph(name: str, b: torch._C.Block, doc_string: str) -> onnx.GraphProto:
