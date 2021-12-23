@@ -637,13 +637,12 @@ class _Exporter(_ExporterOptions):
             for i in n.inputs():
                 if self.is_self(i):
                     continue
-                if _unique_id(i) in self.attrs:
-                    if _unique_id(i) not in onnx_vars:
-                        k: ONNXValueID = self.attrs[_unique_id(i)]
-                        t: torch.Tensor = self.vars[k]
-                        onnx_vars[_unique_id(i)] = _tensor_to_proto(t, name=k)
-                        register_val_name(_unique_id(i), value_name(i))
-                        continue
+                if _unique_id(i) in self.attrs and _unique_id(i) not in onnx_vars:
+                    k: ONNXValueID = self.attrs[_unique_id(i)]
+                    t: torch.Tensor = self.vars[k]
+                    onnx_vars[_unique_id(i)] = _tensor_to_proto(t, name=k)
+                    register_val_name(_unique_id(i), value_name(i))
+                    continue
                 if _unique_id(i) not in val_tab:
                     register_val_name(_unique_id(v), value_name(i))
 
