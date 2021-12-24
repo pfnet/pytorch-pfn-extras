@@ -638,16 +638,25 @@ class _Exporter(_ExporterOptions):
                     if idx >= len(self.output_names):
                         break
                     register_val_name(_unique_id(v), ONNXValueID(self.output_names[idx]))
+        none_nodes: List[torch._C.Node] = []
         for n in g.nodes():
+            # Skip None value node
+            if n.mustBeNone():
+                none_nodes.append(n)
+                continue
             if n.kind() == "prim::GetAttr":
                 continue
             if n.kind() == "onnx::Constant" :
                 if len(n.output().uses()) == 0:
+                    warnings.warn(f"Unused constant left: {n}")
                     continue
+                # Skip constant folded initialzers
                 if _unique_id(n.output()) in self.attrs:
                     continue
             for i in n.inputs():
                 if self.is_self(i):
+                    continue
+                if i.node() is not None and i.node() in none_nodes:
                     continue
                 if _unique_id(i) in self.attrs and _unique_id(i) not in onnx_vars:
                     k: ONNXValueID = self.attrs[_unique_id(i)]
@@ -669,6 +678,9 @@ class _Exporter(_ExporterOptions):
             ) -> None:
                 assert len(onnx_values) == 0
                 for v in torch_values:
+                    if v.node() is not None and v.node() in none_nodes:
+                        onnx_values.append("")
+                        continue
                     k: ONNXValueID = val_tab.get(_unique_id(v), value_name(v))
                     if _unique_id(v) not in val_tab:
                         register_val_name(_unique_id(v), k)

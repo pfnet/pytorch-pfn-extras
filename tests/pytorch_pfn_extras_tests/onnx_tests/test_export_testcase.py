@@ -222,9 +222,7 @@ def test_backward_multiple_input():
     grads = [torch.ones((4, 5, 3)) / 2, torch.ones((1, 5, 3)) / 3]
     output_dir = _helper(model, (input, h), 'backward_multiple_input',
                          output_grad=grads,
-                         output_names=['output0', 'output1'],
-                         # TODO(twata): Fix none and optional input handling
-                         use_pfto=False)
+                         output_names=['output0', 'output1'])
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.isdir(test_data_set_dir)
