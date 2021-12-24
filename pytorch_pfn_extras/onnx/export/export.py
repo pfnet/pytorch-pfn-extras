@@ -191,7 +191,8 @@ class _Exporter(_ExporterOptions):
 # Model: {self.traced.original_name}
 """
 
-        self.outputs = _to_tuple_if_not_sequence(self.traced(*self.inputs))
+        # TODO(twata): Use `self.traced` instead or use traced result outputs
+        self.outputs = _to_tuple_if_not_sequence(self.original_model(*self.inputs))
         self.g: torch._C.Graph = self.traced.inlined_graph
         self.vars: Dict[str, torch.Tensor] = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
         self.self_id: Optional[TorchValueID] = None
@@ -652,7 +653,7 @@ class _Exporter(_ExporterOptions):
                     k: ONNXValueID = self.attrs[_unique_id(i)]
                     t: torch.Tensor = self.vars[k]
                     onnx_vars[_unique_id(i)] = _tensor_to_proto(t, name=k)
-                    register_val_name(_unique_id(i), value_name(i))
+                    register_val_name(_unique_id(i), value_name(i), shadow=True)
                     continue
                 if _unique_id(i) not in val_tab:
                     register_val_name(_unique_id(v), value_name(i))
@@ -768,7 +769,8 @@ class _Exporter(_ExporterOptions):
             k = val_tab[_unique_id(v)]
             inout_names.append(k)
             onnx_outputs.append(onnx_value(v, k))
-            _apply_tensor_info_to_value_info(onnx_outputs[-1], self.outputs[idx])
+            if idx < len(self.outputs):
+                _apply_tensor_info_to_value_info(onnx_outputs[-1], self.outputs[idx])
 
         graph = onnx.helper.make_graph(
             nodes=onnx_nodes,
