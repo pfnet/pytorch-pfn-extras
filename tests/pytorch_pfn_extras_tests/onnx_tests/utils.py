@@ -1,6 +1,7 @@
 import tempfile
 from typing import Callable, List, Optional
 
+import onnx
 import onnxruntime as ort
 import torch
 from pytorch_pfn_extras.onnx.export import export as pfto_export
@@ -20,7 +21,7 @@ def run_model_test(
     mode="eval",
     use_gpu=False,
     **kwargs,
-):
+) -> onnx.ModelProto:
     if mode == "train":
         model.train()
     else:
@@ -78,3 +79,5 @@ def run_model_test(
     for a, e in zip(actual, expected):
         cmp = torch.isclose(torch.tensor(a), e.cpu(), rtol=rtol, atol=atol)
         assert cmp.all(), f"{cmp.logical_not().count_nonzero()} / {cmp.numel()} values failed"
+
+    return onnx.load(f.name)

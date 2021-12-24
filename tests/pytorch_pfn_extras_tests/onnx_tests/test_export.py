@@ -103,3 +103,18 @@ def test_adaptive_max_pool():
                  {"w": _aranges(3, 1, 1)}),
         (_aranges(2, 3, 5, 5) % 9,),
     )
+
+
+def test_keep_initializers_as_inputs():
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.register_buffer("var", torch.rand(10, 10))
+
+        def forward(self, x):
+            return self.var + x
+
+    model: onnx.ModelProto = run_model_test(Model(), (torch.rand((10,)),), keep_initializers_as_inputs=False)
+    assert len(model.graph.input) == 1
+    model = run_model_test(Model(), (torch.rand((1,)),), keep_initializers_as_inputs=True)
+    assert len(model.graph.input) == 2

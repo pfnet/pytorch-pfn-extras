@@ -347,6 +347,7 @@ class NetWithUnusedInput(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
+@pytest.mark.filterwarnings("ignore:Unused input:UserWarning")
 @pytest.mark.parametrize("keep_initializers_as_inputs", [None, True, False])
 def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
     if torch_version < version.Version('1.7.0'):
@@ -360,9 +361,7 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
     output_dir = _helper(
         model, args=(x, unused), d='net_with_unused_input_without_input_names',
         opset_version=11, strip_doc_string=False,
-        keep_initializers_as_inputs=keep_initializers_as_inputs,
-        # TODO(twata): Support keep_initializers_as_inputs option
-        use_pfto=False)
+        keep_initializers_as_inputs=keep_initializers_as_inputs)
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.exists(os.path.join(test_data_set_dir, 'input_0.pb'))
@@ -378,9 +377,7 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
         model, args=(x, unused), d='net_with_unused_input_with_input_names',
         opset_version=11, strip_doc_string=False,
         keep_initializers_as_inputs=keep_initializers_as_inputs,
-        input_names=['x', 'unused'],
-        # TODO(twata): Support keep_initializers_as_inputs option
-        use_pfto=False)
+        input_names=['x', 'unused'])
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.exists(os.path.join(test_data_set_dir, 'input_0.pb'))

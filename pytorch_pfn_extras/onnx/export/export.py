@@ -148,6 +148,7 @@ class _ExporterOptions:
     output_names: Optional[List[str]] = None
     do_constant_folding: bool = True
     operator_export_type: OperatorExportTypes = OperatorExportTypes.ONNX
+    keep_initializers_as_inputs: bool = False
 
     training: Optional[torch.onnx.TrainingMode] = None
 
@@ -743,11 +744,25 @@ class _Exporter(_ExporterOptions):
             if self.is_self(v):  # Skip module's self input
                 self_count += 1
                 continue
-            assert len(v.uses()) > 0
+            if len(v.uses()) == 0:
+                warnings.warn(f"Unused input: {v}")
+                continue
             k = val_tab[_unique_id(v)]
             inout_names.append(k)
             onnx_inputs.append(onnx_value(v, k))
             _apply_tensor_info_to_value_info(onnx_inputs[-1], self.inputs[idx - self_count])
+        if self.keep_initializers_as_inputs:
+            for _, t_p in onnx_vars.items():
+                i_t: onnx.TypeProto = onnx.TypeProto()
+                i_t.tensor_type.elem_type = t_p.data_type
+                for d in t_p.dims:
+                    d_p = onnx.TensorShapeProto.Dimension()
+                    d_p.dim_value = d
+                    i_t.tensor_type.shape.dim.append(d_p)
+                onnx_inputs.append(onnx.helper.make_value_info(
+                    t_p.name,
+                    i_t,
+                ))
         onnx_outputs: List[onnx.ValueInfoProto] = []
         for idx, v in enumerate(self.g.outputs()):
             k = val_tab[_unique_id(v)]
