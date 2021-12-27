@@ -128,6 +128,10 @@ $ ls -lh
 
 See `$ python -m pytorch_pfn_extras.onnx.strip_large_tensor -h` for help
 
+Notes:
+
+If an ONNX runtime does not support no `raw_data` tensor, `unstrip_tensor.py` will resolve. See `$ python -m pytorch_pfn_extras.onnx.unstrip_tensor -h` for help
+
 ### `pytorch_pfn_extras.onnx.export`
 
 Function with same interface like `torch.onnx.export`. Unlike `torch.onnx.export`, you can use annotation feature (described below), `strip_large_tensor_data` options, or other `torch.onnx` extensions.

@@ -66,6 +66,16 @@ def _unstrip_tensor_from_path(path: Path) -> onnx.TensorProto:
 
 
 def unstrip(path: str, out_path: str = "") -> None:
+    """Unstrip ONNX models and test data(.pb).
+
+    Add tensor(raw data) to the target ONNXs (and test data).
+    Values are random following mean and variance written in meta information.
+
+    Args:
+        path (str): The target directory path, ONNX file, or Tensor (Protobuf)
+            file path.
+        out_path (str): Output path to be written.
+    """
     target_path = Path(path)
     if not target_path.exists():
         print(f"Error: the target path is not found, {path}")
