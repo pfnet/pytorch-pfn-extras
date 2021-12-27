@@ -562,7 +562,7 @@ class _Exporter(_ExporterOptions):
             nonlocal node_name_counter
             op = n.kind().split("::")[-1]
             node_name_counter += 1
-            return f"{op}_{node_name_counter}"
+            return f"{op}_{node_name_counter - 1}"
 
         val_tab_rev: Dict[ONNXValueID, TorchValueID] = {v: k for k, v in val_tab.items()}
         def register_val_name(id: TorchValueID, name: ONNXValueID, shadow: bool = False) -> ONNXValueID:
