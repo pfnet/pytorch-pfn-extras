@@ -59,10 +59,9 @@ def _helper(model, args, d, use_pfto=True, **kwargs):
         kwargs['training'] = model.training
     if 'do_constant_folding' not in kwargs:
         kwargs['do_constant_folding'] = False
-    if use_pfto:
-        export_testcase(model, args, output_dir, use_pfto=True, **kwargs)
-    else:
-        export_testcase(model, args, output_dir, **kwargs)
+    if 'metadata' not in kwargs:
+        kwargs["metadata"] = False
+    export_testcase(model, args, output_dir, use_pfto=use_pfto, **kwargs)
     return output_dir
 
 
@@ -257,7 +256,8 @@ def test_export_testcase_strip_large_tensor_data():
 
     output_dir = _helper(
         model, x, 'mnist_stripped_tensor_data',
-        output_grad=True, strip_large_tensor_data=True)
+        output_grad=True, strip_large_tensor_data=True,
+        metadata=True)
 
     assert os.path.isdir(output_dir)
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))
