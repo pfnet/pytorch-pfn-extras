@@ -47,6 +47,8 @@ def run_model_test(
             model,
             args,
             torch_f,
+            input_names=input_names,
+            output_names=output_names,
             **kwargs,
         )
 

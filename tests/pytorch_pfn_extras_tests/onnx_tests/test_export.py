@@ -117,3 +117,25 @@ def test_keep_initializers_as_inputs():
     assert len(model.graph.input) == 1
     model = run_model_test(Model(), (torch.rand((1,)),), keep_initializers_as_inputs=True)
     assert len(model.graph.input) == 2
+
+
+@pytest.mark.filterwarnings("ignore:No names were found for specified dynamic axes of:UserWarning")
+def test_dynamic_axes():
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.register_buffer("var", torch.rand(10, 10))
+
+        def forward(self, x, y):
+            return self.var + x + y
+
+    model: onnx.ModelProto = run_model_test(
+        Model(), (torch.rand((10,)), torch.rand((10, 10))),
+        keep_initializers_as_inputs=False,
+        input_names=["x", "y"],
+        output_names=["out"],
+        dynamic_axes={"x": {0: "custom"}, "y": [0, 1], "out": [0]},)
+    assert model.graph.input[0].type.tensor_type.shape.dim[0].dim_param == "custom"
+    assert model.graph.input[1].type.tensor_type.shape.dim[0].dim_param == "y_dynamic_axes_1"
+    assert model.graph.input[1].type.tensor_type.shape.dim[1].dim_param == "y_dynamic_axes_2"
+    assert model.graph.output[0].type.tensor_type.shape.dim[0].dim_param == "out_dynamic_axes_1"

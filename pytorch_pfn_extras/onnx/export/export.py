@@ -152,7 +152,7 @@ class _ExporterOptions:
 
     training: Optional[torch.onnx.TrainingMode] = None
 
-    dynamic_axes: Any = None
+    dynamic_axes: Dict = dataclasses.field(default_factory=dict)
     custom_opsets: Dict = dataclasses.field(default_factory=dict)
 
     # TODO(twata): Support this
@@ -748,6 +748,20 @@ class _Exporter(_ExporterOptions):
                 None if v.type() is None else _type_to_proto(cast(torch._C.TensorType, v.type())),
                 doc_string=None if self.strip_doc_string else repr(v),
             )
+        def apply_dynamic_axes_info(out: onnx.ValueInfoProto, k: str) -> None:
+            info = self.dynamic_axes.get(k, None)
+            if info is None:
+                return None
+
+            if isinstance(info, list):
+                ret: Dict[int, str] = {}
+                for idx, axis in enumerate(info):
+                    ret[i] = f"{k}_dynamic_axes_{idx + 1}"
+                info = ret
+
+            for axis, name in info.items():
+                out.type.tensor_type.shape.dim[axis].ClearField("dim_value")
+                out.type.tensor_type.shape.dim[axis].dim_param = name
 
         # Values
         onnx_inputs: List[onnx.ValueInfoProto] = []
@@ -764,6 +778,7 @@ class _Exporter(_ExporterOptions):
             inout_names.append(k)
             onnx_inputs.append(onnx_value(v, k))
             _apply_tensor_info_to_value_info(onnx_inputs[-1], self.inputs[idx - self_count])
+            apply_dynamic_axes_info(onnx_inputs[-1], k)
         if self.keep_initializers_as_inputs:
             for _, t_p in onnx_vars.items():
                 i_t: onnx.TypeProto = onnx.TypeProto()
@@ -783,6 +798,7 @@ class _Exporter(_ExporterOptions):
             onnx_outputs.append(onnx_value(v, k))
             if idx < len(self.outputs):
                 _apply_tensor_info_to_value_info(onnx_outputs[-1], self.outputs[idx])
+                apply_dynamic_axes_info(onnx_outputs[-1], k)
 
         graph = onnx.helper.make_graph(
             nodes=onnx_nodes,
@@ -799,11 +815,17 @@ class _Exporter(_ExporterOptions):
 
         self.log("ONNX printable graph", onnx.helper.printable_graph(graph))
 
-        model = onnx.helper.make_model(
+        model: onnx.ModelProto = onnx.helper.make_model(
             graph,
             opset_imports=[onnx.helper.make_opsetid("", self.opset_version)],
         )
-        return self.check_model(model)
+        model = self.check_model(model)
+
+        # Applying dynamic axes after onnx shape inference since it will be erased
+        for o in model.graph.output:
+            apply_dynamic_axes_info(o, o.name)
+
+        return model
 
     def _convert(self) -> None:
         prev_opset_version = None
