@@ -3,7 +3,6 @@ import typing
 import numpy as np
 import pytest
 import torch
-from flaky import flaky
 
 from tests.pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
 
@@ -24,8 +23,8 @@ def test_simple():
     run_model_test(Model(), (torch.rand((20,)),))
 
 
-@flaky
 def test_conv():
+    torch.manual_seed(100)
     class Net(torch.nn.Module):
         def __init__(self):
             super(Net, self).__init__()
