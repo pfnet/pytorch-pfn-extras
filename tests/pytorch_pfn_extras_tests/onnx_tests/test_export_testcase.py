@@ -59,10 +59,10 @@ def _helper(model, args, d, use_pfto=True, **kwargs):
         kwargs['training'] = model.training
     if 'do_constant_folding' not in kwargs:
         kwargs['do_constant_folding'] = False
-    # TODO(twata): Use only either of the exporter
     if use_pfto:
         export_testcase(model, args, output_dir, use_pfto=True, **kwargs)
-    export_testcase(model, args, output_dir, **kwargs)
+    else:
+        export_testcase(model, args, output_dir, **kwargs)
     return output_dir
 
 
