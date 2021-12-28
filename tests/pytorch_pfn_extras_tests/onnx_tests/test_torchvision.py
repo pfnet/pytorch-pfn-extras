@@ -6,7 +6,7 @@ from tests.pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
 
 
 def test_eval_resnet18():
-    torch.manual_seed(42)
+    torch.manual_seed(100)
     run_model_test(
         torchvision.models.resnet.resnet18(pretrained=True),
         (torch.rand(1, 3, 224, 224),),

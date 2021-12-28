@@ -1,7 +1,7 @@
 import dataclasses
 import typing
 import warnings
-from typing import Any, Callable, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
 
 import onnx
 import onnx.checker
@@ -25,12 +25,14 @@ torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defi
 _ppe_ignore_scope: str = "_ppe_as_out_module"
 
 
-def _custom_unpack_list(list_value):
+def _custom_unpack_list(list_value: torch._C.Value) -> List[torch._C.Value]:
     list_node = list_value.node()
     assert list_node.kind() in ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"], f"Unknown list operator: {list_node}"
     return list(list_node.inputs())
 
+
 sym_hel._unpack_list = _custom_unpack_list
+
 
 def _unique_id(v: torch._C.Value) -> TorchValueID:
     return TorchValueID(v.unique())
@@ -80,7 +82,7 @@ def _remove_prefix(text: str, prefix: str) -> str:
     return text[text.startswith(prefix) and len(prefix) :]
 
 
-def _to_tuple_if_not_sequence(v) -> Tuple:
+def _to_tuple_if_not_sequence(v: Any) -> Any:
     if not isinstance(v, (list, tuple)):
         v = (v,)
     return v
@@ -194,7 +196,7 @@ class _Exporter(_ExporterOptions):
         # TODO(twata): Use `self.traced` instead or use traced result outputs
         self.outputs = _to_tuple_if_not_sequence(self.original_model(*self.inputs))
         self.g: torch._C.Graph = self.traced.inlined_graph
-        self.vars: Dict[str, torch.Tensor] = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
+        self.vars: Dict[str, torch.IValue] = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
         self.self_id: Optional[TorchValueID] = None
         self.self_name: Optional[str] = None
         first_arg = list(self.g.inputs())[0]
@@ -281,12 +283,10 @@ class _Exporter(_ExporterOptions):
         # onnx only supports tensors, so we turn all out number types into tensors
         torch._C._jit_pass_erase_number_types(graph)  # type: ignore[attr-defined]
 
-        input_names = self.input_names.copy()
-        if input_names is not None:
-            self_count = 0
+        if self.input_names is not None:
+            input_names = self.input_names.copy()
             if self.self_id is not None:
-                input_names.insert(0, self.self_name)
-                self_count = 1
+                input_names.insert(0, cast(str, self.self_name))
             assert len(list(graph.inputs())) == len(input_names)
             inputs = list(graph.inputs())
             for idx, n in enumerate(input_names):
@@ -316,7 +316,7 @@ class _Exporter(_ExporterOptions):
                 self.node_doc_string[c.node()] = f"Constant folded node: {input_table[k]}"
                 input_table[k].replaceAllUsesWith(c)
                 c.copyMetadata(input_table[k])
-                self.attrs[_unique_id(c)] = k
+                self.attrs[_unique_id(c)] = ONNXValueID(k)
                 self.vars[k] = t
                 del input_table[k]
             for _ in range(len(list(graph.inputs())) - len(input_table)):
@@ -347,19 +347,19 @@ class _Exporter(_ExporterOptions):
             return
 
         def gen_const(g: torch._C.Graph, value: Any = None) -> torch._C.Value:
-            c = g.op("Constant")
+            c = cast(torch._C.Value, g.op("Constant"))
             if n.kindOf("value") == "ival":
                 ival = n.output().toIValue()
                 if isinstance(ival, list) and not isinstance(ival[0], (int, float)):
-                    vals = []
+                    vals: List[torch._C.Value] = []
                     for i in ival:
                         if isinstance(i, torch.Tensor):
-                            vals.append(g.op("prim::Constant", value_t=i))
+                            vals.append(cast(torch._C.Value, g.op("prim::Constant", value_t=i)))
                         else:
                             assert i is None
-                            vals.append(g.op("prim::Constant"))
+                            vals.append(cast(torch._C.Value, g.op("prim::Constant")))
                             vals[-1].setType(torch._C.NoneType.get())
-                    c = g.op("prim::ListConstruct")
+                    c = cast(torch._C.Value, g.op("prim::ListConstruct"))
                     for v in vals:
                         c.node().addInput(v)
                 else:
@@ -383,7 +383,8 @@ class _Exporter(_ExporterOptions):
             )
         var_name = self.attrs[_unique_id(n.output())]
         if var_name in self.vars:
-            n.output().inferTypeFrom(self.vars[var_name])
+            assert isinstance(self.vars[var_name], torch.Tensor)
+            n.output().inferTypeFrom(cast(torch.Tensor, self.vars[var_name]))
 
     def handle_list_construct(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         # Concat if int type input
@@ -399,16 +400,16 @@ class _Exporter(_ExporterOptions):
                         )
                     else:
                         seq.append(i)
-                return g.op("Concat", *seq, axis_i=0)
+                return cast(torch._C.Value, g.op("Concat", *seq, axis_i=0))
 
             self.run_symbolic_function(g, n, gen_concat)
         else:
 
             def gen_seq(g: torch._C.Graph, *args: Any) -> torch._C.Value:
                 if len(args) == 0:
-                    return g.op("SequenceEmpty")  # TODO(twata): Set dtype attribute
+                    return cast(torch._C.Value, g.op("SequenceEmpty"))  # TODO(twata): Set dtype attribute
                 else:
-                    return g.op("SequenceConstruct", *args)
+                    return cast(torch._C.Value, g.op("SequenceConstruct", *args))
 
             self.run_symbolic_function(g, n, gen_seq)
 
@@ -476,7 +477,7 @@ class _Exporter(_ExporterOptions):
         if "inplace" in attrs:
             del attrs["inplace"]
         node_inputs = list(n.inputs())
-        if n.kind() ==  "prim::PythonOp":
+        if n.kind() == "prim::PythonOp":
             node_inputs.extend(n.scalar_args())
         sym_outs = _to_tuple_if_not_sequence(sym_func(g, *node_inputs, **attrs))
         assert len(sym_outs) == n.outputsSize(), f"{sym_outs}: {len(sym_outs)} vs {n.outputsSize()}"
@@ -526,9 +527,9 @@ class _Exporter(_ExporterOptions):
         if self.operator_export_type in [OperatorExportTypes.ONNX_ATEN, OperatorExportTypes.ONNX_FALLTHROUGH] or (
             self.operator_export_type == OperatorExportTypes.ONNX_ATEN_FALLBACK and f is None
         ):
-            def gen_aten_node(g: torch._C.Graph, *inputs):
+            def gen_aten_node(g: torch._C.Graph, *inputs: Any) -> Union[torch._C.Value, Sequence[torch._C.Value]]:
                 ret = g.op("ATen", *inputs, outputs=len(list(n.outputs())))
-                v = ret if n.outputsSize() == 1 else ret[-1]
+                v: torch._C.Value = cast(torch._C.Value, ret) if n.outputsSize() == 1 else cast(Sequence[torch._C.Value], ret)[-1]
                 v.node().copyAttributes(n)
                 v.node().s_("operator", n.kind().split("::")[-1])
                 return ret
@@ -565,13 +566,14 @@ class _Exporter(_ExporterOptions):
             return f"{op}_{node_name_counter - 1}"
 
         val_tab_rev: Dict[ONNXValueID, TorchValueID] = {v: k for k, v in val_tab.items()}
+
         def register_val_name(id: TorchValueID, name: ONNXValueID, shadow: bool = False) -> ONNXValueID:
             assert id not in val_tab, f"{id} already registered in {g}"
             if shadow:
                 new_name = name
                 c = 1
                 while new_name in val_tab_rev:
-                    new_name = f"{name}_{c}"
+                    new_name = ONNXValueID(f"{name}_{c}")
                     c += 1
                 name = new_name
             else:
@@ -660,7 +662,8 @@ class _Exporter(_ExporterOptions):
                     continue
                 if _unique_id(i) in self.attrs and _unique_id(i) not in onnx_vars:
                     k: ONNXValueID = self.attrs[_unique_id(i)]
-                    t: torch.Tensor = self.vars[k]
+                    assert isinstance(self.vars[k], torch.Tensor)
+                    t: torch.Tensor = cast(torch.Tensor, self.vars[k])
                     onnx_vars[_unique_id(i)] = _tensor_to_proto(t, name=k)
                     register_val_name(_unique_id(i), value_name(i), shadow=True)
                     continue
@@ -748,6 +751,7 @@ class _Exporter(_ExporterOptions):
                 None if v.type() is None else _type_to_proto(cast(torch._C.TensorType, v.type())),
                 doc_string=None if self.strip_doc_string else repr(v),
             )
+
         def apply_dynamic_axes_info(out: onnx.ValueInfoProto, k: str) -> None:
             info = self.dynamic_axes.get(k, None)
             if info is None:
@@ -756,7 +760,7 @@ class _Exporter(_ExporterOptions):
             if isinstance(info, list):
                 ret: Dict[int, str] = {}
                 for idx, axis in enumerate(info):
-                    ret[i] = f"{k}_dynamic_axes_{idx + 1}"
+                    ret[axis] = f"{k}_dynamic_axes_{idx + 1}"
                 info = ret
 
             for axis, name in info.items():
@@ -864,7 +868,7 @@ class _Exporter(_ExporterOptions):
 
 def export(
     model: Callable,
-    args: tuple,
+    args: Sequence[Any],
     f: Union[str, typing.IO],
     **kwargs: object,
 ) -> Any:
