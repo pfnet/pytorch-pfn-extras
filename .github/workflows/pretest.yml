@@ -32,6 +32,7 @@ jobs:
       run: |
         pip install pysen black==21.11b1 flake8==4.0.1 isort==5.10.1 mypy==0.910
         pip install types-PyYAML
+        cp ./stubs/torch/_C/__init__.pyi "$(pip show torch | awk '/^Location:/ { print $2 }')/torch/_C/__init__.pyi"
         pysen run lint
 
     - name: Code Style (Examples)
