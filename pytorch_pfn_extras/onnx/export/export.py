@@ -89,10 +89,18 @@ def _to_tuple_if_not_sequence(v: Any) -> Any:
 
 
 def onnx_node_doc_string(onnx_node: torch._C.Node, torch_node: torch._C.Node) -> str:
+    inputs: List[torch._C.Value] = list(torch_node.inputs())
+    nodes: List[torch._C.Node] = [torch_node]
+    while len(inputs) > 0:
+        n = inputs.pop().node()
+        if n is not None and n.kind() in ["onnx::Constant", "prim::Constant", "prim::ListConstruct"]:
+            nodes.insert(0, n)
+            inputs = list(n.inputs()) + inputs
+    nodes_str: str = "".join([repr(n) for n in nodes])
     return f"""## Symbolic node
 {onnx_node}
 ## Original node
-{torch_node}
+{nodes_str}
 ## Scope
 {torch_node.scopeName()}
 ## Source Range
@@ -875,5 +883,8 @@ def export(
 ) -> Any:
     ex = _Exporter(model, inputs=args, **kwargs)
     ex.generate(f)
+
+    from pytorch_pfn_extras.onnx.export.torch_reconstruct import reconstruct
+    print(reconstruct(ex.model))
 
     return ex.outputs
