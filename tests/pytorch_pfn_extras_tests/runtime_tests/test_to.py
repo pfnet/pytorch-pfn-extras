@@ -49,3 +49,20 @@ def test_module_split_ppe_to():
     assert str(next(iter(module.layer1.parameters())).device) == "cpu"
     assert ppe.runtime._runtime._module_runtime_tag(module.layer1) is None
     assert ppe.runtime._runtime._module_runtime_tag(module.layer2) is not None
+
+
+def test_runtime_nested():
+    class TestRuntime(ppe.runtime.BaseRuntime):
+        def move_module(self, module):
+            # Don't do the actual move
+            return module
+
+        def initialize_module(self, module, loader_or_batch):
+            pass
+
+    module = MyModule()
+    ppe.to(module, 'dummy', runtime_class=TestRuntime)
+    ppe.to(module.layer2, 'dummy', runtime_class=TestRuntime)
+    with pytest.raises(ValueError, match="nested"):
+        for _ in ppe.runtime._runtime.named_runtime_modules(module):
+            pass
