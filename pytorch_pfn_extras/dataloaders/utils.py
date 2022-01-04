@@ -1,4 +1,4 @@
-# mypy: ignore-errors
+from typing import Any, Callable, Dict, Sequence
 
 import torch
 
@@ -15,13 +15,14 @@ class CollateAsDict:
     """
 
     def __init__(
-        self, names,
-        collate_fn=torch.utils.data._utils.collate.default_collate,
-    ):
+        self, names: Sequence[str],
+        collate_fn: Callable[..., Any] =
+            torch.utils.data._utils.collate.default_collate,
+    ) -> None:
         self.names = names
         self.collate_fn = collate_fn
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Converts inputs the dataset generated to a dictionary of tensors.
 
         Returns (dict of Tensor):
