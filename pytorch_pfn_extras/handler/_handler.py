@@ -303,6 +303,7 @@ class Handler(BaseHandler):
             for n, m in models.items():
                 for sn, sm in ppe.runtime._runtime.named_runtime_modules(m, n):
                     rt = ppe.runtime._runtime._module_runtime_tag(sm)
+                    assert rt is not None
                     self._ppe_modules.append((sn, sm, rt))
                     yield sn, sm, rt
         else:
