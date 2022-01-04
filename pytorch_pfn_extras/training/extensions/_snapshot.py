@@ -350,7 +350,7 @@ class _Snapshot(extension.Extension):
             assert writer is not None
             loaded_fn = _find_latest_snapshot(self.filename, outdir, writer.fs)
             if loaded_fn:
-                snapshot_file = writer.fs.open(os.path.join(outdir, loaded_fn))
+                snapshot_file = writer.fs.open(os.path.join(outdir, loaded_fn), 'rb')
                 # As described above (at ``autoload`` option),
                 # snapshot files to be autoloaded must be saved by
                 # ``save_npz`` . In order to support general format,
