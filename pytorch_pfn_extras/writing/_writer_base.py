@@ -40,8 +40,8 @@ class _PosixFileSystem(object):
 
     This class currently abstracts POSIX
     """
-    def __init__(self) -> None:
-        pass
+    def __init__(self, root='/') -> None:
+        self._root = root
 
     def get_actual_path(self, path: str) -> str:
         return os.path.join(self.root, path)
@@ -185,7 +185,7 @@ class Writer:
     def __init__(
             self,
             fs: _FileSystem = None,
-            out_dir: Optional[str] = None,
+            out_dir: str = '',
     ) -> None:
         self._post_save_hooks: List[_HookFun] = []
         self.fs = fs or _PosixFileSystem()
@@ -251,7 +251,7 @@ class Writer:
         if not self._initialized:
             self.initialize(out_dir)
 
-        dest = os.path.join(out_dir, filename)
+        dest = self.fs.get_actual_path(out_dir, filename)
 
         if append:
             with self.fs.open(dest, 'ab') as f:
@@ -261,7 +261,7 @@ class Writer:
             # Some filesystems are not compatible with temp folders, etc
             # so we rely on raw temp files
             prefix = 'tmp_{}'.format(filename)
-            tmppath = os.path.join(out_dir, prefix)
+            tmppath = self.fs.get_actual_path(out_dir, prefix)
             make_backup = self.fs.exists(dest)
             with self.fs.open(tmppath, 'wb') as f:
                 savefun(target, f, **savefun_kwargs)
@@ -311,7 +311,7 @@ class StandardWriter(Writer, Generic[_Worker]):
             optional, defaults to None
         out_dir: str. Specifies the directory this writer will use.
             It takes precedence over the one specified in `__call__`
-            optional, defaults to None
+            optional, defaults to ``''``
         kwds: Keyword arguments for the ``savefun``.
 
     .. seealso::
@@ -323,7 +323,7 @@ class StandardWriter(Writer, Generic[_Worker]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: Optional[str] = None,
+            out_dir: str = '',
             **kwds: Any,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
