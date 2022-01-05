@@ -70,7 +70,7 @@ def test_export_testcase():
     model = Net().to('cpu')
     x = torch.zeros((1, 1, 28, 28))
 
-    output_dir = _helper(model, x, 'mnist', output_grad=True)
+    output_dir = _helper(model, x, 'mnist', output_grad=True, metadata=True)
 
     assert os.path.isdir(output_dir)
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))
