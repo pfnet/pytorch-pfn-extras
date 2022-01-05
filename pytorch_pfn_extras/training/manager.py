@@ -277,10 +277,7 @@ class _BaseExtensionsManager:
 
     @property
     def out(self) -> str:
-        if self.writer.out_dir is not None:
-            return self.writer.out_dir
-        else:
-            return self._out
+        return self.writer.out_dir
 
     @property
     def updater(self) -> '_BaseExtensionsManager':

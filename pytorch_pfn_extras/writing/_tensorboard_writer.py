@@ -24,7 +24,7 @@ class TensorBoardWriter(object):
             self,
             savefun: Optional[_SaveFun] = None,
             fs: _FileSystem = None,
-            out_dir: str = '',
+            out_dir: str = '.',
             stats: Optional[KeysView[str]] = None,
             **kwds: Any
     ) -> None:

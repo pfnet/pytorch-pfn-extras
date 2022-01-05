@@ -40,7 +40,7 @@ class _PosixFileSystem(object):
 
     This class currently abstracts POSIX
     """
-    def __init__(self, root='/') -> None:
+    def __init__(self, root: str = '/') -> None:
         self._root = root
 
     def get_actual_path(self, path: str) -> str:
@@ -185,7 +185,7 @@ class Writer:
     def __init__(
             self,
             fs: _FileSystem = None,
-            out_dir: str = '',
+            out_dir: str = '.',
     ) -> None:
         self._post_save_hooks: List[_HookFun] = []
         self.fs = fs or _PosixFileSystem()
@@ -201,7 +201,7 @@ class Writer:
             savefun: Optional[_SaveFun] = None,
             append: bool = False
     ) -> None:
-        """Invokes the actual snapshot function.
+        """Does the actual writing to the file.
 
         This method is invoked by a
         :class:`~pytorch_pfn_extras.training.extensions.Snapshot` object
@@ -246,12 +246,11 @@ class Writer:
             append: bool,
             **savefun_kwargs: Any,
     ) -> None:
-        if self.out_dir is not None:
-            out_dir = self.out_dir
+        out_dir = self.out_dir
         if not self._initialized:
             self.initialize(out_dir)
 
-        dest = self.fs.get_actual_path(out_dir, filename)
+        dest = os.path.join(out_dir, filename)
 
         if append:
             with self.fs.open(dest, 'ab') as f:
@@ -261,7 +260,7 @@ class Writer:
             # Some filesystems are not compatible with temp folders, etc
             # so we rely on raw temp files
             prefix = 'tmp_{}'.format(filename)
-            tmppath = self.fs.get_actual_path(out_dir, prefix)
+            tmppath = os.path.join(out_dir, prefix)
             make_backup = self.fs.exists(dest)
             with self.fs.open(tmppath, 'wb') as f:
                 savefun(target, f, **savefun_kwargs)
@@ -323,7 +322,7 @@ class StandardWriter(Writer, Generic[_Worker]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: str = '',
+            out_dir: str = '.',
             **kwds: Any,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)

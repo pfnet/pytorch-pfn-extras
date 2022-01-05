@@ -32,7 +32,7 @@ class SimpleWriter(Writer):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: str = '',
+            out_dir: str = '.',
             **kwds: Any,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
