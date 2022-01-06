@@ -36,6 +36,10 @@ class MockRuntime(ppe.runtime.BaseRuntime):
         self._train_epoch_begin_called = True
         self._called_module = module
 
+    def train_epoch_end(self, module):
+        self._train_epoch_end_called = True
+        self._called_module = module
+
     def train_pre_step(self, trainer, module, batch_idx, batch):
         self._train_pre_step_called = True
         self._called_module = module
