@@ -146,6 +146,16 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
+    def train_epoch_end(self, module: torch.nn.Module) -> None:
+        """Completion of each epoch.
+
+        Args:
+            module (torch.nn.Module): A module.
+
+        Returns: None
+        """
+        raise NotImplementedError()
+
     def train_pre_step(
         self,
         trainer: Trainer,
