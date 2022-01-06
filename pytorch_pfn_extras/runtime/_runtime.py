@@ -334,6 +334,9 @@ class PyTorchRuntime(BaseRuntime):
     def train_epoch_begin(self, module: torch.nn.Module) -> None:
         pass
 
+    def train_epoch_end(self, module: torch.nn.Module) -> None:
+        pass
+
     def train_validation_begin(self, module: torch.nn.Module) -> None:
         pass
 
