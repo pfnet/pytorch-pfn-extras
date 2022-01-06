@@ -65,7 +65,7 @@ class _PosixFileSystem(object):
     def open(
             self,
             file_path: str,
-            mode: str = 'rb',
+            mode: str = 'r',
             buffering: int = -1,
             encoding: Optional[str] = None,
             errors: Optional[str] = None,
