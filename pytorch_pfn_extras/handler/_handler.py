@@ -381,6 +381,9 @@ class Handler(BaseHandler):
                 self._complete_train_step(
                     trainer, t_outs, True, sn, sm, rt)
 
+        for _, sm, rt in self._runtime_iterator(trainer.models):
+            rt.train_epoch_end(sm)
+
         self._logic.train_epoch_end(trainer.models, trainer.epoch)
 
     def train_validation_begin(
