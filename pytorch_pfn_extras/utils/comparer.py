@@ -124,16 +124,15 @@ def get_default_comparer(rtol=1e-04, atol=0, equal_nan=True):
         atol (float): Absolute tolerance.
         equal_nan (bool): If ``True``, NaNs will be ignored.
     """
-    def compare_fn(backend1, backend2, name, val1, val2):
+    def compare_fn(backend1: str, backend2: str, name: str, val1: Any, val2: Any):
+        # TODO select the device where
+        # the tensors will be compared?
+        if isinstance(val1, torch.Tensor):
+            val1 = val1.cpu().detach()
+        if isinstance(val2, torch.Tensor):
+            val2 = val2.cpu().detach()
         torch.testing.assert_allclose(
-            # TODO select the device where
-            # the tensors will be compared?
-            val1.cpu().detach(),
-            val2.cpu().detach(),
-            rtol=rtol,
-            atol=atol,
-            equal_nan=equal_nan,
-        )
+            val1, val2, rtol=rtol, atol=atol, equal_nan=equal_nan)
 
     return compare_fn
 
