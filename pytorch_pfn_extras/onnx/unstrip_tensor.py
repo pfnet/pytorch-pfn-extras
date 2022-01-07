@@ -93,6 +93,9 @@ def unstrip(path: str, out_path: str = "") -> None:
             written_tensor_path = written_path / data_path.relative_to(target_path)
             written_tensor_path.parent.mkdir(exist_ok=True)
             _write_tensor(_unstrip_tensor_from_path(data_path), written_tensor_path)
+        meta = target_path / "meta.json"
+        if meta.exists():
+            _rewrite_meta(meta, written_path)
         return None
 
     ext = target_path.suffix
@@ -112,6 +115,14 @@ def _write_onnx(onnx_graph: onnx.GraphProto, out: Path) -> None:
 def _write_tensor(onnx_tensor: onnx.TensorProto, out: Path) -> None:
     with open(out, "wb") as fp:
         fp.write(onnx_tensor.SerializeToString())
+
+
+def _rewrite_meta(meta: Path, out: Path) -> None:
+    with open(meta) as fp:
+        meta_dict = json.load(fp)
+    meta_dict["strip_large_tensor_data"] = False
+    with open(out / "meta.json", "w") as fp:
+        json.dump(meta_dict, fp, indent=2)
 
 
 def _get_args() -> argparse.Namespace:

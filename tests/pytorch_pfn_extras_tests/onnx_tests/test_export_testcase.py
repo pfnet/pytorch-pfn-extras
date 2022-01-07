@@ -338,6 +338,10 @@ def test_export_testcase_strip_large_tensor_data():
         checked = is_unstripped_with_check(tensor) or checked
     assert checked, 'more than one data is unstripped'
 
+    with open(os.path.join(unstrip_output_dir, 'meta.json')) as metaf:
+        metaj = json.load(metaf)
+        assert not metaj['strip_large_tensor_data']
+
 
 def test_export_testcase_options():
     model = Net().to('cpu')
