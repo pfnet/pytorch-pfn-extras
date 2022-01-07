@@ -149,7 +149,9 @@ def main():
 
     # Run comparison between devices when requested.
     if args.compare_dump is not None or args.compare_with is not None:
-        comp = ppe.utils.comparer.Comparer()
+        comp = ppe.utils.comparer.Comparer(
+            compare_fn=ppe.utils.comparer.get_default_comparer(rtol=1e-2)
+        )
         if args.compare_dump is None:
             # Compare the engine with an existing dump directory.
             comp.add_dump('baseline', args.compare_with)
