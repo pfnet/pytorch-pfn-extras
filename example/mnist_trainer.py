@@ -1,4 +1,6 @@
 import argparse
+
+import numpy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -65,6 +67,8 @@ def main():
                         help='PyTorch device specifier')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
+    parser.add_argument('--deterministic', action='store_true', default=False,
+                        help='make the behavior deterministic')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
     parser.add_argument('--snapshot', type=str, default=None,
@@ -76,6 +80,9 @@ def main():
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
+    numpy.random.seed(args.seed)
+    if args.deterministic:
+        torch.use_deterministic_algorithms(True)
 
     use_cuda = args.device.startswith('cuda')
 
