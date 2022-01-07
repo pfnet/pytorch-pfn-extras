@@ -6,33 +6,37 @@ from typing import Dict, List
 
 
 def reconstruct(model: onnx.ModelProto) -> torch._C.Graph:
-    g = torch._C.Graph()
-    values: Dict[str, torch._C.Value] = {}
-    inputs: List[torch._C.Value] = []
-    for i in model.graph.input:
-        inputs.append(g.addInput())
-        inputs[-1].setDebugName(i.name)
-        values[i.name] = inputs[-1]
     original_lines: List[str] = []
     for n in model.graph.node:
-        p = marko.parser.Parser()
-        md = p.parse(n.doc_string)
         original_paragraph: bool = False
-        for c in md.children:
-            if isinstance(c, marko.block.Paragraph) and original_paragraph:
-                lines = [line.children for line in c.children if isinstance(line, marko.inline.RawText)]
-                print(lines)
-                original_lines.extend(lines)
+        for c in marko.parser.Parser().parse(n.doc_string).children:
+            if isinstance(c, marko.block.FencedCode) and original_paragraph:
+                for lines in c.children:
+                    if not isinstance(lines, marko.inline.RawText):
+                        continue
+                    for line in lines.children.split("\n"):
+                        if len(line) == 0:
+                            continue
+                        original_lines.append(line)
                 original_paragraph = False
-            if not isinstance(c, marko.block.Heading):
-                continue
-            if c.level != 2:
+                break
+            if not isinstance(c, marko.block.Heading) or c.level != 2:
                 continue
             if c.children[0].children == "Original node":
                 original_paragraph = True
     original_lines = list(set(original_lines))
-    print(original_lines)
 
-    assert len(list(g.nodes())) == len(model.graph.node)
+    inputs: List[str] = [f"%{i.name}" for i in model.graph.input]
+    outputs: List[str] = [f"%{o.name}" for o in model.graph.output]
+    lines: str = "\n    ".join(original_lines)
+
+    src: str = f"""graph({", ".join(inputs)}):
+    {lines}
+    return ({", ".join(outputs)})
+"""
+    print(src)
+
+    g: torch._C.Graph = torch._C.parse_ir(src)
+    torch._C._jit_pass_lint(g)
 
     return g

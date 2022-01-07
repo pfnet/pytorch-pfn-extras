@@ -100,7 +100,9 @@ def onnx_node_doc_string(onnx_node: torch._C.Node, torch_node: torch._C.Node) ->
     return f"""## Symbolic node
 {onnx_node}
 ## Original node
+```
 {nodes_str}
+```
 ## Scope
 {torch_node.scopeName()}
 ## Source Range
