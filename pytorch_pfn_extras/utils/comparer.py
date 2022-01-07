@@ -113,7 +113,7 @@ class _ComparableHandler(_handler_module.BaseHandler):
         values[name] = value
 
 
-def get_default_comparer(rtol=1e-04, atol=0, equal_nan=True, msg=None):
+def get_default_comparer(rtol=1e-04, atol=0, equal_nan=True):
     """Creates default comparer function.
 
     The created function will compare the outputs by using
@@ -123,27 +123,49 @@ def get_default_comparer(rtol=1e-04, atol=0, equal_nan=True, msg=None):
         rtol (float): Relative tolerance.
         atol (float): Absolute tolerance.
         equal_nan (bool): If ``True``, NaNs will be ignored.
-        msg (str): Error message to be printed in case of failure.
     """
     def compare_fn(backend1, backend2, name, val1, val2):
-        try:
-            torch.testing.assert_allclose(
-                # TODO select the device where
-                # the tensors will be compared?
-                val1.cpu().detach(),
-                val2.cpu().detach(),
-                rtol=rtol,
-                atol=atol,
-                equal_nan=equal_nan,
-            )
-        except AssertionError as e:
-            err_msg = msg or f"Comparing '{backend1}' and '{backend2}' in '{name}'"
-            raise AssertionError(err_msg + '\n' + str(e))
+        torch.testing.assert_allclose(
+            # TODO select the device where
+            # the tensors will be compared?
+            val1.cpu().detach(),
+            val2.cpu().detach(),
+            rtol=rtol,
+            atol=atol,
+            equal_nan=equal_nan,
+        )
 
     return compare_fn
 
 
 _default_comparer = get_default_comparer()
+
+
+def _compare_targets(compare_fn, targets, batch_idx):
+    names = list(targets.keys())
+    backend1 = names[0]
+    keys = sorted(targets[backend1].keys())
+
+    # Checks if reported variable names are compatible
+    if not all(sorted(target.keys()) == keys for target in targets.values()):
+        mes = f'batch_idx: {batch_idx}\nReported variable names incompatible\n'
+        for backend, target in targets.items():
+            mes += f'{backend}: {sorted(target.keys())}\n'
+        raise ValueError(mes)
+
+    err_msg = ''
+    for backend2 in names[1:]:
+        for val_name in keys:
+            out1 = targets[backend1][val_name]
+            out2 = targets[backend2][val_name]
+            try:
+                compare_fn(backend1, backend2, val_name, out1, out2)
+            except AssertionError as e:
+                err_msg += (
+                    f"Comparing '{backend1}' and '{backend2}' in '{val_name}'\n"
+                    f"{str(e)}\n")
+    if err_msg:
+        raise AssertionError(f'Batch: {batch_idx}\n' + str(err_msg))
 
 
 class _ComparerBase:
@@ -242,24 +264,13 @@ class _ComparerBase:
                 self._add_target(handle, engine.models, outputs)
                 if len(self.targets.keys()) == len(self.engines.keys()):
                     # all outputs have been filled, lets compare and reset
-                    self._compare_targets()
+                    _compare_targets(self.compare_fn, self.targets, batch_idx)
                     self.targets = {}
                 self._assert_incompatible_trigger(not self._finalized)
             # Excplicitly synchronize
             self._semaphore.release()
             self.barrier.wait()
             self._semaphore.acquire()
-
-    def _compare_targets(self):
-        names = list(self.targets.keys())
-        for i, name in enumerate(names):
-            for target in self.targets[name]:
-                for j in range(i + 1, len(names)):
-                    to_compare = names[j]
-                    target_1 = self.targets[name][target]
-                    target_2 = self.targets[to_compare][target]
-                    self.compare_fn(
-                        name, to_compare, target, target_1, target_2)
 
 
 class OutputsComparer(_ComparerBase):
@@ -469,21 +480,6 @@ class Comparer:
         if not condition:
             raise ValueError("Engines have different triggers.")
 
-    def _compare_outputs(self):
-        names = list(self._engines.keys())
-        backend1 = names[0]
-        keys1 = sorted(self._targets[backend1].keys())
-        for backend2 in names[1:]:
-            keys2 = sorted(self._targets[backend2].keys())
-            if keys1 != keys2:
-                raise ValueError(
-                    'Reported variable names incompatible\n'
-                    f'{backend1}: {keys1}\n{backend2}: {keys2}')
-            for val_name in keys1:
-                out1 = self._targets[backend1][val_name]
-                out2 = self._targets[backend2][val_name]
-                self._compare_fn(backend1, backend2, val_name, out1, out2)
-
     @staticmethod
     def _get_filename(engine, batch_idx):
         name = type(engine).__name__
@@ -500,7 +496,7 @@ class Comparer:
                 handler, engine.models, outputs, batch_idx)
             if len(self._targets.keys()) == len(self._engines.keys()):
                 # all outputs have been filled, lets compare and reset
-                self._compare_outputs()
+                _compare_targets(self._compare_fn, self._targets, batch_idx)
                 self._targets = {}
             self._assert_incompatible_trigger(not self._finalized)
 
@@ -557,7 +553,7 @@ class Comparer:
             self._targets[handler.name] = self._load_dump(engine, batch_idx)
             if len(self._targets.keys()) == len(self._engines.keys()):
                 # all outputs have been filled, lets compare and reset
-                self._compare_outputs()
+                _compare_targets(self._compare_fn, self._targets, batch_idx)
                 self._targets = {}
             self._assert_incompatible_trigger(not self._finalized)
 
