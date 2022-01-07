@@ -40,8 +40,11 @@ class _PosixFileSystem(object):
 
     This class currently abstracts POSIX
     """
-    def __init__(self, root: str = '/') -> None:
-        self._root = root
+    def __init__(self, root: Optional[str] = None) -> None:
+        if root is None:
+            self._root = os.getcwd()
+        else:
+            self._root = root
 
     def get_actual_path(self, path: str) -> str:
         return os.path.join(self.root, path)
@@ -73,6 +76,7 @@ class _PosixFileSystem(object):
             closefd: bool = True,
             opener: Optional[Callable[[str, int], int]] = None,
     ) -> IO[Any]:
+        file_path = self.get_actual_path(file_path)
         file_obj = io.open(file_path, mode,
                            buffering, encoding, errors,
                            newline, closefd, opener)
@@ -89,6 +93,7 @@ class _PosixFileSystem(object):
             if path_or_prefix is None:
                 raise ValueError(
                     "'path_or_prefix' must not be None in recursive mode.")
+            path_or_prefix = self.get_actual_path(path_or_prefix)
             path_or_prefix = path_or_prefix.rstrip("/")
             # plus 1 to include the trailing slash
             prefix_end_index = len(path_or_prefix) + 1
@@ -100,12 +105,14 @@ class _PosixFileSystem(object):
     def _recursive_list(
             self, prefix_end_index: int, path: str,
     ) -> Iterator[str]:
+        path = self.get_actual_path(path)
         for file in os.scandir(path):
             yield file.path[prefix_end_index:]
             if file.is_dir():
                 yield from self._recursive_list(prefix_end_index, file.path)
 
     def stat(self, path: str) -> _PosixFileStat:
+        path = self.get_actual_path(path)
         return _PosixFileStat(os.stat(path), path)
 
     def close(self) -> None:
@@ -123,7 +130,8 @@ class _PosixFileSystem(object):
         pass
 
     def isdir(self, file_path: str) -> bool:
-        return os.path.isdir(file_path)
+        path = self.get_actual_path(file_path)
+        return os.path.isdir(path)
 
     def mkdir(
             self,
@@ -132,6 +140,7 @@ class _PosixFileSystem(object):
             *args: Any,
             dir_fd: Optional[int] = None
     ) -> None:
+        file_path = self.get_actual_path(file_path)
         return os.mkdir(file_path, mode, *args, dir_fd=dir_fd)
 
     def makedirs(
@@ -140,9 +149,11 @@ class _PosixFileSystem(object):
             mode: int = 0o777,
             exist_ok: bool = False
     ) -> None:
+        file_path = self.get_actual_path(file_path)
         return os.makedirs(file_path, mode, exist_ok)
 
     def exists(self, file_path: str) -> bool:
+        file_path = self.get_actual_path(file_path)
         return os.path.exists(file_path)
 
     def rename(self, src: str, dst: str) -> None:
@@ -155,6 +166,7 @@ class _PosixFileSystem(object):
             raise
 
     def remove(self, file_path: str, recursive: bool = False) -> None:
+        file_path = self.get_actual_path(file_path)
         if recursive:
             return shutil.rmtree(file_path)
         if os.path.isdir(file_path):
@@ -185,7 +197,7 @@ class Writer:
     def __init__(
             self,
             fs: _FileSystem = None,
-            out_dir: str = '.',
+            out_dir: str = '',
     ) -> None:
         self._post_save_hooks: List[_HookFun] = []
         self.fs = fs or _PosixFileSystem()
@@ -322,7 +334,7 @@ class StandardWriter(Writer, Generic[_Worker]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: str = '.',
+            out_dir: str = '',
             **kwds: Any,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)

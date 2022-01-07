@@ -24,7 +24,7 @@ class ThreadWriter(StandardWriter[threading.Thread]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: str = '.',
+            out_dir: str = '',
             **kwds: Any
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
@@ -83,7 +83,7 @@ class ProcessWriter(StandardWriter[multiprocessing.Process]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: str = '.',
+            out_dir: str = '',
             **kwds: Any,
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)

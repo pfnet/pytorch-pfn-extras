@@ -44,7 +44,7 @@ class QueueWriter(Writer, Generic[_Worker]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: str = '.',
+            out_dir: str = '',
             task: Optional[_TaskFun] = None,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
@@ -119,7 +119,7 @@ class ThreadQueueWriter(QueueWriter[threading.Thread]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: str = '.',
+            out_dir: str = '',
             task: Optional[_TaskFun] = None
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, task=task, out_dir=out_dir)
@@ -152,7 +152,7 @@ class ProcessQueueWriter(QueueWriter[multiprocessing.Process]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: str = '.',
+            out_dir: str = '',
             task: Optional[_TaskFun] = None
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, task=task)
