@@ -1,12 +1,16 @@
 import marko
 import onnx
 import torch
+import re
 
-from typing import Dict, List
+from collections import OrderedDict
+from typing import List
 
 
 def reconstruct(model: onnx.ModelProto) -> torch._C.Graph:
     original_lines: List[str] = []
+    scopes: List[str] = []
+    scope_re = re.compile("(.+), scope: (.+)")
     for n in model.graph.node:
         original_paragraph: bool = False
         for c in marko.parser.Parser().parse(n.doc_string).children:
@@ -17,6 +21,13 @@ def reconstruct(model: onnx.ModelProto) -> torch._C.Graph:
                     for line in lines.children.split("\n"):
                         if len(line) == 0:
                             continue
+                        scope_match = re.match(scope_re, line)
+                        if scope_match is not None:
+                            scopes.append(scope_match[2])
+                            line = scope_match[1]
+                        else:
+                            scopes.append("")
+                        line = line.replace("onnx::Constant", "prim::Constant")
                         original_lines.append(line)
                 original_paragraph = False
                 break
@@ -24,7 +35,7 @@ def reconstruct(model: onnx.ModelProto) -> torch._C.Graph:
                 continue
             if c.children[0].children == "Original node":
                 original_paragraph = True
-    original_lines = list(set(original_lines))
+    original_lines = list(OrderedDict.fromkeys(original_lines))
 
     inputs: List[str] = [f"%{i.name}" for i in model.graph.input]
     outputs: List[str] = [f"%{o.name}" for o in model.graph.output]
