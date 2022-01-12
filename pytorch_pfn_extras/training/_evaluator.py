@@ -1,7 +1,8 @@
 import contextlib
 import queue
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Optional, Union, TYPE_CHECKING
+    Any, Callable, Generator, Iterable, Mapping, Optional, Sequence,
+    Union, TYPE_CHECKING,
 )
 
 import torch
@@ -41,10 +42,10 @@ class Evaluator:
     def __init__(
             self,
             handler: 'BaseHandler',
-            models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+            models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
             *,
             progress_bar: bool = False,
-            metrics: Optional[List['MetricType']] = None,
+            metrics: Optional[Sequence['MetricType']] = None,
     ):
         super().__init__()
 
