@@ -5,25 +5,9 @@ import tempfile
 import torch
 import pytest
 
+from pytorch_pfn_extras import distributed
 from pytorch_pfn_extras import training
 from pytorch_pfn_extras.training import extensions
-
-
-def get_ranks_from_env():
-    if 'OMPI_COMM_WORLD_SIZE' in os.environ:
-        # We are running Open MPI
-        comm_world_size = int(os.environ["OMPI_COMM_WORLD_SIZE"])
-        comm_rank = int(os.environ["OMPI_COMM_WORLD_RANK"])
-        comm_local_rank = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-    elif 'MV2_COMM_WORLD_SIZE' in os.environ:
-        comm_world_size = int(os.environ['MV2_COMM_WORLD_SIZE'])
-        comm_rank = int(os.environ['MV2_COMM_WORLD_RANK'])
-        comm_local_rank = int(os.environ['MV2_COMM_WORLD_LOCAL_RANK'])
-    else:
-        comm_world_size = 1
-        comm_rank = 0
-        comm_local_rank = 0
-    return comm_world_size, comm_rank, comm_local_rank
 
 
 def _create_distributed_model(gpu=True):
@@ -55,20 +39,10 @@ def get_trainer(path):
 
 
 def _init_distributed(use_cuda):
-    if ('OMPI_COMM_WORLD_SIZE' in os.environ
-            or 'MV2_COMM_WORLD_SIZE' in os.environ):
-        # This test assumes NCCL backend.
+    if ('OMPI_COMM_WORLD_SIZE' in os.environ):
         size, rank, local_rank = (
-            get_ranks_from_env())
-
-        if not torch.distributed.is_initialized():
-            os.environ["WORLD_SIZE"] = str(size)
-            os.environ["RANK"] = str(rank)
-            os.environ["LOCAL_RANK"] = str(local_rank)
-
-            torch.distributed.init_process_group(backend='nccl',
-                                                 init_method='env://')
-            assert torch.distributed.get_backend() == 'nccl'
+            distributed.initialize_ompi_environment(
+                backend="nccl", init_method="env"))
     else:
         pytest.skip("This test requires MPI to run")
 
