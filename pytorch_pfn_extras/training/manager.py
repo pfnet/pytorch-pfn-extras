@@ -4,7 +4,7 @@ import copy
 from pytorch_pfn_extras.profiler import record
 import time
 from typing import (
-    Any, Dict, Iterable, Generator, List, Mapping, Optional, Union, TYPE_CHECKING
+    Any, Dict, Iterable, Generator, Mapping, Optional, Sequence, Union, TYPE_CHECKING
 )
 import warnings
 
@@ -55,7 +55,7 @@ class _ManagerProxy:
         return self._manager._iters_per_epoch
 
     @property
-    def models(self) -> Dict[str, torch.nn.Module]:
+    def models(self) -> Mapping[str, torch.nn.Module]:
         return self._manager.models
 
     @property
@@ -113,7 +113,7 @@ class _ManagerExecutionProxy(_ManagerProxy):
         return self._manager.execution
 
     @property
-    def models(self) -> Dict[str, torch.nn.Module]:
+    def models(self) -> Mapping[str, torch.nn.Module]:
         raise RuntimeError('Models are not available during execution phase.')
 
     @property
@@ -136,7 +136,7 @@ class _BaseExtensionsManager:
             optimizers: Union[torch.optim.Optimizer,
                               Mapping[str, torch.optim.Optimizer]],
             max_epochs: int,
-            extensions: Optional[List['extension_module.ExtensionLike']],
+            extensions: Optional[Sequence['extension_module.ExtensionLike']],
             out_dir: str,
             writer: Optional[writing.Writer],
             stop_trigger: 'trigger_module.TriggerLike' = None,
@@ -222,7 +222,7 @@ class _BaseExtensionsManager:
             '`needs_model_state = True` attribute.')
 
     @property
-    def models(self) -> Dict[str, torch.nn.Module]:
+    def models(self) -> Mapping[str, torch.nn.Module]:
         self.start_extensions()
         self._check_model_available()
         models = {k: self._transform_model(k, v)
@@ -595,7 +595,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             max_epochs: int,
             *,
             iters_per_epoch: int,
-            extensions: Optional[List['extension_module.ExtensionLike']] = None,
+            extensions: Optional[Sequence['extension_module.ExtensionLike']] = None,
             out_dir: str = 'result',
             stop_trigger: 'trigger_module.TriggerLike' = None,
             writer: Optional[writing.Writer] = None,
@@ -648,7 +648,7 @@ class ExtensionsManager(_BaseExtensionsManager):
     def run_iteration(
             self,
             *,
-            step_optimizers: Optional[List[str]] = None
+            step_optimizers: Optional[Sequence[str]] = None
     ) -> Generator[IterationNotification, None, None]:
         """Context manager to run an iteration.
 
@@ -664,7 +664,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             self.start_extensions()
 
         notification = IterationNotification()
-        step_optimizers_names = []
+        step_optimizers_names: Sequence[str] = []
         if step_optimizers is not None:
             step_optimizers_names = step_optimizers
         self.observation = {}
@@ -724,7 +724,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
                               Mapping[str, torch.optim.Optimizer]],
             max_epochs: int,
             *,
-            extensions: Optional[List['extension_module.ExtensionLike']] = None,
+            extensions: Optional[Sequence['extension_module.ExtensionLike']] = None,
             out_dir: str = 'result',
             writer: Optional[writing.Writer] = None
     ) -> None:
