@@ -14,6 +14,25 @@ def initialize_ompi_environment(
     addr: str = "localhost",
     port: str = "1234"
 ) -> Tuple[int, int, int]:
+    """Initialize `torch.distributed` environments with values taken from
+    OpenMPI.
+
+    Args:
+        backend: The backend to be used, only ``"gloo"`` and ``"nccl"`` are
+            supported.  Defaults to ``"gloo"``.
+        init_method: Initialization method used by torch, only ``"tcp"`` and
+            ``"env"`` are supported. Defaults to ``"tcp"``.
+        world_size: The total world size to be used in case it is not specified
+            in MPI env vars. Defaults to ``1``.
+        rank: The process rank to be used in case it is not specified in MPI
+            env vars. Defaults to ``0``.
+        local_rank: The process local rank to be used in case it is not
+            specified in MPI env vars. Defaults to ``0``.
+        addr: The address of the master process of `torch.distributed`.
+            Defaults to ``"localhost"``
+        port: The port of the master process of `torch.distributed`.
+            Defaults to ``"1234"``
+    """
     e = os.environ
     backend = backend
     # Ranks determined from mpirun
@@ -39,7 +58,7 @@ def initialize_ompi_environment(
         raise ValueError(
             "Invalid value for init_method, only 'env' and 'tcp' are supported")
 
-    if world_size > 1 and not torch.distributed.is_initialized():
+    if world_size > 1 and not torch.distributed.is_initialized():  # type: ignore
         torch.distributed.init_process_group(  # type: ignore
             backend, init_method=init_method,
             world_size=world_size, rank=rank
