@@ -25,9 +25,9 @@ _intermediate_prefix = "intermedaite:"
 
 class _ComparableHandler(_handler_module.BaseHandler):
     def __init__(
-            self, handler, name, add_target_cb, compare_cb, trigger=None, *, dir=None):
+            self, handler, name, get_target_cb, compare_cb, trigger=None, *, dir=None):
         self._handler = handler
-        self._add_target_cb = add_target_cb
+        self._get_target_cb = get_target_cb
         self._compare_cb = compare_cb
         self.name = name
         self._trigger = trigger
@@ -98,7 +98,7 @@ class _ComparableHandler(_handler_module.BaseHandler):
 
     def _compare(self, engine, batch_idx, outputs):
         outputs = _logic._normalize_outputs(outputs)
-        target = self._add_target_cb(self, engine, batch_idx, outputs)
+        target = self._get_target_cb(self, engine, batch_idx, outputs)
         self._compare_cb(self, engine, batch_idx, target)
 
     def _reset_intermediate_values(self) -> None:
@@ -262,7 +262,7 @@ class _ComparerBase:
                 future.result()
 
     def _get_target(self, handle, models, outputs):
-        raise NotImplementedError('Comparers must override _add_target')
+        raise NotImplementedError('Comparers must override _get_target')
 
     def compare_targets(self, handler, engine, batch_idx, target):
         self._iters[handler.name] += 1
