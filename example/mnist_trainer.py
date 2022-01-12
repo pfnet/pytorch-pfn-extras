@@ -81,8 +81,7 @@ def main():
 
     torch.manual_seed(args.seed)
     numpy.random.seed(args.seed)
-    if args.deterministic:
-        torch.use_deterministic_algorithms(True)
+    torch.use_deterministic_algorithms(args.deterministic)
 
     use_cuda = args.device.startswith('cuda')
 
