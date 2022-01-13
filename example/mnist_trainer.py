@@ -1,4 +1,6 @@
 import argparse
+
+import numpy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -65,13 +67,21 @@ def main():
                         help='PyTorch device specifier')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
+    parser.add_argument('--deterministic', action='store_true', default=False,
+                        help='make the behavior deterministic')
     parser.add_argument('--save-model', action='store_true', default=False,
                         help='For Saving the current Model')
     parser.add_argument('--snapshot', type=str, default=None,
                         help='path to snapshot file')
+    parser.add_argument('--compare-dump', type=str, default=None,
+                        help='directory to save comparer dump to')
+    parser.add_argument('--compare-with', type=str, default=None,
+                        help='directory to load comparer dump from')
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
+    numpy.random.seed(args.seed)
+    torch.use_deterministic_algorithms(args.deterministic)
 
     use_cuda = args.device.startswith('cuda')
 
@@ -142,6 +152,23 @@ def main():
     if args.snapshot is not None:
         state = torch.load(args.snapshot)
         trainer.load_state_dict(state)
+
+    # Run comparison between devices when requested.
+    if args.compare_dump is not None or args.compare_with is not None:
+        comp = ppe.utils.comparer.Comparer(
+            compare_fn=ppe.utils.comparer.get_default_comparer(rtol=1e-2),
+            outputs=['loss'],
+        )
+        if args.compare_dump is None:
+            # Compare the engine with an existing dump directory.
+            comp.add_dump('baseline', args.compare_with)
+            comp.add_engine(args.device, trainer, train_loader, test_loader)
+            comp.compare()
+        else:
+            # Create a dump for comparison.
+            assert args.compare_with is None
+            comp.dump(trainer, args.compare_dump, train_loader, test_loader)
+        return
 
     trainer.run(train_loader, test_loader)
 
