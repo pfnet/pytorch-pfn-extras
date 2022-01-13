@@ -1,4 +1,5 @@
 import datetime
+import glob
 import io
 import itertools
 import json
@@ -305,6 +306,8 @@ def export_testcase(
         data_set_path = os.path.join(
             out_dir, 'test_data_set_{:d}'.format(seq_id))
     os.makedirs(data_set_path, exist_ok=True)
+    for pb_name in glob.glob(os.path.join(data_set_path, "*.pb")):
+        os.remove(pb_name)
     for i, (arg, name) in enumerate(zip(args, input_names)):
         f = os.path.join(data_set_path, 'input_{}.pb'.format(i))
         write_to_pb(f, arg, name)

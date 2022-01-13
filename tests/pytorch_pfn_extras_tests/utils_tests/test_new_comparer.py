@@ -465,3 +465,15 @@ def test_dump_invalid(engine_fn, model_class):
         comp.add_dump('jit', tmpdir3)
         with pytest.raises(AssertionError):
             comp.compare()
+
+
+@pytest.mark.parametrize("engine_fn", [
+    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+def test_compare_baseline(engine_fn):
+    loader = list(torch.ones(10) for _ in range(10))
+    engine_cpu, loaders_cpu = engine_fn(Model, "cpu", [1.0], loader)
+    engine_gpu, loaders_gpu = engine_fn(Model, "cuda:0", [1.0], loader)
+    comp = ppe.utils.comparer.Comparer(baseline="cpu")
+    comp.add_engine("cpu", engine_cpu, *loaders_cpu)
+    comp.add_engine("gpu", engine_gpu, *loaders_gpu)
+    comp.compare()
