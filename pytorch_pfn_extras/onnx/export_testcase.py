@@ -369,5 +369,11 @@ def export_testcase(
             '"user_meta" is not exported.',
             UserWarning)
 
+    if not metadata and strip_large_tensor_data:
+        warnings.warn(
+            '"strip_large_tensor_data" is given but "metadata" is False. '
+            'It would be harder to determine whether testcase or model is stripped.',
+            UserWarning)
+
     if return_output:
         return outs
