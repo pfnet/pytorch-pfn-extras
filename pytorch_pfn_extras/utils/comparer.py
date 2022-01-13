@@ -5,7 +5,7 @@ import threading
 import concurrent.futures
 from typing import (
     Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence,
-    Tuple, Type, Union
+    Tuple, Type, Union,
 )
 
 import torch.nn
@@ -493,11 +493,11 @@ class Comparer:
     def __init__(
             self,
             *,
-            trigger: Any = None,
+            trigger: Optional[trigger_module.TriggerLike] = None,
             compare_fn: _CompareFn = _default_comparer,
             concurrency: Optional[int] = None,
-            outputs: bool = True,
-            params: bool = False,
+            outputs: Union[bool, str, Sequence[str]] = True,
+            params: Union[bool, str, Sequence[str]] = False,
             baseline: Optional[str] = None,
     ) -> None:
         """A class for comparison of iteration outputs and model parameters.
