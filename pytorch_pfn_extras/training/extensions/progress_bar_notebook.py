@@ -3,7 +3,7 @@ import sys
 import time
 from typing import Any, List, Tuple
 
-from IPython.core.display import display
+from IPython.display import display
 from ipywidgets import HTML, FloatProgress, HBox, VBox  # NOQA
 
 from pytorch_pfn_extras.training import extension, trigger  # NOQA

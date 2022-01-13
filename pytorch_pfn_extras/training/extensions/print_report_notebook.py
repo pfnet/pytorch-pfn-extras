@@ -1,7 +1,7 @@
 import sys
 from typing import Any, IO, List, Optional, Union
 
-from IPython.core.display import display
+from IPython.display import display
 from ipywidgets import HTML
 
 from pytorch_pfn_extras.training.extensions.print_report import PrintReport
