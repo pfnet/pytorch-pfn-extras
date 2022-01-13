@@ -29,7 +29,7 @@ if ($test -eq "torch18") {
 RunOrDie python -V
 
 # Install common requirements
-RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna cupy-cuda102
+RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx "ipython<8.0.0" "ipywidgets<8.0.0" pandas optuna cupy-cuda102
 RunOrDie python -m pip list
 
 # Install
