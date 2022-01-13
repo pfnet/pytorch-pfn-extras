@@ -160,6 +160,7 @@ class _BaseExtensionsManager:
         self.reporter = reporting.Reporter()
         self._transform_model = transform_model
         self._start_extensions_called = False
+        self._run_on_error_called = False
 
         # Indicates whether models can be accessed from extensions in the
         # current iteration.
@@ -435,6 +436,14 @@ class _BaseExtensionsManager:
         else:
             raise ValueError('extension %s not found' % name)
 
+    def _run_on_error(self, exc: Exception) -> None:
+        if not self._run_on_error_called:
+            self._run_on_error_called = True
+            tb = exc.__traceback__
+            assert tb is not None
+            for _, entry in self.extensions:
+                entry.extension.on_error(self, exc, tb)
+
     def run_extensions(
             self, *, completed: bool = True, only_iterations: bool = True) -> None:
         if completed:
@@ -640,9 +649,11 @@ class ExtensionsManager(_BaseExtensionsManager):
                 yield
                 for name in step_optimizers_names:
                     self._optimizers[name].step()
-            finally:
                 self.iteration += 1
                 self.run_extensions(completed=True, only_iterations=True)
+            except Exception as e:
+                self._run_on_error(e)
+                raise
 
     @contextlib.contextmanager
     def run_iteration(
@@ -676,7 +687,6 @@ class ExtensionsManager(_BaseExtensionsManager):
                 if notification._is_completed:
                     for name in step_optimizers_names:
                         self._optimizers[name].step()
-            finally:
                 # The iteration count is increased just before calling the
                 # extensions.
                 if notification._is_completed:
@@ -691,6 +701,9 @@ class ExtensionsManager(_BaseExtensionsManager):
                     # needs to run regardless of the training state
                     self.execution += 1
                     self.run_extensions(completed=False, only_iterations=False)
+            except Exception as e:
+                self._run_on_error(e)
+                raise
 
         if self._internal_stop_trigger(self):
             self._finalize_extensions()

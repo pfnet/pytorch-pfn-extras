@@ -78,3 +78,32 @@ def test_make_extension_unexpected_kwargs():
         @ppe.training.make_extension(foo=1)
         def my_extension(_):
             pass
+
+
+def test_on_error():
+    class DummyExt(ppe.training.Extension):
+        def __init__(self):
+            self.call_cnt = 0
+
+        def __call__(self, manager):
+            pass
+
+        def on_error(self, manager, exc, tb):
+            assert isinstance(exc, RuntimeError)
+            self.call_cnt += 1
+
+    optimizers = {'main': object()}
+    manager = ppe.training.ExtensionsManager(
+        {}, optimizers, 1, iters_per_epoch=1)
+    ext = DummyExt()
+    manager.extend(ext)
+
+    with manager.run_iteration():
+        pass
+    assert ext.call_cnt == 0
+    try:
+        with manager.run_iteration():
+            raise RuntimeError
+    except RuntimeError:
+        pass
+    assert ext.call_cnt == 1
