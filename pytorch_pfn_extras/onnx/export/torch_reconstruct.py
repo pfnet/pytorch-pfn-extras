@@ -7,13 +7,33 @@ from collections import OrderedDict
 from typing import List, Tuple
 
 
+_scope_re = re.compile("(.+), scope: ([^ ]+)")
+_const_vals_re = re.compile(r"value= ([\d ]+) \[ \w+Type\{\d+\} \]")
+_const_val_re = re.compile(r"value=\{(\d+)\}")
+_func_re = re.compile(r" = \^(\w+)\(")
+
+
+def _process_line(line: str) -> (str, str):
+    scope_match = re.match(_scope_re, line)
+    scope = ""
+    if scope_match is not None:
+        scope = scope_match[2].split("/")[-1]
+        line = scope_match[1]
+    line = line.replace("onnx::Constant", "prim::Constant")
+    if "prim::Constant" in line:
+        line = re.sub(_const_vals_re, lambda m: f"value=[{m[1].replace('  ', ', ')}]", line)
+        line = re.sub(_const_val_re, r"value=\1", line)
+
+    func_match = re.search(_func_re, line)
+    if func_match:
+        raise RuntimeError(f"Function call not supported for: {func_match[1]} in line: {line}")
+
+    return line, scope
+
+
 def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str, torch.Tensor]]]:
     original_lines: List[str] = []
     scopes: List[str] = []
-    scope_re = re.compile("(.+), scope: ([^ ]+)")
-    const_vals_re = re.compile(r"value= ([\d ]+) \[ \w+Type\{\d+\} \]")
-    const_val_re = re.compile(r"value=\{(\d+)\}")
-    func_re = re.compile(r" = ^(\w+)\(")
     for n in model.graph.node:
         original_paragraph: bool = False
         for c in marko.parser.Parser().parse(n.doc_string).children:
@@ -24,22 +44,9 @@ def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str,
                     for line in lines.children.split("\n"):
                         if len(line) == 0:
                             continue
-                        scope_match = re.match(scope_re, line)
-                        if scope_match is not None:
-                            scope = scope_match[2].split("/")[-1]
-                            scopes.append(scope)
-                            line = scope_match[1]
-                        else:
-                            scopes.append("")
-                        line = line.replace("onnx::Constant", "prim::Constant")
-                        if "prim::Constant" in line:
-                            line = re.sub(const_vals_re, lambda m: f"value=[{m[1].replace('  ', ', ')}]", line)
-                            line = re.sub(const_val_re, r"value=\1", line)
+                        line, scope = _process_line(line)
                         original_lines.append(line)
-
-                        func_match = re.match(func_re, line)
-                        if func_match:
-                            raise f"Function call not supported for: {func_match[1]}"
+                        scopes.append(scope)
                 original_paragraph = False
                 break
             if not isinstance(c, marko.block.Heading) or c.level != 2:
