@@ -301,6 +301,9 @@ class _Exporter(_ExporterOptions):
             inputs = list(graph.inputs())
             for idx, n in enumerate(input_names):
                 inputs[idx].setDebugName(n)
+        if self.output_names is not None:
+            for name, out in zip(self.output_names, graph.outputs()):
+                out.setDebugName(name)
         torch._C._jit_pass_onnx_set_dynamic_input_shape(  # type: ignore[attr-defined]
             graph, self.dynamic_axes or {}, input_names or []
         )
