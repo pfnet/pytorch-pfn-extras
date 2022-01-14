@@ -8,8 +8,8 @@ from typing import List, Set, Tuple
 
 
 _scope_re = re.compile("(.+), scope: ([^ ]+)")
-_const_vals_re = re.compile(r"value= ([\d ]+) \[ \w+Type\{\d+\} \]")
-_const_val_re = re.compile(r"value=\{(\d+)\}")
+_const_vals_re = re.compile(r"value= ([\d\- ]+) \[ \w+Type\{\d+\} \]")
+_const_val_re = re.compile(r"value=\{(-?[\d\.e-]+)\}")
 _func_re = re.compile(r" = \^(\w+)\(")
 
 
