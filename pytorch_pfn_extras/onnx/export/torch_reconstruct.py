@@ -26,7 +26,7 @@ def _process_line(line: str) -> (str, str):
 
     func_match = re.search(_func_re, line)
     if func_match:
-        raise RuntimeError(f"Function call not supported for: {func_match[1]} in line: {line}")
+        raise RuntimeError(f"torch.autograd.Function call not supported for: {func_match[1]} in line: {line}")
 
     return line, scope
 
