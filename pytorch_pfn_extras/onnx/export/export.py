@@ -222,7 +222,7 @@ class _Exporter(_ExporterOptions):
         self.g = self.optimize_torch(self.g)
         self.log("Optimized graph", self.g)
 
-        self.log("Original traced graph", self.traced.graph)
+        self.log("Original traced graph", self.traced.inlined_graph)
         self.log("State dict", "\n".join([f"- {k}: {v}" for k, v in self.vars.items()]))
 
     def is_self(self, v: torch._C.Value) -> bool:
