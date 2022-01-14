@@ -45,7 +45,6 @@ def reconstruct(model: onnx.ModelProto) -> torch._C.Graph:
     {lines}
     return ({", ".join(outputs)})
 """
-    print(src)
 
     g: torch._C.Graph = torch._C.parse_ir(src)
     torch._C._jit_pass_lint(g)
