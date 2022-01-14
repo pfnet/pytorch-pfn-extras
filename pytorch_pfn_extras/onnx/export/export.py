@@ -516,9 +516,13 @@ class _Exporter(_ExporterOptions):
 
         sym_nodes: List[torch._C.Node] = list_added_nodes()
 
+        # Place onnx::Identity node instead node when none is added
+        if len(sym_nodes) == 0:
+            sym_outs = g.op("Identity", sym_outs[0]),
+            sym_nodes = [sym_outs[0].node()]
+
         self.log(f"Converting node {n.kind()}", n)
-        if len(sym_nodes) > 0:
-            self.log(f"Converted node {n.kind()}", "\n".join([str(i) for i in sym_nodes]))
+        self.log(f"Converted node {n.kind()}", "\n".join([str(i) for i in sym_nodes]))
 
         # Generate doc string before old node lifetime ends
         for sym_nd in sym_nodes:
