@@ -31,33 +31,43 @@ def _process_line(line: str) -> (str, str):
     return line, scope
 
 
+def _process_markdown(md: str) -> Tuple[List[str], List[str]]:
+    lines: List[str] = []
+    scopes: List[str] = []
+    target_para: bool = False
+    for c in marko.parser.Parser().parse(md).children:
+        if isinstance(c, marko.block.FencedCode) and target_para:
+            for text in c.children:
+                if not isinstance(text, marko.inline.RawText):
+                    continue
+                for line in text.children.split("\n"):
+                    if len(line) == 0:
+                        continue
+                    line, scope = _process_line(line)
+                    lines.append(line)
+                    scopes.append(scope)
+            target_para = False
+            break
+        if not isinstance(c, marko.block.Heading) or c.level != 2:
+            continue
+        if c.children[0].children == "Original node":
+            target_para = True
+
+    return lines, scopes
+
+
 def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str, torch.Tensor]]]:
-    original_lines: List[str] = []
+    lines: List[str] = []
     scopes: List[str] = []
     for n in model.graph.node:
-        original_paragraph: bool = False
-        for c in marko.parser.Parser().parse(n.doc_string).children:
-            if isinstance(c, marko.block.FencedCode) and original_paragraph:
-                for lines in c.children:
-                    if not isinstance(lines, marko.inline.RawText):
-                        continue
-                    for line in lines.children.split("\n"):
-                        if len(line) == 0:
-                            continue
-                        line, scope = _process_line(line)
-                        original_lines.append(line)
-                        scopes.append(scope)
-                original_paragraph = False
-                break
-            if not isinstance(c, marko.block.Heading) or c.level != 2:
-                continue
-            if c.children[0].children == "Original node":
-                original_paragraph = True
-    original_lines = list(OrderedDict.fromkeys(original_lines))
+        new_lines, new_scopes = _process_markdown(n.doc_string)
+        lines.extend(new_lines)
+        scopes.extend(new_scopes)
+    lines = list(OrderedDict.fromkeys(lines))
 
     inputs: List[str] = ["%" + i.name for i in model.graph.input]
     outputs: List[str] = ["%" + o.name.split(".")[-1] for o in model.graph.output]
-    lines: str = "\n    ".join(original_lines)
+    body = "\n    ".join(lines)
 
     initializer_name_re = re.compile(r"^%(\w+) [:=]")
     params: List[Tuple[str, torch.Tensor]] = []
@@ -68,7 +78,7 @@ def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str,
             params.append((i.name, torch.from_numpy(onnx.numpy_helper.to_array(i).copy())))
 
     src: str = f"""graph({", ".join(inputs)}):
-    {lines}
+    {body}
     return ({", ".join(outputs)})
 """
 
