@@ -4,7 +4,7 @@ import torch
 import re
 
 from collections import OrderedDict
-from typing import List, Tuple
+from typing import List, Set, Tuple
 
 
 _scope_re = re.compile("(.+), scope: ([^ ]+)")
@@ -65,7 +65,9 @@ def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str,
         scopes.extend(new_scopes)
     lines = list(OrderedDict.fromkeys(lines))
 
-    inputs: List[str] = ["%" + i.name for i in model.graph.input]
+    skip_inputs: Set[str] = set([i.name for i in model.graph.initializer])
+
+    inputs: List[str] = ["%" + i.name for i in model.graph.input if i.name not in skip_inputs]
     outputs: List[str] = ["%" + o.name.split(".")[-1] for o in model.graph.output]
     body = "\n    ".join(lines)
 
