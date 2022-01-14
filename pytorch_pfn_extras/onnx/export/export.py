@@ -743,9 +743,9 @@ class _Exporter(_ExporterOptions):
 
         # Name all values to restore
         for n in self.g.nodes():
-            for o in n.outputs():
-                if o.debugName() == str(o.unique()):
-                    o.setDebugName(f"v{o.unique()}")
+            for n_o in n.outputs():
+                if n_o.debugName() == str(n_o.unique()):
+                    n_o.setDebugName(f"v{n_o.unique()}")
 
         # Convert prim and aten nodes to ONNX by using symbolic functions
         target_nodes = list(self.g.nodes())
