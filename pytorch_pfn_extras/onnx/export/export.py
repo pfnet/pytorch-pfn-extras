@@ -430,7 +430,9 @@ class _Exporter(_ExporterOptions):
         # Generated onnx node doc string should be added later since DCE isn't completed yet
         doc_str: str = f"""
 ## Original node
+```
 {n}
+```
 ## Scope
 {n.scopeName()}
 ## Source Range
