@@ -678,6 +678,7 @@ class _Exporter(_ExporterOptions):
                     assert isinstance(self.vars[k], torch.Tensor)
                     t: torch.Tensor = cast(torch.Tensor, self.vars[k])
                     onnx_vars[_unique_id(i)] = _tensor_to_proto(t, name=k)
+                    onnx_vars[_unique_id(i)].doc_string = repr(i.node())
                     register_val_name(_unique_id(i), value_name(i), shadow=True)
                     continue
                 if _unique_id(i) not in val_tab:
@@ -732,8 +733,15 @@ class _Exporter(_ExporterOptions):
         return onnx_nodes, onnx_vars, val_tab
 
     def generate_onnx(self) -> onnx.ModelProto:
-        # Convert prim and aten nodes to ONNX by using symbolic functions
         self.original_g: torch._C.Graph = self.g.copy()
+
+        # Name all values to restore
+        for n in self.g.nodes():
+            for o in n.outputs():
+                if o.debugName() == str(o.unique()):
+                    o.setDebugName(f"v{o.unique()}")
+
+        # Convert prim and aten nodes to ONNX by using symbolic functions
         target_nodes = list(self.g.nodes())
         for n in target_nodes:
             self.generate_onnx_node(self.g, n)
