@@ -20,6 +20,7 @@ def _process_line(line: str) -> (str, str):
         scope = scope_match[2].split("/")[-1]
         line = scope_match[1]
     line = line.replace("onnx::Constant", "prim::Constant")
+    line = line.replace("onnx::SequenceConstruct", "prim::ListConstruct")
     if "prim::Constant" in line:
         line = re.sub(_const_vals_re, lambda m: f"value=[{m[1].replace('  ', ', ')}]", line)
         line = re.sub(_const_val_re, r"value=\1", line)
