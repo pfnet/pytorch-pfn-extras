@@ -93,7 +93,7 @@ def onnx_node_doc_string(onnx_node: torch._C.Node, torch_node: torch._C.Node) ->
     nodes: List[torch._C.Node] = [torch_node]
     while len(inputs) > 0:
         n = inputs.pop().node()
-        if n is not None and n.kind() in ["onnx::Constant", "prim::Constant", "prim::ListConstruct"]:
+        if n is not None and n.kind() in ["onnx::Constant", "prim::Constant", "prim::ListConstruct", "onnx::SequenceConstruct"]:
             nodes.insert(0, n)
             inputs = list(n.inputs()) + inputs
     nodes_str: str = "".join([repr(n) for n in nodes])
