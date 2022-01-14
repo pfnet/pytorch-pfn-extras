@@ -58,7 +58,7 @@ def test_symbolic_function():
             return Func.apply(x) + torch.tensor([10], dtype=torch.float)
 
     assert hasattr(Func, "symbolic")
-    run_model_test(Model(), (torch.rand((20,)),))
+    run_model_test(Model(), (torch.rand((20,)),), check_reconstruct=False)
 
 
 class AnyModel(torch.nn.Module):

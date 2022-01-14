@@ -19,6 +19,7 @@ from pytorch_pfn_extras.onnx import is_large_tensor
 from pytorch_pfn_extras.onnx import LARGE_TENSOR_DATA_THRESHOLD
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_large_tensor_tool_impl
 from pytorch_pfn_extras.onnx.unstrip_tensor import unstrip
+from pytorch_pfn_extras.onnx.export.torch_reconstruct import reconstruct
 
 
 output_dir = 'out'
@@ -55,7 +56,7 @@ def _get_output_dir(d, **kwargs):
     return output_dir
 
 
-def _helper(model, args, d, use_pfto=True, **kwargs):
+def _helper(model, args, d, use_pfto=True, check_reconstruct=True, **kwargs):
     output_dir = _get_output_dir(d)
     if 'training' not in kwargs:
         kwargs['training'] = model.training
@@ -63,7 +64,11 @@ def _helper(model, args, d, use_pfto=True, **kwargs):
         kwargs['do_constant_folding'] = False
     if 'metadata' not in kwargs:
         kwargs["metadata"] = False
+    if "strip_doc_string" not in kwargs:
+        kwargs["strip_doc_string"] = False
     export_testcase(model, args, output_dir, use_pfto=use_pfto, **kwargs)
+    if check_reconstruct and use_pfto and not kwargs["strip_doc_string"]:
+        reconstruct(onnx.load(os.path.join(output_dir, "model.onnx")))
     return output_dir
 
 
@@ -259,7 +264,7 @@ def test_export_testcase_strip_large_tensor_data():
     output_dir = _helper(
         model, x, 'mnist_stripped_tensor_data',
         output_grad=True, strip_large_tensor_data=True,
-        metadata=True)
+        metadata=True, check_reconstruct=False)
 
     assert os.path.isdir(output_dir)
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))

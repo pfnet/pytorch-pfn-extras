@@ -58,7 +58,7 @@ def test_as_output():
 
     model = Net()
     x = torch.ones((1, 1, 32, 32))
-    output_dir = _helper(model, x, 'as_output')
+    output_dir = _helper(model, x, 'as_output', check_reconstruct=False)
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}

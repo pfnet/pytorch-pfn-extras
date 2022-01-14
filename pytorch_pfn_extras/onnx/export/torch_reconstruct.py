@@ -13,7 +13,11 @@ _const_val_re = re.compile(r"value=\{(-?[\d\.e-]+)\}")
 _func_re = re.compile(r" = \^(\w+)\(")
 
 
-def _process_line(line: str) -> (str, str):
+class ReconstructError(Exception):
+    pass
+
+
+def _process_line(line: str) -> Tuple[str, str]:
     scope_match = re.match(_scope_re, line)
     scope = ""
     if scope_match is not None:
@@ -27,7 +31,7 @@ def _process_line(line: str) -> (str, str):
 
     func_match = re.search(_func_re, line)
     if func_match:
-        raise RuntimeError(f"torch.autograd.Function call not supported for: {func_match[1]} in line: {line}")
+        raise ReconstructError(f"torch.autograd.Function call not supported for: {func_match[1]} in line: {line}")
 
     return line, scope
 
@@ -36,7 +40,7 @@ def _process_markdown(md: str) -> Tuple[List[str], List[str]]:
     lines: List[str] = []
     scopes: List[str] = []
     target_para: bool = False
-    for c in marko.parser.Parser().parse(md).children:
+    for c in marko.parser.Parser().parse(md).children:  # type: ignore[union-attr]
         if isinstance(c, marko.block.FencedCode) and target_para:
             for text in c.children:
                 if not isinstance(text, marko.inline.RawText):
@@ -61,6 +65,8 @@ def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str,
     lines: List[str] = []
     scopes: List[str] = []
     for n in model.graph.node:
+        if len(n.doc_string) == 0 and n.op_type != "Constant":
+            raise ReconstructError(f"doc_string not found in node: {onnx.helper.printable_node(n)}. Please use strip_doc_string=False option")
         new_lines, new_scopes = _process_markdown(n.doc_string)
         lines.extend(new_lines)
         scopes.extend(new_scopes)
@@ -84,6 +90,7 @@ def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str,
     {body}
     return ({", ".join(outputs)})
 """
+    print(src)
 
     g: torch._C.Graph = torch._C.parse_ir(src)
     torch._C._jit_pass_lint(g)

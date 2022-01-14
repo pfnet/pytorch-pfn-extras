@@ -903,11 +903,4 @@ def export(
     ex = _Exporter(model, inputs=args, **kwargs)
     ex.generate(f)
 
-    try:
-        from pytorch_pfn_extras.onnx.export.torch_reconstruct import reconstruct
-        print(reconstruct(ex.model))
-    except RuntimeError as e:
-        if not e.args[0].startswith("torch.autograd.Function call not supported"):
-            raise
-
     return ex.outputs

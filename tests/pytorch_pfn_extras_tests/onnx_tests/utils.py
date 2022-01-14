@@ -5,6 +5,7 @@ import onnx
 import onnxruntime as ort
 import torch
 from pytorch_pfn_extras.onnx.export import export as pfto_export
+from pytorch_pfn_extras.onnx.export.torch_reconstruct import reconstruct
 
 
 def run_model_test(
@@ -20,6 +21,7 @@ def run_model_test(
     strict_trace=True,
     mode="eval",
     use_gpu=False,
+    check_reconstruct=True,
     **kwargs,
 ) -> onnx.ModelProto:
     if mode == "train":
@@ -82,4 +84,7 @@ def run_model_test(
         cmp = torch.isclose(torch.tensor(a), e.cpu(), rtol=rtol, atol=atol)
         assert cmp.all(), f"{cmp.logical_not().count_nonzero()} / {cmp.numel()} values failed"
 
-    return onnx.load(f.name)
+    onnx_model = onnx.load(f.name)
+    if check_reconstruct:
+        reconstruct(onnx_model)
+    return onnx_model
