@@ -154,16 +154,16 @@ class _ExporterOptions:
 
     training: Optional[torch.onnx.TrainingMode] = None
 
-    dynamic_axes: Dict = dataclasses.field(default_factory=dict)
+    dynamic_axes: Optional[Dict] = dataclasses.field(default_factory=dict)
     custom_opsets: Dict = dataclasses.field(default_factory=dict)
-
-    # TODO(twata): Support this
-    # keep_initializers_as_inputs: bool = False
 
 
 class _Exporter(_ExporterOptions):
     def __init__(self, model: Callable, inputs: Any, **opts: Any):
         super().__init__(**opts)
+
+        if self.dynamic_axes is None:
+            self.dynamic_axes = {}
 
         # Load symbolic opset
         assert self.opset_version is not None
@@ -753,6 +753,7 @@ class _Exporter(_ExporterOptions):
             )
 
         def apply_dynamic_axes_info(out: onnx.ValueInfoProto, k: str) -> None:
+            assert isinstance(self.dynamic_axes, dict)
             info = self.dynamic_axes.get(k, None)
             if info is None:
                 return None
