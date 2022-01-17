@@ -1,12 +1,14 @@
-# mypy: ignore-errors
-
 import collections
 import json
 import re
 import threading
 import concurrent.futures
-from typing import Any, Callable, Dict, Sequence, Union
+from typing import (
+    Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence,
+    Tuple, Type, Union,
+)
 
+import torch.nn
 import torch.testing
 
 import pytorch_pfn_extras as ppe
@@ -25,46 +27,66 @@ _intermediate_prefix = "intermedaite:"
 
 class _ComparableHandler(_handler_module.BaseHandler):
     def __init__(
-            self, handler, name, get_target_cb, compare_cb, trigger=None, *, dir=None):
+            self,
+            handler: _handler_module.BaseHandler,
+            name: str,
+            get_target_cb: Any,
+            compare_cb: Any,
+            trigger: Optional[trigger_module.Trigger] = None,
+            *,
+            dir: Optional[str] = None,
+    ) -> None:
         self._handler = handler
         self._get_target_cb = get_target_cb
         self._compare_cb = compare_cb
         self.name = name
         self._trigger = trigger
-        self._intermediate_values = {}
-        self._intermediate_counts = {}
-        self._batch_idx = None
+        self._intermediate_values: Dict[int, Dict[str, Any]] = {}
+        self._intermediate_counts: Dict[int, Dict[str, int]] = {}
+        self._batch_idx: Optional[int] = None
         self._dir = dir
-        self._epoch = None
+        self._epoch: Optional[int] = None
 
-    def convert_batch(self, args):
-        return self._handler.convert_batch(args)
-
-    def train_setup(self, trainer, loader):
+    def train_setup(self, trainer: _trainer._Trainer, loader: Any) -> None:
         self._handler.train_setup(trainer, loader)
 
-    def train_epoch_begin(self, trainer, loader):
+    def train_epoch_begin(
+            self, trainer: _trainer._Trainer, loader: Iterable[Any]) -> None:
         self._handler.train_epoch_begin(trainer, loader)
         _thread_local.handler = self
         self._epoch = trainer.epoch
 
-    def train_epoch_end(self, trainer):
+    def train_epoch_end(self, trainer: _trainer._Trainer) -> None:
         self._handler.train_epoch_end(trainer)
         self._epoch = None
 
-    def train_validation_begin(self, trainer, evaluator):
+    def train_validation_begin(
+            self, trainer: _trainer._Trainer, evaluator: _evaluator.Evaluator) -> None:
         self._handler.train_validation_begin(trainer, evaluator)
         _thread_local.handler = self
 
-    def train_validation_end(self, trainer, evaluator):
+    def train_validation_end(
+            self, trainer: _trainer._Trainer, evaluator: _evaluator.Evaluator) -> None:
         self._handler.train_validation_end(trainer, evaluator)
 
-    def train_step(self, trainer, batch_idx, batch, complete_fn):
+    def train_step(
+            self,
+            trainer: _trainer._Trainer,
+            batch_idx: int,
+            batch: Any,
+            complete_fn: Callable[[int, Any], None],
+    ) -> None:
         self._batch_idx = batch_idx
         self._reset_intermediate_values()
         self._handler.train_step(trainer, batch_idx, batch, complete_fn)
 
-    def train_post_step(self, trainer, batch_idx, batch, outputs):
+    def train_post_step(
+            self,
+            trainer: _trainer.Trainer,
+            batch_idx: int,
+            batch: Any,
+            outputs: Any
+    ) -> None:
         class _ManagerProxy(manager_module._ManagerProxy):
             @property
             def iteration(self) -> int:
@@ -77,37 +99,50 @@ class _ComparableHandler(_handler_module.BaseHandler):
         if self._trigger is None or self._trigger(manager):
             self._compare(trainer, batch_idx, outputs)
 
-    def eval_setup(self, evaluator, loader):
-        return self._handler.eval_setup(evaluator, loader)
+    def eval_setup(
+            self, evaluator: _evaluator.Evaluator, loader: Iterable[Any]) -> None:
+        self._handler.eval_setup(evaluator, loader)
 
-    def eval_loop_begin(self, evaluator):
+    def eval_loop_begin(self, evaluator: _evaluator.Evaluator) -> None:
         self._handler.eval_loop_begin(evaluator)
         _thread_local.handler = self
 
-    def eval_step(self, evaluator, batch_idx, batch, complete_fn):
+    def eval_step(
+            self,
+            evaluator: _evaluator.Evaluator,
+            batch_idx: int,
+            batch: Any,
+            complete_fn: Callable[[int, Any], None],
+    ) -> None:
         self._batch_idx = batch_idx
         self._reset_intermediate_values()
         self._handler.eval_step(evaluator, batch_idx, batch, complete_fn)
 
-    def eval_loop_end(self, evaluator):
+    def eval_loop_end(self, evaluator: _evaluator.Evaluator) -> None:
         self._handler.eval_loop_end(evaluator)
 
-    def eval_post_step(self, evaluator, batch_idx, batch, outputs):
+    def eval_post_step(
+            self,
+            evaluator: _evaluator.Evaluator,
+            batch_idx: int,
+            batch: Any,
+            outputs: Any,
+    ) -> None:
         self._handler.eval_post_step(evaluator, batch_idx, batch, outputs)
         self._compare(evaluator, batch_idx, outputs)
 
-    def _compare(self, engine, batch_idx, outputs):
+    def _compare(self, engine: Any, batch_idx: int, outputs: Any) -> None:
         outputs = _logic._normalize_outputs(outputs)
         target = self._get_target_cb(self, engine, batch_idx, outputs)
         self._compare_cb(self, engine, batch_idx, target)
 
     def _reset_intermediate_values(self) -> None:
+        assert self._batch_idx is not None
         self._intermediate_values[self._batch_idx] = {}
         self._intermediate_counts[self._batch_idx] = {}
 
     def _add_intermediate_value(self, name: str, value: torch.Tensor) -> None:
-        if self._intermediate_values is None:
-            return
+        assert self._batch_idx is not None
         values = self._intermediate_values[self._batch_idx]
         counts = self._intermediate_counts[self._batch_idx]
         value = value.detach()
@@ -122,7 +157,7 @@ class _ComparableHandler(_handler_module.BaseHandler):
         values[name] = value
 
 
-def _overwrite_handler(engine, *args, **kwargs) -> None:
+def _overwrite_handler(engine: Any, *args: Any, **kwargs: Any) -> None:
     engine.handler = _ComparableHandler(engine.handler, *args, **kwargs)
     evaluator = getattr(engine, 'evaluator', None)
     if evaluator is not None:
@@ -130,7 +165,15 @@ def _overwrite_handler(engine, *args, **kwargs) -> None:
         evaluator.handler = _ComparableHandler(evaluator.handler, *args, **kwargs)
 
 
-def get_default_comparer(rtol=1e-04, atol=0, equal_nan=True):
+_CompareFn = Callable[[str, str, str, Any, Any], None]
+_Engine = Union[_trainer.Trainer, _evaluator.Evaluator]
+
+
+def get_default_comparer(
+        rtol: float = 1e-04,
+        atol: float = 0,
+        equal_nan: bool = True,
+) -> _CompareFn:
     """Creates default comparer function.
 
     The created function will compare the outputs by using
@@ -141,7 +184,9 @@ def get_default_comparer(rtol=1e-04, atol=0, equal_nan=True):
         atol (float): Absolute tolerance.
         equal_nan (bool): If ``True``, NaNs will be ignored.
     """
-    def compare_fn(backend1: str, backend2: str, name: str, val1: Any, val2: Any):
+    def compare_fn(
+            backend1: str, backend2: str, name: str,
+            val1: Any, val2: Any) -> None:
         # TODO select the device where
         # the tensors will be compared?
         if isinstance(val1, torch.Tensor):
@@ -157,7 +202,12 @@ def get_default_comparer(rtol=1e-04, atol=0, equal_nan=True):
 _default_comparer = get_default_comparer()
 
 
-def _compare_targets(compare_fn, targets, baseline, batch_idx):
+def _compare_targets(
+        compare_fn: _CompareFn,
+        targets: Dict[str, Any],
+        baseline: Optional[str],
+        batch_idx: int,
+) -> None:
     names = list(targets.keys())
     if baseline is None:
         baseline = names[0]
@@ -180,10 +230,12 @@ def _compare_targets(compare_fn, targets, baseline, batch_idx):
 
 class _ComparerBase:
     def __init__(
-            self, engines, *,
-            compare_fn=_default_comparer,
-            concurrency=None,
-    ):
+            self,
+            engines: Mapping[str, _Engine],
+            *,
+            compare_fn: _CompareFn = _default_comparer,
+            concurrency: Optional[int] = None,
+    ) -> None:
         e_type = type(next(iter(engines.values())))
         if e_type not in (
             _trainer.Trainer,
@@ -201,17 +253,17 @@ class _ComparerBase:
         self._finalized = False
         self._semaphore = threading.Semaphore(
             len(engines) if concurrency is None else concurrency)
-        self.targets = {}
-        self._iters = {}
+        self.targets: Dict[str, Dict[str, Any]] = {}
+        self._iters: Dict[str, int] = {}
         # engines must be a dict
         for name, engine in engines.items():
             _overwrite_handler(engine, name, self._get_target, self.compare_targets)
 
-    def _assert_incompatible_trigger(self, condition):
+    def _assert_incompatible_trigger(self, condition: bool) -> None:
         if not condition:
             raise ValueError('Engines have different triggers.')
 
-    def run_engine(self, engine, loaders):
+    def run_engine(self, engine: _Engine, loaders: Any) -> None:
         try:
             self._semaphore.acquire()
             if isinstance(loaders, tuple):
@@ -229,7 +281,7 @@ class _ComparerBase:
         finally:
             self._semaphore.release()
 
-    def compare(self, loaders, n_iters=None):
+    def compare(self, loaders: Any, n_iters: Optional[int] = None) -> None:
         """Compares outputs.
 
         Args:
@@ -255,10 +307,22 @@ class _ComparerBase:
             for future in concurrent.futures.as_completed(futures):
                 future.result()
 
-    def _get_target(self, handle, models, outputs):
+    def _get_target(
+            self,
+            handle: _handler_module.BaseHandler,
+            engine: _Engine,
+            batch_idx: int,
+            outputs: Any,
+    ) -> Dict[str, Any]:
         raise NotImplementedError('Comparers must override _get_target')
 
-    def compare_targets(self, handler, engine, batch_idx, target):
+    def compare_targets(
+            self,
+            handler: _ComparableHandler,
+            engine: _Engine,
+            batch_idx: int,
+            target: Dict[str, Any],
+    ) -> None:
         self._iters[handler.name] += 1
         if (self.n_iters is None) or (self._iters[handler.name] % self.n_iters == 0):
             # Save the outputs of this iteration
@@ -277,10 +341,13 @@ class _ComparerBase:
 
 class OutputsComparer(_ComparerBase):
     def __init__(
-            self, engines, to_compare_keys=None, *,
-            compare_fn=_default_comparer,
-            concurrency=None,
-    ):
+            self,
+            engines: Mapping[str, _Engine],
+            to_compare_keys: Optional[Sequence[str]] = None,
+            *,
+            compare_fn: _CompareFn = _default_comparer,
+            concurrency: Optional[int] = None,
+    ) -> None:
         """A class for comparison of iteration outputs.
 
         This class is mainly used to compare results between different devices.
@@ -309,7 +376,13 @@ class OutputsComparer(_ComparerBase):
         super().__init__(engines, compare_fn=compare_fn, concurrency=concurrency)
         self.to_compare_keys = to_compare_keys
 
-    def _get_target(self, handle, engine, batch_idx, outputs):
+    def _get_target(
+            self,
+            handle: _handler_module.BaseHandler,
+            engine: _Engine,
+            batch_idx: int,
+            outputs: Any,
+    ) -> Dict[str, Any]:
         keys = (
             self.to_compare_keys
             if self.to_compare_keys is not None
@@ -320,9 +393,12 @@ class OutputsComparer(_ComparerBase):
 
 class ModelComparer(_ComparerBase):
     def __init__(
-            self, engines, to_compare_keys=None, *,
-            compare_fn=_default_comparer,
-            concurrency=None,
+            self,
+            engines: Mapping[str, _Engine],
+            to_compare_keys: Optional[Sequence[str]] = None,
+            *,
+            compare_fn: _CompareFn = _default_comparer,
+            concurrency: Optional[int] = None,
     ):
         """A class for comparison of iteration model parameters.
 
@@ -351,9 +427,9 @@ class ModelComparer(_ComparerBase):
         # If to_compare_key is None, then we compare all
         super().__init__(engines, compare_fn=compare_fn, concurrency=concurrency)
         self.to_compare_keys = to_compare_keys
-        self._preprocessed_keys = None
+        self._preprocessed_keys: Optional[List[str]] = None
 
-    def _preprocess_keys(self, sdict):
+    def _preprocess_keys(self, sdict: Dict[str, Any]) -> None:
         if self.to_compare_keys is None:
             self._preprocessed_keys = list(sdict.keys())
         else:
@@ -368,10 +444,17 @@ class ModelComparer(_ComparerBase):
                     raise ValueError(
                         f'didnt find a match for {tc_k} in the model')
 
-    def _get_target(self, handle, engine, batch_idx, outputs):
+    def _get_target(
+            self,
+            handle: _handler_module.BaseHandler,
+            engine: _Engine,
+            batch_idx: int,
+            outputs: Any,
+    ) -> Dict[str, Any]:
         sdict = engine.models['main'].state_dict()
         if self._preprocessed_keys is None:
             self._preprocess_keys(sdict)
+        assert self._preprocessed_keys is not None
         return {key: sdict[key] for key in self._preprocessed_keys}
 
 
@@ -410,13 +493,13 @@ class Comparer:
     def __init__(
             self,
             *,
-            trigger=None,
-            compare_fn=_default_comparer,
-            concurrency=None,
-            outputs=True,
-            params=False,
-            baseline=None,
-    ):
+            trigger: Optional[trigger_module.TriggerLike] = None,
+            compare_fn: _CompareFn = _default_comparer,
+            concurrency: Optional[int] = None,
+            outputs: Union[bool, str, Sequence[str]] = True,
+            params: Union[bool, str, Sequence[str]] = False,
+            baseline: Optional[str] = None,
+    ) -> None:
         """A class for comparison of iteration outputs and model parameters.
 
         This class is mainly used to compare results between different devices.
@@ -446,17 +529,20 @@ class Comparer:
             >>> comp.add_engine("gpu", engine_gpu, train_2, eval_2)
             >>> comp.compare()
         """
-        self._engine_type = None
-        self._engines = collections.OrderedDict()
+        self._engine_type: Optional[Type[_Engine]] = None
+        self._engines: Dict[
+            str, Tuple[_Engine, Any, Any]] = collections.OrderedDict()
         self._compare_fn = compare_fn
-        self._targets = {}
+        self._targets: Dict[str, Dict[str, Any]] = {}
         self._output_keys = outputs
         self._param_keys = params
         self._baseline = baseline
         self._finalized = False
         self._concurrency = concurrency  # Upper limit of semaphore size
-        self._semaphore = None  # Sempaphore for training step execution
-        self._barrier = None  # Synchronizes iteration timing
+        # Sempaphore for training step execution
+        self._semaphore: Optional[threading.Semaphore] = None
+        # Synchronizes iteration timing
+        self._barrier: Optional[threading.Barrier] = None
         self._report_lock = threading.Lock()  # Locks `Comparer._get_target`
 
         if trigger is None:
@@ -465,7 +551,13 @@ class Comparer:
             self._engine_type = _trainer.Trainer
             self._trigger = trigger_module.get_trigger(trigger)
 
-    def _get_target(self, handler, engine, batch_idx, outputs):
+    def _get_target(
+            self,
+            handler: _ComparableHandler,
+            engine: _Engine,
+            batch_idx: int,
+            outputs: Dict[str, Any],
+    ) -> Dict[str, Any]:
         targets = {}
         outputs = _filter(self._output_keys, lambda: outputs)
         targets.update({
@@ -477,20 +569,28 @@ class Comparer:
         targets.update({'param:' + k: v for k, v in params.items()})
         return targets
 
-    def _assert_incompatible_trigger(self, condition):
+    def _assert_incompatible_trigger(self, condition: bool) -> None:
         if not condition:
             raise ValueError("Engines have different triggers.")
 
     @staticmethod
-    def _get_filename(engine, batch_idx):
+    def _get_filename(engine: _Engine, batch_idx: int) -> str:
         name = type(engine).__name__
-        epoch = engine.handler._epoch
+        handler = engine.handler
+        assert isinstance(handler, _ComparableHandler)
+        epoch = handler._epoch
         if epoch is not None:
             name += f'_epoch_{epoch}'
         name += f'_iter_{batch_idx}'
         return name
 
-    def _compare_targets(self, handler, engine, batch_idx, target):
+    def _compare_targets(
+            self,
+            handler: _ComparableHandler,
+            engine: _Engine,
+            batch_idx: int,
+            target: Dict[str, Any],
+    ) -> None:
         # Save the outputs of this iteration
         with self._report_lock:
             self._targets[handler.name] = target
@@ -502,13 +602,21 @@ class Comparer:
             self._assert_incompatible_trigger(not self._finalized)
 
         # Excplicitly synchronize
+        assert self._semaphore is not None
+        assert self._barrier is not None
         self._semaphore.release()
         try:
             self._barrier.wait()
         finally:
             self._semaphore.acquire()
 
-    def add_engine(self, name, engine, *args, **kwargs):
+    def add_engine(
+            self,
+            name: str,
+            engine: _Engine,
+            *args: Any,
+            **kwargs: Any,
+    ) -> None:
         """Add an engine to compare variables.
 
         Args:
@@ -537,11 +645,18 @@ class Comparer:
 
         self._engines[name] = engine, args, kwargs
 
-    def _load_dump(self, handler, engine, batch_idx, outputs):
+    def _load_dump(
+            self,
+            handler: _ComparableHandler,
+            engine: _Engine,
+            batch_idx: int,
+            outputs: Dict[str, Any],
+    ) -> Dict[str, Dict[str, Any]]:
         name = self._get_filename(engine, batch_idx)
-        return torch.load(f'{engine.handler._dir}/{name}')
+        assert isinstance(engine.handler, _ComparableHandler)
+        return torch.load(f'{engine.handler._dir}/{name}')  # type: ignore
 
-    def add_dump(self, name, dir):
+    def add_dump(self, name: str, dir: str) -> None:
         """Add an engine to compare variables.
 
         Args:
@@ -554,42 +669,52 @@ class Comparer:
             summary = json.loads(f.read())
 
         class DummyModel(torch.nn.Module):
-            def __init__(self):
-                super().__init__()
+            def __init__(self) -> None:
+                super().__init__()  # type: ignore[no-untyped-call]
                 self.param = torch.nn.Parameter(torch.tensor(1.0))
 
-            def forward(self, *args, **kwargs):
+            def forward(self, *args: Any, **kwargs: Any) -> Any:
                 return ()
 
         model = DummyModel()
         ppe.to(model, 'cpu')
 
         # Create a dummy engine
-        engine = None
+        evaluator: Optional[_evaluator.Evaluator] = None
+        trainer: Optional[_trainer.Trainer] = None
         args = []
         if summary['evaluator']:
-            engine = _engine_module.create_evaluator(model)
+            evaluator = _engine_module.create_evaluator(model)
             args = [[None] * summary['eval_len']]
         if summary['trainer']:
-            engine = _engine_module.create_trainer(
+            trainer = _engine_module.create_trainer(
                 {'main': model},
                 {'main': torch.optim.SGD(model.parameters(), lr=0.01)},
                 summary['max_epochs'],
-                evaluator=engine,
+                evaluator=evaluator,
             )
             args = [[None] * summary['train_len']] + args
 
+        engine = trainer or evaluator
+        assert engine is not None
         _overwrite_handler(
             engine, name, self._load_dump, self._compare_targets,
             self._trigger, dir=dir)
 
         self._engines[name] = engine, args, {}
 
-    def _dump_targets(self, handler, engine, batch_idx, target):
+    def _dump_targets(
+            self,
+            handler: _ComparableHandler,
+            engine: _Engine,
+            batch_idx: int,
+            target: Dict[str, Any],
+    ) -> None:
         name = self._get_filename(engine, batch_idx)
+        assert isinstance(engine.handler, _ComparableHandler)
         torch.save(target, f'{engine.handler._dir}/{name}')
 
-    def dump(self, engine, dir, *args, **kwargs):
+    def dump(self, engine: _Engine, dir: str, *args: Any, **kwargs: Any) -> None:
         """Add an engine to compare variables.
 
         Args:
@@ -601,9 +726,10 @@ class Comparer:
                 Arguments passed to ``engine.run``.
         """
         _overwrite_handler(
-            engine, None, self._get_target, self._dump_targets, self._trigger, dir=dir)
+            engine, '', self._get_target, self._dump_targets, self._trigger, dir=dir)
 
         engine.run(*args, **kwargs)
+        assert isinstance(engine.handler, _ComparableHandler)
         engine.handler = engine.handler._handler
         summary = {
             'evaluator': (isinstance(engine, _evaluator.Evaluator)
@@ -613,11 +739,14 @@ class Comparer:
             'eval_len': engine._eval_len,
         }
         if isinstance(engine,_trainer.Trainer):
+            assert engine._manager is not None
             summary['max_epochs'] = engine._manager.max_epochs
         with open(f'{dir}/summary', 'w') as f:
             f.write(json.dumps(summary))
 
-    def _run_engine(self, engine, args, kwargs):
+    def _run_engine(self, engine: _Engine, args: Any, kwargs: Any) -> None:
+        assert self._semaphore is not None
+        assert self._barrier is not None
         self._semaphore.acquire()
         try:
             engine.run(*args, **kwargs)
@@ -630,7 +759,7 @@ class Comparer:
         finally:
             self._semaphore.release()
 
-    def compare(self):
+    def compare(self) -> None:
         """Compares outputs.
         """
         n_workers = len(self._engines)
