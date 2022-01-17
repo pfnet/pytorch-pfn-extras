@@ -303,6 +303,7 @@ class Handler(BaseHandler):
             for n, m in models.items():
                 for sn, sm in ppe.runtime._runtime.named_runtime_modules(m, n):
                     rt = ppe.runtime._runtime._module_runtime_tag(sm)
+                    assert rt is not None
                     self._ppe_modules.append((sn, sm, rt))
                     yield sn, sm, rt
         else:
@@ -380,6 +381,9 @@ class Handler(BaseHandler):
                     self.pending_iters[sn][0], True)
                 self._complete_train_step(
                     trainer, t_outs, True, sn, sm, rt)
+
+        for _, sm, rt in self._runtime_iterator(trainer.models):
+            rt.train_epoch_end(sm)
 
         self._logic.train_epoch_end(trainer.models, trainer.epoch)
 

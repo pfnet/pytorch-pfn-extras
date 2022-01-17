@@ -1,4 +1,4 @@
-from typing import Dict, Mapping, Optional, TYPE_CHECKING
+from typing import Mapping, Optional, TYPE_CHECKING
 from typing_extensions import Protocol
 
 import torch
@@ -29,7 +29,7 @@ class ExtensionsManagerProtocol(Protocol):
         ...
 
     @property
-    def models(self) -> Dict[str, torch.nn.Module]:
+    def models(self) -> Mapping[str, torch.nn.Module]:
         ...
 
     @property

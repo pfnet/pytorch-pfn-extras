@@ -3,7 +3,8 @@ import contextlib
 import threading
 import types
 from typing import (
-    Any, Callable, Dict, Generator, List, Mapping, Optional, Tuple, Type, Union
+    Any, Callable, Dict, Generator, List, Mapping, Optional, Sequence,
+    Tuple, Type, Union,
 )
 from typing import overload
 import warnings
@@ -149,7 +150,7 @@ class Reporter:
     def add_observers(
             self,
             prefix: str,
-            observers: List[Tuple[str, torch.nn.Module]]
+            observers: Sequence[Tuple[str, torch.nn.Module]]
     ) -> None:
         """Registers multiple observers at once.
 

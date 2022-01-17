@@ -1,5 +1,6 @@
 from typing import (
-    Any, Callable, Dict, List, Optional, Tuple, Type, Union, TYPE_CHECKING
+    Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Type,
+    Union, TYPE_CHECKING,
 )
 
 import torch
@@ -19,11 +20,11 @@ if TYPE_CHECKING:
 
 
 def create_trainer(
-        models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
-        optimizers: Union[torch.optim.Optimizer, Dict[str, torch.optim.Optimizer]],
+        models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
+        optimizers: Union[torch.optim.Optimizer, Mapping[str, torch.optim.Optimizer]],
         max_epochs: int,
         *,
-        extensions: Optional[List['training.Extension']] = None,
+        extensions: Optional[Sequence['training.Extension']] = None,
         out_dir: str = 'result',
         stop_trigger: 'TriggerLike' = None,
         writer: Optional['writing.Writer'] = None,
@@ -35,7 +36,7 @@ def create_trainer(
             [str, torch.nn.Module], torch.nn.Module] = default_transform_model,
         handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
-        runtime_options: Optional[Dict[str, Any]] = None,
+        runtime_options: Optional[Mapping[str, Any]] = None,
 ) -> 'Trainer':
     """Creates a trainer object.
 
@@ -112,15 +113,15 @@ def create_trainer(
 
 
 def create_evaluator(
-        models: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+        models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
         *,
         progress_bar: bool = False,
         device: 'DeviceLike' = 'cpu',
-        metrics: Optional[List['MetricType']] = None,
+        metrics: Optional[Sequence['MetricType']] = None,
         logic: Optional[handler_module.Logic] = None,
         handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
-        runtime_options: Optional[Dict[str, Any]] = None,
+        runtime_options: Optional[Mapping[str, Any]] = None,
 ) -> 'Evaluator':
     """Creates an evaluator object. The return value of this function is
     expected to be fed to `ppe.engine.create_trainer` as an argument.

@@ -146,6 +146,16 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
+    def train_epoch_end(self, module: torch.nn.Module) -> None:
+        """Completion of each epoch.
+
+        Args:
+            module (torch.nn.Module): A module.
+
+        Returns: None
+        """
+        raise NotImplementedError()
+
     def train_pre_step(
         self,
         trainer: Trainer,
@@ -324,6 +334,9 @@ class PyTorchRuntime(BaseRuntime):
     def train_epoch_begin(self, module: torch.nn.Module) -> None:
         pass
 
+    def train_epoch_end(self, module: torch.nn.Module) -> None:
+        pass
+
     def train_validation_begin(self, module: torch.nn.Module) -> None:
         pass
 
@@ -416,7 +429,7 @@ class PyTorchRuntime(BaseRuntime):
         return out
 
 
-def _module_runtime_tag(module: torch.nn.Module) -> BaseRuntime:
+def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
     return getattr(  # type: ignore[no-any-return]
         module, _RUNTIME_TAG_NAME, None
     )
@@ -441,4 +454,9 @@ def named_runtime_modules(
             for name, sm in module.named_children():
                 yield from named_runtime_modules(sm, name, False, recursive)
     else:
+        if first_level or recursive:
+            for sm in module.children():
+                for descendant in sm.modules():
+                    if _module_runtime_tag(descendant) is not None:
+                        raise ValueError("Runtimes cannot be nested.")
         yield module_name, module

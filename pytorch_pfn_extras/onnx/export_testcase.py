@@ -1,4 +1,5 @@
 import datetime
+import glob
 import io
 import itertools
 import json
@@ -312,6 +313,8 @@ def export_testcase(
         data_set_path = os.path.join(
             out_dir, 'test_data_set_{:d}'.format(seq_id))
     os.makedirs(data_set_path, exist_ok=True)
+    for pb_name in glob.glob(os.path.join(data_set_path, "*.pb")):
+        os.remove(pb_name)
     for i, (arg, name) in enumerate(zip(args, input_names)):
         f = os.path.join(data_set_path, 'input_{}.pb'.format(i))
         write_to_pb(f, arg, name)
@@ -371,6 +374,12 @@ def export_testcase(
         warnings.warn(
             '"user_meta" is given but "metadata" is False. '
             '"user_meta" is not exported.',
+            UserWarning)
+
+    if not metadata and strip_large_tensor_data:
+        warnings.warn(
+            '"strip_large_tensor_data" is given but "metadata" is False. '
+            'It would be harder to determine whether testcase or model is stripped.',
             UserWarning)
 
     if return_output:

@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple, Union
 import reprlib
 
 
@@ -26,7 +26,7 @@ class Config(object):
     def __init__(
             self,
             config: Any,
-            types: Optional[Dict[str, Callable[..., Any]]] = None,
+            types: Optional[Mapping[str, Callable[..., Any]]] = None,
     ) -> None:
         self._cache: Dict[KeyPair, Any] = {((), None): config}
         self._types = types or {}
@@ -40,7 +40,7 @@ class Config(object):
             path: str,
             *,
             loader: Optional[Loader] = None,
-            types: Optional[Dict[str, Callable[..., Any]]] = None,
+            types: Optional[Mapping[str, Callable[..., Any]]] = None,
     ) -> 'Config':
         if loader is None:
             loader = _json_loader

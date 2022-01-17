@@ -6,14 +6,14 @@ import sys
 import threading
 import types
 from typing import (
-    Any, Callable, Dict, Generic, IO, Iterator, List, Optional, Type,
-    TypeVar, Union,
+    Any, Callable, Generic, IO, Iterator, List, Mapping, Optional, Sequence,
+    Type, TypeVar, Union,
 )
 
 import torch
 
 
-_TargetType = Union[List[Any], Dict[str, Any]]
+_TargetType = Union[Sequence[Any], Mapping[str, Any]]
 _SaveFun = Callable[..., None]
 _HookFun = Callable[[], None]
 _TaskFun = Callable[..., None]
@@ -65,7 +65,7 @@ class _PosixFileSystem(object):
     def open(
             self,
             file_path: str,
-            mode: str = 'rb',
+            mode: str = 'r',
             buffering: int = -1,
             encoding: Optional[str] = None,
             errors: Optional[str] = None,
