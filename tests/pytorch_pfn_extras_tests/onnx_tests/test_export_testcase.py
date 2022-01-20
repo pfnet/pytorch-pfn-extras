@@ -1,6 +1,7 @@
 import io
 import os
 import json
+from pathlib import Path
 from packaging import version
 
 import numpy as np
@@ -17,6 +18,7 @@ from pytorch_pfn_extras.onnx import export_testcase
 from pytorch_pfn_extras.onnx import is_large_tensor
 from pytorch_pfn_extras.onnx import LARGE_TENSOR_DATA_THRESHOLD
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_large_tensor_tool_impl
+from pytorch_pfn_extras.onnx.unstrip_tensor import unstrip
 
 
 output_dir = 'out'
@@ -59,6 +61,8 @@ def _helper(model, args, d, **kwargs):
         kwargs['training'] = model.training
     if 'do_constant_folding' not in kwargs:
         kwargs['do_constant_folding'] = False
+    if 'metadata' not in kwargs:
+        kwargs['metadata'] = False
     export_testcase(model, args, output_dir, **kwargs)
     return output_dir
 
@@ -68,7 +72,7 @@ def test_export_testcase():
     model = Net().to('cpu')
     x = torch.zeros((1, 1, 28, 28))
 
-    output_dir = _helper(model, x, 'mnist', output_grad=True)
+    output_dir = _helper(model, x, 'mnist', output_grad=True, metadata=True)
 
     assert os.path.isdir(output_dir)
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))
@@ -254,7 +258,8 @@ def test_export_testcase_strip_large_tensor_data():
 
     output_dir = _helper(
         model, x, 'mnist_stripped_tensor_data',
-        output_grad=True, strip_large_tensor_data=True)
+        output_grad=True, strip_large_tensor_data=True,
+        metadata=True)
 
     assert os.path.isdir(output_dir)
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))
@@ -307,6 +312,38 @@ def test_export_testcase_strip_large_tensor_data():
     # loading check
     onnx.load(
         os.path.join(output_dir, 'model_re.onnx'), load_external_data=False)
+
+    # unstrip test
+    unstrip_output_dir = _get_output_dir('mnist_unstripped_tensor_data')
+    unstrip(output_dir, out_path=unstrip_output_dir)
+
+    def is_unstripped_with_check(tensor):
+        if is_large_tensor(tensor, LARGE_TENSOR_DATA_THRESHOLD):
+            assert tensor.data_location == onnx.TensorProto.DEFAULT
+            return True
+        return False
+
+    onnx_paths = Path(unstrip_output_dir).glob('*.onnx')
+    check_unstripped = []
+    for onnx_path in onnx_paths:
+        onnx_model = onnx.load(onnx_path, load_external_data=False)
+        check_unstripped.extend([
+            is_unstripped_with_check(init) for init in onnx_model.graph.initializer])
+    assert len(check_unstripped) > 0
+    assert any(check_unstripped)
+
+    pb_paths = Path(unstrip_output_dir).glob('**/*.pb')
+    checked = False
+    for pb_path in pb_paths:
+        tensor = onnx.TensorProto()
+        with open(pb_path, 'rb') as f:
+            tensor.ParseFromString(f.read())
+        checked = is_unstripped_with_check(tensor) or checked
+    assert checked, 'more than one data is unstripped'
+
+    with open(os.path.join(unstrip_output_dir, 'meta.json')) as metaf:
+        metaj = json.load(metaf)
+        assert not metaj['strip_large_tensor_data']
 
 
 def test_export_testcase_options():

@@ -36,6 +36,10 @@ class MockRuntime(ppe.runtime.BaseRuntime):
         self._train_epoch_begin_called = True
         self._called_module = module
 
+    def train_epoch_end(self, module):
+        self._train_epoch_end_called = True
+        self._called_module = module
+
     def train_pre_step(self, trainer, module, batch_idx, batch):
         self._train_pre_step_called = True
         self._called_module = module
@@ -84,6 +88,9 @@ class MockEvaluator:
 class MockLogic(ppe.handler.BaseLogic):
     def train_epoch_begin(self, epoch, models, loader):
         self._train_epoch_begin_called = True
+
+    def train_epoch_end(self, epoch, models):
+        self._train_epoch_end_called = True
 
     def train_step(self, models, optimizers, batch_idx, batch):
         assert batch.converted
@@ -151,12 +158,19 @@ class TestHandlerTrainSync(HandlerTester):
         self._assert_called(module, to_move, 'train_epoch_begin')
         assert logic._train_epoch_begin_called
 
-    def test_train_epoch_end(self):
-        handler, trainer, _ = self._get_handler()
+    @pytest.mark.parametrize(
+        'to_move', [('self',), ('sm1',), ('sm2',), ('sm1', 'sm2')]
+    )
+    def test_train_epoch_end(self, to_move):
+        handler, trainer, logic = self._get_handler()
+        module = trainer.models['main']
+        self._move_modules(module, to_move)
         # Should check that the handler completes
         assert not handler.pending_iters
         handler.train_epoch_end(trainer)
         assert not handler.pending_iters
+        self._assert_called(module, to_move, 'train_epoch_end')
+        assert logic._train_epoch_end_called
 
     @pytest.mark.parametrize(
         'to_move', [('self',), ('sm1',), ('sm2',), ('sm1', 'sm2')]

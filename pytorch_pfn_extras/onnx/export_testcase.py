@@ -1,11 +1,11 @@
-# mypy: ignore-errors
-
 import datetime
+import glob
 import io
 import itertools
 import json
 import os
 import subprocess
+from typing import Any, Dict, IO, Mapping, Optional, Sequence, Tuple, Union
 import warnings
 
 import onnx
@@ -28,8 +28,12 @@ from pytorch_pfn_extras.onnx.strip_large_tensor import \
     _strip_large_initializer_raw_data
 
 
-def _model_to_graph_with_value_names(*args, add_value_names=True, **kwargs):
-    g, p, o = torch_model_to_graph(*args, **kwargs)
+def _model_to_graph_with_value_names(
+        *args: Any,
+        add_value_names: bool = True,
+        **kwargs: Any,
+) -> Tuple[torch._C.Graph, Dict[str, Any], Any]:
+    g, p, o = torch_model_to_graph(*args, **kwargs)  # type: ignore[no-untyped-call]
     if not add_value_names:
         return g, p, o
 
@@ -47,7 +51,12 @@ def _model_to_graph_with_value_names(*args, add_value_names=True, **kwargs):
     return g, p, o
 
 
-def _export_meta(model, out_dir, strip_large_tensor_data, user_meta):
+def _export_meta(
+        model: torch.nn.Module,
+        out_dir: str,
+        strip_large_tensor_data: bool,
+        user_meta: Mapping[str, Any],
+) -> Dict[str, Any]:
     ret = {
         'generated_at': datetime.datetime.now().isoformat(),
         'output_directory': out_dir,
@@ -63,7 +72,7 @@ def _export_meta(model, out_dir, strip_large_tensor_data, user_meta):
                                       stderr=subprocess.PIPE)
         git_status.communicate()
 
-        def strip_cmd(cmd):
+        def strip_cmd(cmd: str) -> str:
             with os.popen(cmd) as f:
                 return f.read().strip()
         if git_status.returncode == 0:
@@ -79,7 +88,12 @@ def _export_meta(model, out_dir, strip_large_tensor_data, user_meta):
     return ret
 
 
-def _export_util(model, args, f, **kwargs):
+def _export_util(
+        model: torch.nn.Module,
+        args: Sequence[Any],
+        f: IO,
+        **kwargs: Any,
+) -> Any:
     """Wrap operator type to export
 
     Copied from torch.onnx.utils.export, to get output values.
@@ -104,14 +118,19 @@ def _export_util(model, args, f, **kwargs):
     # This is a temporal workaround until a fix is introduced in PyTorch.
     try:
         torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
-        return torch_export(model, args, f, _retain_param_name=True, **kwargs)
+        return torch_export(  # type: ignore[no-untyped-call]
+            model, args, f, _retain_param_name=True, **kwargs)
     finally:
         torch.onnx.utils._model_to_graph = old_model_to_graph
 
 
 def _export(
-        model, args, strip_large_tensor_data=False,
-        large_tensor_threshold=LARGE_TENSOR_DATA_THRESHOLD, **kwargs):
+        model: torch.nn.Module,
+        args: Sequence[Any],
+        strip_large_tensor_data: bool = False,
+        large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
+        **kwargs: Any,
+) -> Tuple[onnx.ModelProto, Any]:
     model.zero_grad()
     bytesio = io.BytesIO()
     opset_ver = kwargs.get('opset_version', None)
@@ -138,8 +157,14 @@ def _export(
 
 
 def export(
-        model, args, f, return_output=False, strip_large_tensor_data=False,
-        large_tensor_threshold=LARGE_TENSOR_DATA_THRESHOLD, **kwargs):
+        model: torch.nn.Module,
+        args: Sequence[Any],
+        f: IO,
+        return_output: bool = False,
+        strip_large_tensor_data: bool = False,
+        large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
+        **kwargs: Any,
+) -> Any:
     """Export model into ONNX Graph.
 
     Args:
@@ -176,11 +201,21 @@ def export(
 
 
 def export_testcase(
-        model, args, out_dir, *, output_grad=False, metadata=True,
-        model_overwrite=True, strip_large_tensor_data=False,
-        large_tensor_threshold=LARGE_TENSOR_DATA_THRESHOLD,
-        return_output=False, user_meta=None,
-        export_torch_script=False, export_torch_trace=False, **kwargs):
+        model: torch.nn.Module,
+        args: Any,
+        out_dir: str,
+        *,
+        output_grad: Union[bool, torch.Tensor, Sequence[torch.Tensor]] = False,
+        metadata: bool = True,
+        model_overwrite: bool = True,
+        strip_large_tensor_data: bool = False,
+        large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
+        return_output: bool = False,
+        user_meta: Optional[Mapping[str, Any]] = None,
+        export_torch_script: bool = False,
+        export_torch_trace: bool = False,
+        **kwargs: Any,
+) -> Any:
     """Export model and I/O tensors of the model in protobuf format.
 
     Args:
@@ -210,16 +245,17 @@ def export_testcase(
         user_meta = {}
 
     os.makedirs(out_dir, exist_ok=True)
+    if isinstance(args, torch.Tensor):
+        args = args,
     input_names = kwargs.pop(
         'input_names',
         ['input_{}'.format(i) for i in range(len(args))])
     assert len(input_names) == len(args)
+    assert not isinstance(args, torch.Tensor)
 
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
         input_names=input_names, **kwargs)
-    if isinstance(args, torch.Tensor):
-        args = args,
     if isinstance(outs, torch.Tensor):
         outs = outs,
 
@@ -242,7 +278,7 @@ def export_testcase(
         with open(output_path, 'wb') as fp:
             fp.write(onnx_graph.SerializeToString())
 
-    def write_to_pb(f, tensor, name=None):
+    def write_to_pb(f: str, tensor: torch.Tensor, name: Optional[str] = None) -> None:
         array = tensor.detach().cpu().numpy()
         with open(f, 'wb') as fp:
             t = onnx.numpy_helper.from_array(array, name)
@@ -254,12 +290,14 @@ def export_testcase(
     if export_torch_script:
         pt_script_path = os.path.join(out_dir, 'model_script.pt')
         if model_overwrite or (not os.path.isfile(pt_script_path)):
-            torch.jit.script(model).save(pt_script_path)
+            torch.jit.script(  # type: ignore[no-untyped-call]
+                model).save(pt_script_path)
 
     if export_torch_trace:
         pt_trace_path = os.path.join(out_dir, 'model_trace.pt')
         if model_overwrite or (not os.path.isfile(pt_trace_path)):
-            torch.jit.trace(model, args).save(pt_trace_path)
+            torch.jit.trace(  # type: ignore[no-untyped-call]
+                model, args).save(pt_trace_path)
 
     data_set_path = os.path.join(out_dir, 'test_data_set_0')
     seq_id = 0
@@ -268,14 +306,17 @@ def export_testcase(
         data_set_path = os.path.join(
             out_dir, 'test_data_set_{:d}'.format(seq_id))
     os.makedirs(data_set_path, exist_ok=True)
+    for pb_name in glob.glob(os.path.join(data_set_path, "*.pb")):
+        os.remove(pb_name)
     for i, (arg, name) in enumerate(zip(args, input_names)):
         f = os.path.join(data_set_path, 'input_{}.pb'.format(i))
         write_to_pb(f, arg, name)
 
-    output_names = kwargs.get('output_names')
+    output_names: Optional[Sequence[Optional[str]]]
+    output_names = kwargs.get('output_names')  # type: ignore[assignment]
     if output_names is None:
         if isinstance(outs, dict):
-            output_names = outs.keys()
+            output_names = list(outs.keys())
         else:
             output_names = [None] * len(outs)
     for i, name in enumerate(output_names):
@@ -318,17 +359,20 @@ def export_testcase(
             else:
                 write_to_pb(f, param.grad, name)
 
-    if user_meta is None:
-        user_meta = {}
-
     if metadata:
-        with open(os.path.join(out_dir, 'meta.json'), 'w') as f:
+        with open(os.path.join(out_dir, 'meta.json'), 'w') as fp_text:
             json.dump(_export_meta(model, out_dir, strip_large_tensor_data,
-                                   user_meta), f, indent=2)
+                                   user_meta), fp_text, indent=2)
     elif user_meta:
         warnings.warn(
             '"user_meta" is given but "metadata" is False. '
             '"user_meta" is not exported.',
+            UserWarning)
+
+    if not metadata and strip_large_tensor_data:
+        warnings.warn(
+            '"strip_large_tensor_data" is given but "metadata" is False. '
+            'It would be harder to determine whether testcase or model is stripped.',
             UserWarning)
 
     if return_output:

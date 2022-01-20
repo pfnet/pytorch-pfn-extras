@@ -1,7 +1,7 @@
 from copy import deepcopy
 import os
 import sys
-from typing import Any, Dict, IO, List, Optional, Tuple, Union
+from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, Union
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training.extensions import log_report \
@@ -11,7 +11,7 @@ from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProto
 
 
 def create_header_and_templates(
-        entries: List[str],
+        entries: Sequence[str],
 ) -> Tuple[str, List[Tuple[str, str, str]]]:
     """Construct header and templates from `entries`
 
@@ -77,7 +77,7 @@ class PrintReport(extension.Extension):
 
     def __init__(
             self,
-            entries: Optional[List[str]] = None,
+            entries: Optional[Sequence[str]] = None,
             log_report: Union[str, log_report_module.LogReport] = 'LogReport',
             out: IO[Any] = sys.stdout,
     ) -> None:
