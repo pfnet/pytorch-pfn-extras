@@ -1,6 +1,6 @@
 from typing import (
-    Any, Callable, Dict, List, Mapping, Optional, Sequence,
-    Tuple, Type, Union, TYPE_CHECKING
+    Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Type,
+    Union, TYPE_CHECKING,
 )
 
 import torch
