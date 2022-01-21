@@ -58,7 +58,6 @@ class _ComparableHandler(_handler_module.BaseHandler):
 
     def train_epoch_end(self, trainer: _trainer._Trainer) -> None:
         self._handler.train_epoch_end(trainer)
-        self._epoch = None
 
     def train_validation_begin(
             self, trainer: _trainer._Trainer, evaluator: _evaluator.Evaluator) -> None:
@@ -573,12 +572,11 @@ class Comparer:
         if not condition:
             raise ValueError("Engines have different triggers.")
 
-    @staticmethod
-    def _get_filename(engine: _Engine, batch_idx: int) -> str:
+    def _get_filename(
+            self, engine: _Engine, handler_name: str, batch_idx: int) -> str:
         name = type(engine).__name__
-        handler = engine.handler
-        assert isinstance(handler, _ComparableHandler)
-        epoch = handler._epoch
+        orig_engine, _, _ = self._engines[handler_name]
+        epoch = orig_engine.handler._epoch  # type: ignore
         if epoch is not None:
             name += f'_epoch_{epoch}'
         name += f'_iter_{batch_idx}'
@@ -652,7 +650,7 @@ class Comparer:
             batch_idx: int,
             outputs: Dict[str, Any],
     ) -> Dict[str, Dict[str, Any]]:
-        name = self._get_filename(engine, batch_idx)
+        name = self._get_filename(engine, handler.name, batch_idx)
         assert isinstance(engine.handler, _ComparableHandler)
         return torch.load(f'{engine.handler._dir}/{name}')  # type: ignore
 
@@ -710,7 +708,7 @@ class Comparer:
             batch_idx: int,
             target: Dict[str, Any],
     ) -> None:
-        name = self._get_filename(engine, batch_idx)
+        name = self._get_filename(engine, handler.name, batch_idx)
         assert isinstance(engine.handler, _ComparableHandler)
         torch.save(target, f'{engine.handler._dir}/{name}')
 
@@ -725,10 +723,15 @@ class Comparer:
             *args and **kwargs:
                 Arguments passed to ``engine.run``.
         """
+        name = '__dump'
         _overwrite_handler(
-            engine, '', self._get_target, self._dump_targets, self._trigger, dir=dir)
+            engine, name, self._get_target, self._dump_targets,
+            self._trigger, dir=dir)
 
+        self._engines[name] = engine, args, {}
         engine.run(*args, **kwargs)
+        self._engines.pop(name)
+
         assert isinstance(engine.handler, _ComparableHandler)
         engine.handler = engine.handler._handler
         summary = {
