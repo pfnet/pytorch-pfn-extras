@@ -42,3 +42,4 @@ RunOrDie python -m pytest tests
 .\.flexci\windows\download_mnist.ps1
 RunOrDie python example/mnist.py --batch-size 2048 --test-batch-size 2048 --epochs 1 --save-model
 RunOrDie python example/ignite-mnist.py --batch_size 2048 --val_batch_size 2048 --epochs 1
+RunOrDie python example/multiprocessing.py

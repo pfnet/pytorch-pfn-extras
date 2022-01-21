@@ -37,5 +37,11 @@ python mnist_trainer.py --device cpu --epochs 1 --batch-size 1024 --deterministi
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python mnist_trainer.py --device cuda --epochs 1 --batch-size 1024 --deterministic --compare-with comp_dump_cpu
 popd
 
+pushd example
+mkdir -p comp_dump_cpu
+python multiprocessing.py
+popd
+
+
 # Publish coverage report
 mv tests/htmlcov /output/htmlcov
