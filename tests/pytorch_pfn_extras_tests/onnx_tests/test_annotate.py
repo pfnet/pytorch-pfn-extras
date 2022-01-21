@@ -197,6 +197,7 @@ def test_scoped_anchor_no_export():
 @pytest.mark.filterwarnings(
     "ignore::torch.jit.TracerWarning",
     "ignore:floor_divide is deprecated:UserWarning",
+    "ignore:__floordiv__ is deprecated:UserWarning",
     "ignore:Using or importing the ABCs:DeprecationWarning",
 )
 def test_scoped_anchor():
