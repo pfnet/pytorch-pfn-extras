@@ -1,5 +1,4 @@
 import argparse
-import os
 
 import torch
 import torch.nn as nn
@@ -62,20 +61,14 @@ def test(args, model, device, data, target):
 
 def init_distributed(use_cuda=True):
     # setup env for torch.distributed
-    comm_world_size = int(os.environ["OMPI_COMM_WORLD_SIZE"])
-    comm_rank = int(os.environ["OMPI_COMM_WORLD_RANK"])
-    comm_local_rank = int(os.environ['OMPI_COMM_WORLD_LOCAL_RANK'])
-
-    os.environ["WORLD_SIZE"] = str(comm_world_size)
-    os.environ["RANK"] = str(comm_rank)
-
+    comm_world_size, comm_rank, comm_local_rank = (
+        ppe.distributed.initialize_ompi_environment(
+            backend="nccl", init_method="env"))
     if comm_rank == 0:
         print("World size = {}".format(comm_world_size))
     print("Rank = {}, Local Rank = {}".format(comm_rank, comm_local_rank))
 
     torch.cuda.set_device(comm_local_rank)
-    torch.distributed.init_process_group(backend='nccl', init_method='env://')
-
     device = torch.device(
         "cuda:{}".format(comm_local_rank) if use_cuda else "cpu")
 
