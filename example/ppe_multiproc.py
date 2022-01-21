@@ -6,7 +6,7 @@ import pytorch_pfn_extras as ppe
 from torch.utils.tensorboard import SummaryWriter
 
 
-def subprocess(num: int):
+def subprocess(num: int) -> None:
     ppe_extensions = [
         ppe.training.extensions.LogReport(),
         ppe.training.extensions.PlotReport(
@@ -42,7 +42,6 @@ def subprocess(num: int):
             ppe.reporting.report({"train/loss": random.random()})
             ppe.reporting.report({"val/loss": random.random()})
     time.sleep(1)
-    return
 
 
 def main():
