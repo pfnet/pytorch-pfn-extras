@@ -38,8 +38,7 @@ CUBLAS_WORKSPACE_CONFIG=:4096:8 python mnist_trainer.py --device cuda --epochs 1
 popd
 
 pushd example
-mkdir -p comp_dump_cpu
-python multiprocessing.py
+python example/ppe_multiproc.py
 popd
 
 
