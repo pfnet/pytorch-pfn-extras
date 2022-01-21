@@ -21,12 +21,29 @@ def _infer_tag_name(frame: Optional[types.FrameType], depth: int) -> str:
     )
 
 
+class _DummyReportNotification(_time_summary._ReportNotification):
+    def __init__(self) -> None:
+        pass
+
+    def defer(self) -> None:
+        pass
+
+    def complete(self) -> None:
+        pass
+
+
 @contextmanager
 def record(
         tag: Optional[str],
         metric: Optional[str] = None,
         use_cuda: bool = False,
+        disable: bool = False,
 ) -> Generator[_time_summary._ReportNotification, None, None]:
+
+    if disable:
+        yield _DummyReportNotification()
+        return
+
     if tag is None:
         tag = _infer_tag_name(inspect.currentframe(), depth=2)
 
@@ -51,10 +68,11 @@ _T = TypeVar('_T')
 def record_function(
         tag: Optional[str],
         use_cuda: bool = False,
+        disable: bool = False,
 ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
     def wrapper(f: Callable[..., _T]) -> Callable[..., _T]:
         def wrapped(*args: Any, **kwargs: Any) -> _T:
-            with record(tag or f.__name__, use_cuda=use_cuda):
+            with record(tag or f.__name__, use_cuda=use_cuda, disable=disable):
                 return f(*args, **kwargs)
 
         return wrapped
@@ -67,6 +85,7 @@ def record_iterable(
         iter: Iterable[_T],
         divide_metric: bool = False,
         use_cuda: bool = False,
+        disable: bool = False,
 ) -> Iterable[_T]:
     if tag is None:
         tag = _infer_tag_name(inspect.currentframe(), depth=1)
@@ -75,7 +94,7 @@ def record_iterable(
         for i, x in enumerate(iter):
             name = f"{tag}-{i}"
             metric = name if divide_metric else tag
-            with record(name, metric, use_cuda=use_cuda):
+            with record(name, metric, use_cuda=use_cuda, disable=disable):
                 yield x
 
     return wrapped()
