@@ -5,6 +5,7 @@ import itertools
 import json
 import os
 import subprocess
+from packaging import version
 from typing import Any, Dict, IO, Mapping, Optional, Sequence, Tuple, Union
 import warnings
 
@@ -118,8 +119,18 @@ def _export_util(
     # This is a temporal workaround until a fix is introduced in PyTorch.
     try:
         torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
-        return torch_export(  # type: ignore[no-untyped-call]
-            model, args, f, _retain_param_name=True, **kwargs)
+        if version.Version(torch.__version__) >= version.Version('1.10.0'):
+            try:
+                enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
+                return torch_export(  # type: ignore[no-untyped-call]
+                    model, args, f, **kwargs)
+            # this class will change in torch 1.11 to torch.onnx.utils.CheckerError
+            except torch.onnx.utils.ONNXCheckerError:  # type: ignore[attr-defined]
+                if enable_onnx_checker:
+                    raise
+        else:
+            return torch_export(  # type: ignore[no-untyped-call]
+                model, args, f, **kwargs)
     finally:
         torch.onnx.utils._model_to_graph = old_model_to_graph
 
@@ -136,20 +147,25 @@ def _export(
     opset_ver = kwargs.get('opset_version', None)
     if opset_ver is None:
         opset_ver = _default_onnx_opset_version
-    strip_doc_string = kwargs.pop('strip_doc_string', True)
+    if version.Version(torch.__version__) < version.Version('1.10.0'):
+        strip_doc_string = kwargs.get('strip_doc_string', True)
+        kwargs['strip_doc_string'] = False
+    else:
+        strip_doc_string = kwargs.pop('strip_doc_string', True)
+        kwargs['verbose'] = True
     with init_annotate(model, opset_ver) as ann, \
             as_output.trace(model) as (model, outputs), \
             grad.init_grad_state():
         outs = _export_util(
-            model, args, bytesio, strip_doc_string=False, **kwargs)
+            model, args, bytesio, **kwargs)
         onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)
         outputs.add_outputs_to_model(onnx_graph)
+        if strip_doc_string:
+            for node in onnx_graph.graph.node:
+                node.doc_string = b''
 
-    if strip_doc_string:
-        for node in onnx_graph.graph.node:
-            node.doc_string = b''
     if strip_large_tensor_data:
         _strip_large_initializer_raw_data(onnx_graph, large_tensor_threshold)
 
@@ -258,7 +274,8 @@ def export_testcase(
         input_names=input_names, **kwargs)
     if isinstance(outs, torch.Tensor):
         outs = outs,
-
+    elif outs is None:
+        outs = ()
     # Remove unused inputs
     # - When keep_initializers_as_inputs=True, inputs contains initializers.
     #   So we have to filt initializers.
