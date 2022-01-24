@@ -106,8 +106,9 @@ def _export_util(
     if aten or export_raw_ir:
         assert operator_export_type is None
         assert aten ^ export_raw_ir
+        # Note: OperatorExportTypes.RAW unavailable in PyTorch 1.10+
         operator_export_type = OperatorExportTypes.ONNX_ATEN if\
-            aten else OperatorExportTypes.RAW
+            aten else OperatorExportTypes.RAW  # type: ignore
     elif operator_export_type is None:
         if torch.onnx.PYTORCH_ONNX_CAFFE2_BUNDLE:
             operator_export_type = OperatorExportTypes.ONNX_ATEN_FALLBACK
