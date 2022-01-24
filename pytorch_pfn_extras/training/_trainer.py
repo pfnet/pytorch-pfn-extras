@@ -46,7 +46,7 @@ class Trainer:
         else:
             self._models = models
         self._kwargs = kwargs
-        self._disable_profile = kwargs.get('disable_profile', False)
+        self._enable_profile = kwargs.get('enable_profile', False)
         self._extensions: List[  # list of (args, kwargs)
             Tuple[Tuple['training.Extension', Optional[str],
                         'TriggerLike', Optional[int]],
@@ -293,19 +293,19 @@ class Trainer:
                 with record(
                     "pytorch_pfn_extras.training.Trainer:iteration",
                     use_cuda=torch.cuda.is_available(),
-                    disable=self._disable_profile
+                    enable=self._enable_profile
                 ) as ntf0:
                     try:
                         with record(
                             "pytorch_pfn_extras.training.Trainer:get_data",
-                            disable=self._disable_profile
+                            enable=self._enable_profile
                         ):
                             x = next(loader_iter)
                     except StopIteration:
                         loader_iter = iter(train_loader)
                         with record(
                             "pytorch_pfn_extras.training.Trainer:get_data",
-                            disable=self._disable_profile
+                            enable=self._enable_profile
                         ):
                             x = next(loader_iter)
                     begin = time.time()
@@ -316,14 +316,14 @@ class Trainer:
                     with record(
                         "pytorch_pfn_extras.training.Trainer:run_iteration",
                         use_cuda=torch.cuda.is_available(),
-                        disable=self._disable_profile
+                        enable=self._enable_profile
                     ) as ntf1, \
                             self.manager.run_iteration() as iter_notifier:
                         self._observed.put(self.manager.observation)
                         with record(
                             "pytorch_pfn_extras.training.Trainer:train_step",
                             use_cuda=torch.cuda.is_available(),
-                            disable=self._disable_profile
+                            enable=self._enable_profile
                         ) as ntf2:
                             self._profile_records.put([ntf0, ntf1, ntf2])
                             self.handler.train_step(

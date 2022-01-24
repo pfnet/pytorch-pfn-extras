@@ -37,10 +37,10 @@ def record(
         tag: Optional[str],
         metric: Optional[str] = None,
         use_cuda: bool = False,
-        disable: bool = False,
+        enable: bool = True,
 ) -> Generator[_time_summary._ReportNotification, None, None]:
 
-    if disable:
+    if not enable:
         yield _DummyReportNotification()
         return
 
@@ -68,11 +68,11 @@ _T = TypeVar('_T')
 def record_function(
         tag: Optional[str],
         use_cuda: bool = False,
-        disable: bool = False,
+        enable: bool = True,
 ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
     def wrapper(f: Callable[..., _T]) -> Callable[..., _T]:
         def wrapped(*args: Any, **kwargs: Any) -> _T:
-            with record(tag or f.__name__, use_cuda=use_cuda, disable=disable):
+            with record(tag or f.__name__, use_cuda=use_cuda, enable=enable):
                 return f(*args, **kwargs)
 
         return wrapped
@@ -85,7 +85,7 @@ def record_iterable(
         iter: Iterable[_T],
         divide_metric: bool = False,
         use_cuda: bool = False,
-        disable: bool = False,
+        enable: bool = True,
 ) -> Iterable[_T]:
     if tag is None:
         tag = _infer_tag_name(inspect.currentframe(), depth=1)
@@ -94,7 +94,7 @@ def record_iterable(
         for i, x in enumerate(iter):
             name = f"{tag}-{i}"
             metric = name if divide_metric else tag
-            with record(name, metric, use_cuda=use_cuda, disable=disable):
+            with record(name, metric, use_cuda=use_cuda, enable=enable):
                 yield x
 
     return wrapped()
