@@ -141,6 +141,7 @@ class _BaseExtensionsManager:
             writer: Optional[writing.Writer],
             stop_trigger: 'trigger_module.TriggerLike' = None,
             transform_model: _TransformModel = default_transform_model,
+            enable_profile: bool = False,
     ) -> None:
         if extensions is None:
             extensions = []
@@ -199,6 +200,7 @@ class _BaseExtensionsManager:
         for ext in extensions:
             self.extend(ext)
 
+        self._enable_profile = enable_profile
         # Initialize the writer
         self.writer.initialize(self.out)
 
@@ -486,13 +488,15 @@ class _BaseExtensionsManager:
                 else:
                     with record(
                         f'pytorch_pfn_extras.training.ExtensionsManager'
-                        f'.run_extensions:{name}'
+                        f'.run_extensions:{name}',
+                        enable=self._enable_profile,
                     ):
                         entry.extension(self)
         for name, extension in to_run:
             with record(
                 f'pytorch_pfn_extras.training.ExtensionsManager'
-                f'.run_extensions:{name}'
+                f'.run_extensions:{name}',
+                enable=self._enable_profile,
             ):
                 extension(self)
         self._model_available = True
@@ -595,6 +599,8 @@ class ExtensionsManager(_BaseExtensionsManager):
            interval trigger set to `max_epochs`
         writer (writing.Writer object): Writer that can be used by
             extensions to write data to custom filesystems.
+        enable_profile (bool): Flag to enable/disable profiling of iterations.
+            Default is `False`.
     """
 
     def __init__(
@@ -609,10 +615,11 @@ class ExtensionsManager(_BaseExtensionsManager):
             stop_trigger: 'trigger_module.TriggerLike' = None,
             writer: Optional[writing.Writer] = None,
             transform_model: _TransformModel = lambda n, x: x,
+            enable_profile: bool = False,
     ) -> None:
         super().__init__(
             models, optimizers, max_epochs, extensions,
-            out_dir, writer, stop_trigger, transform_model)
+            out_dir, writer, stop_trigger, transform_model, enable_profile)
         if iters_per_epoch < 1:
             raise ValueError(
                 'iters_per_epoch must be an integer >= 1 ({} given)'.format(
@@ -728,6 +735,8 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
         out_dir (str): Output directory (default: ``result``).
         writer (writing.Writer object): Writer that can be used by
             extensions to write data to custom filesystems.
+        enable_profile (bool): Flag to enable/disable profiling of iterations.
+            Default is `False`.
     """
     def __init__(
             self,
@@ -739,7 +748,8 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             *,
             extensions: Optional[Sequence['extension_module.ExtensionLike']] = None,
             out_dir: str = 'result',
-            writer: Optional[writing.Writer] = None
+            writer: Optional[writing.Writer] = None,
+            enable_profile: bool = False,
     ) -> None:
         import ignite
         if not isinstance(engine, ignite.engine.Engine):
@@ -749,7 +759,8 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             raise ImportError('Ignite version found {}. '
                               'Required is >=0.3.0'.format(ignite.__version__))
         super().__init__(
-            models, optimizers, max_epochs, extensions, out_dir, writer)
+            models, optimizers, max_epochs, extensions, out_dir, writer,
+            enable_profile=enable_profile)
         self.engine = engine
         self._start_epoch = 0  # Used to correctly restore snapshots
         self.set_ignite_handlers()
