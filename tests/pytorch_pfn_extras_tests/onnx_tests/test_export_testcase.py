@@ -2,12 +2,12 @@ import io
 import os
 import json
 from pathlib import Path
-from packaging import version
 
 import numpy as np
 import onnx
 import onnx.numpy_helper
 import pytest
+import pytorch_pfn_extras
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -22,8 +22,6 @@ from pytorch_pfn_extras.onnx.unstrip_tensor import unstrip
 
 
 output_dir = 'out'
-
-torch_version = version.Version(torch.__version__)
 
 
 class Net(nn.Module):
@@ -113,7 +111,7 @@ def test_export_testcase_return_output():
 
     output_dir = _get_output_dir('export_filename')
 
-    if version.Version('1.6.0') <= torch_version:
+    if pytorch_pfn_extras.is_available("1.6.0"):
         with pytest.warns(UserWarning):
             (out,) = export_testcase(model, x, output_dir, return_output=True)
     else:
@@ -250,7 +248,7 @@ def test_backward_multiple_input():
 @pytest.mark.filterwarnings(
     "ignore::torch.jit.TracerWarning", "ignore::UserWarning")
 def test_export_testcase_strip_large_tensor_data():
-    if torch_version < version.Version('1.6.0'):
+    if not pytorch_pfn_extras.is_available("1.6.0"):
         pytest.skip('skip for PyTorch 1.5 or earlier')
 
     model = Net().to('cpu')
@@ -381,7 +379,7 @@ class NetWithUnusedInput(nn.Module):
 
 @pytest.mark.parametrize("keep_initializers_as_inputs", [None, True, False])
 def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
-    if torch_version < version.Version('1.7.0'):
+    if not pytorch_pfn_extras.is_available("1.7.0"):
         pytest.skip('skip for PyTorch 1.6 or earlier')
 
     model = NetWithUnusedInput().to('cpu')
