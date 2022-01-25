@@ -257,7 +257,7 @@ class TestDistributedDataParallel:
 
     @pytest.mark.parametrize('device_type', _device_types())
     @pytest.mark.skipif(
-        not pytorch_pfn_extras.is_available("1.6.0"),
+        not pytorch_pfn_extras.requires("1.6.0"),
         reason="Variable._execution_engine.queue_callback does not work "
                "with checkpointing when torch < 1.6.0")
     def test_checkpoint(self, device_type):

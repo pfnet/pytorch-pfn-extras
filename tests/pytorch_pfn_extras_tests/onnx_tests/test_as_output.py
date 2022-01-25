@@ -15,7 +15,7 @@ from tests.pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _help
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_as_output_no_export():
-    if not pytorch_pfn_extras.is_available("1.8.0"):
+    if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
     class Net(nn.Module):
@@ -38,7 +38,7 @@ def test_as_output_no_export():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_as_output():
-    if not pytorch_pfn_extras.is_available("1.8.0"):
+    if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
     class Net(nn.Module):
@@ -69,7 +69,7 @@ def test_as_output():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_no_as_output():
-    if not pytorch_pfn_extras.is_available("1.8.0"):
+    if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
     class Net(nn.Module):

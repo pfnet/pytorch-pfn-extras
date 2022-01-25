@@ -8,7 +8,7 @@ import pytorch_pfn_extras as ppe
 
 _profiler_available = (
     os.name != 'nt'
-    or ppe.is_available("1.9")
+    or ppe.requires("1.9")
 )
 
 

@@ -23,6 +23,6 @@ from pytorch_pfn_extras._tensor import get_xp  # NOQA
 from pytorch_pfn_extras._tensor import as_numpy_dtype  # NOQA
 from pytorch_pfn_extras._tensor import from_numpy_dtype  # NOQA
 from pytorch_pfn_extras.runtime._to import to  # NOQA
-from pytorch_pfn_extras.torch_version import is_available  # NOQA
+from pytorch_pfn_extras._torch_version import requires  # NOQA
 
 from pytorch_pfn_extras._version import __version__  # NOQA

@@ -120,7 +120,7 @@ def _export_util(
     # This is a temporal workaround until a fix is introduced in PyTorch.
     try:
         torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
-        if pytorch_pfn_extras.is_available('1.10.0'):
+        if pytorch_pfn_extras.requires('1.10.0'):
             try:
                 enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
                 return torch_export(  # type: ignore[no-untyped-call]
@@ -148,7 +148,7 @@ def _export(
     opset_ver = kwargs.get('opset_version', None)
     if opset_ver is None:
         opset_ver = _default_onnx_opset_version
-    if not pytorch_pfn_extras.is_available('1.10.0'):
+    if not pytorch_pfn_extras.requires('1.10.0'):
         strip_doc_string = kwargs.get('strip_doc_string', True)
         kwargs['strip_doc_string'] = False
     else:

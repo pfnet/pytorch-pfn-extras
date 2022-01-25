@@ -16,7 +16,7 @@ from tests.pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _help
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad_no_export():
-    if not pytorch_pfn_extras.is_available("1.8.0"):
+    if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
     class Net(nn.Module):
@@ -46,10 +46,10 @@ def test_grad_no_export():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad():
-    if not pytorch_pfn_extras.is_available('1.8.0'):
+    if not pytorch_pfn_extras.requires('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
-    if not pytorch_pfn_extras.is_available('1.9.0') and sys.platform == 'win32':
+    if not pytorch_pfn_extras.requires('1.9.0') and sys.platform == 'win32':
         pytest.skip('ONNX grad test does not work in windows CI for torch > 1.9')
 
     class Net(nn.Module):
@@ -95,10 +95,10 @@ def test_grad():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad_multiple_times():
-    if not pytorch_pfn_extras.is_available("1.8.0"):
+    if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
-    if not pytorch_pfn_extras.is_available('1.9.0') and sys.platform == 'win32':
+    if not pytorch_pfn_extras.requires('1.9.0') and sys.platform == 'win32':
         pytest.skip('ONNX grad test does not work in windows CI for torch > 1.9')
 
     class Net(nn.Module):
@@ -157,10 +157,10 @@ def test_grad_multiple_times():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad_with_multiple_inputs():
-    if not pytorch_pfn_extras.is_available("1.8.0"):
+    if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
-    if not pytorch_pfn_extras.is_available('1.9.0') and sys.platform == 'win32':
+    if not pytorch_pfn_extras.requires('1.9.0') and sys.platform == 'win32':
         pytest.skip('ONNX grad test does not work in windows CI for torch > 1.9')
 
     class Net(nn.Module):
