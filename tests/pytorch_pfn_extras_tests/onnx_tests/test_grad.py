@@ -1,5 +1,6 @@
 import os
 from packaging import version
+import sys
 
 import onnx
 import onnx.checker
@@ -51,6 +52,9 @@ def test_grad():
     if torch_version < version.Version('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
+    if torch_version > version.Version('1.9.0') and sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI for torch > 1.9')
+
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -96,6 +100,9 @@ def test_grad():
 def test_grad_multiple_times():
     if torch_version < version.Version('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
+
+    if torch_version > version.Version('1.9.0') and sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI for torch > 1.9')
 
     class Net(nn.Module):
         def __init__(self):
@@ -155,6 +162,9 @@ def test_grad_multiple_times():
 def test_grad_with_multiple_inputs():
     if torch_version < version.Version('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
+
+    if torch_version > version.Version('1.9.0') and sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI for torch > 1.9')
 
     class Net(nn.Module):
         def __init__(self):
