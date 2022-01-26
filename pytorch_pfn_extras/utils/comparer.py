@@ -1,7 +1,9 @@
 import collections
 import json
+import pathlib
 import re
 import threading
+import weakref
 import concurrent.futures
 from typing import (
     Any, Callable, Dict, Iterable, List, Mapping, Optional, Sequence,
@@ -11,8 +13,6 @@ from typing import (
 import torch.nn
 import torch.testing
 
-import pytorch_pfn_extras as ppe
-from pytorch_pfn_extras import engine as _engine_module
 from pytorch_pfn_extras import handler as _handler_module
 from pytorch_pfn_extras.handler import _logic
 from pytorch_pfn_extras.training import _trainer
@@ -133,7 +133,7 @@ class _ComparableHandler(_handler_module.BaseHandler):
     def _compare(self, engine: Any, batch_idx: int, outputs: Any) -> None:
         outputs = _logic._normalize_outputs(outputs)
         target = self._get_target_cb(self, engine, batch_idx, outputs)
-        self._compare_cb(self, engine, batch_idx, target)
+        self._compare_cb(self.name, engine, batch_idx, target)
 
     def _reset_intermediate_values(self) -> None:
         assert self._batch_idx is not None
@@ -317,16 +317,16 @@ class _ComparerBase:
 
     def compare_targets(
             self,
-            handler: _ComparableHandler,
+            name: str,
             engine: _Engine,
             batch_idx: int,
             target: Dict[str, Any],
     ) -> None:
-        self._iters[handler.name] += 1
-        if (self.n_iters is None) or (self._iters[handler.name] % self.n_iters == 0):
+        self._iters[name] += 1
+        if (self.n_iters is None) or (self._iters[name] % self.n_iters == 0):
             # Save the outputs of this iteration
             with self.report_lock:
-                self.targets[handler.name] = target
+                self.targets[name] = target
                 if len(self.targets.keys()) == len(self.engines.keys()):
                     # all outputs have been filled, lets compare and reset
                     _compare_targets(self.compare_fn, self.targets, None, batch_idx)
@@ -530,7 +530,8 @@ class Comparer:
         """
         self._engine_type: Optional[Type[_Engine]] = None
         self._engines: Dict[
-            str, Tuple[_Engine, Any, Any]] = collections.OrderedDict()
+            str, Tuple[Union[_Engine, _LoadDumpsEngine], Any, Any]
+        ] = collections.OrderedDict()
         self._compare_fn = compare_fn
         self._targets: Dict[str, Dict[str, Any]] = {}
         self._output_keys = outputs
@@ -586,14 +587,14 @@ class Comparer:
 
     def _compare_targets(
             self,
-            handler: _ComparableHandler,
+            name: str,
             engine: _Engine,
             batch_idx: int,
             target: Dict[str, Any],
     ) -> None:
         # Save the outputs of this iteration
         with self._report_lock:
-            self._targets[handler.name] = target
+            self._targets[name] = target
             if len(self._targets.keys()) == len(self._engines.keys()):
                 # all outputs have been filled, lets compare and reset
                 _compare_targets(
@@ -646,17 +647,6 @@ class Comparer:
 
         self._engines[name] = engine, args, kwargs
 
-    def _load_dump(
-            self,
-            handler: _ComparableHandler,
-            engine: _Engine,
-            batch_idx: int,
-            outputs: Dict[str, Any],
-    ) -> Dict[str, Dict[str, Any]]:
-        name = self._get_filename(engine, handler.name, batch_idx)
-        assert isinstance(engine.handler, _ComparableHandler)
-        return torch.load(f'{engine.handler._dir}/{name}')  # type: ignore
-
     def add_dump(self, name: str, dir: str) -> None:
         """Add an engine to compare variables.
 
@@ -666,52 +656,17 @@ class Comparer:
             dir (str):
                 The directory that the results are saved to.
         """
-        with open(f'{dir}/summary') as f:
-            summary = json.loads(f.read())
-
-        class DummyModel(torch.nn.Module):
-            def __init__(self) -> None:
-                super().__init__()  # type: ignore[no-untyped-call]
-                self.param = torch.nn.Parameter(torch.tensor(1.0))
-
-            def forward(self, *args: Any, **kwargs: Any) -> Any:
-                return ()
-
-        model = DummyModel()
-        ppe.to(model, 'cpu')
-
-        # Create a dummy engine
-        evaluator: Optional[_evaluator.Evaluator] = None
-        trainer: Optional[_trainer.Trainer] = None
-        args = []
-        if summary['evaluator']:
-            evaluator = _engine_module.create_evaluator(model)
-            args = [[None] * summary['eval_len']]
-        if summary['trainer']:
-            trainer = _engine_module.create_trainer(
-                {'main': model},
-                {'main': torch.optim.SGD(model.parameters(), lr=0.01)},
-                summary['max_epochs'],
-                evaluator=evaluator,
-            )
-            args = [[None] * summary['train_len']] + args
-
-        engine = trainer or evaluator
-        assert engine is not None
-        _overwrite_handler(
-            engine, name, self._load_dump, self._compare_targets,
-            self._trigger, dir=dir)
-
-        self._engines[name] = engine, args, {}
+        engine = _LoadDumpsEngine(self, name, dir)
+        self._engines[name] = engine, (), {}
 
     def _dump_targets(
             self,
-            handler: _ComparableHandler,
+            name: str,
             engine: _Engine,
             batch_idx: int,
             target: Dict[str, Any],
     ) -> None:
-        name = self._get_filename(engine, handler.name, batch_idx)
+        name = self._get_filename(engine, name, batch_idx)
         assert isinstance(engine.handler, _ComparableHandler)
         torch.save(target, f'{engine.handler._dir}/{name}')
         self._count += 1
@@ -787,3 +742,23 @@ def intermediate_value(name: str, value: torch.Tensor) -> None:
     if not hasattr(_thread_local, 'handler'):
         return
     _thread_local.handler._add_intermediate_value(name, value)
+
+
+class _LoadDumpsEngine:
+    def __init__(self, comparer: Comparer, name: str, dir: str) -> None:
+        self.name = name
+        self._comparer_ref = weakref.ref(comparer)
+        self._dir = dir
+
+    def run(self) -> None:
+        comparer = self._comparer_ref()
+        assert comparer is not None
+        for path in sorted(pathlib.Path(self._dir).iterdir()):
+            filename = path.name
+            if filename.startswith('dump_'):
+                target = torch.load(path)  # type: ignore[no-untyped-call]
+                iter_str = '_iter_'
+                pos = filename.find(iter_str)
+                batch_idx = int(filename[pos + len(iter_str):])
+                comparer._compare_targets(
+                    self.name, None, batch_idx, target)  # type: ignore
