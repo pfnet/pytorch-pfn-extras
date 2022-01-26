@@ -49,8 +49,8 @@ def test_grad():
     if not pytorch_pfn_extras.requires('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
-    if not pytorch_pfn_extras.requires('1.9.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch > 1.9')
+    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
 
     class Net(nn.Module):
         def __init__(self):
@@ -98,8 +98,8 @@ def test_grad_multiple_times():
     if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
-    if not pytorch_pfn_extras.requires('1.9.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch > 1.9')
+    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
 
     class Net(nn.Module):
         def __init__(self):
@@ -160,8 +160,8 @@ def test_grad_with_multiple_inputs():
     if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
-    if not pytorch_pfn_extras.requires('1.9.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch > 1.9')
+    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
 
     class Net(nn.Module):
         def __init__(self):
