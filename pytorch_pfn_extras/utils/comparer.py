@@ -576,7 +576,7 @@ class Comparer:
 
     def _get_filename(
             self, engine: _Engine, handler_name: str, batch_idx: int) -> str:
-        name = f'dump_{self._count}'
+        name = f'dump_{self._count:08}'
         name += '_' + type(engine).__name__
         orig_engine, _, _ = self._engines[handler_name]
         epoch = orig_engine.handler._epoch  # type: ignore
