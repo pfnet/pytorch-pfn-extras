@@ -95,7 +95,7 @@ def test_inf():
 def test_check_grad():
     manager, model, optimizer = get_manager_model_optimizer(
         check_grad=True, grad_error=True)
-    with pytest.raises(RuntimeError, match='diverge') as e:
+    with pytest.raises(RuntimeError, match='diverge'):
         run_train(manager, model, optimizer, optimizer_step=False)
 
 
