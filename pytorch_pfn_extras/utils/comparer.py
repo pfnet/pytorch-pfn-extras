@@ -543,6 +543,7 @@ class Comparer:
         # Synchronizes iteration timing
         self._barrier: Optional[threading.Barrier] = None
         self._report_lock = threading.Lock()  # Locks `Comparer._get_target`
+        self._count = 0
 
         if trigger is None:
             self._trigger = trigger_module.get_trigger((1, "epoch"))
@@ -574,7 +575,8 @@ class Comparer:
 
     def _get_filename(
             self, engine: _Engine, handler_name: str, batch_idx: int) -> str:
-        name = type(engine).__name__
+        name = f'dump_{self._count}'
+        name += '_' + type(engine).__name__
         orig_engine, _, _ = self._engines[handler_name]
         epoch = orig_engine.handler._epoch  # type: ignore
         if epoch is not None:
@@ -597,6 +599,7 @@ class Comparer:
                 _compare_targets(
                     self._compare_fn, self._targets, self._baseline, batch_idx)
                 self._targets = {}
+                self._count += 1
             self._assert_incompatible_trigger(not self._finalized)
 
         # Excplicitly synchronize
@@ -711,6 +714,7 @@ class Comparer:
         name = self._get_filename(engine, handler.name, batch_idx)
         assert isinstance(engine.handler, _ComparableHandler)
         torch.save(target, f'{engine.handler._dir}/{name}')
+        self._count += 1
 
     def dump(self, engine: _Engine, dir: str, *args: Any, **kwargs: Any) -> None:
         """Add an engine to compare variables.
@@ -723,6 +727,7 @@ class Comparer:
             *args and **kwargs:
                 Arguments passed to ``engine.run``.
         """
+        self._count = 0
         name = '__dump'
         _overwrite_handler(
             engine, name, self._get_target, self._dump_targets,
@@ -765,6 +770,7 @@ class Comparer:
     def compare(self) -> None:
         """Compares outputs.
         """
+        self._count = 0
         n_workers = len(self._engines)
         self._barrier = threading.Barrier(n_workers)
         self._semaphore = threading.Semaphore(
