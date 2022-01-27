@@ -1,5 +1,4 @@
 import collections
-import json
 import pathlib
 import re
 import threading
@@ -694,18 +693,6 @@ class Comparer:
 
         assert isinstance(engine.handler, _ComparableHandler)
         engine.handler = engine.handler._handler
-        summary = {
-            'evaluator': (isinstance(engine, _evaluator.Evaluator)
-                          or getattr(engine, 'evaluator', None) is not None),
-            'trainer': isinstance(engine, _trainer.Trainer),
-            'train_len': getattr(engine, '_train_len', None),
-            'eval_len': engine._eval_len,
-        }
-        if isinstance(engine,_trainer.Trainer):
-            assert engine._manager is not None
-            summary['max_epochs'] = engine._manager.max_epochs
-        with open(f'{dir}/summary', 'w') as f:
-            f.write(json.dumps(summary))
 
     def _run_engine(self, engine: _Engine, args: Any, kwargs: Any) -> None:
         assert self._semaphore is not None
