@@ -110,6 +110,7 @@ Distributed Training
    :toctree: generated/
 
    nn.parallel.DistributedDataParallel
+   distributed.initialize_ompi_environment
 
 
 Check Pointing

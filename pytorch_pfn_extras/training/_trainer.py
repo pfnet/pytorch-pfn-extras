@@ -1,3 +1,4 @@
+import collections.abc
 import queue
 import time
 import warnings
@@ -27,7 +28,9 @@ class Trainer:
             self,
             handler: 'handler_module.BaseHandler',
             *,
-            evaluator: Optional[Union['Evaluator', Tuple['Evaluator', TriggerLike]]],
+            evaluator: Optional[Union[
+                'Evaluator', Tuple['Evaluator', TriggerLike],
+                Mapping[str, Union['Evaluator', Tuple['Evaluator', TriggerLike]]]]],
             models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
             **kwargs: Any,
     ):
@@ -43,19 +46,21 @@ class Trainer:
         else:
             self._models = models
         self._kwargs = kwargs
+        self._enable_profile = kwargs.get('enable_profile', False)
         self._extensions: List[  # list of (args, kwargs)
             Tuple[Tuple['training.Extension', Optional[str],
                         'TriggerLike', Optional[int]],
                   Dict[str, Any]]] = []
         self._manager_state: Optional[Dict[str, Any]] = None
 
-        if isinstance(evaluator, tuple):
-            self.evaluator: Optional['Evaluator'] = None
-            self.evaluator, trigger = evaluator
-            self.evaluator_trigger = trigger_module.get_trigger(trigger)
-        else:
-            self.evaluator = evaluator
-            self.evaluator_trigger = trigger_module.get_trigger((1, 'epoch'))
+        self._evaluators: Dict[str, Tuple['Evaluator', TriggerLike]] = {}
+        if evaluator is None:
+            evaluator = {}
+        elif not isinstance(evaluator, collections.abc.Mapping):
+            evaluator = {"Evaluator": evaluator}
+        if isinstance(evaluator, collections.abc.Mapping):
+            for n, e in evaluator.items():
+                self._evaluators[n] = e if isinstance(e, tuple) else (e, (1, 'epoch'))
         self.val_loader = None
 
     def extend(
@@ -132,6 +137,14 @@ class Trainer:
     def stop_trigger(self, trigger: Trigger) -> None:
         self._stop_trigger = trigger
 
+    @property
+    def evaluator(self) -> Optional['Evaluator']:
+        if len(self._evaluators) == 0:
+            return None
+        if len(self._evaluators) == 1:
+            return next(iter(self._evaluators.values()))[0]
+        raise ValueError('multiple evaluators are registered.')
+
     def get_optimizer(self, name: str) -> torch.optim.Optimizer:
         return self.manager.optimizers[name]
 
@@ -186,15 +199,7 @@ class Trainer:
             record_run_iteration.complete()
             record_iteration.complete()
 
-    def _run_evaluator(self) -> None:
-        assert self.evaluator is not None
-        if self._val_loader is None:
-            raise ValueError('"val_loader" is not given.')
-        self.evaluator.handler.train_validation_begin(self, self.evaluator)
-        self.evaluator.run(self._val_loader, eval_len=self._eval_len)
-        self.evaluator.handler.train_validation_end(self, self.evaluator)
-
-    def run(self,  # type: ignore[override]
+    def run(self,
             train_loader: Iterable[Any],
             val_loader: Optional[Iterable[Any]] = None,
             *,
@@ -223,30 +228,43 @@ class Trainer:
             eval_len = len(val_loader)  # type: ignore[arg-type]
 
         self._train_len = train_len
-        self._val_loader = val_loader
         self._eval_len = eval_len
 
         class _EvaluatorExt:
-            def __init__(self, trainer: 'Trainer') -> None:
-                self.name = 'Evaluator'
+            def __init__(
+                    self,
+                    trainer: 'Trainer',
+                    evaluator: 'Evaluator',
+                    val_loader: Optional[Iterable[Any]],
+                    eval_len: Optional[int],
+            ) -> None:
                 self.needs_model_state = True
                 self._trainer = trainer
+                self._evaluator = evaluator
+                self._val_loader = val_loader
+                self._eval_len = eval_len
 
             def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-                self._trainer._run_evaluator()
+                evaluator = self._evaluator
+                if self._val_loader is None:
+                    raise ValueError('"val_loader" is not given.')
+                evaluator.handler.train_validation_begin(self._trainer, evaluator)
+                evaluator.run(self._val_loader, eval_len=self._eval_len)
+                evaluator.handler.train_validation_end(self._trainer, evaluator)
 
         if self._manager is None:
             self._manager = self._setup_manager(train_len)
-            if self.evaluator is not None:
+            for name, (evaluator, trigger) in self._evaluators.items():
                 # Register the evaluator as an extension to the manager
                 # To be triggered with the correct timing
                 self._manager.extend(
-                    _EvaluatorExt(self),
-                    trigger=self.evaluator_trigger,
+                    _EvaluatorExt(self, evaluator, val_loader, eval_len),
+                    name=name,
+                    trigger=trigger_module.get_trigger(trigger),
                     priority=extension.PRIORITY_WRITER,
                 )
             self.handler.train_setup(self, train_loader)
-            if self.evaluator is None:
+            if len(self._evaluators) == 0:
                 if val_loader is not None:
                     warnings.warn(
                         '`val_loader` is given whereas the evaluator is missing.',
@@ -254,7 +272,8 @@ class Trainer:
             else:
                 if val_loader is None:
                     raise ValueError('`val_loader` is required')
-                self.evaluator.handler.eval_setup(self.evaluator, val_loader)
+                for _, (evaluator, _) in self._evaluators.items():
+                    evaluator.handler.eval_setup(evaluator, val_loader)
 
         while not self.manager.stop_trigger:
             self.handler.train_epoch_begin(self, train_loader)
@@ -273,17 +292,20 @@ class Trainer:
             for idx in range(train_len):
                 with record(
                     "pytorch_pfn_extras.training.Trainer:iteration",
-                    use_cuda=torch.cuda.is_available()
+                    use_cuda=torch.cuda.is_available(),
+                    enable=self._enable_profile
                 ) as ntf0:
                     try:
                         with record(
-                            "pytorch_pfn_extras.training.Trainer:get_data"
+                            "pytorch_pfn_extras.training.Trainer:get_data",
+                            enable=self._enable_profile
                         ):
                             x = next(loader_iter)
                     except StopIteration:
                         loader_iter = iter(train_loader)
                         with record(
-                            "pytorch_pfn_extras.training.Trainer:get_data"
+                            "pytorch_pfn_extras.training.Trainer:get_data",
+                            enable=self._enable_profile
                         ):
                             x = next(loader_iter)
                     begin = time.time()
@@ -293,13 +315,15 @@ class Trainer:
                     self._deferred = True
                     with record(
                         "pytorch_pfn_extras.training.Trainer:run_iteration",
-                        use_cuda=torch.cuda.is_available()
+                        use_cuda=torch.cuda.is_available(),
+                        enable=self._enable_profile
                     ) as ntf1, \
                             self.manager.run_iteration() as iter_notifier:
                         self._observed.put(self.manager.observation)
                         with record(
                             "pytorch_pfn_extras.training.Trainer:train_step",
                             use_cuda=torch.cuda.is_available(),
+                            enable=self._enable_profile
                         ) as ntf2:
                             self._profile_records.put([ntf0, ntf1, ntf2])
                             self.handler.train_step(

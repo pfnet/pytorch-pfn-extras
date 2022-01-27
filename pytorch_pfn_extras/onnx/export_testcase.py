@@ -10,6 +10,7 @@ import warnings
 
 import onnx
 import onnx.numpy_helper
+import pytorch_pfn_extras
 import torch
 import torch.autograd
 from torch.onnx import OperatorExportTypes
@@ -106,8 +107,9 @@ def _export_util(
     if aten or export_raw_ir:
         assert operator_export_type is None
         assert aten ^ export_raw_ir
+        # Note: OperatorExportTypes.RAW unavailable in PyTorch 1.10+
         operator_export_type = OperatorExportTypes.ONNX_ATEN if\
-            aten else OperatorExportTypes.RAW
+            aten else OperatorExportTypes.RAW  # type: ignore
     elif operator_export_type is None:
         if torch.onnx.PYTORCH_ONNX_CAFFE2_BUNDLE:
             operator_export_type = OperatorExportTypes.ONNX_ATEN_FALLBACK
@@ -119,8 +121,18 @@ def _export_util(
     # This is a temporal workaround until a fix is introduced in PyTorch.
     try:
         torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
-        return torch_export(  # type: ignore[no-untyped-call]
-            model, args, f, _retain_param_name=True, **kwargs)
+        if pytorch_pfn_extras.requires('1.10.0'):
+            try:
+                enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
+                return torch_export(  # type: ignore[no-untyped-call]
+                    model, args, f, **kwargs)
+            # this class will change in torch 1.11 to torch.onnx.utils.CheckerError
+            except torch.onnx.utils.ONNXCheckerError:  # type: ignore[attr-defined]
+                if enable_onnx_checker:
+                    raise
+        else:
+            return torch_export(  # type: ignore[no-untyped-call]
+                model, args, f, **kwargs)
     finally:
         torch.onnx.utils._model_to_graph = old_model_to_graph
 
@@ -139,24 +151,29 @@ def _export(
     if opset_ver is None:
         opset_ver = _default_onnx_opset_version
         kwargs['opset_version'] = opset_ver
-    strip_doc_string = kwargs.pop('strip_doc_string', True)
+    if not pytorch_pfn_extras.requires('1.10.0'):
+        strip_doc_string = kwargs.get('strip_doc_string', True)
+        kwargs['strip_doc_string'] = False
+    else:
+        strip_doc_string = kwargs.pop('strip_doc_string', True)
+        kwargs['verbose'] = True
     with init_annotate(model, opset_ver) as ann, \
             as_output.trace(model) as (model, outputs), \
             grad.init_grad_state():
         if use_pfto:
             outs = pfto_export(
-                model, args, bytesio, strip_doc_string=False, **kwargs)
+                model, args, bytesio, strip_doc_string=strip_doc_string, **kwargs)
         else:
             outs = _export_util(
-                model, args, bytesio, strip_doc_string=False, **kwargs)
+                model, args, bytesio, **kwargs)
         onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)
         outputs.add_outputs_to_model(onnx_graph)
+        if strip_doc_string:
+            for node in onnx_graph.graph.node:
+                node.doc_string = b''
 
-    if strip_doc_string:
-        for node in onnx_graph.graph.node:
-            node.doc_string = b''
     if strip_large_tensor_data:
         _strip_large_initializer_raw_data(onnx_graph, large_tensor_threshold)
 
@@ -265,7 +282,8 @@ def export_testcase(
         input_names=input_names, **kwargs)
     if isinstance(outs, torch.Tensor):
         outs = outs,
-
+    elif outs is None:
+        outs = ()
     # Remove unused inputs
     # - When keep_initializers_as_inputs=True, inputs contains initializers.
     #   So we have to filt initializers.

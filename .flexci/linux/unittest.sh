@@ -33,8 +33,8 @@ popd
 # Comparer
 pushd example
 mkdir -p comp_dump_cpu
-python mnist_trainer.py --device cpu --epochs 1 --batch-size 1024 --deterministic --compare-dump comp_dump_cpu
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python mnist_trainer.py --device cuda --epochs 1 --batch-size 1024 --deterministic --compare-with comp_dump_cpu
+python mnist_trainer.py --device cpu --epochs 2 --batch-size 1024 --deterministic --compare-dump comp_dump_cpu
+CUBLAS_WORKSPACE_CONFIG=:4096:8 python mnist_trainer.py --device cuda --epochs 2 --batch-size 1024 --deterministic --compare-with comp_dump_cpu
 popd
 
 # Publish coverage report
