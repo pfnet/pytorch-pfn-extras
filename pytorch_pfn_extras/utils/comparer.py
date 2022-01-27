@@ -682,6 +682,8 @@ class Comparer:
             *args and **kwargs:
                 Arguments passed to ``engine.run``.
         """
+        pathlib.Path(dir).mkdir(parents=True, exist_ok=True)
+
         self._count = 0
         name = '__dump'
         _overwrite_handler(
