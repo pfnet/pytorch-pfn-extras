@@ -151,7 +151,7 @@ def _export(
     if opset_ver is None:
         opset_ver = _default_onnx_opset_version
         kwargs['opset_version'] = opset_ver
-    if not pytorch_pfn_extras.requires('1.10.0'):
+    if use_pfto or not pytorch_pfn_extras.requires('1.10.0'):
         strip_doc_string = kwargs.get('strip_doc_string', True)
         kwargs['strip_doc_string'] = False
     else:
@@ -162,7 +162,7 @@ def _export(
             grad.init_grad_state():
         if use_pfto:
             outs = pfto_export(
-                model, args, bytesio, strip_doc_string=strip_doc_string, **kwargs)
+                model, args, bytesio, **kwargs)
         else:
             outs = _export_util(
                 model, args, bytesio, **kwargs)
