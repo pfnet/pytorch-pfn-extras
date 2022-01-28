@@ -51,7 +51,7 @@ class JITRuntime(ppe.runtime.PyTorchRuntime):
         module.forward = types.MethodType(new_forward, module)
 
         def new_state_dict(self, *args, **kwargs):
-            return self._traced_mod.module.state_dict()
+            return self._traced_mod._ppe_as_out_module.state_dict()
 
         module.state_dict = types.MethodType(new_state_dict, module)
 
