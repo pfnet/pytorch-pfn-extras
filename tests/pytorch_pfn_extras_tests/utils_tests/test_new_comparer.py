@@ -430,15 +430,13 @@ def test_dump(engine_fn, model_class, params):
     engine_gpu, loaders_gpu = engine_fn(model_class, "cuda:0", [1.0], loader)
     engine_jit, loaders_jit = engine_fn(model_class, "jit-cpu", [1.0], loader)
     comp = ppe.utils.comparer.Comparer(params=params)
-    with tempfile.TemporaryDirectory() as tmpdir1, \
-         tempfile.TemporaryDirectory() as tmpdir2, \
-         tempfile.TemporaryDirectory() as tmpdir3:
-        comp.dump(engine_cpu, tmpdir1, *loaders_cpu)
-        comp.dump(engine_gpu, tmpdir2, *loaders_gpu)
-        comp.dump(engine_jit, tmpdir3, *loaders_jit)
-        comp.add_dump('cpu', tmpdir1)
-        comp.add_dump('gpu', tmpdir2)
-        comp.add_dump('jit', tmpdir3)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        comp.dump(engine_cpu, f'{tmpdir}/cpu', *loaders_cpu)
+        comp.dump(engine_gpu, f'{tmpdir}/gpu', *loaders_gpu)
+        comp.dump(engine_jit, f'{tmpdir}/jit', *loaders_jit)
+        comp.add_dump('cpu', f'{tmpdir}/cpu')
+        comp.add_dump('gpu', f'{tmpdir}/gpu')
+        comp.add_dump('jit', f'{tmpdir}/jit')
         comp.compare()
 
 
