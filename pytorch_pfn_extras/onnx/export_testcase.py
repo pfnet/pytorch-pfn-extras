@@ -131,7 +131,7 @@ def _export_util(
                     raise
         else:
             return torch_export(  # type: ignore[no-untyped-call]
-                model, args, f, **kwargs)
+                model, args, f, _retain_param_name=True, **kwargs)
     finally:
         torch.onnx.utils._model_to_graph = old_model_to_graph
 
