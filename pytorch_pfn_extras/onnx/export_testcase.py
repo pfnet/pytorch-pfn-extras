@@ -130,6 +130,7 @@ def _export_util(
                 if enable_onnx_checker:
                     raise
         else:
+            kwargs['_retain_param_name'] = True
             return torch_export(  # type: ignore[no-untyped-call]
                 model, args, f, **kwargs)
     finally:
