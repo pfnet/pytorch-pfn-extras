@@ -26,6 +26,7 @@ def test_train_resnet18():
     )
 
 
+@pytest.mark.filterwarnings("ignore:__floordiv__ is deprecated:UserWarning")
 def test_shufflenet():
     run_model_test(
         torchvision.models.shufflenetv2.shufflenet_v2_x1_0(),
