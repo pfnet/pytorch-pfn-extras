@@ -40,6 +40,10 @@ class MockRuntime(ppe.runtime.BaseRuntime):
         self._train_epoch_end_called = True
         self._called_module = module
 
+    def train_cleanup(self, module):
+        self._train_cleanup_called = True
+        self._called_module = module
+
     def train_pre_step(self, trainer, module, batch_idx, batch):
         self._train_pre_step_called = True
         self._called_module = module
@@ -146,6 +150,16 @@ class TestHandlerTrainSync(HandlerTester):
         self._move_modules(module, to_move)
         handler.train_setup(trainer, [])
         self._assert_called(module, to_move, 'initialize')
+
+    @pytest.mark.parametrize(
+        'to_move', [('self',), ('sm1',), ('sm2',), ('sm1', 'sm2')]
+    )
+    def test_train_cleanup(self, to_move):
+        handler, trainer, _ = self._get_handler()
+        module = trainer.models['main']
+        self._move_modules(module, to_move)
+        handler.train_cleanup(trainer)
+        self._assert_called(module, to_move, 'train_cleanup')
 
     @pytest.mark.parametrize(
         'to_move', [('self',), ('sm1',), ('sm2',), ('sm1', 'sm2')]
