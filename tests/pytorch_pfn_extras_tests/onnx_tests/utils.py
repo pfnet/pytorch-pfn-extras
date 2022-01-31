@@ -4,7 +4,7 @@ from typing import Callable, List, Optional
 import onnx
 import onnxruntime as ort
 import torch
-from pytorch_pfn_extras.onnx.pfto_exporter import export as pfto_export
+from pytorch_pfn_extras.onnx.pfto_exporter.export import export as pfto_export
 
 
 def run_model_test(
