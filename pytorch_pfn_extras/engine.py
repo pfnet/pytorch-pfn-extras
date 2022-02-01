@@ -30,7 +30,7 @@ def create_trainer(
         evaluator: Optional[
             Union['Evaluator', Tuple['Evaluator', 'TriggerLike']]] = None,
         device: 'DeviceLike' = 'cpu',
-        logic: Optional[handler_module.Logic] = None,
+        logic: Optional[handler_module.BaseLogic] = None,
         transform_model: Callable[
             [str, torch.nn.Module], torch.nn.Module] = default_transform_model,
         handler_class: Optional[Type[handler_module.Handler]] = None,
