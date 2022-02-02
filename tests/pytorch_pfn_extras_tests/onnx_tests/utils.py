@@ -73,7 +73,7 @@ def run_model_test(
             assert torch.isclose(a, e, rtol=rtol, atol=atol).all()
 
         if skip_oxrt:
-            return
+            return onnx.load(f.name)
 
         ort_session = ort.InferenceSession(f.name)
         actual = ort_session.run(None, {k: v.cpu().numpy() for k, v in zip(input_names, args)})
