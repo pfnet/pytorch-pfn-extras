@@ -5,6 +5,28 @@ from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProto
 
 
 class BestObservation(extension.Extension):
+
+    """Traces the best observation value and its epoch, iterations.
+
+    When this extension is triggerred, it checks the value of the specified key in
+    the observations (``observations`` attribute in :class:`~ExtensionsManager`).
+    If the value is better compared to that of previous call, it records
+    that value, current epoch and iteration.
+
+    For making observation and reporting, see :doc:`../../user_guide/reporting`
+    and :doc:`../../user_guide/extensions`.
+
+    Args:
+        observation_key (str): Key storing the observation.
+        direction (str): When ``'MINIMIZE'`` (default) it keeps the smallest
+            observation, and when ``'MAXIMIZE'``, the largest.
+
+    Attributes:
+        best_value: The best value.
+        best_iteration: The iteration count when the best value is observed.
+        best_epoch: The epoch count when the best value is observed.
+
+    """
     trigger = 1, 'epoch'
     default_name = 'best_observation'
     priority = extension.PRIORITY_EDITOR
