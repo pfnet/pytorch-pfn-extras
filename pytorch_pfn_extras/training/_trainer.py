@@ -348,6 +348,8 @@ class Trainer:
             # Will take care of completing pending work
             self.handler.train_epoch_end(self)
 
+        self.handler.train_cleanup(self)
+
 
 # For backward compatibility
 _Trainer = Trainer

@@ -121,6 +121,16 @@ class BaseHandler:
         # Called when finishing an epoch.
         pass
 
+    def train_cleanup(self, trainer: Trainer) -> None:
+        """A method called only once when compleing a training run.
+
+        .. seealso:
+           :meth:`pytorch_pfn_extras.handler.Handler.train_epoch_end`
+        """
+        # Context: Trainer
+        # Called when finishing an epoch.
+        pass
+
     def train_validation_begin(
             self,
             trainer: Trainer,
@@ -352,6 +362,16 @@ class Handler(BaseHandler):
         for _, model in trainer.models.items():
             model.train()
         self._setup(trainer.models, loader, trainer.optimizers)
+
+    def train_cleanup(self, trainer: Trainer) -> None:
+        """A method called only once when compleing a training run.
+
+        Args:
+            trainer (Trainer): The trainer that calls this method.
+            loader (torch.utils.data.DataLoader): The data loader.
+        """
+        for _, sm, rt in self._runtime_iterator(trainer.models):
+            rt.train_cleanup(sm)
 
     def train_epoch_begin(
             self,
