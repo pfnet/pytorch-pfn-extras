@@ -36,6 +36,7 @@ def run_model_test(
     if operator_export_type == torch.onnx.OperatorExportTypes.ONNX_ATEN:
         skip_oxrt = True
     with tempfile.NamedTemporaryFile() as f:
+        f.close()
         expected = model(*args)
         if not isinstance(expected, tuple):
             expected = (expected,)
@@ -58,13 +59,12 @@ def run_model_test(
         actual = pfto_export(
             model,
             args,
-            f,
+            f.name,
             input_names=input_names,
             output_names=output_names,
             strict_trace=strict_trace,
             **kwargs,
         )
-        f.flush()
         if not isinstance(actual, tuple):
             actual = (actual,)
         assert len(actual) == len(expected)
