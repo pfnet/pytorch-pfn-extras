@@ -53,15 +53,15 @@ def _get_output_dir(d, **kwargs):
     return output_dir
 
 
-def _helper(model, args, d, **kwargs):
+def _helper(model, args, d, use_pfto=True, **kwargs):
     output_dir = _get_output_dir(d)
     if 'training' not in kwargs:
         kwargs['training'] = model.training
     if 'do_constant_folding' not in kwargs:
         kwargs['do_constant_folding'] = False
     if 'metadata' not in kwargs:
-        kwargs['metadata'] = False
-    export_testcase(model, args, output_dir, **kwargs)
+        kwargs["metadata"] = False
+    export_testcase(model, args, output_dir, use_pfto=use_pfto, **kwargs)
     return output_dir
 
 
@@ -377,6 +377,7 @@ class NetWithUnusedInput(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
+@pytest.mark.filterwarnings("ignore:Unused input:UserWarning")
 @pytest.mark.parametrize("keep_initializers_as_inputs", [None, True, False])
 def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
     if not pytorch_pfn_extras.requires("1.7.0"):

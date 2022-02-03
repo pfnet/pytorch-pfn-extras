@@ -27,6 +27,7 @@ from pytorch_pfn_extras.onnx.strip_large_tensor import is_large_tensor
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_raw_data
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
     _strip_large_initializer_raw_data
+from pytorch_pfn_extras.onnx.pfto_exporter.export import export as pfto_export
 
 
 def _model_to_graph_with_value_names(
@@ -142,6 +143,7 @@ def _export(
         args: Sequence[Any],
         strip_large_tensor_data: bool = False,
         large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
+        use_pfto: bool = False,
         **kwargs: Any,
 ) -> Tuple[onnx.ModelProto, Any]:
     model.zero_grad()
@@ -149,7 +151,8 @@ def _export(
     opset_ver = kwargs.get('opset_version', None)
     if opset_ver is None:
         opset_ver = _default_onnx_opset_version
-    if not pytorch_pfn_extras.requires('1.10.0'):
+        kwargs['opset_version'] = opset_ver
+    if use_pfto or not pytorch_pfn_extras.requires('1.10.0'):
         strip_doc_string = kwargs.get('strip_doc_string', True)
         kwargs['strip_doc_string'] = False
     else:
@@ -158,8 +161,12 @@ def _export(
     with init_annotate(model, opset_ver) as ann, \
             as_output.trace(model) as (model, outputs), \
             grad.init_grad_state():
-        outs = _export_util(
-            model, args, bytesio, **kwargs)
+        if use_pfto:
+            outs = pfto_export(
+                model, args, bytesio, **kwargs)
+        else:
+            outs = _export_util(
+                model, args, bytesio, **kwargs)
         onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)

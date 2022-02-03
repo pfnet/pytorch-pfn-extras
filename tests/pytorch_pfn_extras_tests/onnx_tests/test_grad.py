@@ -78,6 +78,7 @@ def test_grad():
         x,
         'grad',
         enable_onnx_checker=False,
+        use_pfto=False,
     )
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
@@ -136,6 +137,7 @@ def test_grad_multiple_times():
         x,
         'grad',
         enable_onnx_checker=False,
+        use_pfto=False,
     )
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
@@ -191,6 +193,7 @@ def test_grad_with_multiple_inputs():
         x,
         'grad',
         enable_onnx_checker=False,
+        use_pfto=False,
     )
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
