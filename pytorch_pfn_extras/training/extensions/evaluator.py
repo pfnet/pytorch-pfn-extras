@@ -298,7 +298,7 @@ class DistributedEvaluator(Evaluator):
             eval_func: Optional[Callable[..., Any]] = None,
             **kwargs: Any,
     ) -> None:
-        if not torch.distributed.is_initialized():
+        if not torch.distributed.is_initialized():  # type: ignore[no-untyped-call]
             msg = "PyTorch distributed module is not initialized. " \
                   "Initialize process group or use non-distributed Evaluator."
             raise RuntimeError(msg)
@@ -309,8 +309,9 @@ class DistributedEvaluator(Evaluator):
         super().__init__(iterator, target, eval_hook, eval_func, **kwargs)
 
     def _gather_summaries(self, summary: reporting.DictSummary) -> reporting.DictSummary:
-        summaries = [None] * torch.distributed.get_world_size()
-        torch.distributed.all_gather_object(summaries, summary)
+        world_size = torch.distributed.get_world_size()  # type: ignore[no-untyped-call]
+        summaries = [reporting.DictSummary() for _ in range(world_size)]
+        torch.distributed.all_gather_object(summaries, summary)  # type: ignore[no-untyped-call]
         return sum(summaries, reporting.DictSummary())
 
 

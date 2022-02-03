@@ -102,7 +102,7 @@ class Evaluator:
         if self._idxs.qsize() == 0:
             self._pbar.__exit__(None, None, None)
 
-    def _gather_summaries(self):
+    def _gather_summaries(self) -> None:
         pass
 
     def run(
@@ -173,10 +173,11 @@ class DistributedEvaluator(Evaluator):
             metrics: Optional[Sequence['MetricType']] = None,
     ):
         super().__init__(handler, models, progress_bar=progress_bar, metrics=metrics)
-        if not torch.distributed.is_initialized():
+        if not torch.distributed.is_initialized():  # type: ignore[no-untyped-call]
             raise RuntimeError("PyTorch distributed module is not initialized.")
 
-    def _gather_summaries(self):
-        summaries = [None] * torch.distributed.get_world_size()
-        torch.distributed.all_gather_object(summaries, self._summary)
+    def _gather_summaries(self) -> None:
+        world_size = torch.distributed.get_world_size()  # type: ignore[no-untyped-call]
+        summaries = [reporting.DictSummary() for _ in range(world_size)]
+        torch.distributed.all_gather_object(summaries, self._summary)  # type: ignore[no-untyped-call]
         self._summary = sum(summaries, reporting.DictSummary())

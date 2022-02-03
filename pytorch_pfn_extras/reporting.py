@@ -453,14 +453,13 @@ class DictSummary:
             self._summaries[name].load_state_dict(summ_state)
 
     def __add__(self, other: "DictSummary") -> "DictSummary":
-        ours, other = self._summaries, other._summaries
+        s1, s2 = self._summaries, other._summaries
         ds = DictSummary()
-        for k in sorted(list(set([*ours.keys(), *other.keys()]))):
-            if k not in ours:
-                s: Summary = other[k]
-            elif k not in other:
-                s: Summary = ours[k]
+        for k in sorted(list(set([*s1.keys(), *s2.keys()]))):
+            if k not in s1:
+                ds._summaries[k] = s2[k]
+            elif k not in s2:
+                ds._summaries[k] = s1[k]
             else:
-                s: Summary = ours[k] + other[k]
-            ds._summaries[k] = s
+                ds._summaries[k] = s1[k] + s2[k]
         return ds
