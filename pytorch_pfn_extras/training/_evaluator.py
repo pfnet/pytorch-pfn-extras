@@ -6,6 +6,7 @@ from typing import (
 )
 
 import torch
+import torch.distributed
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training.extensions import evaluator
@@ -101,6 +102,9 @@ class Evaluator:
         if self._idxs.qsize() == 0:
             self._pbar.__exit__(None, None, None)
 
+    def _gather_summaries(self):
+        pass
+
     def run(
             self,
             loader: Iterable[Any],
@@ -151,8 +155,28 @@ class Evaluator:
                         prof.step()  # type: ignore[no-untyped-call]
         # This will report to the trainer main reporter
         self.handler.eval_loop_end(self)
+        self._gather_summaries()
         reporting.report(self._summary.compute_mean())
 
 
 # For backward compatibility
 _Evaluator = Evaluator
+
+
+class DistributedEvaluator(Evaluator):
+    def __init__(
+            self,
+            handler: 'BaseHandler',
+            models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
+            *,
+            progress_bar: bool = False,
+            metrics: Optional[Sequence['MetricType']] = None,
+    ):
+        super().__init__(handler, models, progress_bar=progress_bar, metrics=metrics)
+        if not torch.distributed.is_initialized():
+            raise RuntimeError("PyTorch distributed module is not initialized.")
+
+    def _gather_summaries(self):
+        summaries = [None] * torch.distributed.get_world_size()
+        torch.distributed.all_gather_object(summaries, self._summary)
+        self._summary = sum(summaries, reporting.DictSummary())
