@@ -8,6 +8,7 @@ import onnx.checker
 import onnx.helper
 import onnx.numpy_helper
 import onnx.shape_inference
+import pytorch_pfn_extras
 import torch
 import torch.jit
 import torch.onnx.symbolic_helper as sym_hel
@@ -312,7 +313,10 @@ class _Exporter(_ExporterOptions):
 
     # ONNX level graph optimizer
     def optimize_onnx(self, graph: torch._C.Graph) -> torch._C.Graph:
-        self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
+        if pytorch_pfn_extras.requires("1.9.0"):
+            self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
+        else:
+            self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
 
         if self.do_constant_folding and self.opset_version in torch.onnx.constant_folding_opset_versions:
             folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]

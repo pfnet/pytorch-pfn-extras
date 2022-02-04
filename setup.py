@@ -14,9 +14,9 @@ setuptools.setup(
                 'development in PyTorch.',
     author='Preferred Networks, Inc.',
     license='MIT License',
-    install_requires=['numpy', 'torch', 'typing-extensions>=3.10'],
+    install_requires=['numpy', 'packaging', 'torch', 'typing-extensions>=3.10'],
     extras_require={
-        'test': ['pytest'],
+        'test': ['pytest', 'onnxruntime', 'torchvision'],
         'onnx': ['onnx'],
     },
     python_requires='>=3.6.0',

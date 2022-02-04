@@ -1,5 +1,4 @@
 import os
-from packaging import version
 
 import pytest
 import torch
@@ -9,7 +8,7 @@ import pytorch_pfn_extras as ppe
 
 _profiler_available = (
     os.name != 'nt'
-    or version.Version(torch.__version__) >= version.Version("1.9")
+    or ppe.requires("1.9")
 )
 
 

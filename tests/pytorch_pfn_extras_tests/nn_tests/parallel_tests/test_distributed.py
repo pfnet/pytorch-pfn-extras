@@ -4,8 +4,8 @@ import urllib.request
 import tempfile
 
 import numpy as np
-from packaging import version
 import pytest
+import pytorch_pfn_extras
 import torch
 from torch import multiprocessing as mp
 from torch import distributed as dist
@@ -15,7 +15,6 @@ from torch.utils.checkpoint import checkpoint
 from pytorch_pfn_extras.nn.parallel import DistributedDataParallel
 
 
-torch_version = version.Version(torch.__version__)
 context = mp.get_context("spawn")
 
 
@@ -258,7 +257,7 @@ class TestDistributedDataParallel:
 
     @pytest.mark.parametrize('device_type', _device_types())
     @pytest.mark.skipif(
-        torch_version < version.Version('1.6.0'),
+        not pytorch_pfn_extras.requires("1.6.0"),
         reason="Variable._execution_engine.queue_callback does not work "
                "with checkpointing when torch < 1.6.0")
     def test_checkpoint(self, device_type):

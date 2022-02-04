@@ -4,7 +4,7 @@ from typing import Callable, List, Optional
 import onnx
 import onnxruntime as ort
 import torch
-from pytorch_pfn_extras.onnx.export import export as pfto_export
+from pytorch_pfn_extras.onnx.pfto_exporter.export import export as pfto_export
 from pytorch_pfn_extras.onnx.export.torch_reconstruct import reconstruct
 
 
@@ -37,54 +37,53 @@ def run_model_test(
 
     if operator_export_type == torch.onnx.OperatorExportTypes.ONNX_ATEN:
         skip_oxrt = True
-    f = tempfile.NamedTemporaryFile()
+    with tempfile.NamedTemporaryFile() as f:
+        f.close()
+        expected = model(*args)
+        if not isinstance(expected, tuple):
+            expected = (expected,)
 
-    expected = model(*args)
-    if not isinstance(expected, tuple):
-        expected = (expected,)
+        if check_torch_export:
+            with tempfile.NamedTemporaryFile() as torch_f:
+                torch.onnx.export(
+                    model,
+                    args,
+                    torch_f,
+                    input_names=input_names,
+                    output_names=output_names,
+                    **kwargs,
+                )
 
-    if check_torch_export:
-        torch_f = tempfile.NamedTemporaryFile()
-        torch.onnx.export(
+        if input_names is None:
+            input_names = [f"input_{idx}" for idx, _ in enumerate(args)]
+        if output_names is None:
+            output_names = [f"output_{idx}" for idx, _ in enumerate(expected)]
+        actual = pfto_export(
             model,
             args,
-            torch_f,
+            f.name,
             input_names=input_names,
             output_names=output_names,
+            strict_trace=strict_trace,
             **kwargs,
         )
+        if not isinstance(actual, tuple):
+            actual = (actual,)
+        assert len(actual) == len(expected)
 
-    if input_names is None:
-        input_names = [f"input_{idx}" for idx, _ in enumerate(args)]
-    if output_names is None:
-        output_names = [f"output_{idx}" for idx, _ in enumerate(expected)]
-    actual = pfto_export(
-        model,
-        args,
-        f,
-        input_names=input_names,
-        output_names=output_names,
-        strict_trace=strict_trace,
-        **kwargs,
-    )
-    f.flush()
-    if not isinstance(actual, tuple):
-        actual = (actual,)
-    assert len(actual) == len(expected)
+        for a, e in zip(actual, expected):
+            assert torch.isclose(a, e, rtol=rtol, atol=atol).all()
 
-    for a, e in zip(actual, expected):
-        assert torch.isclose(a, e, rtol=rtol, atol=atol).all()
+        if skip_oxrt:
+            return onnx.load(f.name)
 
-    if skip_oxrt:
-        return
+        ort_session = ort.InferenceSession(f.name)
+        actual = ort_session.run(None, {k: v.cpu().numpy() for k, v in zip(input_names, args)})
+        for a, e in zip(actual, expected):
+            cmp = torch.isclose(torch.tensor(a), e.cpu(), rtol=rtol, atol=atol)
+            assert cmp.all(), f"{cmp.logical_not().count_nonzero()} / {cmp.numel()} values failed"
 
-    ort_session = ort.InferenceSession(f.name)
-    actual = ort_session.run(None, {k: v.cpu().numpy() for k, v in zip(input_names, args)})
-    for a, e in zip(actual, expected):
-        cmp = torch.isclose(torch.tensor(a), e.cpu(), rtol=rtol, atol=atol)
-        assert cmp.all(), f"{cmp.logical_not().count_nonzero()} / {cmp.numel()} values failed"
-
-    onnx_model = onnx.load(f.name)
-    if check_reconstruct:
-        reconstruct(onnx_model)
-    return onnx_model
+        onnx_model = onnx.load(f.name)
+        if check_reconstruct:
+            reconstruct(onnx_model)
+        return onnx_model

@@ -174,6 +174,36 @@ def test_evaluator_trigger(evaluator_trigger, path):
         assert patched.call_count == evaluator_trigger[0]
 
 
+def test_evaluator_dict(path):
+    device = 'cpu'
+    progress_bar = False
+    model = MyModel()
+    ppe.to(model, device)
+    model_with_loss = MyModelWithLossFn(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
+    extensions = _make_extensions()
+
+    evaluator1 = engine.create_evaluator(
+        model_with_loss, device=device, progress_bar=progress_bar)
+    evaluator2 = engine.create_evaluator(
+        model, device=device, progress_bar=progress_bar)
+
+    trainer = engine.create_trainer(
+        model_with_loss, optimizer, 20,
+        device=device, evaluator={
+            '1': evaluator1,  # called 20 times.
+            '2': (evaluator2, (5, 'iteration')),  # called 40 times.
+        },
+        extensions=extensions, out_dir=path
+    )
+    path = 'pytorch_pfn_extras.training._evaluator.Evaluator.run'
+    with mock.patch(path) as patched:
+        trainer.run(data, data)
+        assert patched.call_count == 20 + 40
+
+
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_train_result_equal(device, path):
     train_data = torch.utils.data.DataLoader(

@@ -205,6 +205,16 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
+    def train_cleanup(self, module: torch.nn.Module) -> None:
+        """A method called only once when compleing a training run.
+
+        Args:
+            module (torch.nn.Module): A module.
+
+        Returns: None
+        """
+        raise NotImplementedError()
+
     def train_validation_begin(self, module: torch.nn.Module) -> None:
         """The method called before each evaluation.
 
@@ -335,6 +345,9 @@ class PyTorchRuntime(BaseRuntime):
         pass
 
     def train_epoch_end(self, module: torch.nn.Module) -> None:
+        pass
+
+    def train_cleanup(self, module: torch.nn.Module) -> None:
         pass
 
     def train_validation_begin(self, module: torch.nn.Module) -> None:
