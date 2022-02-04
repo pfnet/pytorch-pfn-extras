@@ -25,12 +25,14 @@ def test_stream():
     assert 0 == torch.cuda.current_stream().cuda_stream
 
 
+@pytest.mark.gpu
 def test_stream_no_cupy():
     stream = torch.cuda.Stream()
     with ppe.cuda.stream(stream):
         assert torch.cuda.current_stream().cuda_stream == stream.cuda_stream
 
 
+@pytest.mark.gpu
 def test_stream_none():
     assert 0 == torch.cuda.current_stream().cuda_stream
     with ppe.cuda.stream(None):
