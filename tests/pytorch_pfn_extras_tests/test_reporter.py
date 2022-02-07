@@ -313,6 +313,7 @@ def test_serialize_tensor():
         torch.tensor(3.5))
 
 
+@pytest.mark.gpu
 def test_serialize_tensor_cuda():
     _check_summary_serialize(
         torch.tensor(1.5).cuda(),

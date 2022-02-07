@@ -46,6 +46,7 @@ def _get_trainer_with_evaluator(device, ret_val, model_class=Model):
     return trainer
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_every_iter(engine_fn):
@@ -64,6 +65,7 @@ def test_compare_every_iter(engine_fn):
         comp.compare({"cpu": train_1, "gpu": train_2})
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_comparer_wrong(engine_fn):
@@ -98,6 +100,7 @@ class _CustomComparer:
             assert out_1 == self.times_called * self.n_iters
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_comparer_n_iters(engine_fn):
@@ -123,6 +126,7 @@ def test_comparer_n_iters(engine_fn):
         assert comp.compare_fn.times_called == 3
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_comparer_kwargs(engine_fn):
@@ -143,6 +147,7 @@ def test_comparer_kwargs(engine_fn):
         comp.compare({"cpu": train_1, "gpu": train_2})
 
 
+@pytest.mark.gpu
 def test_comparer_incompat_trigger():
     model_cpu = Model("cpu", 1.0)
     ppe.to(model_cpu, 'cpu')
@@ -168,6 +173,7 @@ def test_comparer_incompat_trigger():
         comp.compare({"cpu": (train_1,), "gpu": (train_2,)})
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_concurrency(engine_fn):
@@ -187,6 +193,7 @@ def test_compare_concurrency(engine_fn):
         comp.compare({"cpu": train_1, "gpu": train_2})
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_concurrency_wrong(engine_fn):
@@ -221,6 +228,7 @@ class ModelForComparer(torch.nn.Module):
         return {"y": self.model(x).sum()}
 
 
+@pytest.mark.gpu
 def test_model_comparer():
     model_cpu = ModelForComparer()
     model_gpu = ModelForComparer()
@@ -247,6 +255,7 @@ def test_model_comparer():
     comp.compare({"cpu": train_1, "gpu": train_2})
 
 
+@pytest.mark.gpu
 def test_model_comparer_invalid():
     model_cpu = ModelForComparer()
     model_gpu = ModelForComparer()
@@ -284,6 +293,7 @@ class ModelRetTuple(torch.nn.Module):
         return (a, x)
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_tuple_output(engine_fn):
@@ -318,6 +328,7 @@ class ModelRetNamedTuple(torch.nn.Module):
         return Output(a, x)
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_namedtuple_output(engine_fn):

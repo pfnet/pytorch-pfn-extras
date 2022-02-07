@@ -633,6 +633,7 @@ class TestLogic:
         with pytest.raises(RuntimeError):
             ppe.handler.Logic(options=options)
 
+    @pytest.mark.gpu
     def test_disabled_grad_scaler(self):
         old_enable = ppe.handler._logic._amp_enabled
         try:

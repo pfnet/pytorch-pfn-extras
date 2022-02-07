@@ -15,6 +15,8 @@ _profiler_available = (
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_record(device):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = torch.nn.Linear(30, 40)
     model.to(device)
     x = torch.arange(30, dtype=torch.float32).to(device)
@@ -31,6 +33,8 @@ def test_record(device):
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_record_without_tag(device):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = torch.nn.Linear(30, 40)
     model.to(device)
     x = torch.arange(30, dtype=torch.float32).to(device)
@@ -47,6 +51,8 @@ def test_record_without_tag(device):
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_record_function(device):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = torch.nn.Linear(30, 40)
     model.to(device)
 
@@ -66,6 +72,8 @@ def test_record_function(device):
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_record_function_without_tag(device):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = torch.nn.Linear(30, 40)
     model.to(device)
     x = torch.arange(30, dtype=torch.float32).to(device)
@@ -85,6 +93,8 @@ def test_record_function_without_tag(device):
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_record_iterable(device):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = torch.nn.Linear(30, 40)
     model.to(device)
 
@@ -105,6 +115,8 @@ def test_record_iterable(device):
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_record_iterable_without_tag(device):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = torch.nn.Linear(30, 40)
     model.to(device)
 
