@@ -59,6 +59,7 @@ def _get_trainer_with_evaluator(
     return trainer, (loader, loader)
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_every_epoch(engine_fn):
@@ -71,6 +72,7 @@ def test_compare_every_epoch(engine_fn):
     comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_comparer_wrong(engine_fn):
@@ -102,6 +104,7 @@ class _CustomComparer:
             assert out_1.cpu() == out_2.cpu()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_trainer_with_evaluator])
 def test_comparer_trigger(engine_fn):
@@ -121,6 +124,7 @@ def test_comparer_trigger(engine_fn):
         assert compare_fn.times_called == 3
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_comparer_kwargs(engine_fn):
@@ -134,6 +138,7 @@ def test_comparer_kwargs(engine_fn):
     comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_trainer_with_evaluator])
 def test_comparer_incompat_trigger(engine_fn):
@@ -148,6 +153,7 @@ def test_comparer_incompat_trigger(engine_fn):
         comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_concurrency(engine_fn):
@@ -160,6 +166,7 @@ def test_compare_concurrency(engine_fn):
     comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_concurrency_wrong(engine_fn):
@@ -188,6 +195,7 @@ class ModelForComparer(torch.nn.Module):
         return x.sum()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_model_comparer(engine_fn):
@@ -202,6 +210,7 @@ def test_model_comparer(engine_fn):
     comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_model_comparer_invalid(engine_fn):
@@ -230,6 +239,7 @@ class ModelRetTuple(torch.nn.Module):
         return (a, x)
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_tuple_output(engine_fn):
@@ -260,6 +270,7 @@ class ModelRetNamedTuple(torch.nn.Module):
         return Output(a, x)
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_namedtuple_output(engine_fn):
@@ -286,6 +297,7 @@ class MyModel(torch.nn.Module):
         return loss + self.offset
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_jit_runtime_output_comparer(engine_fn):
@@ -302,6 +314,7 @@ def test_jit_runtime_output_comparer(engine_fn):
     comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_jit_runtime_output_comparer_invalid(engine_fn):
@@ -319,6 +332,7 @@ def test_jit_runtime_output_comparer_invalid(engine_fn):
         comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_jit_runtime_model_comparer(engine_fn):
@@ -334,6 +348,7 @@ def test_jit_runtime_model_comparer(engine_fn):
     comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_jit_runtime_model_comparer_invalid(engine_fn):
@@ -364,6 +379,7 @@ class ModelForIntermediateValue(torch.nn.Module):
         return loss
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_intermediate(engine_fn):
@@ -383,6 +399,7 @@ def test_compare_intermediate(engine_fn):
     comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_intermediate_invalid(engine_fn):
@@ -403,6 +420,7 @@ def test_compare_intermediate_invalid(engine_fn):
         comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_async(engine_fn):
@@ -418,6 +436,7 @@ def test_compare_async(engine_fn):
     comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 @pytest.mark.parametrize("model_class", [MyModel, ModelForIntermediateValue])
@@ -440,6 +459,7 @@ def test_dump(engine_fn, model_class, params):
         comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 @pytest.mark.parametrize("model_class", [
@@ -465,6 +485,7 @@ def test_dump_invalid(engine_fn, model_class):
             comp.compare()
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize("engine_fn", [
     _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
 def test_compare_baseline(engine_fn):

@@ -41,6 +41,8 @@ class MyModelWithLossFn(torch.nn.Module):
 
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_trainer(device):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     iters_per_epoch = 10
     epochs = 20
     model = MyModel()

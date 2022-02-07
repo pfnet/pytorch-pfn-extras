@@ -15,6 +15,7 @@ def test_eval_resnet18():
     )
 
 
+@pytest.mark.gpu
 @pytest.mark.xfail
 def test_train_resnet18():
     run_model_test(
@@ -26,6 +27,7 @@ def test_train_resnet18():
     )
 
 
+@pytest.mark.gpu
 @pytest.mark.filterwarnings("ignore:__floordiv__ is deprecated:UserWarning")
 def test_shufflenet():
     run_model_test(

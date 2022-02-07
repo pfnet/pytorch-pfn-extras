@@ -70,6 +70,8 @@ def _make_extensions():
 
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_trainer(device, path):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = MyModel()
     ppe.to(model, device)
     model_with_loss = MyModelWithLossFn(model)
@@ -123,6 +125,8 @@ def test_trainer_invalid_options(path):
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 @pytest.mark.parametrize('progress_bar', [True, False])
 def test_train_with_evaluator(device, progress_bar, path):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = MyModel()
     ppe.to(model, device)
     model_with_loss = MyModelWithLossFn(model)
@@ -206,6 +210,8 @@ def test_evaluator_dict(path):
 
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 def test_train_result_equal(device, path):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     train_data = torch.utils.data.DataLoader(
         [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
     data = torch.utils.data.DataLoader(
@@ -437,6 +443,8 @@ class MyModelWithLossDictOutput(torch.nn.Module):
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 @pytest.mark.parametrize('progress_bar', [True, False])
 def test_trainer_dict_input(device, progress_bar, path):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = MyModel()
     ppe.to(model, device)
     model_with_loss = MyModelWithLossDictOutput(model)
@@ -484,6 +492,8 @@ class ModelNamedTupleIO(torch.nn.Module):
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 @pytest.mark.parametrize('progress_bar', [True, False])
 def test_trainer_namedtuple_input(device, progress_bar, path):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = MyModel()
     ppe.to(model, device)
     model_with_loss = ModelNamedTupleIO(model)
@@ -506,6 +516,8 @@ def test_trainer_namedtuple_input(device, progress_bar, path):
 @pytest.mark.parametrize('device', ['cpu', 'cuda'])
 @pytest.mark.parametrize('progress_bar', [True, False])
 def test_trainer_with_code_block(device, progress_bar, path):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
     model = MyModel()
     model_with_loss = MyModelWithLossDictOutput(model)
     ppe.to(model_with_loss, device)
