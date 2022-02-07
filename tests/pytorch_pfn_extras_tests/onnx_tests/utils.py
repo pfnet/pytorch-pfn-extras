@@ -5,7 +5,7 @@ import onnx
 import onnxruntime as ort
 import torch
 from pytorch_pfn_extras.onnx.pfto_exporter.export import export as pfto_export
-from pytorch_pfn_extras.onnx.export.torch_reconstruct import reconstruct
+from pytorch_pfn_extras.onnx.pfto_exporter.torch_reconstruct import reconstruct
 
 
 def run_model_test(

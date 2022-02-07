@@ -19,7 +19,7 @@ from pytorch_pfn_extras.onnx import is_large_tensor
 from pytorch_pfn_extras.onnx import LARGE_TENSOR_DATA_THRESHOLD
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_large_tensor_tool_impl
 from pytorch_pfn_extras.onnx.unstrip_tensor import unstrip
-from pytorch_pfn_extras.onnx.export.torch_reconstruct import reconstruct
+from pytorch_pfn_extras.onnx.pfto_exporter.torch_reconstruct import reconstruct
 
 
 output_dir = 'out'
