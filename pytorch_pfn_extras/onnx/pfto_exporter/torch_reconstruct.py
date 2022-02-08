@@ -90,7 +90,6 @@ def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str,
     {body}
     return ({", ".join(outputs)})
 """
-    print(src)
 
     g: torch._C.Graph = torch._C.parse_ir(src)
     torch._C._jit_pass_lint(g)
