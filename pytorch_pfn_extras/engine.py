@@ -11,7 +11,7 @@ from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.runtime._runtime import DeviceLike
-    from pytorch_pfn_extras import training
+    from pytorch_pfn_extras.training import extension
     from pytorch_pfn_extras.training.trigger import TriggerLike
     from pytorch_pfn_extras.training._trainer import Trainer
     from pytorch_pfn_extras.training._evaluator import Evaluator
@@ -24,7 +24,8 @@ def create_trainer(
         optimizers: Union[torch.optim.Optimizer, Mapping[str, torch.optim.Optimizer]],
         max_epochs: int,
         *,
-        extensions: Optional[Sequence['training.Extension']] = None,
+        extensions: Optional[Sequence[Union['extension.ExtensionLike',
+                                            'extension.ExtensionEntry']]] = None,
         out_dir: str = 'result',
         stop_trigger: 'TriggerLike' = None,
         writer: Optional['writing.Writer'] = None,
