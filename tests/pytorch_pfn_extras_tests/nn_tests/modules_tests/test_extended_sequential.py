@@ -1,6 +1,7 @@
 import unittest
 import pytest
 import functools
+import warnings
 
 import numpy
 import torch
@@ -220,7 +221,8 @@ class UserDefinedLayerWithBuffer(nn.Module):
 def test_no_warning_when_repeat(module):
     model = ppe.nn.ExtendedSequential(module())
     # no warnings are raised on these modules
-    with pytest.warns(None):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         model.repeat(2)
 
 

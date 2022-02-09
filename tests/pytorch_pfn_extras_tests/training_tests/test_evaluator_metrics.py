@@ -36,7 +36,7 @@ def test_evaluator_with_metric(device, accuracy):
     observation = {}
     with reporter.scope(observation):
         evaluator.run(data)
-    assert pytest.approx(observation['val/accuracy'], accuracy)
+    assert pytest.approx(observation['val/accuracy']) == accuracy
 
 
 class AsyncResult(ppe.handler.DeferredResult):
@@ -94,4 +94,4 @@ def test_evaluator_async(accuracy):
     observation = {}
     with reporter.scope(observation):
         evaluator.run(data)
-    assert pytest.approx(observation['val/accuracy'], accuracy)
+    assert pytest.approx(observation['val/accuracy']) == accuracy
