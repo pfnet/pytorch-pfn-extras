@@ -48,9 +48,10 @@ class Trainer:
         self._kwargs = kwargs
         self._enable_profile = kwargs.get('enable_profile', False)
         self._extensions: List[  # list of (args, kwargs)
-            Tuple[Tuple['training.Extension', Optional[str],
-                        'TriggerLike', Optional[int]],
-                  Dict[str, Any]]] = []
+            Tuple[Tuple[
+                Union['extension.ExtensionLike', extension.ExtensionEntry],
+                Optional[str], 'TriggerLike', Optional[int]
+            ], Dict[str, Any]]] = []
         self._manager_state: Optional[Dict[str, Any]] = None
 
         self._evaluators: Dict[str, Tuple['Evaluator', TriggerLike]] = {}
@@ -65,7 +66,7 @@ class Trainer:
 
     def extend(
             self,
-            extension: 'training.Extension',
+            extension: Union['extension.ExtensionLike', extension.ExtensionEntry],
             name: Optional[str] = None,
             trigger: 'TriggerLike' = None,
             priority: Optional[int] = None,
