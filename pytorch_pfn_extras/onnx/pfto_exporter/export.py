@@ -673,7 +673,7 @@ class _Exporter(_ExporterOptions):
                     register_val_name(_unique_id(i), value_name(i), shadow=True)
                     continue
                 if _unique_id(i) not in val_tab:
-                    register_val_name(_unique_id(v), value_name(i))
+                    register_val_name(_unique_id(i), value_name(i))
 
             for o in n.outputs():
                 if _unique_id(o) not in val_tab:
