@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training import triggers
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
@@ -33,42 +34,16 @@ class BestValue(extension.Extension):
             compare: Callable[[float, float], bool],
             trigger: 'TriggerLike' = (1, 'epoch'),
     ) -> None:
-        self._key = key
-        self._best_value: Optional[float] = None
         self._best_epoch: Optional[int] = None
         self._best_it: Optional[int] = None
-        self._interval_trigger = trigger_module.get_trigger(trigger)
-        self._init_summary()
-        self._compare = compare
+        self._best_trigger = triggers.BestValueTrigger(key, compare, trigger)
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-        observation = manager.observation
-        summary = self._summary
-        key = self._key
-        if key in observation:
-            summary.add({key: observation[key]})
-
-        if not self._interval_trigger(manager):
-            return
-
-        stats = summary.compute_mean()
-        if key not in stats:
-            raise RuntimeError('Key "{}" not found in the observation '
-                               '(current available keys are {})'
-                               .format(key, list(stats.keys())))
-
-        value = float(stats[key])  # copy to CPU
-        self._init_summary()
-
-        if self._best_value is None or self._compare(self._best_value, value):
-            self._best_value = value
+        if self._best_trigger(manager):
             self._best_it, self._best_epoch = manager.iteration, manager.epoch
 
-    def _init_summary(self) -> None:
-        self._summary = reporting.DictSummary()
-
     def _check_best_value_exists(self) -> None:
-        if self._best_value is None:
+        if self._best_trigger._best_value is None:
             raise RuntimeError("Best observation hasn't been obtained. "
                                "Run the BestValue extension at least once")
 
@@ -79,7 +54,7 @@ class BestValue(extension.Extension):
         If no value has been observed yet, it raises a RuntimError.
         """
         self._check_best_value_exists()
-        return self._best_value  # type: ignore[return-value]
+        return self._best_trigger._best_value  # type: ignore[return-value]
 
     @property
     def best_iteration(self) -> int:
@@ -101,17 +76,13 @@ class BestValue(extension.Extension):
 
     def state_dict(self) -> Dict[str, Any]:
         return {
-            '_interval_trigger': self._interval_trigger.state_dict(),
-            '_summary': self._summary.state_dict(),
-            '_best_value': self._best_value,
+            '_best_trigger': self._best_trigger.state_dict(),
             '_best_it': self._best_it,
             '_best_epoch': self._best_epoch
         }
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
-        self._interval_trigger.load_state_dict(to_load['_interval_trigger'])
-        self._summary.load_state_dict(to_load['_summary'])
-        self._best_value = to_load['_best_value']
+        self._best_trigger.load_state_dict(to_load['_best_trigger'])
         self._best_it = to_load['_best_it']
         self._best_epoch = to_load['_best_epoch']
 

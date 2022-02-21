@@ -62,6 +62,11 @@ class BestValueTrigger(trigger_module.Trigger):
             return False
 
         stats = summary.compute_mean()
+        if key not in stats:
+            raise KeyError('Key "{}" not found in the observation '
+                           '(current available keys are {})'
+                           .format(key, list(stats.keys())))
+
         value = float(stats[key])  # copy to CPU
         self._init_summary()
 

@@ -51,20 +51,20 @@ def test_best_observation(observed_values, expected_best_values,
 
         # Save/Load state dict (snapshot support)
         assert best_value.state_dict() == {
-            '_interval_trigger': {},
-            '_summary': {},
-            '_best_value': expected_best_values[-1],
+            '_best_trigger': {
+                '_best_value': expected_best_values[-1],
+                '_summary': {},
+                'interval_trigger': {}
+            },
             '_best_it': expected_best_iterations[-1],
             '_best_epoch': expected_best_epochs[-1],
         }
 
         best_value2 = BestValueT('value')
         best_value2.load_state_dict(best_value.state_dict())
-        assert best_value2._interval_trigger.period == 1
-        assert best_value2._interval_trigger.unit == 'epoch'
-        assert best_value2._best_value == expected_best_values[-1]
-        assert best_value2._best_it == expected_best_iterations[-1]
-        assert best_value2._best_epoch == expected_best_epochs[-1]
+        assert best_value2.best_value == expected_best_values[-1]
+        assert best_value2.best_iteration == expected_best_iterations[-1]
+        assert best_value2.best_epoch == expected_best_epochs[-1]
 
 
 def test_key_error():
@@ -78,7 +78,7 @@ def test_key_error():
         best_observation = extensions.BestValue('value', lambda a, b: a < b)
         manager.extend(best_observation, trigger=(1, 'epoch'))
 
-        with pytest.raises(RuntimeError) as e:
+        with pytest.raises(KeyError) as e:
             for _ in range(max_epochs):
                 for _ in range(iters_per_epoch):
                     with manager.run_iteration():
