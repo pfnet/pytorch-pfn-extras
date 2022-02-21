@@ -1,8 +1,6 @@
 from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 
-from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
-from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training import triggers
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
@@ -23,7 +21,7 @@ class BestValue(extension.Extension):
         trigger: Trigger that decides the comparison interval between current
             best value and new value. This must be a tuple in the form of
             ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
-            :class:`~pytorch_pfn_extras.triggers.IntervalTrigger`.
+            :class:`~pytorch_pfn_extras.triggers.BestValueTrigger`.
     """
 
     default_name = 'best_value'
@@ -89,16 +87,14 @@ class BestValue(extension.Extension):
 
 class MaxValue(BestValue):
 
-    """Trigger invoked when specific value becomes maximum.
-    For example you can use this trigger to take snapshot on the epoch the
-    validation accuracy is maximum.
+    """Extension traces the maximum value of a specific key in the observation.
+
     Args:
-        key (str): Key of value. The trigger fires when the value associated
-            with this key becomes maximum.
+        key (str): Key of value.
         trigger: Trigger that decides the comparison interval between current
-            best value and new value. This must be a tuple in the form of
+            maximum value and new value. This must be a tuple in the form of
             ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
-            :class:`~pytorch_pfn_extras.triggers.IntervalTrigger`.
+            :class:`~pytorch_pfn_extras.triggers.BestValueTrigger`.
     """
 
     default_name = 'max_value'
@@ -109,6 +105,17 @@ class MaxValue(BestValue):
 
 
 class MinValue(BestValue):
+
+    """Extension traces the maximum value of a specific key in the observation.
+
+    Args:
+        key (str): Key of value.
+        trigger: Trigger that decides the comparison interval between current
+            maximum value and new value. This must be a tuple in the form of
+            ``<int>, 'epoch'`` or ``<int>, 'iteration'`` which is passed to
+            :class:`~pytorch_pfn_extras.triggers.BestValueTrigger`.
+    """
+
     default_name = 'min_value'
 
     def __init__(self, key: str, trigger: 'TriggerLike' = (1, 'epoch')):
