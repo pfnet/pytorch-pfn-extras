@@ -89,11 +89,11 @@ class _PosixFileSystem(object):
             path_or_prefix: Optional[str] = None,
             recursive: bool = False,
     ) -> Iterator[str]:
+        path_or_prefix = self.get_actual_path(path_or_prefix)
         if recursive:
             if path_or_prefix is None:
                 raise ValueError(
                     "'path_or_prefix' must not be None in recursive mode.")
-            path_or_prefix = self.get_actual_path(path_or_prefix)
             path_or_prefix = path_or_prefix.rstrip("/")
             # plus 1 to include the trailing slash
             prefix_end_index = len(path_or_prefix) + 1
@@ -153,7 +153,6 @@ class _PosixFileSystem(object):
         return os.makedirs(file_path, mode, exist_ok)
 
     def exists(self, file_path: str) -> bool:
-        file_path = self.get_actual_path(file_path)
         return os.path.exists(file_path)
 
     def rename(self, src: str, dst: str) -> None:
