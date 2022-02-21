@@ -284,6 +284,7 @@ class _Exporter(_ExporterOptions):
         # onnx only supports tensors, so we turn all out number types into tensors
         torch._C._jit_pass_erase_number_types(graph)  # type: ignore[attr-defined]
 
+        input_names: List[str] = []
         if self.input_names is not None:
             input_names = self.input_names.copy()
             if self.self_id is not None:
@@ -293,7 +294,7 @@ class _Exporter(_ExporterOptions):
             for idx, n in enumerate(input_names):
                 inputs[idx].setDebugName(n)
         torch._C._jit_pass_onnx_set_dynamic_input_shape(  # type: ignore[attr-defined]
-            graph, self.dynamic_axes or {}, input_names or []
+            graph, self.dynamic_axes or {}, input_names
         )
 
         return graph
@@ -672,7 +673,7 @@ class _Exporter(_ExporterOptions):
                     register_val_name(_unique_id(i), value_name(i), shadow=True)
                     continue
                 if _unique_id(i) not in val_tab:
-                    register_val_name(_unique_id(v), value_name(i))
+                    register_val_name(_unique_id(i), value_name(i))
 
             for o in n.outputs():
                 if _unique_id(o) not in val_tab:
