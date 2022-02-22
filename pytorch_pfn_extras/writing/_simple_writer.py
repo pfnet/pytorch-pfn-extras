@@ -20,7 +20,7 @@ class SimpleWriter(Writer):
             optional, defaults to None
         out_dir: str. Specifies the directory this writer will use.
             It takes precedence over the one specified in `__call__`
-            optional, defaults to None
+            optional, defaults to ``''``
         kwds: Keyword arguments for the ``savefun``.
 
     .. seealso::
@@ -32,7 +32,7 @@ class SimpleWriter(Writer):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: Optional[str] = None,
+            out_dir: str = '',
             **kwds: Any,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
