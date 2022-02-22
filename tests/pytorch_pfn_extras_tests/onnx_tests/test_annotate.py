@@ -16,7 +16,7 @@ import torch.onnx
 from pytorch_pfn_extras.onnx import annotate
 from pytorch_pfn_extras.onnx import apply_annotation
 from pytorch_pfn_extras.onnx import scoped_anchor
-from tests.pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
+from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")

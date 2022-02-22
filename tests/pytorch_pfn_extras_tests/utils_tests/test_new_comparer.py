@@ -6,8 +6,8 @@ import torch
 import torch.nn.functional as F
 
 import pytorch_pfn_extras as ppe
-from tests.pytorch_pfn_extras_tests.runtime_tests.test_jit_runtime import JITRuntime
-from tests.pytorch_pfn_extras_tests.training_tests import test_trainer
+from pytorch_pfn_extras_tests.runtime_tests.test_jit_runtime import JITRuntime
+from pytorch_pfn_extras_tests.training_tests import test_trainer
 
 
 class Model(torch.nn.Module):
