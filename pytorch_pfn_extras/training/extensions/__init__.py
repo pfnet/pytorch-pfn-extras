@@ -1,6 +1,9 @@
 from pytorch_pfn_extras.training.extensions import snapshot_writers  # NOQA
 from pytorch_pfn_extras.training.extensions._snapshot import snapshot  # NOQA
 from pytorch_pfn_extras.training.extensions._snapshot import snapshot_object  # NOQA
+from pytorch_pfn_extras.training.extensions.best_value import BestValue  # NOQA
+from pytorch_pfn_extras.training.extensions.best_value import MaxValue  # NOQA
+from pytorch_pfn_extras.training.extensions.best_value import MinValue  # NOQA
 from pytorch_pfn_extras.training.extensions.evaluator import Evaluator, IgniteEvaluator  # NOQA
 from pytorch_pfn_extras.training.extensions.fail_on_non_number import FailOnNonNumber  # NOQA
 from pytorch_pfn_extras.training.extensions.log_report import LogReport  # NOQA

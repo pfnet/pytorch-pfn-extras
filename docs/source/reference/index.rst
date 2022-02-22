@@ -47,6 +47,7 @@ Extensions
 .. autosummary::
    :toctree: generated/
 
+   training.extensions.BestObservation
    training.extensions.Evaluator
    training.extensions.LogReport
    training.extensions.MicroAverage
