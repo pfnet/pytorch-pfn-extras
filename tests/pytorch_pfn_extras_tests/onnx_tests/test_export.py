@@ -2,7 +2,7 @@ import onnx
 import pytest
 import torch
 
-from tests.pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
+from pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
 
 
 def test_simple():
