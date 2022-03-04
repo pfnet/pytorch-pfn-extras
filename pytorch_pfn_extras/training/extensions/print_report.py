@@ -75,6 +75,15 @@ class PrintReport(extension.Extension):
 
     """
 
+    def __new__(cls, *args, **kwargs):
+        if util._is_notebook():
+            from pytorch_pfn_extras.training.extensions import PrintReportNotebook
+            return PrintReportNotebook(*args, **kwargs)
+        return _PrintReport(*args, **kwargs)
+
+
+class _PrintReport(extension.Extension):
+
     def __init__(
             self,
             entries: Optional[Sequence[str]] = None,
