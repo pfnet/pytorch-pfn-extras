@@ -96,6 +96,9 @@ class Slack(extension.Extension):
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if not _slack_sdk_available:
             return
+
+        assert self._client is not None
+
         observation = manager.observation
 
         if callable(self._text):
