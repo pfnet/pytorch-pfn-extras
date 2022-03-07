@@ -66,7 +66,7 @@ class Slack(extension.Extension):
         use_threads: bool = False,
         context_object: Optional[object] = None,
         token: Optional[str] = None,
-        client: Optional[slack_sdk.WebClient] = None,
+        client: Optional[Any] = None,  # slack_sdk.WebClient, Any to avoid mypy errors
     ) -> None:
         if not _slack_sdk_available:
             warnings.warn(
