@@ -9,7 +9,7 @@ fi
 
 TEST_PIP_PACKAGES="
 matplotlib tensorboard ipython ipywidgets pandas optuna onnxruntime
-pytest flake8 pysen[lint] pytest-cov
+pytest flake8 pysen[lint] pytest-cov slack_sdk
 "
 
 docker_build_and_push() {

@@ -5,6 +5,10 @@ import pytest
 import pytorch_pfn_extras as ppe
 
 
+@pytest.mark.skipif(
+    not ppe.training.extensions.slack._slack_sdk_available,
+    reason="Slack SDK not installed"
+)
 class TestSlack:
     def _get_manager(self):
         return ppe.training.ExtensionsManager({}, [], 100, iters_per_epoch=5)
