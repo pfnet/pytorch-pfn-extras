@@ -90,10 +90,11 @@ class Slack(extension.Extension):
         self._filenames = filenames_template
         self._context = context_object
         self._channel_id = channel_id
+        self._use_threads = use_threads
+        self._ts = None
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if not _slack_sdk_available:
-            # Warning
             return
         observation = manager.observation
 
@@ -102,12 +103,18 @@ class Slack(extension.Extension):
         else:
             text = self._text.format(manager, self._context, **observation)
 
+        ts = None
+        if self._use_threads:
+            ts = self._ts
         response = self._client.chat_postMessage(
             channel=self._channel_id,
-            text=text
+            text=text,
+            thread_ts=ts,
         )
         assert response.get("ok")  # type: ignore[no-untyped-call]
-        self._ts = response.get("ts")  # type: ignore[no-untyped-call]
+        if self._use_threads and ts is None:
+            ts = response.get("ts")  # type: ignore[no-untyped-call]
+            self._ts = ts
         for filename in self._filenames:
             if callable(filename):
                 filename = filename(manager, self._context, observation)
@@ -117,6 +124,6 @@ class Slack(extension.Extension):
             response = self._client.files_upload(
                 channels=self._channel_id,
                 file=filename,
-                thread_ts=self._ts,
+                thread_ts=ts,
             )
             assert response.get("ok")  # type: ignore[no-untyped-call]
