@@ -14,7 +14,7 @@ except ImportError:
     _ipython_available = False
 
 
-def _is_notebook():
+def _is_notebook() -> bool:
     if _ipython_available and get_ipython() is not None:
         return 'IPKernelApp' in get_ipython().config
     return False

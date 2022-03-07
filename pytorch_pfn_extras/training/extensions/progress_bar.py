@@ -8,6 +8,7 @@ from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProto
 
 
 class ProgressBar(extension.Extension):
+
     """An extension to print a progress bar and recent training status.
 
     This extension prints a progress bar at every call. It watches the current
@@ -25,14 +26,7 @@ class ProgressBar(extension.Extension):
         out: Stream to print the bar. Standard output is used by default.
 
     """
-    def __new__(cls, *args, **kwargs):
-        if util._is_notebook():
-            from pytorch_pfn_extras.training.extensions import ProgressBarNotebook
-            return ProgressBarNotebook(*args, **kwargs)
-        return _ProgressBar(*args, **kwargs)
 
-
-class _ProgressBar(extension.Extension):
     def __init__(
             self,
             training_length: Any = None,
