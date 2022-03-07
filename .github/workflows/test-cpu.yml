@@ -5,15 +5,6 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-18.04
-    strategy:
-      matrix:
-        include:
-           - torch: '1.8.*'
-             torchvision: '0.9.*'
-           - torch: '1.9.*'
-             torchvision: '0.10.*'
-           - torch: '1.10.*'
-             torchvision: '0.11.*'
 
     steps:
     - name: Checkout
@@ -29,8 +20,8 @@ jobs:
     - name: Install
       run: |
         pip install -U pip wheel
-        pip install 'torch==${{ matrix.torch }}'
-        pip install 'torchvision==${{ matrix.torchvision }}'
+        pip install 'torch==1.9.*'
+        pip install 'torchvision==0.10.*'
         pip install pytest
         pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime pytorch-ignite
         pip install -v -e .
