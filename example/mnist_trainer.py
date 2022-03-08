@@ -77,6 +77,8 @@ def main():
                         help='directory to save comparer dump to')
     parser.add_argument('--compare-with', type=str, default=None,
                         help='directory to load comparer dump from')
+    parser.add_argument('--profiler', type=str, default=None,
+                        help='output mode for profiler results')
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -129,6 +131,26 @@ def main():
     # trigger = ppe.training.triggers.EarlyStoppingTrigger(
     #     check_trigger=(1, 'epoch'), monitor='val/loss')
 
+    profile = None
+    if args.profiler is not None:
+        callback = lambda prof: print(prof.key_averages().table(
+            sort_by="self_cuda_time_total", row_limit=-1))
+        if args.profiler == 'tensorboard':
+            callback = torch.profiler.tensorboard_trace_handler('./prof')
+        elif args.profiler == 'export_chrome_trace':
+            callback = lambda prof: prof.export_chrome_trace('./prof')
+        elif args.profiler == 'export_stacks':
+            callback = lambda prof: prof.export_stacks('./prof')
+        profile = torch.profiler.profile(
+            activities=[
+                torch.profiler.ProfilerActivity.CPU,
+                torch.profiler.ProfilerActivity.CUDA,
+            ],
+            schedule=torch.profiler.schedule(
+                wait=0, warmup=0, active=len(train_loader)),
+            on_trace_ready=callback,
+        )
+
     model_with_loss = ModelWithLoss(model)
     trainer = ppe.engine.create_trainer(
         model_with_loss,
@@ -142,8 +164,10 @@ def main():
             device=args.device,
             progress_bar=True,
             metrics=[ppe.training.metrics.AccuracyMetric('target', 'output')],
-            options={'eval_report_keys': ['loss', 'accuracy']}),
-        options={'train_report_keys': ['loss']}
+            options={'eval_report_keys': ['loss', 'accuracy']},
+        ),
+        options={'train_report_keys': ['loss']},
+        profile=profile,
     )
 
     ppe.to(model_with_loss, args.device)
