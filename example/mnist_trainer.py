@@ -133,14 +133,25 @@ def main():
 
     profile = None
     if args.profiler is not None:
-        callback = lambda prof: print(prof.key_averages().table(
-            sort_by="self_cuda_time_total", row_limit=-1))
         if args.profiler == 'tensorboard':
-            callback = torch.profiler.tensorboard_trace_handler('./prof')
+            def callback(prof):
+                torch.profiler.tensorboard_trace_handler('./prof')
         elif args.profiler == 'export_chrome_trace':
-            callback = lambda prof: prof.export_chrome_trace('./prof')
+            def callback(prof):
+                prof.export_chrome_trace('./prof')
         elif args.profiler == 'export_stacks':
-            callback = lambda prof: prof.export_stacks('./prof')
+            def callback(prof):
+                prof.export_stacks('./prof')
+        elif args.profiler == 'to_pickle':
+            def callback(prof):
+                import pandas as pd
+                df = pd.DataFrame([e.__dict__ for e in prof.events()])
+                df.to_pickle(f"{trainer.epoch}.pkl")
+        else:
+            def callback(prof):
+                table = prof.key_averages().table(
+                    sort_by="self_cuda_time_total", row_limit=-1)
+                print(table)
         profile = torch.profiler.profile(
             activities=[
                 torch.profiler.ProfilerActivity.CPU,
