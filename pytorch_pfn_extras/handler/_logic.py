@@ -233,8 +233,9 @@ class Logic(BaseLogic):
                 backward_outputs = (backward_outputs,)
             for k in backward_outputs:
                 try:
-                    if isinstance(outputs[k], torch.Tensor):
-                        to_backward.add(outputs[k])
+                    v = outputs[k]
+                    if isinstance(v, torch.Tensor) and v.grad_fn is not None:
+                        to_backward.add(v)
                 except KeyError:
                     warnings.warn(
                         'Couldn\'t find requested backward value: '
