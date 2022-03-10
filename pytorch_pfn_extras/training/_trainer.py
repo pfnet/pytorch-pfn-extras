@@ -33,7 +33,7 @@ class Trainer:
                 'Evaluator', Tuple['Evaluator', TriggerLike],
                 Mapping[str, Union['Evaluator', Tuple['Evaluator', TriggerLike]]]]],
             models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
-            profile: Optional[torch.profiler.profile] = None,
+            profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
             **kwargs: Any,
     ):
         self.handler = handler
@@ -340,7 +340,7 @@ class Trainer:
                                     ntf1.defer()
                                     ntf2.defer()
                                     iter_notifier.defer()
-                    if isinstance(prof, torch.profiler.profile):
+                    if prof is not None:
                         prof.step()  # type: ignore[no-untyped-call]
                     # In some cases, DataLoaders are continuos
                     # And will keep yielding results even if the epoch
@@ -351,7 +351,7 @@ class Trainer:
                 # In handlers that support a completely Async model train_epoch_end
                 # Will take care of completing pending work
                 self.handler.train_epoch_end(self)
-            if isinstance(prof, torch.profiler.profile):
+            if prof is not None:
                 prof.on_trace_ready = None
         self.handler.train_cleanup(self)
 

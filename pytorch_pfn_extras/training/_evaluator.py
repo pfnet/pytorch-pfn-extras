@@ -46,7 +46,7 @@ class Evaluator:
             *,
             progress_bar: bool = False,
             metrics: Optional[Sequence['MetricType']] = None,
-            profile: Optional[torch.profiler.profile] = None,
+            profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
     ):
         super().__init__()
 
@@ -141,7 +141,7 @@ class Evaluator:
                     # since they could start cycling on their data
                     if (idx + 1) == eval_len:
                         break
-                    if isinstance(prof, torch.profiler.profile):
+                    if prof is not None:
                         prof.step()  # type: ignore[no-untyped-call]
         # This will report to the trainer main reporter
         self.handler.eval_loop_end(self)

@@ -40,7 +40,7 @@ def create_trainer(
         handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Mapping[str, Any]] = None,
-        profile: Optional[torch.profiler.profile] = None,
+        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
 ) -> 'Trainer':
     """Creates a trainer object.
 
@@ -130,7 +130,7 @@ def create_evaluator(
         handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Mapping[str, Any]] = None,
-        profile: Optional[torch.profiler.profile] = None,
+        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
 ) -> 'Evaluator':
     """Creates an evaluator object. The return value of this function is
     expected to be fed to `ppe.engine.create_trainer` as an argument.
