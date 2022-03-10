@@ -233,7 +233,8 @@ class Logic(BaseLogic):
                 backward_outputs = (backward_outputs,)
             for k in backward_outputs:
                 try:
-                    to_backward.add(outputs[k])
+                    if isinstance(outputs[k], torch.Tensor):
+                        to_backward.add(outputs[k])
                 except KeyError:
                     warnings.warn(
                         'Couldn\'t find requested backward value: '
