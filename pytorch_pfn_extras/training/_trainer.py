@@ -340,21 +340,19 @@ class Trainer:
                                     ntf1.defer()
                                     ntf2.defer()
                                     iter_notifier.defer()
-                        # In some cases, DataLoaders are continuos
-                        # And will keep yielding results even if the epoch
-                        # is completed. We forcefully exit at the end of
-                        # every epoch
-                        if (
-                            self.is_epoch_last_iter(idx)
-                            or self.manager.stop_trigger
-                        ):
-                            break
                     if isinstance(prof, torch.profiler.profile):
                         prof.step()  # type: ignore[no-untyped-call]
+                    # In some cases, DataLoaders are continuos
+                    # And will keep yielding results even if the epoch
+                    # is completed. We forcefully exit at the end of
+                    # every epoch
+                    if self.is_epoch_last_iter(idx) or self.manager.stop_trigger:
+                        break
                 # In handlers that support a completely Async model train_epoch_end
                 # Will take care of completing pending work
                 self.handler.train_epoch_end(self)
-
+            if isinstance(prof, torch.profiler.profile):
+                prof.on_trace_ready = None
         self.handler.train_cleanup(self)
 
 
