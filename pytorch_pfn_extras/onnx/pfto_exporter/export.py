@@ -24,15 +24,25 @@ torch._C.Graph.returnNode = torch._C.Graph.return_node  # type: ignore[attr-defi
 torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defined]
 
 _ppe_ignore_scope: str = "_ppe_as_out_module"
+_list_create_ops: List[str] = ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"]
 
 
 def _custom_unpack_list(list_value: torch._C.Value) -> List[torch._C.Value]:
     list_node = list_value.node()
-    assert list_node.kind() in ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"], f"Unknown list operator: {list_node}"
+    assert list_node.kind() in _list_create_ops, f"Unknown list operator: {list_node}"
     return list(list_node.inputs())
 
 
+def _is_value(x: Any) -> bool:
+    return isinstance(x, torch._C.Value)
+
+
+def _custom_is_packed_list(list_value: torch._C.Value) -> bool:
+    return _is_value(list_value) and list_value.node().kind() in _list_create_ops
+
+
 sym_hel._unpack_list = _custom_unpack_list
+sym_hel._is_packed_list = _custom_is_packed_list
 
 
 def _unique_id(v: torch._C.Value) -> TorchValueID:
