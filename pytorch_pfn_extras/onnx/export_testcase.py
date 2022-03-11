@@ -122,12 +122,14 @@ def _export_util(
     try:
         torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
         if pytorch_pfn_extras.requires('1.10.0'):
+            checker_error = torch.onnx.CheckerError if pytorch_pfn_extras.requires('1.11.0') else \
+                torch.onnx.utils.ONNXCheckerError  # type: ignore[attr-defined]
             try:
                 enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
                 return torch_export(  # type: ignore[no-untyped-call]
                     model, args, f, **kwargs)
             # this class will change in torch 1.11 to torch.onnx.utils.CheckerError
-            except torch.onnx.utils.ONNXCheckerError:  # type: ignore[attr-defined]
+            except checker_error:
                 if enable_onnx_checker:
                     raise
         else:
