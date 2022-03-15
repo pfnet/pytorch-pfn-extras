@@ -29,4 +29,4 @@ Moreover, you can execute ``CodeBlock`` objects outside the training API.
     cblock = ppe.handler.update_parameters(model, optimizer)
     outs = cblock(input_batch)
 
-The only requirement is that the associated model has been asigned a device using ``ppe.to``.
+The only requirement is that the associated model has been assigned a device using ``ppe.to``.
