@@ -30,8 +30,8 @@ except ImportError:
 
 
 if util._is_notebook():
-    from pytorch_pfn_extras.training.extensions.print_report_notebook import PrintReportNotebook as PrintReport  # NOQA
-    from pytorch_pfn_extras.training.extensions.progress_bar_notebook import ProgressBarNotebook as ProgressBar  # NOQA
+    from pytorch_pfn_extras.training.extensions.print_report_notebook import PrintReportNotebook as PrintReport  # type: ignore[misc] # NOQA
+    from pytorch_pfn_extras.training.extensions.progress_bar_notebook import ProgressBarNotebook as ProgressBar  # type: ignore[misc] # NOQA
 else:
     from pytorch_pfn_extras.training.extensions.print_report import PrintReport as PrintReportCLI  # type: ignore[misc] # NOQA
     from pytorch_pfn_extras.training.extensions.progress_bar import ProgressBar as ProgressBarCLI  # type: ignore[misc] # NOQA
