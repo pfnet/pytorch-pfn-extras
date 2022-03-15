@@ -88,7 +88,7 @@ Runtime Registry
 
 When creating a new ``Runtime`` class for custom needs, they need to be registered
 in a global ``runtime_registry`` object as detailed above.
-This object is of the ``_RuntimeRegistry`` type and it mantains a map of strings and
+This object is of the ``_RuntimeRegistry`` type and it maintains a map of strings and
 ``Runtime`` types. The keys are the devices passed to ``ppe.to`` and the
 types will be the type of the ``Runtime`` object that ``ppe.to`` will use to treat the
 module or tensor. Beware that users are not supposed to interact directly with this class, only
