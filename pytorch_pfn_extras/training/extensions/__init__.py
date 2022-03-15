@@ -18,6 +18,17 @@ from pytorch_pfn_extras.training.extensions.value_observation import observe_val
 from pytorch_pfn_extras.training.extensions.variable_statistics_plot import VariableStatisticsPlot  # NOQA
 from pytorch_pfn_extras.training.extensions import util
 
+from pytorch_pfn_extras.training.extensions.print_report import PrintReport as PrintReportCLI # NOQA
+from pytorch_pfn_extras.training.extensions.progress_bar import ProgressBar as ProgressBarCLI # NOQA
+
+try:
+    from pytorch_pfn_extras.training.extensions.print_report_notebook import PrintReportNotebook  # NOQA
+    from pytorch_pfn_extras.training.extensions.progress_bar_notebook import ProgressBarNotebook  # NOQA
+    _ipython_module_available = True
+except ImportError:
+    _ipython_module_available = False
+
+
 if util._is_notebook():
     from pytorch_pfn_extras.training.extensions.print_report_notebook import PrintReportNotebook as PrintReport  # NOQA
     from pytorch_pfn_extras.training.extensions.progress_bar_notebook import ProgressBarNotebook as ProgressBar  # NOQA
