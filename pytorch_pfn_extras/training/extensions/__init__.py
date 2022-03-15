@@ -18,8 +18,8 @@ from pytorch_pfn_extras.training.extensions.value_observation import observe_val
 from pytorch_pfn_extras.training.extensions.variable_statistics_plot import VariableStatisticsPlot  # NOQA
 from pytorch_pfn_extras.training.extensions import util
 
-from pytorch_pfn_extras.training.extensions.print_report import PrintReport as PrintReportCLI # NOQA
-from pytorch_pfn_extras.training.extensions.progress_bar import ProgressBar as ProgressBarCLI # NOQA
+from pytorch_pfn_extras.training.extensions.print_report import PrintReport  # NOQA
+from pytorch_pfn_extras.training.extensions.progress_bar import ProgressBar  # NOQA
 
 try:
     from pytorch_pfn_extras.training.extensions.print_report_notebook import PrintReportNotebook  # NOQA
@@ -33,5 +33,5 @@ if util._is_notebook():
     from pytorch_pfn_extras.training.extensions.print_report_notebook import PrintReportNotebook as PrintReport  # NOQA
     from pytorch_pfn_extras.training.extensions.progress_bar_notebook import ProgressBarNotebook as ProgressBar  # NOQA
 else:
-    from pytorch_pfn_extras.training.extensions.print_report import PrintReport  # type: ignore[misc] # NOQA
-    from pytorch_pfn_extras.training.extensions.progress_bar import ProgressBar  # type: ignore[misc] # NOQA
+    from pytorch_pfn_extras.training.extensions.print_report import PrintReport as PrintReportCLI  # type: ignore[misc] # NOQA
+    from pytorch_pfn_extras.training.extensions.progress_bar import ProgressBar as ProgressBarCLI  # type: ignore[misc] # NOQA
