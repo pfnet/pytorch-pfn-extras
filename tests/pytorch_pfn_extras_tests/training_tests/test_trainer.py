@@ -536,3 +536,29 @@ def test_trainer_with_code_block(device, progress_bar, path):
         out_dir=path, logic=ppe.handler.CodeBlockLogic()
     )
     trainer.run(data, data)
+
+
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+@pytest.mark.parametrize('progress_bar', [True, False])
+def test_trainer_with_code_block_with_multiple_optimizers(device, progress_bar, path):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
+    model = MyModel()
+    model_with_loss = MyModelWithLossDictOutput(model)
+    ppe.to(model_with_loss, device)
+    optimizer0 = torch.optim.SGD(model.parameters(), lr=0.1)
+    optimizer1 = torch.optim.Adam(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [{'x': torch.rand(20,), 't': torch.rand(10,)} for i in range(10)])
+    extensions = _make_extensions()
+
+    evaluator = engine.create_evaluator(
+        model_with_loss, device=device, progress_bar=progress_bar,
+        logic=ppe.handler.CodeBlockLogic())
+
+    trainer = engine.create_trainer(
+        model_with_loss, {"0": optimizer0, "1": optimizer1}, 20,
+        device=device, evaluator=evaluator, extensions=extensions,
+        out_dir=path, logic=ppe.handler.CodeBlockLogic()
+    )
+    trainer.run(data, data)
