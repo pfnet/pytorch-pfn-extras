@@ -427,11 +427,10 @@ class CodeBlockLogic(BaseLogic):
                 Input tensors feeded to the model of the current step.
         """
         module = models[self.model_name]
-        optimizer = optimizers[self.model_name]
 
         return update_parameters(
             module,
-            optimizer,
+            list(optimizers.values()),
             self.backward_outputs,
             None,
         )(batch)
