@@ -511,6 +511,7 @@ class _Exporter(_ExporterOptions):
                 if i in start_vals:
                     continue
                 ret.add(i.node())
+                start_vals.add(i)
                 target_vals.extend(list(i.node().inputs()))
             return list(ret)
 
