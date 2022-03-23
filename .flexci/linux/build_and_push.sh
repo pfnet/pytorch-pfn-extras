@@ -8,7 +8,7 @@ if [ "${IMAGE_BASE}" = "" ]; then
 fi
 
 TEST_PIP_PACKAGES="
-matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime
+matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime marko
 pytest flake8 pysen[lint] pytest-cov
 "
 
