@@ -33,5 +33,5 @@ if _util._is_notebook():
     PrintReport = PrintReportNotebook
     ProgressBar = ProgressBarNotebook
 else:
-    PrintReport = PrintReportCLI
-    ProgressBar = ProgressBarCLI
+    PrintReport = PrintReportCLI  # type: ignore[assignment,misc]
+    ProgressBar = ProgressBarCLI  # type: ignore[assignment,misc]
