@@ -147,11 +147,13 @@ def main():
                 import pandas as pd
                 df = pd.DataFrame([e.__dict__ for e in prof.events()])
                 df.to_pickle(f"{trainer.epoch}.pkl")
-        else:
+        elif args.profiler == 'print':
             def callback(prof):
                 table = prof.key_averages().table(
                     sort_by="self_cuda_time_total", row_limit=-1)
                 print(table)
+        else:
+            assert False
         profile = torch.profiler.profile(
             activities=[
                 torch.profiler.ProfilerActivity.CPU,
