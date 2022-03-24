@@ -33,5 +33,5 @@ if _util._is_notebook():
     PrintReport = PrintReportNotebook
     ProgressBar = ProgressBarNotebook
 else:
-    PrintReport = PrintReportNotebook
-    ProgressBar = ProgressBarNotebook
+    PrintReport = PrintReportCLI
+    ProgressBar = ProgressBarCLI
