@@ -4,7 +4,7 @@ import queue
 import time
 import warnings
 from typing import (
-    Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union, TYPE_CHECKING
+    Any, Dict, Generator, Iterable, List, Mapping, Optional, Tuple, Union, TYPE_CHECKING
 )
 
 import torch
@@ -22,6 +22,12 @@ if TYPE_CHECKING:
     from pytorch_pfn_extras import handler as handler_module
     from pytorch_pfn_extras.training._evaluator import Evaluator
     from pytorch_pfn_extras.profiler._time_summary import _ReportNotification
+
+
+@contextlib.contextmanager
+def _nullcontext() -> Generator[None, None, None]:
+    # contextlib.nullcontext equivalent, needed for Python 3.6 support.
+    yield
 
 
 class Trainer:
@@ -279,7 +285,7 @@ class Trainer:
                 for _, (evaluator, _) in self._evaluators.items():
                     evaluator.handler.eval_setup(evaluator, val_loader)
 
-        with self._profile or contextlib.nullcontext() as prof:
+        with self._profile or _nullcontext() as prof:
             while not self.manager.stop_trigger:
                 self.handler.train_epoch_begin(self, train_loader)
 

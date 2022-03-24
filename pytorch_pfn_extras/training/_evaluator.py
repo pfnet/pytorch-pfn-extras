@@ -19,6 +19,12 @@ if TYPE_CHECKING:
 
 
 @contextlib.contextmanager
+def _nullcontext() -> Generator[None, None, None]:
+    # contextlib.nullcontext equivalent, needed for Python 3.6 support.
+    yield
+
+
+@contextlib.contextmanager
 def _progress_bar(
         name: str,
         required: bool,
@@ -124,7 +130,7 @@ class Evaluator:
         self._pbar = _progress_bar('validation', self._progress_bar, eval_len)
         self._update = self._pbar.__enter__()
         loader_iter = iter(loader)
-        with self._profile or contextlib.nullcontext() as prof:
+        with self._profile or _nullcontext() as prof:
             with torch.no_grad():  # type: ignore[no-untyped-call]
                 for idx in range(eval_len):
                     try:
