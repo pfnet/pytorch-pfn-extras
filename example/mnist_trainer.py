@@ -135,7 +135,7 @@ def main():
     if args.profiler is not None:
         if args.profiler == 'tensorboard':
             def callback(prof):
-                torch.profiler.tensorboard_trace_handler('./prof')
+                torch.profiler.tensorboard_trace_handler('./prof')  # type: ignore[attr-defined]
         elif args.profiler == 'export_chrome_trace':
             def callback(prof):
                 prof.export_chrome_trace('./prof')
@@ -154,12 +154,12 @@ def main():
                 print(table)
         else:
             assert False
-        profile = torch.profiler.profile(
+        profile = torch.profiler.profile(  # type: ignore[attr-defined]
             activities=[
-                torch.profiler.ProfilerActivity.CPU,
-                torch.profiler.ProfilerActivity.CUDA,
+                torch.profiler.ProfilerActivity.CPU,  # type: ignore[attr-defined]
+                torch.profiler.ProfilerActivity.CUDA,  # type: ignore[attr-defined]
             ],
-            schedule=torch.profiler.schedule(
+            schedule=torch.profiler.schedule(  # type: ignore[attr-defined]
                 wait=0, warmup=0, active=len(train_loader)),
             on_trace_ready=callback,
         )
