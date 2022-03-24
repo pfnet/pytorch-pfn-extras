@@ -1,3 +1,4 @@
+import os
 import tempfile
 import typing
 
@@ -564,6 +565,10 @@ def test_trainer_with_code_block_with_multiple_optimizers(device, progress_bar, 
     trainer.run(data, data)
 
 
+@pytest.mark.skipif(
+    os.name == 'nt' and not ppe.requires("1.9"),
+    reason='torch.profiler.profile is not supported.',
+)
 def test_trainer_profile():
     device = 'cpu'
     model = MyModel()
