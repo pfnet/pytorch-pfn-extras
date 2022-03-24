@@ -406,8 +406,8 @@ class PyTorchRuntime(BaseRuntime):
             def _scale(x: torch.Tensor) -> torch.Tensor:
                 return self._grad_scaler.scale(x)  # type: ignore[no-any-return]
 
-        if code_block.optimizer is not None:
-            code_block.optimizer.zero_grad()
+        for optimizer in code_block.optimizers:
+            optimizer.zero_grad()
 
         # with autocast
         with _autocast(enabled=self._autocast):
@@ -430,14 +430,17 @@ class PyTorchRuntime(BaseRuntime):
             else:
                 _scale(out[code_block.backprop_from]).backward()  # type: ignore
 
-        if code_block.optimizer is None:
+        if len(code_block.optimizers) == 0:
             return out
 
         if self._grad_scaler is not None:
-            self._grad_scaler.step(code_block.optimizer)
+            # TODO support multiple optimizers with grad scaler
+            assert len(code_block.optimizers) == 1
+            self._grad_scaler.step(code_block.optimizers[0])
             self._grad_scaler.update()
         else:
-            code_block.optimizer.step()
+            for optimizer in code_block.optimizers:
+                optimizer.step()
 
         return out
 

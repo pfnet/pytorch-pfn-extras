@@ -233,7 +233,9 @@ class Logic(BaseLogic):
                 backward_outputs = (backward_outputs,)
             for k in backward_outputs:
                 try:
-                    to_backward.add(outputs[k])
+                    v = outputs[k]
+                    if isinstance(v, torch.Tensor) and v.grad_fn is not None:
+                        to_backward.add(v)
                 except KeyError:
                     warnings.warn(
                         'Couldn\'t find requested backward value: '
@@ -425,11 +427,10 @@ class CodeBlockLogic(BaseLogic):
                 Input tensors feeded to the model of the current step.
         """
         module = models[self.model_name]
-        optimizer = optimizers[self.model_name]
 
         return update_parameters(
             module,
-            optimizer,
+            list(optimizers.values()),
             self.backward_outputs,
             None,
         )(batch)
