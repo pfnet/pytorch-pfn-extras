@@ -19,6 +19,12 @@ if TYPE_CHECKING:
 
 
 @contextlib.contextmanager
+def _nullcontext() -> Generator[None, None, None]:
+    # contextlib.nullcontext equivalent, needed for Python 3.6 support.
+    yield
+
+
+@contextlib.contextmanager
 def _progress_bar(
         name: str,
         required: bool,
@@ -46,6 +52,7 @@ class Evaluator:
             *,
             progress_bar: bool = False,
             metrics: Optional[Sequence['MetricType']] = None,
+            profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
     ):
         super().__init__()
 
@@ -61,6 +68,7 @@ class Evaluator:
         self._progress_bar = progress_bar
         self._reporter = reporting.Reporter()
         self._metrics = [] if metrics is None else metrics
+        self._profile = profile
         for name, model in self.models.items():
             self._reporter.add_observer(name, model)
             self._reporter.add_observers(
@@ -122,22 +130,25 @@ class Evaluator:
         self._pbar = _progress_bar('validation', self._progress_bar, eval_len)
         self._update = self._pbar.__enter__()
         loader_iter = iter(loader)
-        with torch.no_grad():  # type: ignore[no-untyped-call]
-            for idx in range(eval_len):
-                try:
-                    x = next(loader_iter)
-                except StopIteration:
-                    break
-                self._idxs.put(idx)
-                self._inputs.put(x)
-                self._observed.put(observation)
-                with self._reporter.scope(observation):
-                    self.handler.eval_step(
-                        self, idx, x, self._complete_step)
-                # Some of the DataLoaders might need an explicit break
-                # since they could start cycling on their data
-                if (idx + 1) == eval_len:
-                    break
+        with self._profile or _nullcontext() as prof:
+            with torch.no_grad():  # type: ignore[no-untyped-call]
+                for idx in range(eval_len):
+                    try:
+                        x = next(loader_iter)
+                    except StopIteration:
+                        break
+                    self._idxs.put(idx)
+                    self._inputs.put(x)
+                    self._observed.put(observation)
+                    with self._reporter.scope(observation):
+                        self.handler.eval_step(
+                            self, idx, x, self._complete_step)
+                    # Some of the DataLoaders might need an explicit break
+                    # since they could start cycling on their data
+                    if (idx + 1) == eval_len:
+                        break
+                    if prof is not None:
+                        prof.step()  # type: ignore[no-untyped-call]
         # This will report to the trainer main reporter
         self.handler.eval_loop_end(self)
         reporting.report(self._summary.compute_mean())

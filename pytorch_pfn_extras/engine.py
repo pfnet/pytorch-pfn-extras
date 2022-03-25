@@ -40,6 +40,7 @@ def create_trainer(
         handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Mapping[str, Any]] = None,
+        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
 ) -> 'Trainer':
     """Creates a trainer object.
 
@@ -84,6 +85,9 @@ def create_trainer(
         runtime_options:
             Options that are set to the runtime object. See the documentation
             of `ppe.runtime.PyTorchRuntime` for details.
+        profile:
+            A `torch.profiler.profile` object to collect the performance
+            metrics.
     """
 
     options = options.copy() if options else {}
@@ -112,6 +116,7 @@ def create_trainer(
         extensions=extensions, out_dir=out_dir,
         stop_trigger=stop_trigger, writer=writer,
         transform_model=transform_model,
+        profile=profile,
     )
 
 
@@ -125,6 +130,7 @@ def create_evaluator(
         handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Mapping[str, Any]] = None,
+        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
 ) -> 'Evaluator':
     """Creates an evaluator object. The return value of this function is
     expected to be fed to `ppe.engine.create_trainer` as an argument.
@@ -154,6 +160,9 @@ def create_evaluator(
         runtime_options:
             Options that are set to the runtime object. See the documentation
             of `ppe.handler.Handler` for details.
+        profile:
+            A `torch.profiler.profile` object to collect the performance
+            metrics.
     """
 
     metrics = metrics if metrics else []
@@ -182,4 +191,5 @@ def create_evaluator(
         models=models,
         progress_bar=progress_bar,
         metrics=metrics,
+        profile=profile,
     )

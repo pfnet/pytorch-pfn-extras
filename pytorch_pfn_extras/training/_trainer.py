@@ -1,9 +1,10 @@
 import collections.abc
+import contextlib
 import queue
 import time
 import warnings
 from typing import (
-    Any, Dict, Iterable, List, Mapping, Optional, Tuple, Union, TYPE_CHECKING
+    Any, Dict, Generator, Iterable, List, Mapping, Optional, Tuple, Union, TYPE_CHECKING
 )
 
 import torch
@@ -23,6 +24,12 @@ if TYPE_CHECKING:
     from pytorch_pfn_extras.profiler._time_summary import _ReportNotification
 
 
+@contextlib.contextmanager
+def _nullcontext() -> Generator[None, None, None]:
+    # contextlib.nullcontext equivalent, needed for Python 3.6 support.
+    yield
+
+
 class Trainer:
     def __init__(
             self,
@@ -32,6 +39,7 @@ class Trainer:
                 'Evaluator', Tuple['Evaluator', TriggerLike],
                 Mapping[str, Union['Evaluator', Tuple['Evaluator', TriggerLike]]]]],
             models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
+            profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
             **kwargs: Any,
     ):
         self.handler = handler
@@ -46,7 +54,8 @@ class Trainer:
         else:
             self._models = models
         self._kwargs = kwargs
-        self._enable_profile = kwargs.get('enable_profile', False)
+        self._profile = profile
+        self._enable_profile = kwargs.get('enable_profile', profile is not None)
         self._extensions: List[  # list of (args, kwargs)
             Tuple[Tuple[
                 Union['extension.ExtensionLike', extension.ExtensionEntry],
@@ -276,79 +285,80 @@ class Trainer:
                 for _, (evaluator, _) in self._evaluators.items():
                     evaluator.handler.eval_setup(evaluator, val_loader)
 
-        while not self.manager.stop_trigger:
-            self.handler.train_epoch_begin(self, train_loader)
+        with self._profile or _nullcontext() as prof:
+            while not self.manager.stop_trigger:
+                self.handler.train_epoch_begin(self, train_loader)
 
-            # When iterations are completed in the callback
-            # This is needed to avoid being constantly passing parameters
-            self._idxs: 'queue.Queue[int]' = queue.Queue()
-            self._inputs: 'queue.Queue[Any]' = queue.Queue()
-            self._times: 'queue.Queue[float]' = queue.Queue()
-            self._observed: 'queue.Queue[reporting.Observation]' = queue.Queue()
-            # Iterator must be created after `train_epoch_begin` as it may be
-            #  using a DistributedSampler.
-            loader_iter = iter(train_loader)
-            self._profile_records: 'queue.Queue[List[_ReportNotification]]' \
-                = queue.Queue()
-            for idx in range(train_len):
-                with record(
-                    "pytorch_pfn_extras.training.Trainer:iteration",
-                    use_cuda=torch.cuda.is_available(),
-                    enable=self._enable_profile
-                ) as ntf0:
-                    try:
-                        with record(
-                            "pytorch_pfn_extras.training.Trainer:get_data",
-                            enable=self._enable_profile
-                        ):
-                            x = next(loader_iter)
-                    except StopIteration:
-                        loader_iter = iter(train_loader)
-                        with record(
-                            "pytorch_pfn_extras.training.Trainer:get_data",
-                            enable=self._enable_profile
-                        ):
-                            x = next(loader_iter)
-                    begin = time.time()
-                    self._idxs.put(idx)
-                    self._inputs.put(x)
-                    self._times.put(begin)
-                    self._deferred = True
+                # When iterations are completed in the callback
+                # This is needed to avoid being constantly passing parameters
+                self._idxs: 'queue.Queue[int]' = queue.Queue()
+                self._inputs: 'queue.Queue[Any]' = queue.Queue()
+                self._times: 'queue.Queue[float]' = queue.Queue()
+                self._observed: 'queue.Queue[reporting.Observation]' = queue.Queue()
+                # Iterator must be created after `train_epoch_begin` as it may be
+                #  using a DistributedSampler.
+                loader_iter = iter(train_loader)
+                self._profile_records: 'queue.Queue[List[_ReportNotification]]' \
+                    = queue.Queue()
+                for idx in range(train_len):
                     with record(
-                        "pytorch_pfn_extras.training.Trainer:run_iteration",
+                        "pytorch_pfn_extras.training.Trainer:iteration",
                         use_cuda=torch.cuda.is_available(),
                         enable=self._enable_profile
-                    ) as ntf1, \
-                            self.manager.run_iteration() as iter_notifier:
-                        self._observed.put(self.manager.observation)
+                    ) as ntf0:
+                        try:
+                            with record(
+                                "pytorch_pfn_extras.training.Trainer:get_data",
+                                enable=self._enable_profile
+                            ):
+                                x = next(loader_iter)
+                        except StopIteration:
+                            loader_iter = iter(train_loader)
+                            with record(
+                                "pytorch_pfn_extras.training.Trainer:get_data",
+                                enable=self._enable_profile
+                            ):
+                                x = next(loader_iter)
+                        begin = time.time()
+                        self._idxs.put(idx)
+                        self._inputs.put(x)
+                        self._times.put(begin)
+                        self._deferred = True
                         with record(
-                            "pytorch_pfn_extras.training.Trainer:train_step",
+                            "pytorch_pfn_extras.training.Trainer:run_iteration",
                             use_cuda=torch.cuda.is_available(),
                             enable=self._enable_profile
-                        ) as ntf2:
-                            self._profile_records.put([ntf0, ntf1, ntf2])
-                            self.handler.train_step(
-                                self, idx, x, complete_fn=self._complete_step)
-                            # Check if the callback was called
-                            if self._deferred:
-                                # The iteration will be completed later
-                                ntf0.defer()
-                                ntf1.defer()
-                                ntf2.defer()
-                                iter_notifier.defer()
+                        ) as ntf1, \
+                                self.manager.run_iteration() as iter_notifier:
+                            self._observed.put(self.manager.observation)
+                            with record(
+                                "pytorch_pfn_extras.training.Trainer:train_step",
+                                use_cuda=torch.cuda.is_available(),
+                                enable=self._enable_profile
+                            ) as ntf2:
+                                self._profile_records.put([ntf0, ntf1, ntf2])
+                                self.handler.train_step(
+                                    self, idx, x, complete_fn=self._complete_step)
+                                # Check if the callback was called
+                                if self._deferred:
+                                    # The iteration will be completed later
+                                    ntf0.defer()
+                                    ntf1.defer()
+                                    ntf2.defer()
+                                    iter_notifier.defer()
+                    if prof is not None:
+                        prof.step()  # type: ignore[no-untyped-call]
                     # In some cases, DataLoaders are continuos
                     # And will keep yielding results even if the epoch
                     # is completed. We forcefully exit at the end of
                     # every epoch
-                    if (
-                        self.is_epoch_last_iter(idx)
-                        or self.manager.stop_trigger
-                    ):
+                    if self.is_epoch_last_iter(idx) or self.manager.stop_trigger:
                         break
-            # In handlers that support a completely Async model train_epoch_end
-            # Will take care of completing pending work
-            self.handler.train_epoch_end(self)
-
+                # In handlers that support a completely Async model train_epoch_end
+                # Will take care of completing pending work
+                self.handler.train_epoch_end(self)
+            if prof is not None:
+                prof.on_trace_ready = None
         self.handler.train_cleanup(self)
 
 

@@ -77,6 +77,8 @@ def main():
                         help='directory to save comparer dump to')
     parser.add_argument('--compare-with', type=str, default=None,
                         help='directory to load comparer dump from')
+    parser.add_argument('--profiler', type=str, default=None,
+                        help='output mode for profiler results')
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -129,6 +131,39 @@ def main():
     # trigger = ppe.training.triggers.EarlyStoppingTrigger(
     #     check_trigger=(1, 'epoch'), monitor='val/loss')
 
+    profile = None
+    if args.profiler is not None:
+        if args.profiler == 'tensorboard':
+            def callback(prof):
+                torch.profiler.tensorboard_trace_handler('./prof')  # type: ignore[attr-defined]
+        elif args.profiler == 'export_chrome_trace':
+            def callback(prof):
+                prof.export_chrome_trace('./prof')
+        elif args.profiler == 'export_stacks':
+            def callback(prof):
+                prof.export_stacks('./prof')
+        elif args.profiler == 'to_pickle':
+            def callback(prof):
+                import pandas as pd
+                df = pd.DataFrame([e.__dict__ for e in prof.events()])
+                df.to_pickle(f"{trainer.epoch}.pkl")
+        elif args.profiler == 'print':
+            def callback(prof):
+                table = prof.key_averages().table(
+                    sort_by="self_cuda_time_total", row_limit=-1)
+                print(table)
+        else:
+            assert False
+        profile = torch.profiler.profile(  # type: ignore[attr-defined]
+            activities=[
+                torch.profiler.ProfilerActivity.CPU,  # type: ignore[attr-defined]
+                torch.profiler.ProfilerActivity.CUDA,  # type: ignore[attr-defined]
+            ],
+            schedule=torch.profiler.schedule(  # type: ignore[attr-defined]
+                wait=0, warmup=0, active=len(train_loader)),
+            on_trace_ready=callback,
+        )
+
     model_with_loss = ModelWithLoss(model)
     trainer = ppe.engine.create_trainer(
         model_with_loss,
@@ -142,8 +177,10 @@ def main():
             device=args.device,
             progress_bar=True,
             metrics=[ppe.training.metrics.AccuracyMetric('target', 'output')],
-            options={'eval_report_keys': ['loss', 'accuracy']}),
-        options={'train_report_keys': ['loss']}
+            options={'eval_report_keys': ['loss', 'accuracy']},
+        ),
+        options={'train_report_keys': ['loss']},
+        profile=profile,
     )
 
     ppe.to(model_with_loss, args.device)
