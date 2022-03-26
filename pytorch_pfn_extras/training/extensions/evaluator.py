@@ -259,6 +259,13 @@ class Evaluator(extension.Extension):
         pass
 
 
+def _dist_gather(obj: Any) -> List[Any]:
+    world_size = torch.distributed.get_world_size()  # type: ignore[no-untyped-call]
+    placeholder = [object() for _ in range(world_size)]
+    torch.distributed.all_gather_object(placeholder, obj)  # type: ignore[no-untyped-call]
+    return placeholder
+
+
 class DistributedEvaluator(Evaluator):
 
     """__init__(self, iterator, target, eval_func=None, *, progress_bar=False)
@@ -309,10 +316,7 @@ class DistributedEvaluator(Evaluator):
         super().__init__(iterator, target, eval_hook, eval_func, **kwargs)
 
     def _gather_summaries(self, summary: reporting.DictSummary) -> reporting.DictSummary:
-        world_size = torch.distributed.get_world_size()  # type: ignore[no-untyped-call]
-        summaries = [reporting.DictSummary() for _ in range(world_size)]
-        torch.distributed.all_gather_object(summaries, summary)  # type: ignore[no-untyped-call]
-        return sum(summaries, reporting.DictSummary())
+        return sum(_dist_gather(summary), reporting.DictSummary())
 
 
 @contextlib.contextmanager

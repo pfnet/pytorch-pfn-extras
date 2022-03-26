@@ -1,6 +1,7 @@
 import numpy
 import pytest
 import torch
+import torch.distributed as dist
 
 import pytorch_pfn_extras as ppe
 
@@ -288,3 +289,51 @@ def test_ignite_evaluator_reporting_metrics():
     assert result['main/x'] == 1.5
     # Ignite calculated metric
     assert result['val/mse'] == 0.0
+
+
+def test_distributed_evaluation(mocker):
+    mocker.patch.object(dist, 'is_initialized', return_value=True)
+
+    dummy_data = []   # Note: has no effect to the evaluation
+    data_loader = torch.utils.data.DataLoader(dummy_data)
+    target = DummyModel()
+    evaluator = ppe.training.extensions.DistributedEvaluator(data_loader, target)
+
+    # Make a (simulated) summary for each rank
+    worker_evaluations = [
+        [1., 2., 3.],   # assuming rank=0
+        [4., 5., 6.],   # rank=1
+        [7., 8., 9.],   # ...
+        [10., 11., 12.],
+    ]
+    worker_summaries = []
+    for accs in worker_evaluations:
+        s = ppe.reporting.DictSummary()
+        for acc in accs:
+            s.add({'target/score': acc})
+        worker_summaries.append(s)
+
+    mocker.patch.object(ppe.training.extensions.evaluator, '_dist_gather',
+                        return_value=worker_summaries)
+
+    reporter = ppe.reporting.Reporter()
+    reporter.add_observer('target', target)
+    with reporter:
+        mean = evaluator.evaluate()
+        assert mean['target/score'] == 6.5
+
+
+def test_distributed_evaluator_progress_bar(mocker):
+    mocker.patch.object(dist, 'is_initialized', return_value=True)
+
+    data_loader = torch.utils.data.DataLoader([])
+    target = DummyModel()
+
+    mocker.patch.object(dist, 'get_rank', return_value=0)
+    evaluator = ppe.training.extensions.DistributedEvaluator(data_loader, target, progress_bar=True)
+    assert evaluator._progress_bar
+
+    # rank != 0 will forcibly set progress_bar=False
+    mocker.patch.object(dist, 'get_rank', return_value=1)
+    evaluator = ppe.training.extensions.DistributedEvaluator(data_loader, target, progress_bar=True)
+    assert not evaluator._progress_bar
