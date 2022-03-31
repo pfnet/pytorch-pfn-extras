@@ -168,10 +168,7 @@ class Trainer:
             self,
             idx: int,
             outs: Any,
-            *,
-            is_deferred: bool = False,
     ) -> None:
-        self._deferred = False  # notify that the function was called
         c_idx = self._idxs.get()
         # Asure that iterations complete in order
         if c_idx != idx:
@@ -182,32 +179,13 @@ class Trainer:
             )
         x = self._inputs.get()
         begin = self._times.get()
-        observed = self._observed.get()
         (
             record_iteration,
             record_run_iteration,
             record_train_step,
         ) = self._profile_records.get()
-        # If the iteration was not deferred this is still under the
-        # `manager.run_iteration` scope
-        # Change the current reporter observation
-        # To be the one to be completed
-        if is_deferred:
-            # Complete profiler record of `train_step`
-            record_train_step.complete()
-            # We want to report the previously obtained values in `train_step`
-            cm_iter = self.manager.complete_iteration(observation=observed)
-            cm_iter.__enter__()
-        else:
-            reporting.get_current_reporter().observation = observed
-            self.manager.observation = observed
         self.handler.train_post_step(self, idx, x, outs)
         reporting.report({"elapsed_time": time.time() - begin})
-        if is_deferred:
-            cm_iter.__exit__(None, None, None)
-            # Complete profiler record of `run_iteration` and iteration
-            record_run_iteration.complete()
-            record_iteration.complete()
 
     def run(self,
             train_loader: Iterable[Any],
@@ -323,13 +301,12 @@ class Trainer:
                         self._idxs.put(idx)
                         self._inputs.put(x)
                         self._times.put(begin)
-                        self._deferred = True
                         with record(
                             "pytorch_pfn_extras.training.Trainer:run_iteration",
                             use_cuda=torch.cuda.is_available(),
                             enable=self._enable_profile
                         ) as ntf1, \
-                                self.manager.run_iteration() as iter_notifier:
+                                self.manager.run_iteration():
                             self._observed.put(self.manager.observation)
                             with record(
                                 "pytorch_pfn_extras.training.Trainer:train_step",
@@ -340,12 +317,6 @@ class Trainer:
                                 self.handler.train_step(
                                     self, idx, x, complete_fn=self._complete_step)
                                 # Check if the callback was called
-                                if self._deferred:
-                                    # The iteration will be completed later
-                                    ntf0.defer()
-                                    ntf1.defer()
-                                    ntf2.defer()
-                                    iter_notifier.defer()
                     if prof is not None:
                         prof.step()  # type: ignore[no-untyped-call]
                     # In some cases, DataLoaders are continuos
