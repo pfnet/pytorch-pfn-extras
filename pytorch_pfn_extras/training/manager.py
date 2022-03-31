@@ -41,6 +41,14 @@ class _ManagerProxy:
         return self._manager.iteration
 
     @property
+    def _iteration(self) -> int:
+        return self._manager.iteration
+
+    @property
+    def _execution(self) -> int:
+        return self._manager.execution
+
+    @property
     def epoch(self) -> int:
         # Extensions will start via self.iteration
         return self.iteration // self._iters_per_epoch
@@ -488,14 +496,14 @@ class _BaseExtensionsManager:
                         f'.run_extensions:{name}',
                         enable=self._enable_profile,
                     ):
-                        entry.extension(self)
+                        entry.extension(manager)
         for name, extension in to_run:
             with record(
                 f'pytorch_pfn_extras.training.ExtensionsManager'
                 f'.run_extensions:{name}',
                 enable=self._enable_profile,
             ):
-                extension(self)
+                extension(manager)
         self._model_available = True
 
     def needs_state_this_iteration(self) -> bool:
