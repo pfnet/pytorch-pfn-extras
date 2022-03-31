@@ -399,9 +399,7 @@ class DictSummary:
                 if not numpy.isscalar(w) and not getattr(w, 'ndim', -1) == 0:
                     raise ValueError(
                         'Given weight to {} was not scalar.'.format(k))
-            if numpy.isscalar(v) or getattr(v, 'ndim', -1) == 0:
-                summaries[k].add(v, weight=w)
-            elif callable(v):
+            if callable(v) or numpy.isscalar(v) or getattr(v, 'ndim', -1) == 0:
                 summaries[k].add(v, weight=w)
 
     def compute_mean(self) -> Dict[str, Scalar]:
