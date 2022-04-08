@@ -1,4 +1,5 @@
 import contextlib
+import dataclasses
 
 from typing import Any, Dict, Generator, Iterable, Optional, Tuple, Union
 
@@ -73,14 +74,16 @@ class BaseRuntime:
             # namedtuple
             return args._replace(  # type: ignore[attr-defined]
                 **self._convert_batch_dict(args._asdict()))  # type: ignore
-        if isinstance(args, dict):
+        elif hasattr(args, "__dataclass_fields__"):
+            return self._convert_batch_dict(dataclasses.asdict(args))
+        elif isinstance(args, dict):
             return self._convert_batch_dict(args)
-        if isinstance(args, (list, tuple)):
+        elif isinstance(args, (list, tuple)):
             return [
                 self.move_tensor(v) if isinstance(v, torch.Tensor) else v
                 for v in args
             ]
-        if isinstance(args, torch.Tensor):
+        elif isinstance(args, torch.Tensor):
             return self.move_tensor(args)
         return args
 

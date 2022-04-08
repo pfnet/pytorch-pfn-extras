@@ -1,7 +1,13 @@
 import pytest
+import dataclasses
 import torch
 
 import pytorch_pfn_extras as ppe
+
+
+@dataclasses.dataclass
+class _TestDataclass:
+    x: torch.Tensor
 
 
 @pytest.mark.skipif(
@@ -14,10 +20,13 @@ class TestPytorchRuntime:
         'batch', [{'x': torch.zeros(1)},
                   [torch.zeros(1)],
                   torch.zeros(1),
+                  _TestDataclass(torch.zeros(1)),
                   object()])
     def test_convert_batch(self, device, batch):
         rt = ppe.runtime.PyTorchRuntime(device, {})
         cbatch = rt.convert_batch(batch)
+        if isinstance(batch, _TestDataclass):
+            assert isinstance(cbatch, dict)
         if isinstance(cbatch, dict):
             for _, v in cbatch.items():
                 assert v.device.type == device
