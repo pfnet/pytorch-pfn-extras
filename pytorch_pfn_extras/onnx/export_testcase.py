@@ -122,7 +122,7 @@ def _export_util(
     try:
         torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
         if pytorch_pfn_extras.requires('1.10.0'):
-            checker_error = getattr(torch.onnx, "CheckerError")
+            checker_error = getattr(torch.onnx, "CheckerError", None)
             if checker_error is None:
                 checker_error = torch.onnx.utils.ONNXCheckerError  # type: ignore[attr-defined]
             try:
