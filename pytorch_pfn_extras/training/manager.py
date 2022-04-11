@@ -162,6 +162,7 @@ class _BaseExtensionsManager:
         self._transform_model = transform_model
         self._start_extensions_called = False
         self._run_on_error_called = False
+        self._finalized = False
 
         # Indicates whether models can be accessed from extensions in the
         # current iteration.
@@ -524,6 +525,13 @@ class _BaseExtensionsManager:
             except AttributeError:
                 pass
 
+    def finalize(self) -> None:
+        if not self._finalized:
+            self._finalize_extensions()
+            if self.writer is not None:
+                self.writer.finalize()
+            self._finalized = True
+
     def state_dict(
             self,
     ) -> Dict[str, Any]:
@@ -710,8 +718,7 @@ class ExtensionsManager(_BaseExtensionsManager):
                 raise
 
         if self._internal_stop_trigger(self):
-            self._finalize_extensions()
-            self.writer.finalize()
+            self.finalize()
 
 
 if TYPE_CHECKING:

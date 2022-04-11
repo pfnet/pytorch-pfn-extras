@@ -360,6 +360,7 @@ class Trainer:
             if prof is not None:
                 prof.on_trace_ready = None
         self.handler.train_cleanup(self)
+        self.manager.finalize()
 
 
 # For backward compatibility
