@@ -537,45 +537,5 @@ def test_extensions_accessing_models_without_flag(priority):
                 pass
 
 
-def test_deferred_iteration():
-    m = torch.nn.Linear(5, 5)
-    a = torch.ones(1, requires_grad=True)
-    optimizer = torch.optim.SGD(lr=1.0, params=[a])
-    call_record = []
-    extension = _DummyExtension(0, call_record, [])
-    extension.name = 'Dummy 0'
-    extension.trigger = (1, 'iteration')
-    extension.is_async = True
-    extension2 = _DummyExtension(1, call_record, [])
-    extension2.name = 'Dummy 1'
-    extension2.trigger = (1, 'iteration')
-    manager = training.ExtensionsManager(
-        m,
-        optimizer,
-        1,
-        iters_per_epoch=100,
-        extensions=[extension, extension2]
-    )
-    for _ in range(5):
-        with manager.run_iteration() as iter_handler:
-            # iteration is always added 1 before calling
-            # extensions
-            iter_handler.defer()
-    with manager.run_iteration():
-        pass
-
-    assert manager.iteration == 1
-    assert manager.execution == 6
-    assert call_record == [0] * 6 + [1]
-
-    for _ in range(5):
-        with manager.complete_iteration():
-            pass
-
-    assert manager.iteration == 6
-    assert manager.execution == 6
-    assert call_record == [0] * 6 + [1] * 6
-
-
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '-s'])
