@@ -667,6 +667,9 @@ class ExtensionsManager(_BaseExtensionsManager):
                 self._run_on_error(e)
                 raise
 
+        if self._internal_stop_trigger(self):
+            self.finalize()
+
     @contextlib.contextmanager
     def run_iteration(
             self,
