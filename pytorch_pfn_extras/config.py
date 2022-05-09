@@ -138,6 +138,11 @@ class Config(object):
             else:
                 return cache(config)
 
+    def update_via_args(self, args):
+        for k, v in args:
+            k, c_k = _parse_key(k, ())[:2]
+            self._cache[(k, c_k)] = v
+
 
 def _parse_key(
         key: str, current_config_key: ConfigKey
