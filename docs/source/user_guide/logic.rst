@@ -21,3 +21,10 @@ PPE provides a default logic that performs the forward/backward/optimizer loop
 for a single model. This logic allows using some torch features such as AMP autocast
 and GradScaler and performs the backward pass on the outputs specified by the
 config option backward_outputs.
+
+CodeBlock Logic (:class:`ppe.handler.Logic <pytorch_pfn_extras.handler.CodeBlockLogic>`)
+------------------------------------------------------------------------------------------
+
+With the CodeBlock API, we provide a basic logic that uses it to perform the training
+of a single model. Similarly to the default logic AMP features are supported but
+by means of the Runtime. For more information check the codeblock documentation.

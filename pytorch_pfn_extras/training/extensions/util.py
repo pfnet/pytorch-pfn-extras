@@ -7,6 +7,19 @@ from typing import Deque, Optional, Sequence, TextIO, Tuple
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
+try:
+    from IPython import get_ipython
+    _ipython_available = True
+except ImportError:
+    _ipython_available = False
+
+
+def _is_notebook() -> bool:
+    if _ipython_available and get_ipython() is not None:
+        return 'IPKernelApp' in get_ipython().config
+    return False
+
+
 if os.name == 'nt':
     import ctypes
     from ctypes import windll  # type: ignore [attr-defined]

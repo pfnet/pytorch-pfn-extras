@@ -1,11 +1,9 @@
-from collections import defaultdict
 from typing import (
     Any, Callable, Dict, Generator, Iterable, List, Mapping, Optional,
     Tuple, Union, TYPE_CHECKING,
 )
 
 import torch
-from typing_extensions import Protocol, runtime_checkable
 
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras import reporting
@@ -14,42 +12,6 @@ from pytorch_pfn_extras.training import Evaluator, Trainer
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.runtime import BaseRuntime
-
-
-@runtime_checkable
-class DeferredResult(Protocol):
-    """
-    Protocol that is used for models that work asynchronously
-    """
-    def done(self) -> bool:
-        """Returns `True` when a deferred result is available."""
-        raise NotImplementedError("done must be implemented")
-
-    def wait(self) -> 'DeferredResult':
-        """Does a blocking wait until the result is available.
-
-        Returns self to allow chaining calls once the wait is over.
-        """
-        raise NotImplementedError("wait must be implemented")
-
-    def get(self) -> Optional[Any]:
-        """Returns the result when its available. ``None`` if its not ready"""
-        raise NotImplementedError("get must be implemented")
-
-
-class _DeferredIteration:
-
-    def __init__(
-            self,
-            deferred: Union[DeferredResult, Dict[str, Union[Any, DeferredResult]]],
-            idx: int,
-            batch: Dict[str, Any],
-            cback: Callable[..., None],
-    ) -> None:
-        self.deferred = deferred
-        self.idx = idx
-        self.batch = batch
-        self.cback = cback
 
 
 class BaseHandler:
@@ -264,7 +226,6 @@ class BaseHandler:
 
 
 ModulesTuple = Tuple[str, torch.nn.Module, 'BaseRuntime']
-PendingIters = List[_DeferredIteration]
 
 
 class Handler(BaseHandler):
@@ -292,7 +253,6 @@ class Handler(BaseHandler):
                     Default is an empty list.
         """
         super().__init__(logic, options)
-        self.pending_iters: Dict[str, PendingIters] = defaultdict(list)
 
         # This is used to send the batch to the appropiate device
         self._entry_runtime = entry_runtime
@@ -395,13 +355,6 @@ class Handler(BaseHandler):
         Args:
             trainer (Trainer): The trainer that calls this method.
         """
-        while self.pending_iters:
-            for sn, sm, rt in self._runtime_iterator(trainer.models):
-                t_outs = self._get_deferred_outputs(
-                    self.pending_iters[sn][0], True)
-                self._complete_train_step(
-                    trainer, t_outs, True, sn, sm, rt)
-
         for _, sm, rt in self._runtime_iterator(trainer.models):
             rt.train_epoch_end(sm)
 
@@ -442,63 +395,6 @@ class Handler(BaseHandler):
 
         self._logic.train_validation_end(evaluator.models)
 
-    def _complete_train_step(
-            self, trainer: Trainer, outs: Any, block: bool,
-            sn: str, sm: torch.nn.Module, rt: 'BaseRuntime',
-    ) -> None:
-        p_iter = self.pending_iters[sn][0]
-        self.pending_iters[sn] = self.pending_iters[sn][1:]
-        # Since async mode is not supported with device splitting
-        # we know that there is only ONE submodule, so we
-        # can asure that now we can step the optimizers
-        self._logic.train_step_optimizers(
-            trainer.models, trainer.optimizers, p_iter.idx)
-        if len(self.pending_iters[sn]) == 0:
-            del self.pending_iters[sn]
-        p_iter.cback(p_iter.idx, outs, is_deferred=block)
-
-    def _are_outs_deferred(self, outs: Any) -> bool:
-        if isinstance(outs, DeferredResult):
-            return True
-        if isinstance(outs, dict):
-            for _, v in outs.items():
-                if isinstance(v, DeferredResult):
-                    return True
-        return False
-
-    def _get_deferred_outputs(
-        self,
-        p_iter: _DeferredIteration,
-        wait: bool = False,
-    ) -> Any:
-        # async returns inmediately
-        # Check if there is a completed iteration
-        # If we enqueue everything first, we will blow up with
-        # memory due to the dataloaders being in the background
-        # We need to call the tagged runtimes since async mode
-        # require different treatment depending on the device.
-        t_outs: Optional[Dict[str, Any]] = None
-        if isinstance(p_iter.deferred, dict):
-            t_outs = {}
-            for k, v in p_iter.deferred.items():
-                if isinstance(v, DeferredResult):
-                    is_done = v.done()
-                    if not is_done and wait:
-                        v.wait()
-                    elif not is_done:
-                        return None
-                    t_outs[k] = v.get()
-                else:
-                    t_outs[k] = v
-        else:
-            is_done = p_iter.deferred.done()
-            if not is_done and wait:
-                p_iter.deferred.wait()
-                t_outs = p_iter.deferred.get()
-            elif is_done:
-                t_outs = p_iter.deferred.get()
-        return t_outs
-
     def train_step(
             self,
             trainer: Trainer,
@@ -524,21 +420,9 @@ class Handler(BaseHandler):
         outs = self._logic.train_step(
             trainer.models, trainer.optimizers, batch_idx, batch)
 
-        if self._are_outs_deferred(outs):
-            if len(self._ppe_modules) != 1:
-                raise RuntimeError("Async mode is not supported in models "
-                                   "splitted across different devices")
-            for sn, sm, rt in self._runtime_iterator(trainer.models):
-                self.pending_iters[sn].append(
-                    _DeferredIteration(outs, batch_idx, batch, complete_fn))
-                t_outs = self._get_deferred_outputs(self.pending_iters[sn][0])
-                if t_outs is not None:
-                    self._complete_train_step(
-                        trainer, t_outs, False, sn, sm, rt)
-        else:
-            self._logic.train_step_optimizers(
-                trainer.models, trainer.optimizers, batch_idx)
-            complete_fn(batch_idx, outs)
+        self._logic.train_step_optimizers(
+            trainer.models, trainer.optimizers, batch_idx)
+        complete_fn(batch_idx, outs)
 
     def eval_setup(
             self,
@@ -555,17 +439,6 @@ class Handler(BaseHandler):
         for _, model in evaluator.models.items():
             model.eval()
         self._setup(evaluator.models, loader)
-
-    def _complete_eval_step(
-            self, evaluator: Evaluator, outs: Any, block: bool,
-            sn: str, sm: torch.nn.Module, rt: 'BaseRuntime',
-    ) -> None:
-        # This call is deferred
-        p_iter = self.pending_iters[sn][0]
-        self.pending_iters[sn] = self.pending_iters[sn][1:]
-        if len(self.pending_iters[sn]) == 0:
-            del self.pending_iters[sn]
-        p_iter.cback(p_iter.idx, outs, is_deferred=block)
 
     def eval_step(
             self,
@@ -590,19 +463,7 @@ class Handler(BaseHandler):
 
         outs = self._logic.eval_step(evaluator.models, batch_idx, batch)
 
-        if self._are_outs_deferred(outs):
-            if len(self._ppe_modules) != 1:
-                raise RuntimeError("Async mode is not supported in models "
-                                   "splitted across different devices")
-            for sn, sm, rt in self._runtime_iterator(evaluator.models):
-                self.pending_iters[sn].append(
-                    _DeferredIteration(outs, batch_idx, batch, complete_fn))
-                t_outs = self._get_deferred_outputs(self.pending_iters[sn][0])
-                if t_outs is not None:
-                    self._complete_eval_step(
-                        evaluator, t_outs, False, sn, sm, rt)
-        else:
-            complete_fn(batch_idx, outs)
+        complete_fn(batch_idx, outs)
 
     def eval_post_step(
             self,
@@ -633,12 +494,7 @@ class Handler(BaseHandler):
         Args:
             evaluator (Evaluator): The evaluator.
         """
-        while self.pending_iters:
-            for sn, sm, rt in self._runtime_iterator(evaluator.models):
-                t_outs = self._get_deferred_outputs(
-                    self.pending_iters[sn][0], True)
-                self._complete_eval_step(
-                    evaluator, t_outs, True, sn, sm, rt)
+        pass
 
     def train_post_step(
             self,

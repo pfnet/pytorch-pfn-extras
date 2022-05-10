@@ -7,7 +7,6 @@ import torch.nn.functional as F
 
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras_tests.runtime_tests.test_jit_runtime import JITRuntime
-from pytorch_pfn_extras_tests.training_tests import test_trainer
 
 
 class Model(torch.nn.Module):
@@ -418,22 +417,6 @@ def test_compare_intermediate_invalid(engine_fn):
     comp.add_engine('jit', engine_jit, *loaders_jit)
     with pytest.raises(AssertionError):
         comp.compare()
-
-
-@pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
-def test_compare_async(engine_fn):
-    def create_model(device):
-        return test_trainer.MyModelWithLossAsync(test_trainer.MyModel())
-    loader = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
-    engine_cpu, loaders_cpu = engine_fn(create_model, "cpu", [], loader)
-    engine_gpu, loaders_gpu = engine_fn(create_model, "cuda:0", [], loader)
-    comp = ppe.utils.comparer.Comparer()
-    comp.add_engine("cpu", engine_cpu, *loaders_cpu)
-    comp.add_engine("gpu", engine_gpu, *loaders_gpu)
-    comp.compare()
 
 
 @pytest.mark.gpu

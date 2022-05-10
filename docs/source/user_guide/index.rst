@@ -10,6 +10,7 @@ Trainer (techinical preview)
    trainer
    logic
    runtimes
+   codeblocks
 
 
 Extensions

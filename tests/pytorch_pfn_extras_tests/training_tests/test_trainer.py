@@ -1,3 +1,4 @@
+import os
 import tempfile
 import typing
 
@@ -260,97 +261,6 @@ def test_train_result_equal(device, path):
         assert torch.equal(a, e)
 
 
-class AsyncResult(ppe.handler.DeferredResult):
-    def __init__(self, value):
-        self._period = 4
-        self._count = 0
-        self._done = False
-        self._value = value
-
-    def done(self):
-        self._count += 1
-        if self._count == self._period:
-            self._done = True
-        return self._done
-
-    def wait(self):
-        self._done = True
-
-    def get(self):
-        if self._done or (self._count == self._period):
-            return self._value
-        return None
-
-
-class MyModelWithLossAsync(MyModelWithLossFn):
-    def __init__(self, model):
-        super().__init__(model)
-        self._current_it = 0
-        self._outs = []
-
-    def forward(self, x, t):
-        return AsyncResult(super().forward(x, t))
-
-
-def test_trainer_defer(path):
-    class Extension:
-        def __init__(self, is_async):
-            self.name = 'Dummy'
-            self.trigger = (1, 'iteration')
-            self.called = 0
-            self.is_async = is_async
-
-        def __call__(self, manager):
-            self.called += 1
-
-    device = 'cpu'
-    model = MyModel()
-    model_with_loss = MyModelWithLossAsync(model)
-    ppe.to(model_with_loss, device)
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-    data = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
-
-    extensions = [Extension(True), Extension(False)]
-
-    trainer = engine.create_trainer(
-        model_with_loss, optimizer, 2, device=device,
-        extensions=extensions, out_dir=path
-    )
-    trainer.run(data)
-    assert trainer.manager.iteration == 200
-    assert trainer.manager.execution == 200
-    assert extensions[0].called == 200
-    assert extensions[1].called == 200
-
-
-def test_trainer_defer_wrong_order(path):
-    class WrongOrderHandler(ppe.handler.Handler):
-        def _complete_train_step(self, trainer, outs, block, sn, sm, rt):
-            p_iter = self.pending_iters[sn][0]
-            if p_iter.idx < 10:
-                super()._complete_train_step(
-                    trainer, p_iter.deferred, block, sn, sm, rt)
-            else:
-                p_iter.cback(90, None, is_deferred=block)
-
-    device = 'cpu'
-    model = MyModel()
-    model_with_loss = MyModelWithLossAsync(model)
-    ppe.to(model_with_loss, device)
-    # Register the handler
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-    data = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
-
-    trainer = engine.create_trainer(
-        model_with_loss, optimizer, 2, device=device,
-        handler_class=WrongOrderHandler, out_dir=path
-    )
-    with pytest.raises(RuntimeError, match="Completed a not expected"):
-        trainer.run(data)
-
-
 def _compare_states(s1, s2):
     if isinstance(s1, dict):
         keys = s1.keys()
@@ -536,3 +446,63 @@ def test_trainer_with_code_block(device, progress_bar, path):
         out_dir=path, logic=ppe.handler.CodeBlockLogic()
     )
     trainer.run(data, data)
+
+
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+@pytest.mark.parametrize('progress_bar', [True, False])
+def test_trainer_with_code_block_with_multiple_optimizers(device, progress_bar, path):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
+    model = MyModel()
+    model_with_loss = MyModelWithLossDictOutput(model)
+    ppe.to(model_with_loss, device)
+    optimizer0 = torch.optim.SGD(model.parameters(), lr=0.1)
+    optimizer1 = torch.optim.Adam(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [{'x': torch.rand(20,), 't': torch.rand(10,)} for i in range(10)])
+    extensions = _make_extensions()
+
+    evaluator = engine.create_evaluator(
+        model_with_loss, device=device, progress_bar=progress_bar,
+        logic=ppe.handler.CodeBlockLogic())
+
+    trainer = engine.create_trainer(
+        model_with_loss, {"0": optimizer0, "1": optimizer1}, 20,
+        device=device, evaluator=evaluator, extensions=extensions,
+        out_dir=path, logic=ppe.handler.CodeBlockLogic()
+    )
+    trainer.run(data, data)
+
+
+@pytest.mark.skipif(
+    os.name == 'nt' and not ppe.requires("1.9"),
+    reason='torch.profiler.profile is not supported.',
+)
+def test_trainer_profile():
+    device = 'cpu'
+    model = MyModel()
+    model_with_loss = MyModelWithLossDictOutput(model)
+    ppe.to(model_with_loss, device)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [{'x': torch.rand(20,), 't': torch.rand(10,)} for i in range(10)])
+    extensions = _make_extensions()
+
+    evaluator = engine.create_evaluator(
+        model_with_loss, device=device)
+
+    trace_handler = mock.Mock()
+    warmup = 1
+    active = len(data) - warmup
+    profile = torch.profiler.profile(
+        activities=[torch.profiler.ProfilerActivity.CPU],
+        on_trace_ready=trace_handler,
+        schedule=torch.profiler.schedule(wait=0, warmup=warmup, active=active),
+    )
+    trainer = engine.create_trainer(
+        model_with_loss, optimizer, 20,
+        device=device, evaluator=evaluator, extensions=extensions,
+        profile=profile,
+    )
+    trainer.run(data, data)
+    assert trace_handler.call_count == 20  # n_epochs
