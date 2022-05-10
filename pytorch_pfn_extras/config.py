@@ -138,7 +138,7 @@ class Config(object):
             else:
                 return cache(config)
 
-    def update_via_args(self, args: List[Tuple[str, Any]]) -> None:
+    def update_via_args(self, args: Sequence[Tuple[str, Any]]) -> None:
         for k, v in args:
             n_k, c_k = _parse_key(k, ())[:2]
             self._cache[(n_k, c_k)] = v
