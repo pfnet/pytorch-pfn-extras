@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
 import reprlib
 
 
