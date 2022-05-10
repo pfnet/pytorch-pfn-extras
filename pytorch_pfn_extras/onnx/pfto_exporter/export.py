@@ -476,11 +476,15 @@ class _Exporter(_ExporterOptions):
             # TODO(twata): Use repr(pyobj) in scope name or doc_string
             return cast(Callable, pyobj.symbolic)
         else:
+            domain = ""
             if ns == "prim":
-                op = f"prim_{op}"
-            if sym_reg.is_registered_op(op, "", self.opset_version):  # type: ignore[no-untyped-call]
+                if pytorch_pfn_extras.requires('1.11'):
+                    domain = "prim"
+                else:
+                    op = f"prim_{op}"
+            if sym_reg.is_registered_op(op, domain, self.opset_version):  # type: ignore[no-untyped-call]
                 return cast(
-                    Callable, sym_reg.get_registered_op(op, "", self.opset_version)  # type: ignore[no-untyped-call]
+                    Callable, sym_reg.get_registered_op(op, domain, self.opset_version)  # type: ignore[no-untyped-call]
                 )
             else:
                 return None
