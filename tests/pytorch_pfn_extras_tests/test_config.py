@@ -261,3 +261,14 @@ class TestConfig(unittest.TestCase):
              ' -> !/0 of {bar} -> !/ of {foo}'.format(
                  foo=os.path.join(temp, 'foo.json'),
                  bar=os.path.join(temp, 'bar.json'))))
+
+    def test_config_with_args_update(self):
+        config = Config({
+            'foo': {
+                'ls': ['first']
+            }
+        }, self.types)
+
+        assert config['/foo/ls/0'] == 'first'
+        config.update_via_args([('/foo/ls/0', 'changed')])
+        assert config['/foo/ls/0'] == 'changed'
