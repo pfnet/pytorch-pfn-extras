@@ -316,9 +316,10 @@ class _Exporter(_ExporterOptions):
         else:
             self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
 
-        opset_versions = sym_hel._constant_folding_opset_versions \
-            if pytorch_pfn_extras.requires("1.11.0") \
-            else torch.onnx.constant_folding_opset_versions  # type: ignore[attr-defined]
+        opset_versions = (
+            sym_hel._constant_folding_opset_versions   # type: ignore[attr-defined]
+            if pytorch_pfn_extras.requires("1.11.0")
+            else torch.onnx.constant_folding_opset_versions)  # type: ignore[attr-defined]
         if self.do_constant_folding and self.opset_version in opset_versions:
             folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]
                 graph, self.vars, self.opset_version
