@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Callable, Dict, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 import reprlib
 
 
@@ -138,7 +138,7 @@ class Config(object):
             else:
                 return cache(config)
 
-    def update_via_args(self, args):
+    def update_via_args(self, args: List[Tuple[str, Any]]):
         for k, v in args:
             k, c_k = _parse_key(k, ())[:2]
             self._cache[(k, c_k)] = v
