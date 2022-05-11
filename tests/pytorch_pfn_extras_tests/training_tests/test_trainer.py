@@ -12,6 +12,8 @@ from unittest import mock
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras import engine
 from pytorch_pfn_extras import training
+from pytorch_pfn_extras.training import extension
+from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 @pytest.fixture(scope='function')
@@ -506,3 +508,43 @@ def test_trainer_profile():
     )
     trainer.run(data, data)
     assert trace_handler.call_count == 20  # n_epochs
+
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+def test_trainer_finalize_extensions_if_raise_expcetion(device, path):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
+
+    class DummyExtension(extension.Extension):
+        def __init__(self):
+            self.finalized = False
+
+        def __call__(self, manager: ExtensionsManagerProtocol) -> None:
+            pass
+
+        def finalize(self) -> None:
+            self.finalized = True
+
+    model = MyModel()
+
+    def _hook(module, input, output):
+        raise RuntimeError("error")
+    model.register_forward_hook(_hook)
+    ppe.to(model, device)
+    model_with_loss = MyModelWithLossFn(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
+    extensions = _make_extensions()
+    dummy = DummyExtension()
+    extensions.append(dummy)
+
+    trainer = engine.create_trainer(
+        model_with_loss, optimizer, 20,
+        device=device, extensions=extensions,
+        out_dir=path,
+    )
+    try:
+        trainer.run(data)
+    except RuntimeError as e:
+        assert str(e) == "error"
+    assert dummy.finalized

@@ -589,8 +589,8 @@ class ExtensionsManager(_BaseExtensionsManager):
         if step_optimizers is not None:
             step_optimizers_names = step_optimizers
         self.observation = {}
-        with self.reporter.scope(self.observation):
-            try:
+        try:
+            with self.reporter.scope(self.observation):
                 for name in step_optimizers_names:
                     self._optimizers[name].zero_grad()
                 yield
@@ -601,9 +601,11 @@ class ExtensionsManager(_BaseExtensionsManager):
                 self.iteration += 1
                 self.execution += 1
                 self.run_extensions()
-            except Exception as e:
-                self._run_on_error(e)
-                raise
+        except Exception as e:
+            self._finalize_extensions()
+            self.writer.finalize()
+            self._run_on_error(e)
+            raise
 
         if self._internal_stop_trigger(self):
             self._finalize_extensions()
