@@ -230,7 +230,7 @@ class LogReport(extension.Extension):
             self._init_summary()
 
     @property
-    def log(self) -> List[str]:
+    def log(self) -> List[Mapping[str, Any]]:
         """The current list of observation dictionaries."""
         return self._log_looker.get()
 
