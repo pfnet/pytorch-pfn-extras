@@ -316,7 +316,11 @@ class _Exporter(_ExporterOptions):
         else:
             self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
 
-        if self.do_constant_folding and self.opset_version in torch.onnx.constant_folding_opset_versions:
+        opset_versions = (
+            sym_hel._constant_folding_opset_versions   # type: ignore[attr-defined]
+            if pytorch_pfn_extras.requires("1.11.0")
+            else torch.onnx.constant_folding_opset_versions)  # type: ignore[attr-defined]
+        if self.do_constant_folding and self.opset_version in opset_versions:
             folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]
                 graph, self.vars, self.opset_version
             )
@@ -473,11 +477,15 @@ class _Exporter(_ExporterOptions):
             # TODO(twata): Use repr(pyobj) in scope name or doc_string
             return cast(Callable, pyobj.symbolic)
         else:
+            domain = ""
             if ns == "prim":
-                op = f"prim_{op}"
-            if sym_reg.is_registered_op(op, "", self.opset_version):  # type: ignore[no-untyped-call]
+                if pytorch_pfn_extras.requires('1.11'):
+                    domain = "prim"
+                else:
+                    op = f"prim_{op}"
+            if sym_reg.is_registered_op(op, domain, self.opset_version):  # type: ignore[no-untyped-call]
                 return cast(
-                    Callable, sym_reg.get_registered_op(op, "", self.opset_version)  # type: ignore[no-untyped-call]
+                    Callable, sym_reg.get_registered_op(op, domain, self.opset_version)  # type: ignore[no-untyped-call]
                 )
             else:
                 return None
