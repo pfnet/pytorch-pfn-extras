@@ -178,7 +178,7 @@ class PrintReport(extension.Extension):
         if isinstance(log_report, log_report_module.LogReport):
             log_report.load_state_dict(to_load['_log_report'])
 
-    def _print(self, observation: Dict[str, float]) -> None:
+    def _print(self, observation: log_report_module.Observation) -> None:
         out = self._out
         for entry, template, empty in self._templates:
             if entry in observation:
