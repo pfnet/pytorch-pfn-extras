@@ -311,7 +311,8 @@ class DistributedEvaluator(Evaluator):
             raise RuntimeError(msg)
 
         if 'progress_bar' in kwargs:
-            kwargs['progress_bar'] &= (torch.distributed.get_rank() == 0)
+            rank = torch.distributed.get_rank()  # type: ignore[no-untyped-call]
+            kwargs['progress_bar'] &= (rank == 0)
 
         super().__init__(iterator, target, eval_hook, eval_func, **kwargs)
 
