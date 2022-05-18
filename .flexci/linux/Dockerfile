@@ -2,6 +2,11 @@
 ARG base_image
 FROM ${base_image}
 
+# Update GPG repository key.
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub && \
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/7fa2af80.pub
+
 # Install pyenv requirements.
 # https://github.com/pyenv/pyenv/wiki/Common-build-problems#requirements
 RUN export DEBIAN_FRONTEND=noninteractive && \
