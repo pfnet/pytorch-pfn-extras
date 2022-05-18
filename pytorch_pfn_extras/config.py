@@ -141,7 +141,10 @@ class Config(object):
     def update_via_args(self, args: Sequence[Tuple[str, Any]]) -> None:
         for k, v in args:
             n_k, c_k = _parse_key(k, ())[:2]
-            self._cache[(n_k, c_k)] = v
+            if (n_k, c_k) in self._cache:
+                self._cache[(n_k, c_k)] = type(self._cache[(n_k, c_k)])(v)
+            else:
+                self._cache[(n_k, c_k)] = v
 
 
 def _parse_key(

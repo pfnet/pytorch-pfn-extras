@@ -272,3 +272,14 @@ class TestConfig(unittest.TestCase):
         assert config['/foo/ls/0'] == 'first'
         config.update_via_args([('/foo/ls/0', 'changed')])
         assert config['/foo/ls/0'] == 'changed'
+
+    def test_config_with_args_update_type_conversion(self):
+        config = Config({
+            'foo': {
+                'ls': [0]
+            }
+        }, self.types)
+
+        assert config['/foo/ls/0'] == 0
+        config.update_via_args([('/foo/ls/0', '16')])
+        assert config['/foo/ls/0'] == 16
