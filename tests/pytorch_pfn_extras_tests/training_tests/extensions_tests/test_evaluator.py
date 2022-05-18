@@ -1,9 +1,12 @@
+from unittest import mock
+
 import numpy
 import pytest
 import torch
 import torch.distributed as dist
 
 import pytorch_pfn_extras as ppe
+import pytorch_pfn_extras.training.extensions as ext
 
 
 class DummyModel(torch.nn.Module):
@@ -291,13 +294,12 @@ def test_ignite_evaluator_reporting_metrics():
     assert result['val/mse'] == 0.0
 
 
-def test_distributed_evaluation(mocker):
-    mocker.patch.object(dist, 'is_initialized', return_value=True)
-
+def test_distributed_evaluation():
     dummy_data = []   # Note: has no effect to the evaluation
     data_loader = torch.utils.data.DataLoader(dummy_data)
     target = DummyModel()
-    evaluator = ppe.training.extensions.DistributedEvaluator(data_loader, target)
+    with mock.patch.object(dist, 'is_initialized', return_value=True):
+        evaluator = ext.DistributedEvaluator(data_loader, target)
 
     # Make a (simulated) summary for each rank
     worker_evaluations = [
@@ -313,27 +315,25 @@ def test_distributed_evaluation(mocker):
             s.add({'target/score': acc})
         worker_summaries.append(s)
 
-    mocker.patch.object(ppe.training.extensions.evaluator, '_dist_gather',
-                        return_value=worker_summaries)
-
     reporter = ppe.reporting.Reporter()
     reporter.add_observer('target', target)
     with reporter:
-        mean = evaluator.evaluate()
+        with mock.patch.object(ppe.training.extensions.evaluator, '_dist_gather',
+                               return_value=worker_summaries):
+            mean = evaluator.evaluate()
         assert mean['target/score'] == 6.5
 
 
-def test_distributed_evaluator_progress_bar(mocker):
-    mocker.patch.object(dist, 'is_initialized', return_value=True)
+def test_distributed_evaluator_progress_bar():
+    with mock.patch.object(dist, 'is_initialized', return_value=True):
+        data_loader = torch.utils.data.DataLoader([])
+        target = DummyModel()
 
-    data_loader = torch.utils.data.DataLoader([])
-    target = DummyModel()
+        with mock.patch.object(dist, 'get_rank', return_value=0):
+            evaluator = ext.DistributedEvaluator(data_loader, target, progress_bar=True)
+            assert evaluator._progress_bar
 
-    mocker.patch.object(dist, 'get_rank', return_value=0)
-    evaluator = ppe.training.extensions.DistributedEvaluator(data_loader, target, progress_bar=True)
-    assert evaluator._progress_bar
-
-    # rank != 0 will forcibly set progress_bar=False
-    mocker.patch.object(dist, 'get_rank', return_value=1)
-    evaluator = ppe.training.extensions.DistributedEvaluator(data_loader, target, progress_bar=True)
-    assert not evaluator._progress_bar
+        # rank != 0 will forcibly set progress_bar=False
+        with mock.patch.object(dist, 'get_rank', return_value=1):
+            evaluator = ext.DistributedEvaluator(data_loader, target, progress_bar=True)
+            assert not evaluator._progress_bar
