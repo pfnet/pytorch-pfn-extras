@@ -7,6 +7,8 @@ from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
+Observation = Mapping[str, reporting.Scalar]
+
 try:
     import pandas
 
@@ -49,7 +51,7 @@ class _LogBuffer:
 
     def __init__(self) -> None:
         self.lookers: Dict[int, int] = {}
-        self._log: List[Any] = []
+        self._log: List[Observation] = []
         self._offset = 0
 
     def _trim(self) -> None:
@@ -58,10 +60,10 @@ class _LogBuffer:
             self._log = self._log[min_looker_index - self._offset:]
             self._offset = min_looker_index
 
-    def append(self, observation: Any) -> None:
+    def append(self, observation: Observation) -> None:
         self._log.append(observation)
 
-    def _get(self, looker_id: int) -> List[Any]:
+    def _get(self, looker_id: int) -> List[Observation]:
         return self._log[self.lookers[looker_id] - self._offset:]
 
     def _clear(self, looker_id: int) -> None:
@@ -86,7 +88,7 @@ class _LogLooker:
         self._log_buffer = log_buffer
         self._looker_id = looker_id
 
-    def get(self) -> List[Any]:
+    def get(self) -> List[Observation]:
         return self._log_buffer._get(self._looker_id)
 
     def clear(self) -> None:
