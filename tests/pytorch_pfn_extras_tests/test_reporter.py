@@ -242,6 +242,26 @@ def test_summary_deferred_add():
     assert summary.compute_mean() == 1.0
 
 
+def test_summary_add_operator():
+    s1 = ppe.reporting.Summary()
+    s1.add(1.)
+    s1.add(2.)
+    s1.add(3.)
+
+    s2 = ppe.reporting.Summary()
+    s2.add(4.)
+    s2.add(5.)
+    s2.add(6.)
+    s2.add(7.)
+
+    s = s1 + s2
+    assert s.state_dict() == {
+        '_x': 28.0,
+        '_x2': 140.0,
+        '_n': 7,
+    }
+
+
 def _nograd(v):
     if isinstance(v, torch.Tensor):
         return v.detach()
@@ -492,4 +512,23 @@ def test_dict_summary_deferred_add():
     _check_dict_summary(summary, {
         "x": (1.0, -1.0),
         "y": (2.0,),
+    })
+
+
+def test_dict_summary_add_operator():
+    s1 = ppe.reporting.DictSummary()
+    s1.add({'a': 1., 'b': 0.1, 'c': 0.01})
+    s1.add({'a': 2., 'b': 0.2, 'c': 0.02})
+
+    s2 = ppe.reporting.DictSummary()
+    s2.add({'a': 3., 'b': 0.3, 'f': 0.03})
+    s2.add({'a': 4., 'b': 0.4, 'f': 0.04})
+    s2.add({'a': 5., 'b': 0.5, 'f': 0.05})
+
+    s = s1 + s2
+    _check_dict_summary(s, {
+        'a': [1, 2, 3, 4, 5],
+        'b': [0.1, 0.2, 0.3, 0.4, 0.5],
+        'c': [0.01, 0.02],
+        'f': [0.03, 0.04, 0.05],
     })

@@ -11,3 +11,4 @@ from pytorch_pfn_extras.training.manager import IgniteExtensionsManager  # NOQA
 from pytorch_pfn_extras.training.metrics import AccuracyMetric  # NOQA
 from pytorch_pfn_extras.training._trainer import Trainer  # NOQA
 from pytorch_pfn_extras.training._evaluator import Evaluator  # NOQA
+from pytorch_pfn_extras.training._evaluator import DistributedEvaluator  # NOQA

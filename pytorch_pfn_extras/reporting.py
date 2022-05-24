@@ -367,6 +367,14 @@ class Summary:
         self._x2 = float(_nograd(to_load['_x2']))
         self._n = int(_nograd(to_load['_n']))
 
+    def __add__(self, other: "Summary") -> "Summary":
+        s = Summary()
+        s._x = self._x + other._x
+        s._x2 = self._x2 + other._x2
+        s._n = self._n + other._n
+        s._deferred = self._deferred + other._deferred
+        return s
+
 
 class DictSummary:
 
@@ -443,3 +451,15 @@ class DictSummary:
         self._summaries.clear()
         for name, summ_state in to_load.items():
             self._summaries[name].load_state_dict(summ_state)
+
+    def __add__(self, other: "DictSummary") -> "DictSummary":
+        s1, s2 = self._summaries, other._summaries
+        ds = DictSummary()
+        for k in sorted(list(set([*s1.keys(), *s2.keys()]))):
+            if k not in s1:
+                ds._summaries[k] = s2[k]
+            elif k not in s2:
+                ds._summaries[k] = s1[k]
+            else:
+                ds._summaries[k] = s1[k] + s2[k]
+        return ds
