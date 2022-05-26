@@ -9,8 +9,10 @@ fi
 
 TEST_PIP_PACKAGES="
 matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime
-pytest flake8 pysen[lint] pytest-cov protobuf==3.20.1
+pytest flake8 pysen[lint] pytest-cov
 "
+
+PROTOBUF="protobuf==3.19.4"
 
 docker_build_and_push() {
     IMAGE_TAG="${1}"; shift
@@ -34,7 +36,7 @@ docker_build_and_push torch18 \
     --build-arg base_image="nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04" \
     --build-arg python_version="3.6.9" \
     --build-arg pip_install_torch_args="torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu102/torch_stable.html" \
-    --build-arg pip_install_dep_args="cupy-cuda102 pytorch-ignite ${TEST_PIP_PACKAGES}" \
+    --build-arg pip_install_dep_args="cupy-cuda102 pytorch-ignite ${PROTOBUF} ${TEST_PIP_PACKAGES}" \
     &
 WAIT_PIDS="$! ${WAIT_PIDS}"
 
@@ -43,7 +45,7 @@ docker_build_and_push torch19 \
     --build-arg base_image="nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04" \
     --build-arg python_version="3.9.5" \
     --build-arg pip_install_torch_args="torch==1.9.* torchvision==0.10.* -f https://download.pytorch.org/whl/cu102/torch_stable.html" \
-    --build-arg pip_install_dep_args="cupy-cuda102 pytorch-ignite ${TEST_PIP_PACKAGES}" \
+    --build-arg pip_install_dep_args="cupy-cuda102 pytorch-ignite ${PROTOBUF} ${TEST_PIP_PACKAGES}" \
     &
 WAIT_PIDS="$! ${WAIT_PIDS}"
 
@@ -52,7 +54,7 @@ docker_build_and_push torch110 \
     --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
     --build-arg python_version="3.9.7" \
     --build-arg pip_install_torch_args="torch==1.10.* torchvision==0.11.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
-    --build-arg pip_install_dep_args="cupy-cuda113 pytorch-ignite ${TEST_PIP_PACKAGES}" \
+    --build-arg pip_install_dep_args="cupy-cuda113 pytorch-ignite ${PROTOBUF} ${TEST_PIP_PACKAGES}" \
     &
 WAIT_PIDS="$! ${WAIT_PIDS}"
 
@@ -61,7 +63,7 @@ docker_build_and_push torch111 \
     --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
     --build-arg python_version="3.9.7" \
     --build-arg pip_install_torch_args="torch==1.11.* torchvision==0.12.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
-    --build-arg pip_install_dep_args="cupy-cuda113 pytorch-ignite ${TEST_PIP_PACKAGES}" \
+    --build-arg pip_install_dep_args="cupy-cuda113 pytorch-ignite ${PROTOBUF} ${TEST_PIP_PACKAGES}" \
     &
 WAIT_PIDS="$! ${WAIT_PIDS}"
 
