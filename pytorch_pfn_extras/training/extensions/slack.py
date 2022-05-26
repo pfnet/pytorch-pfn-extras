@@ -1,4 +1,5 @@
 import os
+import json
 import warnings
 
 from typing import Any, Callable, List, Optional, Union
@@ -6,6 +7,11 @@ from typing import Any, Callable, List, Optional, Union
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
+try:
+    import requests
+    _requests_available = True
+except ImportError:
+    _requests_available = False
 
 try:
     import slack_sdk
@@ -43,6 +49,9 @@ class Slack(extension.Extension):
             Default is ``False``.
         context_object (object): Custom object that contains data used to
             format the text or the filenames. Optional, default is ``None``.
+        webhook_url (str): Webhook to send messages, it is mutually exclusive
+            with ``token`` and ``client``. Used when slack_sdk is not available.
+            Optional, default is ``None``.
         token (str): Token for the slack api, if ``None`` the environment
             variable ``SLACK_TOKEN`` will be used. Ignored if ``client`` is
             supplied. Optional, default is ``None``.
@@ -65,24 +74,41 @@ class Slack(extension.Extension):
         ] = None,
         use_threads: bool = False,
         context_object: Optional[object] = None,
+        webhook_url: Optional[str] = None,
         token: Optional[str] = None,
         client: Optional[Any] = None,  # slack_sdk.WebClient, Any to avoid mypy errors
     ) -> None:
-        if not _slack_sdk_available:
+        if not _slack_sdk_available and webhook_url is None:
             warnings.warn(
                 '`slack_api` package is unavailable. '
+                'Slack will do nothing unless a webhook url is provided.')
+            return
+
+        if not _requests_available and webhook_url is not None:
+            warnings.warn(
+                '`requests` package is unavailable. '
                 'Slack will do nothing.')
             return
 
-        self._client = client
-        if client is None:
-            if token is None:
-                token = os.environ.get('SLACK_TOKEN', None)
-            if token is None:
-                raise RuntimeError(
-                    '`token` is needed for communicating with slack')
-            self._client = slack_sdk.WebClient(token=token)
-
+        if webhook_url is None:
+            self._client = client
+            if client is None:
+                if token is None:
+                    token = os.environ.get('SLACK_TOKEN', None)
+                if token is None:
+                    raise RuntimeError(
+                        '`token` is needed for communicating with slack')
+                self._client = slack_sdk.WebClient(token=token)
+        else:
+            if (token, client) != (None, None):
+                raise ValueError(
+                    '`webhook_url` can\'t be used with client and token')
+            if filenames_template is not None:
+                raise ValueError(
+                    '`webhook_url` can\'t be used to post files'
+                    'please install `slack_sdk`')
+            self._client = None
+        self._webhook_url = webhook_url
         # values in current observation or log report to send to slack
         self._text = text_template
         if filenames_template is None:
@@ -94,17 +120,26 @@ class Slack(extension.Extension):
         self._ts = None
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-        if not _slack_sdk_available:
-            return
-
-        assert self._client is not None
 
         observation = manager.observation
-
         if callable(self._text):
             text = self._text(manager, self._context, observation)
         else:
             text = self._text.format(manager, self._context, **observation)
+
+        if self._webhook_url and _requests_available:
+            payload = {'text': text}
+            res = requests.post(self._webhook_url, json.dumps(payload))
+            if res.status_code != 200:
+                raise Exception(res.status_code, res.text)
+            return
+        elif not _requests_available:
+            return
+
+        if not _slack_sdk_available:
+            return
+
+        assert self._client is not None
 
         ts = None
         if self._use_threads:

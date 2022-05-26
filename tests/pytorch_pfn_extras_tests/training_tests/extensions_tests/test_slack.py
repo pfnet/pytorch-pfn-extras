@@ -1,4 +1,5 @@
 from unittest import mock
+import requests
 
 import pytest
 
@@ -38,6 +39,30 @@ class TestSlack:
                 ppe.reporting.report({'loss': 0.75})
             patched.assert_called_with(
                 channel='0', text='It 2 loss: 0.75', thread_ts=t_ts
+            )
+
+    def test_post_message_webhook(self):
+        manager = self._get_manager()
+        message = 'It {.iteration} loss: {loss}'
+        extension = ppe.training.extensions.Slack(
+            '0', message, webhook_url="http://test")
+
+        manager.extend(extension, trigger=(1, 'iteration'))
+        response = requests.Response()
+        response.status_code = 200
+        with mock.patch(
+            'requests.post',
+            return_value=response,
+        ) as patched:
+            with manager.run_iteration():
+                ppe.reporting.report({'loss': 0.5})
+            patched.assert_called_with(
+                'http://test', '{"text": "It 1 loss: 0.5"}'
+            )
+            with manager.run_iteration():
+                ppe.reporting.report({'loss': 0.75})
+            patched.assert_called_with(
+                'http://test', '{"text": "It 2 loss: 0.75"}'
             )
 
     @pytest.mark.parametrize(
@@ -92,3 +117,19 @@ class TestSlack:
                 mock.call(channels=r'0', file='file_1', thread_ts=None),
                 mock.call(channels=r'0', file='result/abc', thread_ts=None),
             ], any_order=True)
+
+    def test_invalid_combinations(self):
+        message = 'it: {.iteration}'
+        filenames = ['file_{.iteration}', '{._out}/abc']
+        with pytest.raises(ValueError, match='used to post files'):
+            ppe.training.extensions.Slack(
+                '0', message, filenames, webhook_url='123')
+        with pytest.raises(ValueError, match='client and token'):
+            ppe.training.extensions.Slack(
+                '0', message, filenames, webhook_url='123', client=1)
+        with pytest.raises(ValueError, match='client and token'):
+            ppe.training.extensions.Slack(
+                '0', message, filenames, webhook_url='123', token=1)
+        with pytest.raises(ValueError, match='client and token'):
+            ppe.training.extensions.Slack(
+                '0', message, filenames, webhook_url='123', client=1, token=1)
