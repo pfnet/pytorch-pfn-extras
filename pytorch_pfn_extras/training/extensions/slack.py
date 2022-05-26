@@ -8,7 +8,7 @@ from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 try:
-    import requests
+    import requests  # type: ignore[import]
     _requests_available = True
 except ImportError:
     _requests_available = False
