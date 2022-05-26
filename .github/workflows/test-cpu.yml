@@ -22,6 +22,7 @@ jobs:
         pip install -U pip wheel
         pip install 'torch==1.9.*'
         pip install 'torchvision==0.10.*'
+        pip install 'protobuf==3.20.1'
         pip install pytest
         pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime pytorch-ignite
         pip install -v -e .
