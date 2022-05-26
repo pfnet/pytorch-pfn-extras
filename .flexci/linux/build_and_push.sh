@@ -9,7 +9,7 @@ fi
 
 TEST_PIP_PACKAGES="
 matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime
-pytest flake8 pysen[lint] pytest-cov
+pytest flake8 pysen[lint] pytest-cov protobuf==3.20.1
 "
 
 docker_build_and_push() {

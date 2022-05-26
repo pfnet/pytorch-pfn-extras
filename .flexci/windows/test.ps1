@@ -43,6 +43,7 @@ if ($test -eq "torch18") {
 RunOrDie python -V
 
 # Install common requirements
+RunOrDie python -m pip install protobuf==3.20.1
 RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna cupy-cuda102 onnxruntime
 RunOrDie python -m pip list
 
