@@ -454,3 +454,32 @@ def test_export_pt():
                          export_torch_trace=True)
     assert not os.path.exists(os.path.join(output_dir, 'model_script.pt'))
     assert os.path.exists(os.path.join(output_dir, 'model_trace.pt'))
+
+
+def test_export_scripted():
+
+    class Net(nn.Module):
+
+        def __init__(self):
+            super(Net, self).__init__()
+            self.linear = nn.Linear(5, 10, bias=False)
+
+        def forward(self, x, b):
+            if b:  # IF statement to check scripted (not traced) IR
+                x = -x
+            x = self.linear(x)
+            return x
+
+    model = torch.jit.script(Net())
+    x = torch.zeros((2, 5))
+    b = torch.tensor(True)
+
+    output_dir = _get_output_dir('export_scripted')
+    (out,) = export_testcase(
+        model, (x, b), output_dir, return_output=True, training=model.training,
+        do_constant_folding=False)
+
+    assert os.path.isfile(os.path.join(output_dir, 'model.onnx'))
+    expected_out = torch.zeros((2, 10))  # check only shape size
+    np.testing.assert_allclose(
+        out.detach().cpu().numpy(), expected_out.detach().cpu().numpy())

@@ -233,7 +233,7 @@ def export(
 
 
 def export_testcase(
-        model: torch.nn.Module,
+        model: Union[torch.nn.Module, torch.jit.ScriptModule],
         args: Any,
         out_dir: str,
         *,
@@ -288,6 +288,8 @@ def export_testcase(
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
         input_names=input_names, **kwargs)
+    if isinstance(model, torch.jit.ScriptModule):
+        outs = model(*args)
     if isinstance(outs, torch.Tensor):
         outs = outs,
     elif outs is None:
