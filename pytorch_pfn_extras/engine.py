@@ -41,6 +41,7 @@ def create_trainer(
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Mapping[str, Any]] = None,
         profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
+        **kwargs: Any,
 ) -> 'Trainer':
     """Creates a trainer object.
 
@@ -117,6 +118,7 @@ def create_trainer(
         stop_trigger=stop_trigger, writer=writer,
         transform_model=transform_model,
         profile=profile,
+        **kwargs,
     )
 
 
