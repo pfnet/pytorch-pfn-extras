@@ -698,7 +698,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
 
         @self.engine.on(Events.COMPLETED)
         def set_extensions_cleanup(engine: Engine) -> None:
-            self._finalize_extensions(self)
+            self._finalize_extensions()
 
     def state_dict(self) -> Dict[str, Any]:
         to_save = super().state_dict()
