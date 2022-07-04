@@ -5,6 +5,7 @@ import warnings
 from typing import Any, Callable, List, Optional, Union
 
 from pytorch_pfn_extras.training import extension
+from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 try:
@@ -41,6 +42,12 @@ class Slack(extension.Extension):
             that returns a string. In both cases, `manager`, the current
             observation dict and the context object are used to look up
             values of interest.
+        start_text_template (str or callable): Template for sending a message
+            at the beggining of the experiment.
+            See ``text_template`` for format.
+        end_text_template (str or callable): Template for sending a message
+            at the completion of the experiment.
+            See ``text_template`` for format.
         filenames_template (list of str or callable): list of files that will
             be uploaded to slack, these are string templates that can take
             values in the same way as ``text_template``. Optional.
@@ -58,6 +65,10 @@ class Slack(extension.Extension):
         client (slack_sdk.WebClient): In case that there is an already created
             slack client in the application, allows to directly use it.
             Optional, default is ``None``
+        trigger: Trigger that decides when to send the messages.
+            This is distinct from the trigger of this extension
+            itself. If it is a tuple in the form ``<int>, 'epoch'`` or
+            ``<int>, 'iteration'``, it is passed to :class:`IntervalTrigger`.
     """
     def __init__(
         self,
@@ -65,6 +76,12 @@ class Slack(extension.Extension):
         text_template: Union[
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
         ],
+        start_text_template: Optional[Union[
+            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
+        ]] = None,
+        end_text_template: Optional[Union[
+            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
+        ]] = None,
         filenames_template: Optional[
             List[
                 Union[
@@ -77,6 +94,7 @@ class Slack(extension.Extension):
         webhook_url: Optional[str] = None,
         token: Optional[str] = None,
         client: Optional[Any] = None,  # slack_sdk.WebClient, Any to avoid mypy errors
+        trigger: trigger_module.TriggerLike = (1, 'epoch'),
     ) -> None:
         if not _slack_sdk_available and webhook_url is None:
             warnings.warn(
@@ -111,6 +129,8 @@ class Slack(extension.Extension):
         self._webhook_url = webhook_url
         # values in current observation or log report to send to slack
         self._text = text_template
+        self._start_text = start_text_template
+        self._end_text = end_text_template
         if filenames_template is None:
             filenames_template = []
         self._filenames = filenames_template
@@ -118,9 +138,15 @@ class Slack(extension.Extension):
         self._channel_id = channel_id
         self._use_threads = use_threads
         self._ts = None
+        self._trigger = trigger_module.get_trigger(trigger)
 
-    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-
+    def _send_message(
+        self,
+        manager: ExtensionsManagerProtocol,
+        text: Union[
+            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
+        ]
+    ) -> None:
         observation = manager.observation
         if callable(self._text):
             text = self._text(manager, self._context, observation)
@@ -165,3 +191,15 @@ class Slack(extension.Extension):
                 thread_ts=ts,
             )
             assert response.get("ok")  # type: ignore[no-untyped-call]
+
+    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
+        if self._start_text is not None:
+            self._send_message(manager, self._start_text)
+
+    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
+        if self._end_text is not None:
+            self._send_message(manager, self._end_text)
+
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
+        if self._trigger(manager):
+            self._send_message(manager, self._text)
