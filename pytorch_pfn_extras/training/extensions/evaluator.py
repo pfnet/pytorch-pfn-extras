@@ -248,7 +248,7 @@ class Evaluator(extension.Extension):
 
         return summary.compute_mean()
 
-    def finalize(self) -> None:
+    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
         """Finalizes the evaluator object.
 
         This method calls the `finalize` method of each iterator that

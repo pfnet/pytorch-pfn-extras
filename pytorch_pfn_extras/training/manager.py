@@ -463,7 +463,7 @@ class _BaseExtensionsManager:
             # if we use `getattr`
             try:
                 if entry.extension.finalize:
-                    entry.extension.finalize()
+                    entry.extension.finalize(self)
             except AttributeError:
                 pass
 
@@ -698,7 +698,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
 
         @self.engine.on(Events.COMPLETED)
         def set_extensions_cleanup(engine: Engine) -> None:
-            self._finalize_extensions()
+            self._finalize_extensions(self)
 
     def state_dict(self) -> Dict[str, Any]:
         to_save = super().state_dict()
