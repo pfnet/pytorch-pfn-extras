@@ -185,7 +185,7 @@ def make_extension(
         trigger: 'TriggerLike' = Extension.trigger,
         default_name: Optional[str] = None,
         priority: int = Extension.priority,
-        finalizer: Callable[[], None] = lambda manager: None,
+        finalizer: 'ExtensionLike' = lambda manager: None,
         initializer: 'ExtensionLike' = lambda manager: None,
         on_error: _OnErrorType = lambda manager, exc, tb: None,
 ) -> Callable[['ExtensionLike'], 'ExtensionLike']:

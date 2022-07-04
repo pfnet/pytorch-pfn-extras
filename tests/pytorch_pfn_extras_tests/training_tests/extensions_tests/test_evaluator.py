@@ -76,8 +76,6 @@ def test_evaluate(evaluator_dummies):
     numpy.testing.assert_almost_equal(
         mean['target/loss'], expect_mean, decimal=4)
 
-    evaluator.finalize()
-
 
 def test_metric(evaluator_dummies):
     data, data_loader, target, evaluator, expect_mean = evaluator_dummies
