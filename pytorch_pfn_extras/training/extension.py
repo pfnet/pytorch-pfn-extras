@@ -163,7 +163,7 @@ class _WrappedExtension(Extension):
         self._ext(manager)
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
-        getattr(self._ext, 'finalize', super().finalize)()
+        getattr(self._ext, 'finalize', super().finalize)(manager)
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         getattr(self._ext, 'initialize', super().initialize)(manager)
@@ -185,7 +185,7 @@ def make_extension(
         trigger: 'TriggerLike' = Extension.trigger,
         default_name: Optional[str] = None,
         priority: int = Extension.priority,
-        finalizer: Callable[[], None] = lambda: None,
+        finalizer: Callable[[], None] = lambda manager: None,
         initializer: 'ExtensionLike' = lambda manager: None,
         on_error: _OnErrorType = lambda manager, exc, tb: None,
 ) -> Callable[['ExtensionLike'], 'ExtensionLike']:
