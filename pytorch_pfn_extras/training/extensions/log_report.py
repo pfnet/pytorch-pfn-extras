@@ -264,6 +264,6 @@ class LogReport(extension.Extension):
             )
         return pandas.DataFrame(self._log_looker.get())
 
-    def finalize(self) -> None:
+    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
         if self._writer is not None:
             self._writer.finalize()

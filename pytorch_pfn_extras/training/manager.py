@@ -463,7 +463,7 @@ class _BaseExtensionsManager:
             # if we use `getattr`
             try:
                 if entry.extension.finalize:
-                    entry.extension.finalize()
+                    entry.extension.finalize(self)
             except AttributeError:
                 pass
 

@@ -248,16 +248,6 @@ class Evaluator(extension.Extension):
 
         return summary.compute_mean()
 
-    def finalize(self) -> None:
-        """Finalizes the evaluator object.
-
-        This method calls the `finalize` method of each iterator that
-        this evaluator has.
-        It is called at the end of training loops.
-
-        """
-        pass
-
 
 def _dist_gather(obj: Any) -> List[Any]:
     world_size = torch.distributed.get_world_size()  # type: ignore[no-untyped-call]
