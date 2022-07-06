@@ -19,7 +19,8 @@ class TestSlack:
         manager = self._get_manager()
         message = 'It {.iteration} loss: {loss}'
         extension = ppe.training.extensions.Slack(
-            '0', message, token='123', use_threads=use_threads)
+            '0', message, token='123', use_threads=use_threads,
+            trigger=(1, 'iteration'))
 
         t_ts = None
         if use_threads:
@@ -45,7 +46,7 @@ class TestSlack:
         manager = self._get_manager()
         message = 'It {.iteration} loss: {loss}'
         extension = ppe.training.extensions.Slack(
-            '0', message, webhook_url="http://test")
+            '0', message, webhook_url="http://test", trigger=(1, 'iteration'))
 
         manager.extend(extension, trigger=(1, 'iteration'))
         response = requests.Response()
@@ -80,7 +81,7 @@ class TestSlack:
         manager = self._get_manager()
         context = _CustomContext()
         extension = ppe.training.extensions.Slack(
-            '0', message, context_object=context, token='123')
+            '0', message, context_object=context, token='123', trigger=(1, 'iteration'))
         manager.extend(extension, trigger=(1, 'iteration'))
         with mock.patch(
             'slack_sdk.WebClient.chat_postMessage',
@@ -104,7 +105,8 @@ class TestSlack:
         manager = self._get_manager()
         message = 'it: {.iteration}'
         filenames = ['file_{.iteration}', '{._out}/abc']
-        extension = ppe.training.extensions.Slack('0', message, filenames, token='123')
+        extension = ppe.training.extensions.Slack(
+            '0', message, filenames_template=filenames, token='123', trigger=(1, 'iteration'))
         manager.extend(extension, trigger=(1, 'iteration'))
 
         with mock.patch(
@@ -123,13 +125,16 @@ class TestSlack:
         filenames = ['file_{.iteration}', '{._out}/abc']
         with pytest.raises(ValueError, match='used to post files'):
             ppe.training.extensions.Slack(
-                '0', message, filenames, webhook_url='123')
+                '0', message, None, None, filenames, webhook_url='123', trigger=(1, 'iteration'))
         with pytest.raises(ValueError, match='client and token'):
             ppe.training.extensions.Slack(
-                '0', message, filenames, webhook_url='123', client=1)
+                '0', message, None, None, filenames, webhook_url='123',
+                client=1, trigger=(1, 'iteration'))
         with pytest.raises(ValueError, match='client and token'):
             ppe.training.extensions.Slack(
-                '0', message, filenames, webhook_url='123', token=1)
+                '0', message, None, None, filenames, webhook_url='123',
+                token=1, trigger=(1, 'iteration'))
         with pytest.raises(ValueError, match='client and token'):
             ppe.training.extensions.Slack(
-                '0', message, filenames, webhook_url='123', client=1, token=1)
+                '0', message, None, None, filenames, webhook_url='123',
+                client=1, token=1, trigger=(1, 'iteration'))
