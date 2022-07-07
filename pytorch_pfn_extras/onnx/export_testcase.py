@@ -14,7 +14,6 @@ import pytorch_pfn_extras
 import torch
 import torch.autograd
 from torch.onnx import OperatorExportTypes
-from torch.onnx.symbolic_helper import _default_onnx_opset_version
 from torch.onnx.utils import \
     _export as torch_export, _model_to_graph as torch_model_to_graph
 
@@ -152,7 +151,12 @@ def _export(
     bytesio = io.BytesIO()
     opset_ver = kwargs.get('opset_version', None)
     if opset_ver is None:
-        opset_ver = _default_onnx_opset_version
+        if pytorch_pfn_extras.requires('1.12.0'):
+            from torch.onnx._constants import onnx_default_opset
+            opset_ver = onnx_default_opset
+        else:
+            from torch.onnx.symbolic_helper import _default_onnx_opset_version
+            opset_ver = _default_onnx_opset_version
         kwargs['opset_version'] = opset_ver
     if use_pfto or not pytorch_pfn_extras.requires('1.10.0'):
         strip_doc_string = kwargs.get('strip_doc_string', True)
