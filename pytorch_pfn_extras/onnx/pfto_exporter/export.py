@@ -9,6 +9,7 @@ import onnx.helper
 import onnx.numpy_helper
 import onnx.shape_inference
 import pytorch_pfn_extras
+from pytorch_pfn_extras.onnx.globals import CONSTANTS, GLOBALS
 import torch
 import torch.jit
 import torch.onnx.symbolic_helper as sym_hel
@@ -316,11 +317,7 @@ class _Exporter(_ExporterOptions):
         else:
             self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
 
-        opset_versions = (
-            sym_hel._constant_folding_opset_versions   # type: ignore[attr-defined]
-            if pytorch_pfn_extras.requires("1.11.0")
-            else torch.onnx.constant_folding_opset_versions)  # type: ignore[attr-defined]
-        if self.do_constant_folding and self.opset_version in opset_versions:
+        if self.do_constant_folding and self.opset_version in CONSTANTS.constant_folding_opset_versions:
             folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]
                 graph, self.vars, self.opset_version
             )
@@ -864,11 +861,11 @@ class _Exporter(_ExporterOptions):
             assert not to_utils.is_in_onnx_export()  # type: ignore[no-untyped-call]
             with to_utils.select_model_mode_for_export(self.original_model, self.training):
                 to_utils.__IN_ONNX_EXPORT = True
-                prev_opset_version = sym_hel._export_onnx_opset_version
+                prev_opset_version = GLOBALS.export_opset_version
                 sym_hel._set_opset_version(self.opset_version)  # type: ignore[no-untyped-call]
-                prev_export_type = sym_hel._operator_export_type
+                prev_export_type = GLOBALS.operator_export_type
                 sym_hel._set_operator_export_type(self.operator_export_type)  # type: ignore[no-untyped-call]
-                prev_shape_inference = sym_hel._onnx_shape_inference
+                prev_shape_inference = GLOBALS.onnx_shape_inference
                 sym_hel._set_onnx_shape_inference(  # type: ignore[no-untyped-call]
                     False  # TODO(twata): Use `self.onnx_shape_inference`
                 )
