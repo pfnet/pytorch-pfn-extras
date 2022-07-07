@@ -715,7 +715,10 @@ class _Exporter(_ExporterOptions):
 
             new_nd = onnx.NodeProto()
             new_nd.name = node_name(n)
-            new_nd.op_type = n.kind().split("::")[-1]
+            ns, op = n.kind().split("::")
+            new_nd.op_type = op
+            if ns not in ["onnx", "prim"]:
+                new_nd.domain = ns
             if n.kind() == "prim::If":
                 if n in self.node_doc_string:
                     new_nd.doc_string = f"""## Symbolic node
