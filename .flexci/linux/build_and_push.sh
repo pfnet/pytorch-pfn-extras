@@ -56,6 +56,12 @@ docker_build_and_push torch110 \
     &
 WAIT_PIDS="$! ${WAIT_PIDS}"
 
+# Wait until the build complete.
+for P in ${WAIT_PIDS}; do
+    wait ${P}
+done
+WAIT_PIDS=""
+
 # PyTorch 1.11 + Python 3.9
 docker_build_and_push torch111 \
     --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
