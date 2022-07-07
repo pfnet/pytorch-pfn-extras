@@ -850,6 +850,7 @@ class _Exporter(_ExporterOptions):
         model: onnx.ModelProto = onnx.helper.make_model(
             graph,
             opset_imports=[onnx.helper.make_opsetid("", self.opset_version)],
+            producer_name="pfto",
         )
         model = self.check_model(model)
 
