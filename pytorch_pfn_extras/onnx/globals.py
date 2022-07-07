@@ -21,7 +21,7 @@ class _TorchOnnxConstants:
             if pytorch_pfn_extras.requires("1.11.0"):
                 self.constant_folding_opset_versions = torch.onnx.symbolic_helper._constant_folding_opset_versions  # type: ignore[attr-defined]
             else:
-                self.constant_folding_opset_version = torch.onnx.constant_folding_opset_versions  # type: ignore[attr-defined]
+                self.constant_folding_opset_versions = torch.onnx.constant_folding_opset_versions  # type: ignore[attr-defined]
 
 
 CONSTANTS = _TorchOnnxConstants()
