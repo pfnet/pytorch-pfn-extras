@@ -58,7 +58,7 @@ def _type_to_proto(t: torch._C.TensorType) -> onnx.TypeProto:
         return onnx.TypeProto()
 
     ret: onnx.TypeProto = onnx.TypeProto()
-    ret.denotation = repr(t)
+    ret.denotation = repr(t).upper()
 
     if t.kind() == "ListType":
         ret.sequence_type.elem_type.CopyFrom(_type_to_proto(cast(torch._C.TensorType, t.getElementType())))
