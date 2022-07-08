@@ -849,9 +849,19 @@ class _Exporter(_ExporterOptions):
 
         self.log("ONNX printable graph", onnx.helper.printable_graph(graph))
 
+        def get_model_opset_imports(graph: onnx.GraphProto) -> List[onnx.OperatorSetIdProto]:
+            opsets = {onnx.defs.ONNX_DOMAIN: self.opset_version}
+            for node in graph.node:
+                if node.domain != onnx.defs.ONNX_DOMAIN:
+                    opsets[node.domain] = 1
+            opset_imports = []
+            for domain, version in opsets.items():
+                opset_imports.append(onnx.helper.make_opsetid(domain, version))
+            return opset_imports
+
         model: onnx.ModelProto = onnx.helper.make_model(
             graph,
-            opset_imports=[onnx.helper.make_opsetid("", self.opset_version)],
+            opset_imports=get_model_opset_imports(graph),
             producer_name="pfto",
         )
         model = self.check_model(model)
