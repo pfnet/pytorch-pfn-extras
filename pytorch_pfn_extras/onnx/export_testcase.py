@@ -14,6 +14,7 @@ import pytorch_pfn_extras
 import torch
 import torch.autograd
 from torch.onnx import OperatorExportTypes
+import torch.onnx.symbolic_helper
 from torch.onnx.utils import \
     _export as torch_export, _model_to_graph as torch_model_to_graph
 
@@ -27,6 +28,10 @@ from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_raw_data
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
     _strip_large_initializer_raw_data
 from pytorch_pfn_extras.onnx.pfto_exporter.export import export as pfto_export
+
+
+if pytorch_pfn_extras.requires('1.12.0'):
+    import torch.onnx._constants
 
 
 def _model_to_graph_with_value_names(
@@ -152,11 +157,9 @@ def _export(
     opset_ver = kwargs.get('opset_version', None)
     if opset_ver is None:
         if pytorch_pfn_extras.requires('1.12.0'):
-            from torch.onnx._constants import onnx_default_opset
-            opset_ver = onnx_default_opset
+            opset_ver = torch.onnx._constants.onnx_default_opset
         else:
-            from torch.onnx.symbolic_helper import _default_onnx_opset_version
-            opset_ver = _default_onnx_opset_version
+            opset_ver = torch.onnx.symbolic_helper._default_onnx_opset_version
         kwargs['opset_version'] = opset_ver
     if use_pfto or not pytorch_pfn_extras.requires('1.10.0'):
         strip_doc_string = kwargs.get('strip_doc_string', True)
