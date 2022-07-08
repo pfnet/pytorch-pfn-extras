@@ -332,7 +332,7 @@ def export_testcase(
                 s = onnx.numpy_helper.from_list(array, name)
                 if strip_large_tensor_data:
                     for t in s.tensor_values:
-                        if (is_large_tensor(t, large_tensor_threshold)):
+                        if is_large_tensor(t, large_tensor_threshold):
                             _strip_raw_data(t)
                 fp.write(s.SerializeToString())
         else:
