@@ -831,6 +831,8 @@ class _Exporter(_ExporterOptions):
             inout_names.append(k)
             onnx_outputs.append(onnx_value(v, k))
             if idx < len(self.outputs):
+                if isinstance(self.outputs[idx], tuple):
+                    raise RuntimeError('Models returning nested lists/tuples are not supported yet')
                 _apply_tensor_info_to_value_info(onnx_outputs[-1], self.outputs[idx])
                 apply_dynamic_axes_info(onnx_outputs[-1], k)
 
