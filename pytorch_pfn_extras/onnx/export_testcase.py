@@ -289,6 +289,7 @@ def export_testcase(
         model, args, strip_large_tensor_data, large_tensor_threshold,
         input_names=input_names, **kwargs)
     if isinstance(model, torch.jit.ScriptModule):
+        assert outs is None
         outs = model(*args)
     if isinstance(outs, torch.Tensor):
         outs = outs,
