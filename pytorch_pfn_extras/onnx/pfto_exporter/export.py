@@ -502,6 +502,8 @@ class _Exporter(_ExporterOptions):
         node_inputs = list(n.inputs())
         if n.kind() == "prim::PythonOp":
             node_inputs.extend(n.scalar_args())
+            if "module" in attrs:
+                del attrs["module"]
         sym_outs = _to_tuple_if_not_sequence(sym_func(g, *node_inputs, **attrs))
         assert len(sym_outs) == n.outputsSize(), f"{sym_outs}: {len(sym_outs)} vs {n.outputsSize()}"
 
