@@ -313,14 +313,29 @@ def export_testcase(
         with open(output_path, 'wb') as fp:
             fp.write(onnx_graph.SerializeToString())
 
-    def write_to_pb(f: str, tensor: torch.Tensor, name: Optional[str] = None) -> None:
-        array = tensor.detach().cpu().numpy()
-        with open(f, 'wb') as fp:
-            t = onnx.numpy_helper.from_array(array, name)
-            if (strip_large_tensor_data
-                    and is_large_tensor(t, large_tensor_threshold)):
-                _strip_raw_data(t)
-            fp.write(t.SerializeToString())
+    def write_to_pb(
+            f: str, tensor: Union[torch.Tensor, Sequence[torch.Tensor]],
+            name: Optional[str] = None
+    ) -> None:
+        if isinstance(tensor, torch.Tensor):
+            array = tensor.detach().cpu().numpy()
+            with open(f, 'wb') as fp:
+                t = onnx.numpy_helper.from_array(array, name)
+                if (strip_large_tensor_data
+                        and is_large_tensor(t, large_tensor_threshold)):
+                    _strip_raw_data(t)
+                fp.write(t.SerializeToString())
+        elif isinstance(tensor, Sequence):
+            array = [t.detach().cpu().numpy() for t in tensor]
+            with open(f, 'wb') as fp:
+                s = onnx.numpy_helper.from_list(array, name)
+                if strip_large_tensor_data:
+                    for t in s.tensor_values:
+                        if (is_large_tensor(t, large_tensor_threshold)):
+                            _strip_raw_data(t)
+                fp.write(s.SerializeToString())
+        else:
+            assert False
 
     if export_torch_script:
         pt_script_path = os.path.join(out_dir, 'model_script.pt')
