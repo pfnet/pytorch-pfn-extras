@@ -374,8 +374,8 @@ def test_scoped_anchor_multiple_inout():
     anchor_node, pre_node, next_node = named_nodes['Anchor_0_start']
     # anchor_attrs = [a.name for a in anchor_node.attribute]
     assert pre_node is None
-    assert next_node.name == 'Concat_4'
+    assert next_node.name.startswith('Concat_')
     anchor_node, pre_node, next_node = named_nodes['Anchor_0_end']
     # anchor_attrs = [a.name for a in anchor_node.attribute]
-    assert pre_node.name == 'Split_10'
+    assert pre_node.name.startswith('Split_')
     assert next_node is None
