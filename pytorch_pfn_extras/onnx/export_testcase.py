@@ -11,7 +11,7 @@ import warnings
 import onnx
 import onnx.numpy_helper
 import pytorch_pfn_extras
-from pytorch_pfn_extras.onnx.globals import CONSTANTS
+import pytorch_pfn_extras.onnx._constants
 import torch
 import torch.autograd
 from torch.onnx import OperatorExportTypes
@@ -152,7 +152,7 @@ def _export(
     bytesio = io.BytesIO()
     opset_ver = kwargs.get('opset_version', None)
     if opset_ver is None:
-        opset_ver = CONSTANTS.default_opset_version
+        opset_ver = pytorch_pfn_extras.onnx._constants.onnx_default_opset
         kwargs['opset_version'] = opset_ver
     if use_pfto or not pytorch_pfn_extras.requires('1.10.0'):
         strip_doc_string = kwargs.get('strip_doc_string', True)

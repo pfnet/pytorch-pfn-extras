@@ -16,7 +16,7 @@ from pytorch_pfn_extras.onnx import export
 from pytorch_pfn_extras.onnx import export_testcase
 from pytorch_pfn_extras.onnx import is_large_tensor
 from pytorch_pfn_extras.onnx import LARGE_TENSOR_DATA_THRESHOLD
-from pytorch_pfn_extras.onnx.globals import CONSTANTS
+import pytorch_pfn_extras.onnx._constants
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_large_tensor_tool_impl
 from pytorch_pfn_extras.onnx.unstrip_tensor import unstrip
 
@@ -45,7 +45,7 @@ class Net(nn.Module):
 
 def _get_output_dir(d, **kwargs):
     output_dir_base = 'out'
-    opset_ver = kwargs.get('opset_version', CONSTANTS.default_opset_version)
+    opset_ver = kwargs.get('opset_version', pytorch_pfn_extras.onnx._constants.onnx_default_opset)
 
     output_dir = os.path.join(
         output_dir_base, 'opset{}'.format(opset_ver), d)
