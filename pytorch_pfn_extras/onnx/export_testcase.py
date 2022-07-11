@@ -111,7 +111,12 @@ def _export_util(
         operator_export_type = OperatorExportTypes.ONNX_ATEN if\
             aten else OperatorExportTypes.RAW  # type: ignore
     elif operator_export_type is None:
-        if torch.onnx.PYTORCH_ONNX_CAFFE2_BUNDLE:
+        if pytorch_pfn_extras.requires("1.12.0"):
+            use_onnx_aten_fallback = torch.onnx._CAFFE2_ATEN_FALLBACK  # type: ignore[attr-defined]
+        else:
+            use_onnx_aten_fallback = torch.onnx.PYTORCH_ONNX_CAFFE2_BUNDLE  # type: ignore[attr-defined]
+
+        if use_onnx_aten_fallback:
             operator_export_type = OperatorExportTypes.ONNX_ATEN_FALLBACK
         else:
             operator_export_type = OperatorExportTypes.ONNX

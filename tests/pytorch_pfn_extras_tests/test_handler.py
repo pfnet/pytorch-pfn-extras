@@ -6,6 +6,13 @@ import pytest
 import pytorch_pfn_extras as ppe
 
 
+def torch_testing_assert_close(*args, **kwargs):
+    if ppe.requires("1.10.0"):
+        torch.testing.assert_close(*args, **kwargs)
+    else:
+        torch.testing.assert_allclose(*args, **kwargs)
+
+
 class MockRuntime(ppe.runtime.BaseRuntime):
     def __init__(self, device, options):
         super().__init__(device, options)
@@ -361,8 +368,8 @@ class TestLogic:
         model = models['main']
         assert input.grad is not None
         # The gradient of a linear layer is its transposed weight
-        torch.testing.assert_allclose(input.grad, model.weight.T)
-        torch.testing.assert_allclose(out, model(input))
+        torch_testing_assert_close(input.grad, model.weight.T)
+        torch_testing_assert_close(out, model(input))
 
     @pytest.mark.parametrize(
         'to_backprop',
@@ -403,11 +410,11 @@ class TestLogic:
         grad = torch.zeros(1)
         for val in to_backprop:
             grad = grad + getattr(model, f'l{val}').weight.T
-        torch.testing.assert_allclose(input.grad, grad)
+        torch_testing_assert_close(input.grad, grad)
 
         # Check that logic step does not change the value of weight
         for val in original_parameters:
-            torch.testing.assert_allclose(
+            torch_testing_assert_close(
                 original_parameters[val], getattr(model, f'l{val}').weight)
 
     def test_train_step_backward_nograd(self):
@@ -461,7 +468,7 @@ class TestLogic:
         w_grad = model.weight.grad.clone().detach()
         logic.train_step_optimizers(model, optimizers, 0)
         # Checks that the value was correctly updated
-        torch.testing.assert_allclose(m_weight - w_grad, model.weight.T)
+        torch_testing_assert_close(m_weight - w_grad, model.weight.T)
 
     @pytest.mark.gpu
     def test_grad_scaler(self):
@@ -473,12 +480,12 @@ class TestLogic:
         m_weight = model.weight.clone().detach()
         w_grad = model.weight.grad.clone().detach()
         # The gradient of a linear layer is its transposed weight
-        torch.testing.assert_allclose(input.grad, scaler.scale(model.weight.T))
-        torch.testing.assert_allclose(out, model(input))
+        torch_testing_assert_close(input.grad, scaler.scale(model.weight.T))
+        torch_testing_assert_close(out, model(input))
         logic.train_step_optimizers(model, optimizers, 0)
         # Checks that the value was correctly updated and gradients deescaled
         # before the update
-        torch.testing.assert_allclose(
+        torch_testing_assert_close(
             scaler.scale(m_weight) - w_grad, scaler.scale(model.weight.T))
 
     @pytest.mark.gpu
@@ -513,4 +520,4 @@ class TestLogic:
         models = {'main': model}
         models['main'].eval()
         out = logic.eval_step(models, 0, input)
-        torch.testing.assert_allclose(out, model(input))
+        torch_testing_assert_close(out, model(input))
