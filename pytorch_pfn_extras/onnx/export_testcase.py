@@ -111,7 +111,7 @@ def _export_util(
         operator_export_type = OperatorExportTypes.ONNX_ATEN if\
             aten else OperatorExportTypes.RAW  # type: ignore
     elif operator_export_type is None:
-        if torch.onnx.PYTORCH_ONNX_CAFFE2_BUNDLE:
+        if torch.onnx.PYTORCH_ONNX_CAFFE2_BUNDLE:  # type: ignore[attr-defined]
             operator_export_type = OperatorExportTypes.ONNX_ATEN_FALLBACK
         else:
             operator_export_type = OperatorExportTypes.ONNX
