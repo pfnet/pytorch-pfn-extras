@@ -117,7 +117,8 @@ def test_as_output_in_scripting():
     model = torch.jit.script(Net())
     x = torch.ones((1, 1, 32, 32))
     b = torch.tensor(True)
-    output_dir = _helper(model, (x, b), 'as_output', use_pfto=False)
+    with pytest.warns(UserWarning):
+        output_dir = _helper(model, (x, b), 'as_output', use_pfto=False)
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}

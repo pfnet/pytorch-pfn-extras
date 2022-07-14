@@ -3,6 +3,7 @@ from typing import Any, Generator, List, NamedTuple, Tuple, Union
 import torch
 import threading
 from contextlib import contextmanager
+import warnings
 
 _outputs = threading.local()
 
@@ -99,6 +100,9 @@ def trace(
 
 def as_output(name: str, value: torch.Tensor) -> torch.Tensor:
     if torch.jit.is_scripting():
+        warnings.warn(
+            '`as_output` seen in TorchScript compilation. The value is no '
+            'longer an output in the exported onnx.')
         return value
     if hasattr(_outputs, "outputs") and _outputs.outputs is not None:
         _outputs.outputs.add(name, value)
