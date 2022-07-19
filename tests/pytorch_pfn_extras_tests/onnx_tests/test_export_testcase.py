@@ -456,6 +456,9 @@ def test_export_pt():
     assert os.path.exists(os.path.join(output_dir, 'model_trace.pt'))
 
 
+@pytest.mark.skipif(
+    not pytorch_pfn_extras.requires("1.10.0"),
+    reason='skip for PyTorch 1.9 or earlier')
 def test_export_scripted():
 
     class Net(nn.Module):
