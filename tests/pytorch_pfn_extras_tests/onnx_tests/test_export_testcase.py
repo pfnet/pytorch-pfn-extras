@@ -2,7 +2,6 @@ import io
 import os
 import json
 from pathlib import Path
-from typing import List
 
 import numpy as np
 import onnx
@@ -173,16 +172,6 @@ def _to_array(f, name=None):
     if name is not None:
         assert onnx_tensor.name == name
     return onnx.numpy_helper.to_array(onnx_tensor)
-
-
-def _to_list(f, name=None):
-    assert os.path.isfile(f)
-    onnx_seq = onnx.SequenceProto()
-    with open(f, 'rb') as fp:
-        onnx_seq.ParseFromString(fp.read())
-    if name is not None:
-        assert onnx_seq.name == name
-    return onnx.numpy_helper.to_list(onnx_seq)
 
 
 def test_backward():
@@ -470,6 +459,7 @@ def test_export_pt():
 def test_export_scripted():
 
     class Net(nn.Module):
+
         def __init__(self):
             super(Net, self).__init__()
             self.linear = nn.Linear(5, 10, bias=False)
@@ -493,34 +483,3 @@ def test_export_scripted():
     expected_out = torch.zeros((2, 10))  # check only shape size
     np.testing.assert_allclose(
         out.detach().cpu().numpy(), expected_out.detach().cpu().numpy())
-
-
-def test_export_scripted_list_of_tensors():
-
-    class Net(nn.Module):
-        def forward(self, xs: List[torch.Tensor]):
-            return xs[0]
-
-    model = torch.jit.script(Net())
-    xs = [torch.zeros((2, 5)), torch.zeros((2, 5))]
-
-    output_dir = _get_output_dir('export_scripted')
-    (out,) = export_testcase(
-        model, (xs,), output_dir, return_output=True, training=model.training,
-        do_constant_folding=False)
-
-    # Check model.onnx
-    assert os.path.isfile(os.path.join(output_dir, 'model.onnx'))
-
-    # Check returned output
-    expected_out = torch.zeros((2, 5))  # check only shape size
-    np.testing.assert_allclose(
-        out.detach().cpu().numpy(), expected_out.detach().cpu().numpy())
-
-    # Check input_0.pb
-    test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
-    expected_input_0_path = os.path.join(test_data_set_dir, 'input_0.pb')
-    xs0 = _to_list(expected_input_0_path, 'input_0')
-    assert len(xs0) == 2
-    assert xs[0].shape == xs0[0].shape
-    assert xs[1].shape == xs0[1].shape
