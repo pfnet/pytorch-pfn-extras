@@ -9,14 +9,7 @@ $ErrorActionPreference = "Stop"
 
 
 # Setup environment
-if ($test -eq "torch18") {
-    # PyTorch 1.8 + Python 3.7
-    ActivateCUDA 11.1
-    ActivatePython 3.7
-    RunOrDie python -m pip install -U pip "setuptools<59.6"
-    RunOrDieWithRetry 3 python -m pip install torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu111/torch_stable.html
-
-} elseif ($test -eq "torch19") {
+if ($test -eq "torch19") {
     # PyTorch 1.9 + Python 3.8
     ActivateCUDA 11.1
     ActivatePython 3.8
