@@ -99,7 +99,7 @@ def trace(
 
 
 def as_output(name: str, value: torch.Tensor) -> torch.Tensor:
-    if torch.jit.is_scripting():
+    if torch.jit.is_scripting():  # type: ignore[no-untyped-call]
         warnings.warn(
             '`as_output` seen in TorchScript compilation. The value is no '
             'longer an output in the exported onnx.')
