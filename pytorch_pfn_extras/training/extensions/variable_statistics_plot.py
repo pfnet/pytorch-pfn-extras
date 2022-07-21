@@ -410,6 +410,9 @@ grid=True)
         writer(self._filename, manager.out, (fig, plt),  # type: ignore
                savefun=matplotlib_savefun)
 
-    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
+    def finalize(
+        self,
+        manager: Optional[ExtensionsManagerProtocol] = None
+    ) -> None:
         if self._writer is not None:
             self._writer.finalize()

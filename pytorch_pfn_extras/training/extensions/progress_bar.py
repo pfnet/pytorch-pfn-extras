@@ -50,7 +50,10 @@ class ProgressBar(extension.Extension):
         if iteration % self._update_interval == 0:
             self._pbar.update()
 
-    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
+    def finalize(
+        self,
+        manager: Optional[ExtensionsManagerProtocol] = None
+    ) -> None:
         self._pbar.close()
 
 

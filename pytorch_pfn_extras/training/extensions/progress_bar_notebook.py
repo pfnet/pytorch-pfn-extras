@@ -1,7 +1,7 @@
 import datetime
 import sys
 import time
-from typing import Any, List, Tuple
+from typing import Any, List, Optional, Tuple
 
 from IPython.display import display
 from ipywidgets import HTML, FloatProgress, HBox, VBox  # NOQA
@@ -85,7 +85,10 @@ class ProgressBarNotebook(extension.Extension):
         if iteration % self._update_interval == 0 or is_finished:
             self.update(iteration, epoch_detail)
 
-    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
+    def finalize(
+        self,
+        manager: Optional[ExtensionsManagerProtocol] = None
+    ) -> None:
         if self._total_bar.value != 1:
             self._total_bar.bar_style = 'warning'
             self._epoch_bar.bar_style = 'warning'

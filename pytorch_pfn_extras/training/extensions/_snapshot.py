@@ -420,7 +420,10 @@ class _Snapshot(extension.Extension):
         writer(  # type: ignore
             filename, outdir, serialized_target, savefun=self._savefun)
 
-    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
+    def finalize(
+        self,
+        manager: Optional[ExtensionsManagerProtocol] = None
+    ) -> None:
         self.writer.finalize()  # type: ignore
 
 
