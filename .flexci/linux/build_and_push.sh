@@ -29,15 +29,6 @@ docker_build_and_push() {
 
 WAIT_PIDS=""
 
-# PyTorch 1.8 + Python 3.6
-docker_build_and_push torch18 \
-    --build-arg base_image="nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04" \
-    --build-arg python_version="3.6.9" \
-    --build-arg pip_install_torch_args="torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu102/torch_stable.html" \
-    --build-arg pip_install_dep_args="cupy-cuda102 pytorch-ignite onnx==1.11.0 ${TEST_PIP_PACKAGES}" \
-    &
-WAIT_PIDS="$! ${WAIT_PIDS}"
-
 # PyTorch 1.9 + Python 3.9
 docker_build_and_push torch19 \
     --build-arg base_image="nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04" \
