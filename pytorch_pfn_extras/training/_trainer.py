@@ -332,6 +332,12 @@ class Trainer:
                 prof.on_trace_ready = None
         self.handler.train_cleanup(self)
 
+    def close(self) -> None:
+        if self._manager is not None:
+            self._manager.close()
+        else:
+            raise RuntimeError('Attempted to close a non-started trainer')
+
 
 # For backward compatibility
 _Trainer = Trainer
