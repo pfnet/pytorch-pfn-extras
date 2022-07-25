@@ -537,7 +537,7 @@ def test_extensions_accessing_models_without_flag(priority):
                 pass
 
 
-def test_close():
+def test_finalize():
     class DummyExt(ppe.training.Extension):
         def __init__(self):
             self.call_cnt = 0

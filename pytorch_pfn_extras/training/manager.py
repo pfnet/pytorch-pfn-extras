@@ -609,9 +609,9 @@ class ExtensionsManager(_BaseExtensionsManager):
                 raise
 
         if self._internal_stop_trigger(self):
-            self.close()
+            self.finalize()
 
-    def close(self) -> None:
+    def finalize(self) -> None:
         if not self._finalized:
             self._finalize_extensions()
             self.writer.finalize()

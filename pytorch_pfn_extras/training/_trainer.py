@@ -324,7 +324,7 @@ class Trainer:
                             # so training can continue and extensions state is not
                             # finalized. On the other hand, the trainer is not
                             # reusable, so we finalize the extensions here.
-                            self.manager.close()
+                            self.manager.finalize()
                             raise
 
                     if prof is not None:
