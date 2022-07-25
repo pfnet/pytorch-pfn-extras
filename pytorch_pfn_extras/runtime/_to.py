@@ -62,6 +62,8 @@ def to(
     if isinstance(obj, torch.nn.Module):
         obj = runtime.move_module(obj)
         for module in obj.modules():
+            if ppe.runtime._runtime._module_runtime_tag(module) is not None:
+                raise ValueError("ppe.to cannot be nested")
             ppe.runtime._runtime._set_module_runtime_tag(module, runtime)
         return obj
     elif isinstance(obj, torch.Tensor):
