@@ -21,10 +21,10 @@ class MockRuntime(ppe.runtime.BaseRuntime):
         self._called_module = None
 
     def move_module(self, module):
-        pass
+        return module
 
     def move_tensor(self, tensor):
-        pass
+        return tensor
 
     def convert_batch(self, batch):
         class BatchWrapper:
