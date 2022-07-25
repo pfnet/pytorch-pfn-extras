@@ -10,4 +10,4 @@ def map(
     device: Any = "cpu",
 ) -> Sequence[Any]:
     codeblock = ppe.handler.forward(func)
-    return codeblock.runtime.map(codeblock, iterable, out_keys, device)
+    return codeblock.runtime.map(codeblock, iterable, out_keys, device)  # type: ignore
