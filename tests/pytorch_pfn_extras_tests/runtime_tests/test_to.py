@@ -63,10 +63,3 @@ def test_module_split_ppe_to_config():
     rt_layer1 = ppe.runtime._runtime._module_runtime_tag(module)
     assert isinstance(rt_layer1, MyRuntime)
     assert rt_layer1.options['opt'] == 1
-
-
-def test_runtime_nested():
-    module = MyModule()
-    ppe.to(module, 'dummy', runtime_class=MyRuntime)
-    with pytest.raises(ValueError, match="nested"):
-        ppe.to(module.layer2, 'dummy', runtime_class=MyRuntime)
