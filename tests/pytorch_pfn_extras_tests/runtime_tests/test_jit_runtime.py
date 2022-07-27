@@ -54,6 +54,7 @@ class JITRuntime(ppe.runtime.PyTorchRuntime):
             return self._traced_mod._ppe_as_out_module.state_dict()
 
         module.state_dict = types.MethodType(new_state_dict, module)
+        return module
 
     def move_tensor(self, tensor):
         return tensor
