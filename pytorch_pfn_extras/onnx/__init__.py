@@ -1,3 +1,5 @@
+# NOTE: type stub (`__init__.pyi`) must be in sync with these public APIs.
+
 try:
     from pytorch_pfn_extras.onnx.export_testcase import export  # NOQA
     from pytorch_pfn_extras.onnx.export_testcase import export_testcase  # NOQA
