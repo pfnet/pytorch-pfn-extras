@@ -1,3 +1,4 @@
+import contextlib
 from typing import (
     Any, Callable, Dict, Generator, Iterable, List, Mapping, Optional,
     Tuple, Union, TYPE_CHECKING,
@@ -223,6 +224,16 @@ class BaseHandler:
         # Context: Evaluator
         # Called after eval_step.
         pass
+
+    @contextlib.contextmanager
+    def trace(self, event_name: str, arg: Any) -> Generator[None, None, None]:
+        """Context manager for tracing PPE events in the custom device tools.
+
+        Args:
+            event_name: The name of the event being traced
+            arg: Custom argument for the tracer
+        """
+        yield
 
 
 ModulesTuple = Tuple[str, torch.nn.Module, 'BaseRuntime']
@@ -517,3 +528,14 @@ class Handler(BaseHandler):
             rt.train_post_step(trainer, sm, batch_idx, batch, outputs)
         for out in self._train_report_keys:
             reporting.report({"train/{}".format(out): outputs[out]})
+
+    @contextlib.contextmanager
+    def trace(self, event_name: str, arg: Any) -> Generator[None, None, None]:
+        """Context manager for tracing PPE events in the custom device tools.
+
+        Args:
+            event_name: The name of the event being traced
+            arg: Custom argument for the tracer
+        """
+        with self._entry_runtime.trace(event_name, arg):
+            yield

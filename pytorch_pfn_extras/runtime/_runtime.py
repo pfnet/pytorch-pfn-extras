@@ -311,6 +311,17 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
+    @classmethod
+    @contextlib.contextmanager
+    def trace(cls, event_name: str, arg: Any) -> Generator[None, None, None]:
+        """Context manager for tracing PPE events in the custom device tools.
+
+        Args:
+            event_name: The name of the event being traced
+            arg: Custom argument for the tracer
+        """
+        yield
+
 
 class PyTorchRuntime(BaseRuntime):
     """A collections of callback functions for the devices that PyTorch

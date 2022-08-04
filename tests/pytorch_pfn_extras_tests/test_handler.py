@@ -1,4 +1,5 @@
 import unittest.mock
+import contextlib
 
 import torch
 import pytest
@@ -70,6 +71,12 @@ class MockRuntime(ppe.runtime.BaseRuntime):
     def eval_post_step(self, evaluator, module, batch_idx, batch, outputs):
         self._eval_post_step_called = True
         self._called_module = module
+
+    @classmethod
+    @contextlib.contextmanager
+    def trace(cls, event_name, arg):
+        arg["called"] = True
+        yield
 
 
 class MockModule(torch.nn.Module):
@@ -220,6 +227,12 @@ class TestHandlerTrainSync(HandlerTester):
             handler.train_post_step(trainer, 0, None, {'output': 1})
         assert reporter.observation['train/output'] == 1
         self._assert_called(module, to_move, 'train_post_step')
+
+    def test_handler_trace(self):
+        handler, trainer, _ = self._get_handler({})
+        data = {}
+        with handler.trace("test", data):
+            assert data["called"]
 
 
 class TestHandlerValidationSync(HandlerTester):
