@@ -558,9 +558,9 @@ def test_finalize():
     with manager.run_iteration():
         pass
     assert ext.call_cnt == 1
-    assert ext.finalized == 1
+    assert ext.finalized
 
-    with pytest.raises(RuntimeError, match="closed manager"):
+    with pytest.raises(RuntimeError, match="finalized manager"):
         with manager.run_iteration():
             pass
 

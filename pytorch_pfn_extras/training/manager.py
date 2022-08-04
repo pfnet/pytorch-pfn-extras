@@ -583,7 +583,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             to call `zero_grad` and `step`
         """
         if self._finalized:
-            raise RuntimeError('Attempted to run a closed manager')
+            raise RuntimeError('Attempted to run a finalized manager')
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
