@@ -61,13 +61,13 @@ class Slack(extension.Extension):
     placeholders that will be populated with ``manager`` or ``manager.observation``
     fields, and any arbitrary user-defined object passed to ``context``.
 
-    For example. `msg = "Loss {val/loss} for iteration {manager.iteration}"`
-    will be populated as `msg.format(manager, context_object, **observation)`
-    retrieving the ``loss`` value from the ``observation`` and ``.iteration`` from
+    For example. `msg = "Loss {val/loss} for iteration {manager.epoch}"`
+    will be populated as `msg.format(manager, context, **observation)`
+    retrieving the ``loss`` value from the ``observation`` and ``.epoch`` from
     the manager object. Instead of string, a callable object taking the
     ``ExtensionsManager``, ``context_object`` and the observation dictionary can
     be used instead. The same rules apply for the ''start_msg``, ``end_msg`` and
-    ``filenames_template`` arguments. ``error_msg`` also takes the associated
+    ``filenames`` arguments. ``error_msg`` also takes the associated
     ``Exception`` object as an argument when passed as a callable.
 
     Args:
@@ -90,7 +90,7 @@ class Slack(extension.Extension):
             To avoid sending a message use ``None``.
             See ``msg`` for format.
         error_msg (str or callable): Template for sending a message
-            when an error is detected. The default
+            when an exception is raised. The default
             error message will be sent if not specified.
             To avoid sending a message use ``None``.
             See ``msg`` for format.
@@ -161,9 +161,9 @@ class Slack(extension.Extension):
 
         # values in current observation or log report to send to slack
         self._msg = msg
-        self._start_msg = start_msg  # type: ignore[assignment]
-        self._end_msg = end_msg  # type: ignore[assignment]
-        self._error_msg = error_msg  # type: ignore[assignment]
+        self._start_msg = start_msg
+        self._end_msg = end_msg
+        self._error_msg = error_msg
         if filenames is None:
             filenames = []
         self._filenames = filenames
@@ -171,10 +171,9 @@ class Slack(extension.Extension):
         self._channel_id = self._get_channel_id(channel)
         self._thread = thread
         self._ts = None
+        self._upload_trigger = None
         if upload_trigger is not None:
             self._upload_trigger = trigger_module.get_trigger(upload_trigger)
-        else:
-            self._upload_trigger = None
 
     def _get_channel_id(self, channel: str) -> str:
         if channel[0] != '#':
@@ -193,6 +192,7 @@ class Slack(extension.Extension):
     def _upload_files(self, manager:ExtensionsManagerProtocol) -> List[str]:
         observation = manager.observation
         permalinks = []
+        assert self._client is not None
         for filename in self._filenames:
             if callable(filename):
                 filename = filename(manager, self._context, observation)
@@ -283,13 +283,13 @@ class SlackWebhook(extension.Extension):
     placeholders that will be populated with ``manager`` or ``manager.observation``
     fields, and custom objects such as ``context_object``.
 
-    For example. `msg = "Loss {val/loss} for iteration {manager.iteration}"`
+    For example. `msg = "Loss {val/loss} for iteration {manager.epoch}"`
     will be populated as `msg.format(manager, context_object, **observation)`
     retrieving the ``loss`` value from the ``observation`` and ``.iteration`` from
     the manager object. Instead of string, a callable object taking the
     ``ExtensionsManager``, ``context_object`` and the observation dictionary can
     be used instead. The same rules apply for the ''start_msg``, ``end_msg`` and
-    ``filenames_template`` arguments. ``error_msg`` also takes the associated
+    ``filenames`` arguments. ``error_msg`` also takes the associated
     ``Exception`` object as an argument when passed as a callable.
 
     Args:
@@ -310,7 +310,7 @@ class SlackWebhook(extension.Extension):
             To avoid sending a message use ``None``.
             See ``msg`` for format.
         error_msg (str or callable): Template for sending a message
-            when an error is detected. The default
+            when an exception is raised. The default
             error message will be sent if not specified.
             To avoid sending a message use ``None``.
             See ``msg`` for format.
@@ -364,7 +364,6 @@ class SlackWebhook(extension.Extension):
         if self._webhook_url:
             payload = json.dumps({'text': text}).encode('utf-8')
             request_headers = {'Content-Type': 'application/json; charset=utf-8'}
-            # res = requests.post(self._webhook_url, json.dumps(payload))
             request = urllib.request.Request(
                 url=self._webhook_url,
                 data=payload,
