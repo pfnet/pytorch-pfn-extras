@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from typing import TYPE_CHECKING, cast
 
 from pytorch_pfn_extras.training import extension
+from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
@@ -107,6 +108,9 @@ class Slack(extension.Extension):
         client (slack_sdk.WebClient): In case that there is an already created
             slack client in the application, allows to directly use it.
             Optional, default is ``None``
+        upload_trigger (trigger): Used to upload files at certain events.
+            If not specified, files will be uploaded in every call.
+            Optional, default is ``None``
     """
 
     trigger: 'TriggerLike' = (1, 'epoch')
@@ -138,6 +142,7 @@ class Slack(extension.Extension):
         context_object: Optional[object] = None,
         token: Optional[str] = None,
         client: Optional[Any] = None,  # slack_sdk.WebClient, Any to avoid mypy errors
+        upload_trigger: Optional['TriggerLike'] = None
     ) -> None:
         if not _slack_sdk_available:
             warnings.warn(
@@ -166,6 +171,10 @@ class Slack(extension.Extension):
         self._channel_id = self._get_channel_id(channel)
         self._thread = thread
         self._ts = None
+        if upload_trigger is not None:
+            self._upload_trigger = trigger_module.get_trigger(upload_trigger)
+        else:
+            self._upload_trigger = None
 
     def _get_channel_id(self, channel: str) -> str:
         if channel[0] != '#':
@@ -181,12 +190,29 @@ class Slack(extension.Extension):
             raise RuntimeError(f'Couldn\'t find channel {channel}')
         return cast(str, channel_name)
 
+    def _upload_files(self, manager:ExtensionsManagerProtocol) -> List[str]:
+        observation = manager.observation
+        permalinks = []
+        for filename in self._filenames:
+            if callable(filename):
+                filename = filename(manager, self._context, observation)
+            else:
+                filename = filename.format(
+                    manager=manager, context=self._context, **observation)
+            response = self._client.files_upload(
+                file=filename,
+            )
+            permalinks.append(response['file']['permalink'])
+            assert response.get("ok")  # type: ignore[no-untyped-call]
+        return permalinks
+
     def _send_message(
         self,
         manager: ExtensionsManagerProtocol,
         text: Union[
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
         ],
+        is_start: bool = False,
         error: Optional[Exception] = None
     ) -> None:
         if not _slack_sdk_available:
@@ -209,18 +235,13 @@ class Slack(extension.Extension):
         if self._thread:
             ts = self._ts
 
-        for filename in self._filenames:
-            if callable(filename):
-                filename = filename(manager, self._context, observation)
-            else:
-                filename = filename.format(
-                    manager=manager, context=self._context, **observation)
-            response = self._client.files_upload(
-                file=filename,
-                thread_ts=ts,
-            )
-            text += '<' + response['file']['permalink'] + '| >'
-            assert response.get("ok")  # type: ignore[no-untyped-call]
+        if (
+            not is_start
+            and (self._upload_trigger is None or self._upload_trigger(manager))
+        ):
+            permalinks = self._upload_files(manager)
+            for link in permalinks:
+                text += f'<{link}| >'
 
         response = self._client.chat_postMessage(
             channel=self._channel_id,
@@ -234,7 +255,7 @@ class Slack(extension.Extension):
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         if _slack_sdk_available and self._start_msg is not None:
-            self._send_message(manager, self._start_msg)
+            self._send_message(manager, self._start_msg, is_start=True)
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
         if _slack_sdk_available and self._end_msg is not None:

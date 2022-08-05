@@ -31,8 +31,7 @@ class TestSlack:
             return_value={'ok': True, 'ts': t_ts},
         ) as patched:
             with manager.run_iteration():
-                assert patched.call_args.kwargs["text"].startswith(
-                    '**Training started')
+                assert 'Training started' in patched.call_args.kwargs["text"]
                 ppe.reporting.report({'loss': 0.5})
             patched.assert_called_with(
                 channel='0', text='It 1 loss: 0.5', thread_ts=t_ts
@@ -48,8 +47,7 @@ class TestSlack:
                 ppe.reporting.report({'loss': 0.75})
             with manager.run_iteration():
                 ppe.reporting.report({'loss': 0.75})
-            assert patched.call_args.kwargs["text"].startswith(
-                '**Training finish')
+            assert 'Training finish' in patched.call_args.kwargs["text"]
 
     def test_post_message_on_error(self):
         manager = self._get_manager()
@@ -68,8 +66,7 @@ class TestSlack:
                 with manager.run_iteration():
                     raise RuntimeError('error')
             except RuntimeError:
-                assert patched.call_args.kwargs["text"].startswith(
-                    '**Error during')
+                assert 'Error during' in patched.call_args.kwargs["text"]
 
     def test_post_message_webhook(self):
         manager = self._get_manager()
@@ -141,8 +138,8 @@ class TestSlack:
             with manager.run_iteration():
                 pass
             upload.assert_has_calls([
-                mock.call(file='file_1', thread_ts=1),
-                mock.call(file='result/abc', thread_ts=1),
+                mock.call(file='file_1'),
+                mock.call(file='result/abc'),
             ], any_order=True)
 
     def test_invalid(self):
