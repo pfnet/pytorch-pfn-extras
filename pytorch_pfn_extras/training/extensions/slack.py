@@ -5,9 +5,12 @@ import urllib.request
 import shlex
 import sys
 import socket
+import traceback
+import types
 import warnings
 
-from typing import Any, Callable, Dict, List, Optional, Union, TYPE_CHECKING, cast
+from typing import Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, cast
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
@@ -36,6 +39,17 @@ Command: `{shlex.quote(' '.join(sys.argv))}`
 _default_end_msg = f'**Training finished! {_identity}**'
 
 
+def _default_error_msg(
+    m: ExtensionsManagerProtocol,
+    c: Any,
+    o: Dict[Any, Any],
+    exc: Exception
+) -> str:
+    msg = '**Error during training : **'
+    tb_str = ''.join(traceback.format_tb(exc.__traceback__))
+    return msg + f'\n{exc} \n```\n{tb_str}\n```'
+
+
 class Slack(extension.Extension):
     """An extension to communicate with Slack.
 
@@ -48,7 +62,9 @@ class Slack(extension.Extension):
     retrieving the ``loss`` value from the ``observation`` and ``.iteration`` from
     the manager object. Instead of string, a callable object taking the
     ``ExtensionsManager``, ``context_object`` and the observation dictionary can
-    be used instead. The same rules apply for the ``filenames_template`` argument.
+    be used instead. The same rules apply for the ''start_msg``, ``end_msg`` and
+    ``filenames_template`` arguments. ``error_msg`` also takes the associated
+    ``Exception`` object as an argument when passed as a callable.
 
     Args:
         channel (str): The channel where messages or files will be sent.
@@ -66,7 +82,12 @@ class Slack(extension.Extension):
             See ``msg`` for format.
         end_msg (str or callable): Template for sending a message
             at the completion of the experiment. The default
-            start message will be sent if not specified.
+            end message will be sent if not specified.
+            To avoid sending a message use ``None``.
+            See ``msg`` for format.
+        error_msg (str or callable): Template for sending a message
+            when an error is detected. The default
+            error message will be sent if not specified.
             To avoid sending a message use ``None``.
             See ``msg`` for format.
         filenames (list of str or callable): list of files that will
@@ -87,20 +108,6 @@ class Slack(extension.Extension):
 
     trigger: 'TriggerLike' = (1, 'epoch')
 
-    def _get_channel_id(self, channel: str) -> str:
-        if channel[0] != '#':
-            return channel
-        channel_ids = {}
-        assert self._client is not None
-        # TODO enable pagination
-        response = self._client.conversations_list()
-        for c in response['channels']:
-            channel_ids[c['name']] = c['id']
-        channel_name = channel_ids.get(channel[1:], None)
-        if channel_name is None:
-            raise RuntimeError(f'Couldn\'t find channel {channel}')
-        return cast(str, channel_name)
-
     def __init__(
         self,
         channel: str,
@@ -114,6 +121,9 @@ class Slack(extension.Extension):
         end_msg: Optional[Union[
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
         ]] = _default_end_msg,
+        error_msg: Optional[Union[
+            str, Callable[[ExtensionsManagerProtocol, Any, dict, Exception], str]
+        ]] = _default_error_msg,
         filenames: Optional[
             List[
                 Union[
@@ -145,6 +155,7 @@ class Slack(extension.Extension):
         self._msg = msg
         self._start_msg = start_msg  # type: ignore[assignment]
         self._end_msg = end_msg  # type: ignore[assignment]
+        self._error_msg = error_msg  # type: ignore[assignment]
         if filenames is None:
             filenames = []
         self._filenames = filenames
@@ -153,19 +164,38 @@ class Slack(extension.Extension):
         self._thread = thread
         self._ts = None
 
+    def _get_channel_id(self, channel: str) -> str:
+        if channel[0] != '#':
+            return channel
+        channel_ids = {}
+        assert self._client is not None
+        # TODO enable pagination
+        response = self._client.conversations_list()
+        for c in response['channels']:
+            channel_ids[c['name']] = c['id']
+        channel_name = channel_ids.get(channel[1:], None)
+        if channel_name is None:
+            raise RuntimeError(f'Couldn\'t find channel {channel}')
+        return cast(str, channel_name)
+
     def _send_message(
         self,
         manager: ExtensionsManagerProtocol,
         text: Union[
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ]
+        ],
+        error: Optional[Exception] = None
     ) -> None:
         if not _slack_sdk_available:
             return
 
         observation = manager.observation
         if callable(text):
-            text = text(manager, self._context, observation)
+            if error is None:
+                text = text(manager, self._context, observation)
+            else:
+                text = text(  # type: ignore[call-arg]
+                    manager, self._context, observation, error)
         else:
             text = text.format(
                 manager=manager, context=self._context, **observation)
@@ -207,6 +237,16 @@ class Slack(extension.Extension):
         if _slack_sdk_available and self._end_msg is not None:
             self._send_message(manager, self._end_msg)
 
+    def on_error(
+            self,
+            manager: ExtensionsManagerProtocol,
+            exc: Exception,
+            tb: types.TracebackType
+    ) -> None:
+        if _slack_sdk_available and self._error_msg is not None:
+            self._send_message(
+                manager, self._error_msg, error=exc)  # type: ignore[call-arg,arg-type]
+
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if _slack_sdk_available:
             self._send_message(manager, self._msg)
@@ -219,12 +259,14 @@ class SlackWebhook(extension.Extension):
     placeholders that will be populated with ``manager`` or ``manager.observation``
     fields, and custom objects such as ``context_object``.
 
-    For example. `msg = "Loss {loss} for iteration {.iteration}"`
+    For example. `msg = "Loss {val/loss} for iteration {manager.iteration}"`
     will be populated as `msg.format(manager, context_object, **observation)`
     retrieving the ``loss`` value from the ``observation`` and ``.iteration`` from
     the manager object. Instead of string, a callable object taking the
     ``ExtensionsManager``, ``context_object`` and the observation dictionary can
-    be used instead. The same rules apply for the ``filenames_template`` argument.
+    be used instead. The same rules apply for the ''start_msg``, ``end_msg`` and
+    ``filenames_template`` arguments. ``error_msg`` also takes the associated
+    ``Exception`` object as an argument when passed as a callable.
 
     Args:
         webhook_url (str): Incoming webhook URL to send messages.
@@ -241,6 +283,11 @@ class SlackWebhook(extension.Extension):
         end_msg (str or callable): Template for sending a message
             at the completion of the experiment. The default
             start message will be sent if not specified.
+            To avoid sending a message use ``None``.
+            See ``msg`` for format.
+        error_msg (str or callable): Template for sending a message
+            when an error is detected. The default
+            error message will be sent if not specified.
             To avoid sending a message use ``None``.
             See ``msg`` for format.
         context_object (object): Custom object that contains data used to
@@ -262,6 +309,9 @@ class SlackWebhook(extension.Extension):
         end_msg: Optional[Union[
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
         ]] = _default_end_msg,
+        error_msg: Optional[Union[
+            str, Callable[[ExtensionsManagerProtocol, Any, dict, Exception], str]
+        ]] = _default_error_msg,
         context_object: Optional[object] = None,
     ) -> None:
 
@@ -270,6 +320,7 @@ class SlackWebhook(extension.Extension):
         self._msg = msg
         self._start_msg = start_msg  # type: ignore[assignment]
         self._end_msg = end_msg  # type: ignore[assignment]
+        self._error_msg = error_msg  # type: ignore[assignment]
         self._context = context_object
 
     def _send_message(
@@ -305,6 +356,16 @@ class SlackWebhook(extension.Extension):
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
         if self._end_msg is not None:
             self._send_message(manager, self._end_msg)
+
+    def on_error(
+            self,
+            manager: ExtensionsManagerProtocol,
+            exc: Exception,
+            tb: types.TracebackType
+    ) -> None:
+        if _slack_sdk_available and self._error_msg is not None:
+            self._send_message(
+                manager, self._error_msg, error=exc)  # type: ignore[call-arg,arg-type]
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         self._send_message(manager, self._msg)

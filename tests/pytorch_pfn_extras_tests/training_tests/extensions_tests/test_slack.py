@@ -51,6 +51,26 @@ class TestSlack:
             assert patched.call_args.kwargs["text"].startswith(
                 '**Training finish')
 
+    def test_post_message_on_error(self):
+        manager = self._get_manager()
+        message = 'It {manager.iteration} loss: {loss}'
+        extension = ppe.training.extensions.Slack(
+            '0', message, token='123', thread=False)
+
+        t_ts = None
+
+        manager.extend(extension, trigger=(1, 'iteration'))
+        with mock.patch(
+            'slack_sdk.WebClient.chat_postMessage',
+            return_value={'ok': True, 'ts': t_ts},
+        ) as patched:
+            try:
+                with manager.run_iteration():
+                    raise RuntimeError('error')
+            except RuntimeError:
+                assert patched.call_args.kwargs["text"].startswith(
+                    '**Error during')
+
     def test_post_message_webhook(self):
         manager = self._get_manager()
         message = 'It {manager.iteration} loss: {loss}'
@@ -96,14 +116,14 @@ class TestSlack:
                 ppe.reporting.report({'loss': 0.5})
             patched.assert_called_with(
                 channel='0', text='It 1 loss: 0.5 custom: bar',
-                thread_ts=None
+                thread_ts=1
             )
             context.foo = 'test'
             with manager.run_iteration():
                 ppe.reporting.report({'loss': 0.75})
             patched.assert_called_with(
                 channel='0', text='It 2 loss: 0.75 custom: test',
-                thread_ts=None
+                thread_ts=1
             )
 
     def test_post_message_files(self):
@@ -121,8 +141,8 @@ class TestSlack:
             with manager.run_iteration():
                 pass
             upload.assert_has_calls([
-                mock.call(channels=r'0', file='file_1', thread_ts=None),
-                mock.call(channels=r'0', file='result/abc', thread_ts=None),
+                mock.call(file='file_1', thread_ts=1),
+                mock.call(file='result/abc', thread_ts=1),
             ], any_order=True)
 
     def test_invalid(self):
