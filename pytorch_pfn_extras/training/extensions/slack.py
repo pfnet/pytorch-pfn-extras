@@ -7,7 +7,7 @@ import sys
 import socket
 import warnings
 
-from typing import Any, Callable, List, Optional, Union, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, Union, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
@@ -27,7 +27,7 @@ except ImportError:
 _identity = f'{getpass.getuser()}@{socket.gethostname()} [PID {os.getpid()}]'
 
 
-def _default_start_msg(*args, **kwargs) -> str:
+def _default_start_msg(m: ExtensionsManagerProtocol, c: Any, o: Dict[Any, Any]) -> str:
     return f'''**Training started! {_identity}**
 Command: `{shlex.quote(' '.join(sys.argv))}`
 '''
@@ -129,11 +129,11 @@ class Slack(extension.Extension):
         if start_msg is None:
             self._start_msg = _default_start_msg
         else:
-            self._start_msg = start_msg
+            self._start_msg = start_msg  # type: ignore[assignment]
         if end_msg is None:
             self._end_msg = _default_end_msg
         else:
-            self._end_msg = end_msg
+            self._end_msg = end_msg  # type: ignore[assignment]
         if filenames is None:
             filenames = []
         self._filenames = filenames
@@ -188,11 +188,11 @@ class Slack(extension.Extension):
             assert response.get("ok")  # type: ignore[no-untyped-call]
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._start_msg != '':
+        if _slack_sdk_available and self._start_msg != '':  # type: ignore[comparison-overlap]
             self._send_message(manager, self._start_msg)
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._end_msg != '':
+        if _slack_sdk_available and self._end_msg != '':  # type: ignore[comparison-overlap]
             self._send_message(manager, self._end_msg)
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
@@ -255,11 +255,11 @@ class SlackWebhook(extension.Extension):
         if start_msg is None:
             self._start_msg = _default_start_msg
         else:
-            self._start_msg = start_msg
+            self._start_msg = start_msg  # type: ignore[assignment]
         if end_msg is None:
             self._end_msg = _default_end_msg
         else:
-            self._end_msg = end_msg
+            self._end_msg = end_msg  # type: ignore[assignment]
         self._context = context_object
 
     def _send_message(
@@ -289,11 +289,11 @@ class SlackWebhook(extension.Extension):
             urllib.request.urlopen(request)
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._start_msg != '':
+        if _slack_sdk_available and self._start_msg != '':  # type: ignore[comparison-overlap]
             self._send_message(manager, self._start_msg)
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._end_msg != '':
+        if _slack_sdk_available and self._end_msg != '':  # type: ignore[comparison-overlap]
             self._send_message(manager, self._end_msg)
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
