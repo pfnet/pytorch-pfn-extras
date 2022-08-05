@@ -50,7 +50,7 @@ if ($test -eq "torch18") {
 RunOrDie python -V
 
 # Install common requirements
-RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna cupy-cuda102 onnxruntime slack_sdk requests
+RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna cupy-cuda102 onnxruntime slack_sdk
 RunOrDie python -m pip list
 
 # Install
