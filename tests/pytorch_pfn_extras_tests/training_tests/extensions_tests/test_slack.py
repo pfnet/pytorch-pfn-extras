@@ -1,5 +1,5 @@
+import json
 from unittest import mock
-import requests
 
 import pytest
 
@@ -14,16 +14,16 @@ class TestSlack:
     def _get_manager(self):
         return ppe.training.ExtensionsManager({}, [], 100, iters_per_epoch=5)
 
-    @pytest.mark.parametrize('use_threads',[False, True])
-    def test_post_message(self, use_threads):
+    @pytest.mark.parametrize('thread',[False, True])
+    def test_post_message(self, thread):
         manager = self._get_manager()
-        message = 'It {.iteration} loss: {loss}'
+        message = 'It {manager.iteration} loss: {loss}'
         extension = ppe.training.extensions.Slack(
-            '0', message, token='123', use_threads=use_threads,
+            '0', message, token='123', thread=thread, start_msg='', end_msg='',
             trigger=(1, 'iteration'))
 
         t_ts = None
-        if use_threads:
+        if thread:
             t_ts = 1
 
         manager.extend(extension, trigger=(1, 'iteration'))
@@ -44,33 +44,29 @@ class TestSlack:
 
     def test_post_message_webhook(self):
         manager = self._get_manager()
-        message = 'It {.iteration} loss: {loss}'
-        extension = ppe.training.extensions.Slack(
-            '0', message, webhook_url="http://test", trigger=(1, 'iteration'))
+        message = 'It {manager.iteration} loss: {loss}'
+        extension = ppe.training.extensions.SlackWebhook(
+            webhook_url="http://test", msg=message, trigger=(1, 'iteration'))
 
         manager.extend(extension, trigger=(1, 'iteration'))
-        response = requests.Response()
-        response.status_code = 200
+        payload_1 = json.dumps({'text': "It 1 loss: 0.5"}).encode('utf-8')
+        payload_2 = json.dumps({'text': "It 2 loss: 0.75"}).encode('utf-8')
         with mock.patch(
-            'requests.post',
-            return_value=response,
+            'urllib.request.urlopen'
         ) as patched:
             with manager.run_iteration():
                 ppe.reporting.report({'loss': 0.5})
-            patched.assert_called_with(
-                'http://test', '{"text": "It 1 loss: 0.5"}'
-            )
+            assert patched.call_args.args[0].data == payload_1
             with manager.run_iteration():
                 ppe.reporting.report({'loss': 0.75})
-            patched.assert_called_with(
-                'http://test', '{"text": "It 2 loss: 0.75"}'
-            )
+            assert patched.call_args.args[0].data == payload_2
 
     @pytest.mark.parametrize(
         'message',
         [
-            'It {.iteration} loss: {loss} custom: {.foo}',
-            lambda m,c,o: 'It {.iteration} loss: {loss} custom: {.foo}'.format(m,c, **o)
+            'It {manager.iteration} loss: {loss} custom: {context.foo}',
+            lambda m,c,o: 'It {manager.iteration} loss: {loss} custom: {context.foo}'.format(  # NOQA
+                manager=m, context=c, **o)
         ]
     )
     def test_post_message_context(self, message):
@@ -103,10 +99,10 @@ class TestSlack:
 
     def test_post_message_files(self):
         manager = self._get_manager()
-        message = 'it: {.iteration}'
-        filenames = ['file_{.iteration}', '{._out}/abc']
+        message = 'it: {manager.iteration}'
+        filenames = ['file_{manager.iteration}', '{manager._out}/abc']
         extension = ppe.training.extensions.Slack(
-            '0', message, filenames_template=filenames, token='123', trigger=(1, 'iteration'))
+            '0', message, filenames=filenames, token='123', trigger=(1, 'iteration'))
         manager.extend(extension, trigger=(1, 'iteration'))
 
         with mock.patch(
@@ -120,21 +116,10 @@ class TestSlack:
                 mock.call(channels=r'0', file='result/abc', thread_ts=None),
             ], any_order=True)
 
-    def test_invalid_combinations(self):
-        message = 'it: {.iteration}'
-        filenames = ['file_{.iteration}', '{._out}/abc']
-        with pytest.raises(ValueError, match='used to post files'):
+    def test_invalid(self):
+        message = 'it: {manager.iteration}'
+        filenames = ['file_{manager.iteration}', '{manager._out}/abc']
+        with pytest.raises(RuntimeError, match='needed for communicating'):
             ppe.training.extensions.Slack(
-                '0', message, None, None, filenames, webhook_url='123', trigger=(1, 'iteration'))
-        with pytest.raises(ValueError, match='client and token'):
-            ppe.training.extensions.Slack(
-                '0', message, None, None, filenames, webhook_url='123',
-                client=1, trigger=(1, 'iteration'))
-        with pytest.raises(ValueError, match='client and token'):
-            ppe.training.extensions.Slack(
-                '0', message, None, None, filenames, webhook_url='123',
-                token=1, trigger=(1, 'iteration'))
-        with pytest.raises(ValueError, match='client and token'):
-            ppe.training.extensions.Slack(
-                '0', message, None, None, filenames, webhook_url='123',
-                client=1, token=1, trigger=(1, 'iteration'))
+                '0', message, start_msg=None, end_msg=None, filenames=filenames,
+                trigger=(1, 'iteration'))
