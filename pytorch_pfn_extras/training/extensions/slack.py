@@ -31,12 +31,12 @@ _identity = f'{getpass.getuser()}@{socket.gethostname()} [PID {os.getpid()}]'
 
 
 def _default_start_msg(m: ExtensionsManagerProtocol, c: Any, o: Dict[Any, Any]) -> str:
-    return f'''**Training started! {_identity}**
-Command: `{shlex.quote(' '.join(sys.argv))}`
+    return f'''🏃 *Training started! {_identity}*
+Command: `{' '.join([shlex.quote(x) for x in sys.argv])}`
 '''
 
 
-_default_end_msg = f'**Training finished! {_identity}**'
+_default_end_msg = f'✅ *Training finished! {_identity}*'
 
 
 def _default_error_msg(
@@ -45,9 +45,12 @@ def _default_error_msg(
     o: Dict[Any, Any],
     exc: Exception
 ) -> str:
-    msg = '**Error during training : **'
-    tb_str = ''.join(traceback.format_tb(exc.__traceback__))
-    return msg + f'\n{exc} \n```\n{tb_str}\n```'
+    return f'''❌ *Error during training. {_identity}*
+{type(exc).__name__}: {exc}
+Traceback:
+```
+{''.join(traceback.format_tb(exc.__traceback__)).strip()}
+```'''
 
 
 class Slack(extension.Extension):
