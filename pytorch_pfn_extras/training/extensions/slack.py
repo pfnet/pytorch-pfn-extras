@@ -7,7 +7,7 @@ import sys
 import socket
 import warnings
 
-from typing import Any, Callable, Dict, List, Optional, Union, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, Union, TYPE_CHECKING, cast
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
@@ -41,9 +41,9 @@ class Slack(extension.Extension):
 
     This extension receives a ``msg`` argument that contains
     placeholders that will be populated with ``manager`` or ``manager.observation``
-    fields, and custom objects such as ``context_object``.
+    fields, and any arbitrary user-defined object passed to ``context``.
 
-    For example. `msg = "Loss {loss} for iteration {.iteration}"`
+    For example. `msg = "Loss {val/loss} for iteration {manager.iteration}"`
     will be populated as `msg.format(manager, context_object, **observation)`
     retrieving the ``loss`` value from the ``observation`` and ``.iteration`` from
     the manager object. Instead of string, a callable object taking the
@@ -51,28 +51,31 @@ class Slack(extension.Extension):
     be used instead. The same rules apply for the ``filenames_template`` argument.
 
     Args:
-        channel_id (str): The channel where messages or files will be sent.
+        channel (str): The channel where messages or files will be sent.
+            This can be the channel name if starts with '#' or the channel id
+            otherwise.
         msg (str or callable): Template for sending the message.
             It can be a string to be formatted using ``.format`` or a callable
             that returns a string. In both cases, `manager`, the current
             observation dict and the context object are used to look up
             values of interest.
         start_msg (str or callable): Template for sending a message
-            at the beggining of the experiment. If ``None``, the default
-            start message will be sent. To avoid sending a message use
-            ``''``.
+            at the beggining of the experiment. The default
+            start message will be sent if not specified.
+            To avoid sending a message use ``None``.
             See ``msg`` for format.
         end_msg (str or callable): Template for sending a message
-            at the completion of the experiment. If ``None``, the default
-            end message will be sent. To avoid sending a message use
+            at the completion of the experiment. The default
+            start message will be sent if not specified.
+            To avoid sending a message use ``None``.
             See ``msg`` for format.
-        filenames(list of str or callable): list of files that will
+        filenames (list of str or callable): list of files that will
             be uploaded to slack, these are string templates that can take
             values in the same way as ``msg``. Optional.
         thread (bool): If subsequent calls of this extension should be
             posted as a thread of the original message or not.
-            Default is ``False``.
-        context_object (object): Custom object that contains data used to
+            Default is ``True``.
+        context (object): Any arbitrary object you need to
             format the text or the filenames. Optional, default is ``None``.
         token (str): Token for the slack api, if ``None`` the environment
             variable ``SLACK_TOKEN`` will be used. Ignored if ``client`` is
@@ -84,19 +87,33 @@ class Slack(extension.Extension):
 
     trigger: 'TriggerLike' = (1, 'epoch')
 
+    def _get_channel_id(self, channel: str) -> str:
+        if channel[0] != '#':
+            return channel
+        channel_ids = {}
+        assert self._client is not None
+        # TODO enable pagination
+        response = self._client.conversations_list()
+        for c in response['channels']:
+            channel_ids[c['name']] = c['id']
+        channel_name = channel_ids.get(channel[1:], None)
+        if channel_name is None:
+            raise RuntimeError(f'Couldn\'t find channel {channel}')
+        return cast(str, channel_name)
+
     def __init__(
         self,
-        channel_id: str,
+        channel: str,
         msg: Union[
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
         ],
         *,
         start_msg: Optional[Union[
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ]] = None,
+        ]] = _default_start_msg,
         end_msg: Optional[Union[
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ]] = None,
+        ]] = _default_end_msg,
         filenames: Optional[
             List[
                 Union[
@@ -104,15 +121,15 @@ class Slack(extension.Extension):
                 ]
             ]
         ] = None,
-        thread: bool = False,
+        thread: bool = True,
         context_object: Optional[object] = None,
         token: Optional[str] = None,
         client: Optional[Any] = None,  # slack_sdk.WebClient, Any to avoid mypy errors
     ) -> None:
         if not _slack_sdk_available:
             warnings.warn(
-                '`slack_api` package is unavailable. '
-                'Slack will do nothing.')
+                '`slack_sdk` package is unavailable. '
+                'The Slack extension will do nothing.')
             return
 
         self._client = client
@@ -126,19 +143,13 @@ class Slack(extension.Extension):
 
         # values in current observation or log report to send to slack
         self._msg = msg
-        if start_msg is None:
-            self._start_msg = _default_start_msg
-        else:
-            self._start_msg = start_msg  # type: ignore[assignment]
-        if end_msg is None:
-            self._end_msg = _default_end_msg
-        else:
-            self._end_msg = end_msg  # type: ignore[assignment]
+        self._start_msg = start_msg  # type: ignore[assignment]
+        self._end_msg = end_msg  # type: ignore[assignment]
         if filenames is None:
             filenames = []
         self._filenames = filenames
         self._context = context_object
-        self._channel_id = channel_id
+        self._channel_id = self._get_channel_id(channel)
         self._thread = thread
         self._ts = None
 
@@ -156,7 +167,6 @@ class Slack(extension.Extension):
         if callable(text):
             text = text(manager, self._context, observation)
         else:
-            print(text)
             text = text.format(
                 manager=manager, context=self._context, **observation)
 
@@ -165,6 +175,20 @@ class Slack(extension.Extension):
         ts = None
         if self._thread:
             ts = self._ts
+
+        for filename in self._filenames:
+            if callable(filename):
+                filename = filename(manager, self._context, observation)
+            else:
+                filename = filename.format(
+                    manager=manager, context=self._context, **observation)
+            response = self._client.files_upload(
+                file=filename,
+                thread_ts=ts,
+            )
+            text += '<' + response['file']['permalink'] + '| >'
+            assert response.get("ok")  # type: ignore[no-untyped-call]
+
         response = self._client.chat_postMessage(
             channel=self._channel_id,
             text=text,
@@ -174,25 +198,13 @@ class Slack(extension.Extension):
         if self._thread and ts is None:
             ts = response.get("ts")  # type: ignore[no-untyped-call]
             self._ts = ts
-        for filename in self._filenames:
-            if callable(filename):
-                filename = filename(manager, self._context, observation)
-            else:
-                filename = filename.format(
-                    manager=manager, context=self._context, **observation)
-            response = self._client.files_upload(
-                channels=self._channel_id,
-                file=filename,
-                thread_ts=ts,
-            )
-            assert response.get("ok")  # type: ignore[no-untyped-call]
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._start_msg != '':  # type: ignore[comparison-overlap]
+        if _slack_sdk_available and self._start_msg is not None:
             self._send_message(manager, self._start_msg)
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._end_msg != '':  # type: ignore[comparison-overlap]
+        if _slack_sdk_available and self._end_msg is not None:
             self._send_message(manager, self._end_msg)
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
@@ -222,10 +234,14 @@ class SlackWebhook(extension.Extension):
             observation dict and the context object are used to look up
             values of interest.
         start_msg (str or callable): Template for sending a message
-            at the beggining of the experiment.
+            at the beggining of the experiment. The default
+            start message will be sent if not specified.
+            To avoid sending a message use ``None``.
             See ``msg`` for format.
         end_msg (str or callable): Template for sending a message
-            at the completion of the experiment.
+            at the completion of the experiment. The default
+            start message will be sent if not specified.
+            To avoid sending a message use ``None``.
             See ``msg`` for format.
         context_object (object): Custom object that contains data used to
             format the text or the filenames. Optional, default is ``None``.
@@ -242,24 +258,18 @@ class SlackWebhook(extension.Extension):
         *,
         start_msg: Optional[Union[
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ]] = None,
+        ]] = _default_start_msg,
         end_msg: Optional[Union[
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ]] = None,
+        ]] = _default_end_msg,
         context_object: Optional[object] = None,
     ) -> None:
 
         self._webhook_url = webhook_url
         # values in current observation or log report to send to slack
         self._msg = msg
-        if start_msg is None:
-            self._start_msg = _default_start_msg
-        else:
-            self._start_msg = start_msg  # type: ignore[assignment]
-        if end_msg is None:
-            self._end_msg = _default_end_msg
-        else:
-            self._end_msg = end_msg  # type: ignore[assignment]
+        self._start_msg = start_msg  # type: ignore[assignment]
+        self._end_msg = end_msg  # type: ignore[assignment]
         self._context = context_object
 
     def _send_message(
@@ -289,11 +299,11 @@ class SlackWebhook(extension.Extension):
             urllib.request.urlopen(request)
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._start_msg != '':  # type: ignore[comparison-overlap]
+        if self._start_msg is not None:
             self._send_message(manager, self._start_msg)
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._end_msg != '':  # type: ignore[comparison-overlap]
+        if self._end_msg is not None:
             self._send_message(manager, self._end_msg)
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
