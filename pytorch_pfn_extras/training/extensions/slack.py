@@ -1,15 +1,20 @@
+import getpass
 import os
 import json
 import urllib.request
 import shlex
 import sys
+import socket
 import warnings
 
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, List, Optional, Union, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import extension
-from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training._trigger_util import TriggerLike
 
 
 try:
@@ -19,7 +24,7 @@ except ImportError:
     _slack_sdk_available = False
 
 
-_identity = '`{getpass.getuser()}@{socket.gethostname()}` [PID `{os.getpid()}`]'
+_identity = f'{getpass.getuser()}@{socket.gethostname()} [PID {os.getpid()}]'
 
 
 def _default_start_msg(*args, **kwargs) -> str:
@@ -28,7 +33,7 @@ Command: `{shlex.quote(' '.join(sys.argv))}`
 '''
 
 
-_default_end_msg = '**Training finished! {_identity}**'
+_default_end_msg = f'**Training finished! {_identity}**'
 
 
 class Slack(extension.Extension):
@@ -75,11 +80,10 @@ class Slack(extension.Extension):
         client (slack_sdk.WebClient): In case that there is an already created
             slack client in the application, allows to directly use it.
             Optional, default is ``None``
-        trigger: Trigger that decides when to send the messages.
-            This is distinct from the trigger of this extension
-            itself. If it is a tuple in the form ``<int>, 'epoch'`` or
-            ``<int>, 'iteration'``, it is passed to :class:`IntervalTrigger`.
     """
+
+    trigger: 'TriggerLike' = (1, 'epoch')
+
     def __init__(
         self,
         channel_id: str,
@@ -104,7 +108,6 @@ class Slack(extension.Extension):
         context_object: Optional[object] = None,
         token: Optional[str] = None,
         client: Optional[Any] = None,  # slack_sdk.WebClient, Any to avoid mypy errors
-        trigger: trigger_module.TriggerLike = (1, 'epoch'),
     ) -> None:
         if not _slack_sdk_available:
             warnings.warn(
@@ -138,7 +141,6 @@ class Slack(extension.Extension):
         self._channel_id = channel_id
         self._thread = thread
         self._ts = None
-        self._trigger = trigger_module.get_trigger(trigger)
 
     def _send_message(
         self,
@@ -194,7 +196,7 @@ class Slack(extension.Extension):
             self._send_message(manager, self._end_msg)
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._trigger(manager):
+        if _slack_sdk_available:
             self._send_message(manager, self._msg)
 
 
@@ -227,11 +229,10 @@ class SlackWebhook(extension.Extension):
             See ``msg`` for format.
         context_object (object): Custom object that contains data used to
             format the text or the filenames. Optional, default is ``None``.
-        trigger: Trigger that decides when to send the messages.
-            This is distinct from the trigger of this extension
-            itself. If it is a tuple in the form ``<int>, 'epoch'`` or
-            ``<int>, 'iteration'``, it is passed to :class:`IntervalTrigger`.
     """
+
+    trigger: 'TriggerLike' = (1, 'epoch')
+
     def __init__(
         self,
         webhook_url: str,
@@ -246,7 +247,6 @@ class SlackWebhook(extension.Extension):
             str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
         ]] = None,
         context_object: Optional[object] = None,
-        trigger: trigger_module.TriggerLike = (1, 'epoch'),
     ) -> None:
 
         self._webhook_url = webhook_url
@@ -261,7 +261,6 @@ class SlackWebhook(extension.Extension):
         else:
             self._end_msg = end_msg
         self._context = context_object
-        self._trigger = trigger_module.get_trigger(trigger)
 
     def _send_message(
         self,
@@ -298,5 +297,4 @@ class SlackWebhook(extension.Extension):
             self._send_message(manager, self._end_msg)
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-        if self._trigger(manager):
-            self._send_message(manager, self._msg)
+        self._send_message(manager, self._msg)

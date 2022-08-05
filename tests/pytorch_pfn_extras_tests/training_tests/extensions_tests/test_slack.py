@@ -12,15 +12,14 @@ import pytorch_pfn_extras as ppe
 )
 class TestSlack:
     def _get_manager(self):
-        return ppe.training.ExtensionsManager({}, [], 100, iters_per_epoch=5)
+        return ppe.training.ExtensionsManager({}, [], 1, iters_per_epoch=5)
 
     @pytest.mark.parametrize('thread',[False, True])
     def test_post_message(self, thread):
         manager = self._get_manager()
         message = 'It {manager.iteration} loss: {loss}'
         extension = ppe.training.extensions.Slack(
-            '0', message, token='123', thread=thread, start_msg='', end_msg='',
-            trigger=(1, 'iteration'))
+            '0', message, token='123', thread=thread)
 
         t_ts = None
         if thread:
@@ -32,21 +31,31 @@ class TestSlack:
             return_value={'ok': True, 'ts': t_ts},
         ) as patched:
             with manager.run_iteration():
+                assert patched.call_args.kwargs["text"].startswith(
+                    '**Training started')
                 ppe.reporting.report({'loss': 0.5})
             patched.assert_called_with(
-                channel='0', text='It 1 loss: 0.5', thread_ts=None
+                channel='0', text='It 1 loss: 0.5', thread_ts=t_ts
             )
             with manager.run_iteration():
                 ppe.reporting.report({'loss': 0.75})
             patched.assert_called_with(
                 channel='0', text='It 2 loss: 0.75', thread_ts=t_ts
             )
+            with manager.run_iteration():
+                ppe.reporting.report({'loss': 0.75})
+            with manager.run_iteration():
+                ppe.reporting.report({'loss': 0.75})
+            with manager.run_iteration():
+                ppe.reporting.report({'loss': 0.75})
+            assert patched.call_args.kwargs["text"].startswith(
+                '**Training finish')
 
     def test_post_message_webhook(self):
         manager = self._get_manager()
         message = 'It {manager.iteration} loss: {loss}'
         extension = ppe.training.extensions.SlackWebhook(
-            webhook_url="http://test", msg=message, trigger=(1, 'iteration'))
+            webhook_url="http://test", msg=message)
 
         manager.extend(extension, trigger=(1, 'iteration'))
         payload_1 = json.dumps({'text': "It 1 loss: 0.5"}).encode('utf-8')
@@ -77,7 +86,7 @@ class TestSlack:
         manager = self._get_manager()
         context = _CustomContext()
         extension = ppe.training.extensions.Slack(
-            '0', message, context_object=context, token='123', trigger=(1, 'iteration'))
+            '0', message, context_object=context, token='123')
         manager.extend(extension, trigger=(1, 'iteration'))
         with mock.patch(
             'slack_sdk.WebClient.chat_postMessage',
@@ -102,7 +111,7 @@ class TestSlack:
         message = 'it: {manager.iteration}'
         filenames = ['file_{manager.iteration}', '{manager._out}/abc']
         extension = ppe.training.extensions.Slack(
-            '0', message, filenames=filenames, token='123', trigger=(1, 'iteration'))
+            '0', message, filenames=filenames, token='123')
         manager.extend(extension, trigger=(1, 'iteration'))
 
         with mock.patch(
@@ -121,5 +130,4 @@ class TestSlack:
         filenames = ['file_{manager.iteration}', '{manager._out}/abc']
         with pytest.raises(RuntimeError, match='needed for communicating'):
             ppe.training.extensions.Slack(
-                '0', message, start_msg=None, end_msg=None, filenames=filenames,
-                trigger=(1, 'iteration'))
+                '0', message, start_msg=None, end_msg=None, filenames=filenames)
