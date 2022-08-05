@@ -9,8 +9,7 @@ import traceback
 import types
 import warnings
 
-from typing import Any, Callable, Dict, List, Optional, Union
-from typing import TYPE_CHECKING, cast
+from typing import Any, Callable, Dict, List, Optional, Union, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
@@ -72,8 +71,7 @@ class Slack(extension.Extension):
 
     Args:
         channel (str): The channel where messages or files will be sent.
-            This can be the channel name if starts with '#' or the channel id
-            otherwise.
+            This can be the channel name or the channel id.
         msg (str or callable): Template for sending the message.
             It can be a string to be formatted using ``.format`` or a callable
             that returns a string. In both cases, `manager`, the current
@@ -168,26 +166,12 @@ class Slack(extension.Extension):
             filenames = []
         self._filenames = filenames
         self._context = context_object
-        self._channel_id = self._get_channel_id(channel)
+        self._channel_id = channel
         self._thread = thread
         self._ts = None
         self._upload_trigger = None
         if upload_trigger is not None:
             self._upload_trigger = trigger_module.get_trigger(upload_trigger)
-
-    def _get_channel_id(self, channel: str) -> str:
-        if channel[0] != '#':
-            return channel
-        channel_ids = {}
-        assert self._client is not None
-        # TODO enable pagination
-        response = self._client.conversations_list()
-        for c in response['channels']:
-            channel_ids[c['name']] = c['id']
-        channel_name = channel_ids.get(channel[1:], None)
-        if channel_name is None:
-            raise RuntimeError(f'Couldn\'t find channel {channel}')
-        return cast(str, channel_name)
 
     def _upload_files(self, manager:ExtensionsManagerProtocol) -> List[str]:
         observation = manager.observation
