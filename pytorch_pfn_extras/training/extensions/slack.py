@@ -40,7 +40,7 @@ def _default_start_msg(
 ) -> str:
     cmdline = ' '.join([shlex.quote(x) for x in sys.argv])
     return (
-        f'🏃 *Training started! {_identity}*\n' +
+        f'🏃 *Training started! {_identity}*\n'
         f'Command: `{cmdline}`'
     )
 
@@ -58,11 +58,11 @@ def _default_error_msg(
         context: Any,
 ) -> str:
     return (
-        f'❌ *Error during training. {_identity}*\n' +
-        f'{type(exc).__name__}: {exc}\n' +
-        'Traceback:\n' +
-        '```\n' +
-        ''.join(traceback.format_tb(exc.__traceback__)).strip() + '\n' +
+        f'❌ *Error during training. {_identity}*\n'
+        f'{type(exc).__name__}: {exc}\n'
+        'Traceback:\n'
+        '```\n'
+        ''.join(traceback.format_tb(exc.__traceback__)).strip() + '\n'
         '```'
     )
 
@@ -161,13 +161,15 @@ class _SlackBase(extension.Extension):
         if self._filenames is None:
             pass
         elif isinstance(self._filenames, Sequence):
-            filenames = [self._format(f, None, manager) for f in self._filenames]
+            filenames = [
+                self._format(f, None, manager) for f in self._filenames]
         else:  # callable
             filenames = self._filenames(manager, self._context)
 
         needs_upload = (
-            len(filenames) != 0 and
-            (self._upload_trigger is None or self._upload_trigger(manager)))
+            len(filenames) != 0
+            and (self._upload_trigger is None
+                 or self._upload_trigger(manager)))
 
         if self._msg is None and not needs_upload:
             # The message is not set and no files to upload.
@@ -314,7 +316,7 @@ class Slack(_SlackBase):
                 permalinks.append(response['file']['permalink'])
         except Exception as e:
             warnings.warn(
-                f'Slack upload failed: {type(e).__name__}: {e} ' +
+                f'Slack upload failed: {type(e).__name__}: {e} '
                 f'[{filenames}]')
         return permalinks
 
@@ -331,7 +333,7 @@ class Slack(_SlackBase):
                 self._thread_ts = ts
         except Exception as e:
             warnings.warn(
-                f'Slack post failed: {type(e).__name__}: {e} ' +
+                f'Slack post failed: {type(e).__name__}: {e} '
                 f'[{text}]')
 
 
@@ -393,5 +395,5 @@ class SlackWebhook(_SlackBase):
             assert 200 <= response.status < 300, response
         except Exception as e:
             warnings.warn(
-                f'Slack WebHook request failed: {type(e).__name__}: {e} ' +
+                f'Slack WebHook request failed: {type(e).__name__}: {e} '
                 f'[{text}]')

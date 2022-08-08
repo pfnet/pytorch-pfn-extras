@@ -150,7 +150,7 @@ def main():
             filenames=['result/statistics.png'],
             # You can specify when to upload these files.
             # e.g., only at the final epoch:
-            #upload_trigger=(args.epochs, 'epoch'),
+            # upload_trigger=(args.epochs, 'epoch'),
         ))
 
     # Custom stop triggers can be added to the manager and
