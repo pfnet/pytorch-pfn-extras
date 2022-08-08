@@ -142,8 +142,15 @@ def main():
     if args.slack is not None:
         my_extensions.append(extensions.Slack(
             channel=args.slack,
-            msg='Epoch #{manager.epoch}: val/loss : {val/loss}',
+            msg='Epoch #{manager.epoch}: val/loss = {val/loss}',
+            # Surround the username with <> to mention.
+            end_msg='{default}\n<@your_slack_user_name>',
+
+            # Upload any artifacts generated during the training.
             filenames=['result/statistics.png'],
+            # You can specify when to upload these files.
+            # e.g., only at the final epoch:
+            # upload_trigger=(args.epochs, 'epoch'),
         ))
 
     # Custom stop triggers can be added to the manager and

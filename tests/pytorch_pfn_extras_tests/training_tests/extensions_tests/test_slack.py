@@ -1,4 +1,5 @@
 import json
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -72,13 +73,14 @@ class TestSlack:
         manager = self._get_manager()
         message = 'It {manager.iteration} loss: {loss}'
         extension = ppe.training.extensions.SlackWebhook(
-            webhook_url="http://test", msg=message)
+            url="http://test", msg=message)
 
         manager.extend(extension, trigger=(1, 'iteration'))
         payload_1 = json.dumps({'text': "It 1 loss: 0.5"}).encode('utf-8')
         payload_2 = json.dumps({'text': "It 2 loss: 0.75"}).encode('utf-8')
         with mock.patch(
-            'urllib.request.urlopen'
+            'urllib.request.urlopen',
+            return_value=SimpleNamespace(status=200),
         ) as patched:
             with manager.run_iteration():
                 ppe.reporting.report({'loss': 0.5})
@@ -91,8 +93,8 @@ class TestSlack:
         'message',
         [
             'It {manager.iteration} loss: {loss} custom: {context.foo}',
-            lambda m,c,o: 'It {manager.iteration} loss: {loss} custom: {context.foo}'.format(  # NOQA
-                manager=m, context=c, **o)
+            lambda m, c: 'It {manager.iteration} loss: {loss} custom: {context.foo}'.format(  # NOQA
+                manager=m, context=c, **m.observation)
         ]
     )
     def test_post_message_context(self, message):
@@ -103,7 +105,7 @@ class TestSlack:
         manager = self._get_manager()
         context = _CustomContext()
         extension = ppe.training.extensions.Slack(
-            '0', message, context_object=context, token='123')
+            '0', message, context=context, token='123')
         manager.extend(extension, trigger=(1, 'iteration'))
         with mock.patch(
             'slack_sdk.WebClient.chat_postMessage',

@@ -7,17 +7,14 @@ import sys
 import socket
 import traceback
 import types
+from typing import Any, Callable, Optional, Sequence, Union
 import warnings
 
-from typing import Any, Callable, Dict, List, Optional, Union, TYPE_CHECKING
 
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
-
-
-if TYPE_CHECKING:
-    from pytorch_pfn_extras.training._trigger_util import TriggerLike
+from pytorch_pfn_extras.training._trigger_util import TriggerLike
 
 
 try:
@@ -30,349 +27,373 @@ except ImportError:
 _identity = f'{getpass.getuser()}@{socket.gethostname()} [PID {os.getpid()}]'
 
 
-def _default_start_msg(m: ExtensionsManagerProtocol, c: Any, o: Dict[Any, Any]) -> str:
-    return f'''🏃 *Training started! {_identity}*
-Command: `{' '.join([shlex.quote(x) for x in sys.argv])}`
-'''
+def _default_msg(
+        manager: ExtensionsManagerProtocol,
+        context: Any,
+) -> str:
+    return f'Epoch #{manager.epoch}'
 
 
-_default_end_msg = f'✅ *Training finished! {_identity}*'
+def _default_start_msg(
+        manager: ExtensionsManagerProtocol,
+        context: Any,
+) -> str:
+    cmdline = ' '.join([shlex.quote(x) for x in sys.argv])
+    return (
+        f'🏃 *Training started! {_identity}*\n'
+        f'Command: `{cmdline}`'
+    )
+
+
+def _default_end_msg(
+        manager: ExtensionsManagerProtocol,
+        context: Any,
+) -> str:
+    return f'✅ *Training finished! {_identity}*'
 
 
 def _default_error_msg(
-    m: ExtensionsManagerProtocol,
-    c: Any,
-    o: Dict[Any, Any],
-    exc: Exception
+        manager: ExtensionsManagerProtocol,
+        exc: Exception,
+        context: Any,
 ) -> str:
-    return f'''❌ *Error during training. {_identity}*
-{type(exc).__name__}: {exc}
-Traceback:
-```
-{''.join(traceback.format_tb(exc.__traceback__)).strip()}
-```'''
+    return (
+        f'❌ *Error during training. {_identity}*\n'
+        f'{type(exc).__name__}: {exc}\n'
+        'Traceback:\n'
+        '```\n'
+        ''.join(traceback.format_tb(exc.__traceback__)).strip() + '\n'
+        '```'
+    )
 
 
-class Slack(extension.Extension):
-    """An extension to communicate with Slack.
+_MessageFunc = Callable[[ExtensionsManagerProtocol, Any], str]
+_ErrorMessageFunc = Callable[[ExtensionsManagerProtocol, Any, Exception], str]
+_FilenamesFunc = Callable[[ExtensionsManagerProtocol, Any], Sequence[str]]
 
-    This extension receives a ``msg`` argument that contains
-    placeholders that will be populated with ``manager`` or ``manager.observation``
-    fields, and any arbitrary user-defined object passed to ``context``.
+_message_spec_doc = """
+    This extension posts a message when:
 
-    For example. `msg = "Loss {val/loss} for iteration {manager.epoch}"`
-    will be populated as `msg.format(manager, context, **observation)`
-    retrieving the ``loss`` value from the ``observation`` and ``.epoch`` from
-    the manager object. Instead of string, a callable object taking the
-    ``ExtensionsManager``, ``context_object`` and the observation dictionary can
-    be used instead. The same rules apply for the ''start_msg``, ``end_msg`` and
-    ``filenames`` arguments. ``error_msg`` also takes the associated
-    ``Exception`` object as an argument when passed as a callable.
+    * ``start_msg``: The training has started
+    * ``msg``: The extension is triggered, usually at the end of each epoch
+    * ``end_msg``: The training has finished
+    * ``error_msg``: An exception has raised during the training
+
+    These messages can be specified as a format string, a callable that
+    returns a string, or None to disable posting on that event.
+
+    When using a format string, the following variables are available for use:
+
+    * ``manager``: an ExtensionsManager object
+    * ``default``: the default message string
+    * ``context``: an arbitrary object passed to this extension
+    * ``error``: an Exception object (for ``error_msg`` only)
+    * All reported values (``manager.observations``)
+
+    When using a callable, it should take `(ExtensionsManager, context)` or
+    `(ExtensionsManager, Exception, context)` (for ``error_msg``) and return
+    a string.
+"""
+
+
+class _SlackBase(extension.Extension):
+
+    trigger: TriggerLike = (1, 'epoch')
+
+    default_msg = _default_msg
+    default_start_msg = _default_start_msg
+    default_end_msg = _default_end_msg
+    default_error_msg = _default_error_msg
+
+    def __init__(self) -> None:
+        self._available = True
+        self._msg: Optional[Union[_MessageFunc, str]] = None
+        self._start_msg: Optional[Union[_MessageFunc, str]] = None
+        self._end_msg: Optional[Union[_MessageFunc, str]] = None
+        self._error_msg: Optional[Union[_ErrorMessageFunc, str]] = None
+        self._context: Any = None
+        self._filenames: Optional[Union[_FilenamesFunc, Sequence[str]]] = None
+        self._upload_trigger: Optional[trigger_module.Trigger] = None
+
+    def _post_message(self, text: str) -> None:
+        raise NotImplementedError
+
+    def _upload_files(self, filenames: Sequence[str]) -> Sequence[str]:
+        raise NotImplementedError
+
+    def _format(
+            self,
+            msg: Union[_MessageFunc, str],
+            default: Optional[_MessageFunc],
+            manager: ExtensionsManagerProtocol,
+    ) -> str:
+        default_str = '' if default is None else default(manager, self._context)
+        if isinstance(msg, str):
+            return msg.format(
+                manager=manager,
+                context=self._context,
+                default=default_str,
+                **manager.observation
+            )
+        return msg(manager, self._context)
+
+    def _format_error(
+            self,
+            manager: ExtensionsManagerProtocol,
+            error: Exception,
+    ) -> str:
+        msg = self._error_msg
+        assert msg is not None
+        if isinstance(msg, str):
+            return msg.format(
+                manager=manager,
+                context=self._context,
+                default=_default_error_msg(manager, error, self._context),
+                error=error
+            )
+        return msg(manager, error, self._context)
+
+    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
+        if not self._available:
+            return
+
+        filenames: Sequence[str] = []
+        if self._filenames is None:
+            pass
+        elif isinstance(self._filenames, Sequence):
+            filenames = [
+                self._format(f, None, manager) for f in self._filenames]
+        else:  # callable
+            filenames = self._filenames(manager, self._context)
+
+        needs_upload = (
+            len(filenames) != 0
+            and (self._upload_trigger is None
+                 or self._upload_trigger(manager)))
+
+        if self._msg is None and not needs_upload:
+            # The message is not set and no files to upload.
+            return
+
+        text = ''
+        if self._msg is not None:
+            text = self._format(self._msg, _default_msg, manager)
+
+        # TODO(kmaehashi): keep track of already uploaded files and warn
+        # TODO(kmaehashi): warn too many or too large files
+
+        attachments = ''
+        if needs_upload:
+            permalinks = self._upload_files(filenames)
+            attachments = ''.join([f'<{link}| >' for link in permalinks])
+
+        self._post_message(text + attachments)
+
+    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
+        if not self._available or self._start_msg is None:
+            return
+        self._post_message(
+            self._format(self._start_msg, _default_start_msg, manager))
+
+    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
+        if not self._available or self._end_msg is None:
+            return
+        self._post_message(
+            self._format(self._end_msg, _default_end_msg, manager))
+
+    def on_error(
+            self,
+            manager: ExtensionsManagerProtocol,
+            exc: Exception,
+            tb: types.TracebackType
+    ) -> None:
+        if not self._available or self._error_msg is None:
+            return
+        self._post_message(self._format_error(manager, exc))
+
+
+class Slack(_SlackBase):
+    __doc__ = """An extension to communicate with Slack.
+
+    Example:
+
+        >>> ppe.training.extensions.Slack(
+            channel="experiment-progress",
+            msg="Epoch #{manager.epoch}: loss = {val/loss}",
+            end_msg="{default} \n <@username> Check out the result!",
+
+            # Upload files at the end of the experiment.
+            filenames=["result/statistics.png"],
+            upload_trigger=(max_epoch, 'epoch'),
+        )
+    """ + _message_spec_doc + """
+    This extension can upload files along with the message when triggered.
+    ``filenames`` can be a list of filenames (the same formatting rule as
+    ``msg`` apply), or a callable taking (ExtensionsManager, context) and
+    returning a list of filenames.
+
+    To use this extension, you must create a Slack app, then specify the
+    token via an environment variable ``SLACK_BOT_TOKEN`` or ``token``
+    option.
 
     Args:
-        channel (str): The channel where messages or files will be sent.
-            This can be the channel name or the channel id.
-        msg (str or callable): Template for sending the message.
+        channel (str): The channel where messages and files will be sent.
+            This can be a channel name or a channel ID.
+        msg (str, callable, or None): A message to be sent when triggered.
             It can be a string to be formatted using ``.format`` or a callable
-            that returns a string. In both cases, `manager`, the current
-            observation dict and the context object are used to look up
-            values of interest.
-        start_msg (str or callable): Template for sending a message
-            at the beggining of the experiment. The default
-            start message will be sent if not specified.
-            To avoid sending a message use ``None``.
-            See ``msg`` for format.
-        end_msg (str or callable): Template for sending a message
-            at the completion of the experiment. The default
-            end message will be sent if not specified.
-            To avoid sending a message use ``None``.
-            See ``msg`` for format.
-        error_msg (str or callable): Template for sending a message
-            when an exception is raised. The default
-            error message will be sent if not specified.
-            To avoid sending a message use ``None``.
-            See ``msg`` for format.
-        filenames (list of str or callable): list of files that will
-            be uploaded to slack, these are string templates that can take
-            values in the same way as ``msg``. Optional.
-        thread (bool): If subsequent calls of this extension should be
-            posted as a thread of the original message or not.
+            that returns a string.
+        start_msg (str, callable, or None): A message to be sent
+            at the beginning of the experiment.
+        end_msg (str, callable, or None): A message to be sent
+            at the completion of the experiment.
+        error_msg (str, callable, or None): A message to be sent
+            when an exception is raised during the experiment.
+        context (object): Any arbitrary user object you will need when
+            generating a message.
+        thread (bool): When True, subsequent messages will be
+            posted as a thread of the original message.
             Default is ``True``.
-        context (object): Any arbitrary object you need to
-            format the text or the filenames. Optional, default is ``None``.
-        token (str): Token for the slack api, if ``None`` the environment
-            variable ``SLACK_TOKEN`` will be used. Ignored if ``client`` is
-            supplied. Optional, default is ``None``.
-        client (slack_sdk.WebClient): In case that there is an already created
-            slack client in the application, allows to directly use it.
-            Optional, default is ``None``
-        upload_trigger (trigger): Used to upload files at certain events.
+        filenames (list of str or callable): A list of files that will
+            be uploaded. These are string templates that can take
+            values in the same way as ``msg``.
+        upload_trigger (trigger or None): Used to upload files at certain events.
             If not specified, files will be uploaded in every call.
-            Optional, default is ``None``
+        token (str): Token for the slack api, if ``None`` the environment
+            variable ``SLACK_BOT_TOKEN`` will be used. Ignored if ``client`` is
+            supplied. Optional, default is ``None``.
     """
 
-    trigger: 'TriggerLike' = (1, 'epoch')
+    trigger: TriggerLike = (1, 'epoch')
 
     def __init__(
         self,
         channel: str,
-        msg: Union[
-            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ],
+        msg: Optional[Union[str, _MessageFunc]] = None,
         *,
-        start_msg: Optional[Union[
-            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ]] = _default_start_msg,
-        end_msg: Optional[Union[
-            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ]] = _default_end_msg,
-        error_msg: Optional[Union[
-            str, Callable[[ExtensionsManagerProtocol, Any, dict, Exception], str]
-        ]] = _default_error_msg,
-        filenames: Optional[
-            List[
-                Union[
-                    str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-                ]
-            ]
-        ] = None,
+        start_msg: Optional[Union[str, _MessageFunc]] = '{default}',
+        end_msg: Optional[Union[str, _MessageFunc]] = '{default}',
+        error_msg: Optional[Union[str, _ErrorMessageFunc]] = '{default}',
         thread: bool = True,
-        context_object: Optional[object] = None,
+        filenames: Optional[Union[Sequence[str], _FilenamesFunc]] = None,
+        upload_trigger: Optional[TriggerLike] = None,
+        context: Any = None,
         token: Optional[str] = None,
-        client: Optional[Any] = None,  # slack_sdk.WebClient, Any to avoid mypy errors
-        upload_trigger: Optional['TriggerLike'] = None
     ) -> None:
+        super().__init__()
         if not _slack_sdk_available:
+            self._available = False
             warnings.warn(
                 '`slack_sdk` package is unavailable. '
                 'The Slack extension will do nothing.')
             return
 
-        self._client = client
-        if client is None:
-            if token is None:
-                token = os.environ.get('SLACK_TOKEN', None)
-            if token is None:
-                raise RuntimeError(
-                    '`token` is needed for communicating with slack')
-            self._client = slack_sdk.WebClient(token=token)
-
-        # values in current observation or log report to send to slack
+        self._channel = channel
         self._msg = msg
         self._start_msg = start_msg
         self._end_msg = end_msg
         self._error_msg = error_msg
-        if filenames is None:
-            filenames = []
-        self._filenames = filenames
-        self._context = context_object
-        self._channel_id = channel
+        self._context = context
         self._thread = thread
-        self._ts = None
+        self._filenames = filenames
         self._upload_trigger = None
         if upload_trigger is not None:
             self._upload_trigger = trigger_module.get_trigger(upload_trigger)
 
-    def _upload_files(self, manager:ExtensionsManagerProtocol) -> List[str]:
-        observation = manager.observation
+        if token is None:
+            token = os.environ.get('SLACK_BOT_TOKEN', None)
+        if token is None:
+            raise RuntimeError(
+                'A bot `token` is needed for communicating with Slack')
+        self._client = slack_sdk.WebClient(token=token)
+        self._thread_ts: Optional[str] = None
+
+    def _upload_files(self, filenames: Sequence[str]) -> Sequence[str]:
         permalinks = []
-        assert self._client is not None
-        for filename in self._filenames:
-            if callable(filename):
-                filename = filename(manager, self._context, observation)
-            else:
-                filename = filename.format(
-                    manager=manager, context=self._context, **observation)
-            response = self._client.files_upload(
-                file=filename,
-            )
-            permalinks.append(response['file']['permalink'])
-            assert response.get("ok")  # type: ignore[no-untyped-call]
+        try:
+            for filename in filenames:
+                response = self._client.files_upload(file=filename)
+                assert response.get("ok")  # type: ignore[no-untyped-call]
+                permalinks.append(response['file']['permalink'])
+        except Exception as e:
+            warnings.warn(
+                f'Slack upload failed: {type(e).__name__}: {e} '
+                f'[{filenames}]')
         return permalinks
 
-    def _send_message(
-        self,
-        manager: ExtensionsManagerProtocol,
-        text: Union[
-            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ],
-        is_start: bool = False,
-        error: Optional[Exception] = None
-    ) -> None:
-        if not _slack_sdk_available:
-            return
+    def _post_message(self, text: str) -> None:
+        try:
+            response = self._client.chat_postMessage(
+                channel=self._channel,
+                text=text,
+                thread_ts=self._thread_ts,
+            )
+            assert response.get("ok")  # type: ignore[no-untyped-call]
+            if self._thread and self._thread_ts is None:
+                ts = response.get("ts")  # type: ignore[no-untyped-call]
+                self._thread_ts = ts
+        except Exception as e:
+            warnings.warn(
+                f'Slack post failed: {type(e).__name__}: {e} '
+                f'[{text}]')
 
-        observation = manager.observation
-        if callable(text):
-            if error is None:
-                text = text(manager, self._context, observation)
-            else:
-                text = text(  # type: ignore[call-arg]
-                    manager, self._context, observation, error)
-        else:
-            text = text.format(
-                manager=manager, context=self._context, **observation)
 
-        assert self._client is not None
+class SlackWebhook(_SlackBase):
+    __doc__ = """An extension to communicate with Slack using Incoming Webhook.
 
-        ts = None
-        if self._thread:
-            ts = self._ts
+    Example:
 
-        if (
-            not is_start
-            and (self._upload_trigger is None or self._upload_trigger(manager))
-        ):
-            permalinks = self._upload_files(manager)
-            for link in permalinks:
-                text += f'<{link}| >'
-
-        response = self._client.chat_postMessage(
-            channel=self._channel_id,
-            text=text,
-            thread_ts=ts,
+        >>> ppe.training.extensions.SlackWebhook(
+            url="https://mycompany.slack.com/webhook/.....",
+            msg="Epoch #{manager.epoch}: loss = {val/loss}",
+            end_msg="{default} \\n <@username> Check out the result!",
         )
-        assert response.get("ok")  # type: ignore[no-untyped-call]
-        if self._thread and ts is None:
-            ts = response.get("ts")  # type: ignore[no-untyped-call]
-            self._ts = ts
-
-    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._start_msg is not None:
-            self._send_message(manager, self._start_msg, is_start=True)
-
-    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available and self._end_msg is not None:
-            self._send_message(manager, self._end_msg)
-
-    def on_error(
-            self,
-            manager: ExtensionsManagerProtocol,
-            exc: Exception,
-            tb: types.TracebackType
-    ) -> None:
-        if _slack_sdk_available and self._error_msg is not None:
-            self._send_message(
-                manager, self._error_msg, error=exc)  # type: ignore[call-arg,arg-type]
-
-    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-        if _slack_sdk_available:
-            self._send_message(manager, self._msg)
-
-
-class SlackWebhook(extension.Extension):
-    """An extension to communicate with Slack.
-
-    This extension receives a ``msg`` argument that contains
-    placeholders that will be populated with ``manager`` or ``manager.observation``
-    fields, and custom objects such as ``context_object``.
-
-    For example. `msg = "Loss {val/loss} for iteration {manager.epoch}"`
-    will be populated as `msg.format(manager, context_object, **observation)`
-    retrieving the ``loss`` value from the ``observation`` and ``.iteration`` from
-    the manager object. Instead of string, a callable object taking the
-    ``ExtensionsManager``, ``context_object`` and the observation dictionary can
-    be used instead. The same rules apply for the ''start_msg``, ``end_msg`` and
-    ``filenames`` arguments. ``error_msg`` also takes the associated
-    ``Exception`` object as an argument when passed as a callable.
-
+    """ + _message_spec_doc + """
     Args:
-        webhook_url (str): Incoming webhook URL to send messages.
-        msg (str or callable): Template for sending the message.
+        url (str): Incoming webhook URL to send messages.
+        msg (str, callable, or None): A message to be sent when triggered.
             It can be a string to be formatted using ``.format`` or a callable
-            that returns a string. In both cases, `manager`, the current
-            observation dict and the context object are used to look up
-            values of interest.
-        start_msg (str or callable): Template for sending a message
-            at the beggining of the experiment. The default
-            start message will be sent if not specified.
-            To avoid sending a message use ``None``.
-            See ``msg`` for format.
-        end_msg (str or callable): Template for sending a message
-            at the completion of the experiment. The default
-            start message will be sent if not specified.
-            To avoid sending a message use ``None``.
-            See ``msg`` for format.
-        error_msg (str or callable): Template for sending a message
-            when an exception is raised. The default
-            error message will be sent if not specified.
-            To avoid sending a message use ``None``.
-            See ``msg`` for format.
-        context_object (object): Custom object that contains data used to
-            format the text or the filenames. Optional, default is ``None``.
+            that returns a string.
+        start_msg (str, callable, or None): A message to be sent
+            at the beginning of the experiment.
+        end_msg (str, callable, or None): A message to be sent
+            at the completion of the experiment.
+        error_msg (str, callable, or None): A message to be sent
+            when an exception is raised during the experiment.
+        context (object): Any arbitrary user object you will need when
+            generating a message.
     """
-
-    trigger: 'TriggerLike' = (1, 'epoch')
 
     def __init__(
         self,
-        webhook_url: str,
-        msg: Union[
-            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ],
+        url: str,
+        msg: Optional[Union[str, _MessageFunc]] = None,
         *,
-        start_msg: Optional[Union[
-            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ]] = _default_start_msg,
-        end_msg: Optional[Union[
-            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ]] = _default_end_msg,
-        error_msg: Optional[Union[
-            str, Callable[[ExtensionsManagerProtocol, Any, dict, Exception], str]
-        ]] = _default_error_msg,
-        context_object: Optional[object] = None,
+        start_msg: Optional[Union[str, _MessageFunc]] = '{default}',
+        end_msg: Optional[Union[str, _MessageFunc]] = '{default}',
+        error_msg: Optional[Union[str, _ErrorMessageFunc]] = '{default}',
+        context: Any = None,
     ) -> None:
-
-        self._webhook_url = webhook_url
-        # values in current observation or log report to send to slack
+        super().__init__()
+        self._url = url
         self._msg = msg
-        self._start_msg = start_msg  # type: ignore[assignment]
-        self._end_msg = end_msg  # type: ignore[assignment]
-        self._error_msg = error_msg  # type: ignore[assignment]
-        self._context = context_object
+        self._start_msg = start_msg
+        self._end_msg = end_msg
+        self._error_msg = error_msg
+        self._context = context
 
-    def _send_message(
-        self,
-        manager: ExtensionsManagerProtocol,
-        text: Union[
-            str, Callable[[ExtensionsManagerProtocol, Any, dict], str]
-        ]
-    ) -> None:
-        observation = manager.observation
-        if callable(text):
-            text = text(manager, self._context, observation)
-        else:
-            text = text.format(
-                manager=manager, context=self._context, **observation)
-
-        if self._webhook_url:
-            payload = json.dumps({'text': text}).encode('utf-8')
-            request_headers = {'Content-Type': 'application/json; charset=utf-8'}
-            request = urllib.request.Request(
-                url=self._webhook_url,
-                data=payload,
-                method='POST',
-                headers=request_headers
-            )
-            urllib.request.urlopen(request)
-
-    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
-        if self._start_msg is not None:
-            self._send_message(manager, self._start_msg)
-
-    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
-        if self._end_msg is not None:
-            self._send_message(manager, self._end_msg)
-
-    def on_error(
-            self,
-            manager: ExtensionsManagerProtocol,
-            exc: Exception,
-            tb: types.TracebackType
-    ) -> None:
-        if _slack_sdk_available and self._error_msg is not None:
-            self._send_message(
-                manager, self._error_msg, error=exc)  # type: ignore[call-arg,arg-type]
-
-    def __call__(self, manager: ExtensionsManagerProtocol) -> None:
-        self._send_message(manager, self._msg)
+    def _post_message(self, text: str) -> None:
+        payload = json.dumps({'text': text}).encode('utf-8')
+        request_headers = {'Content-Type': 'application/json; charset=utf-8'}
+        request = urllib.request.Request(
+            url=self._url,
+            data=payload,
+            method='POST',
+            headers=request_headers,
+        )
+        try:
+            response = urllib.request.urlopen(request)
+            assert 200 <= response.status < 300, response
+        except Exception as e:
+            warnings.warn(
+                f'Slack WebHook request failed: {type(e).__name__}: {e} '
+                f'[{text}]')
