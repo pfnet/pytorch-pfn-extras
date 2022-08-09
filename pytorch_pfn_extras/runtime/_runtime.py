@@ -1,6 +1,6 @@
 import contextlib
 
-from typing import Any, Dict, Generator, Iterable, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, Optional, Set, Tuple, Union
 
 import torch
 
