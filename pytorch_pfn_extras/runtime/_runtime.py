@@ -1,6 +1,6 @@
 import contextlib
 
-from typing import Any, Dict, Generator, Iterable, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, Optional, Set, Tuple, Union
 
 import torch
 
@@ -294,10 +294,10 @@ class BaseRuntime:
     def map(
         self,
         func: CodeBlock,
-        iterable: Sequence[Any],
+        iterable: Iterable[Any],
         out_keys: Optional[Set[str]] = None,
         device: Any = "cpu",
-    ) -> Sequence[Any]:
+    ) -> Iterable[Any]:
         """Method called by the user to apply function to iterable efficiently.
 
         Args:
@@ -467,11 +467,10 @@ class PyTorchRuntime(BaseRuntime):
     def map(
         self,
         func: CodeBlock,
-        iterable: Sequence[Any],
+        iterable: Iterable[Any],
         out_keys: Optional[Set[str]] = None,
         device: Any = "cpu",
-    ) -> Sequence[Any]:
-        results = []
+    ) -> Iterable[Any]:
         for data in iterable:
             # TODO overlap computation and data transfer when using CUDA
             out = func(data)
@@ -482,8 +481,7 @@ class PyTorchRuntime(BaseRuntime):
                 out = {k: v.to(device) for k, v in out.items()}
             else:
                 out = out.to(device)
-            results.append(out)
-        return results
+            yield out
 
 
 def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
