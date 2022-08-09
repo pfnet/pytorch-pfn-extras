@@ -139,11 +139,11 @@ def test_map():
     module = torch.nn.Sequential(Module())
     data = [{"x": torch.ones(1)}, {"x": torch.ones(2)}]
     ppe.to(module, device="cpu")
-    out = ppe.map(module[0].output, data)
+    out = list(ppe.map(module[0].output, data))
     assert len(out) == 2
     assert set(out[0].keys()) == set(["y", "z"])
     assert torch.allclose(out[0]["y"], torch.ones(1) * 2)
     assert torch.allclose(out[0]["z"], torch.ones(1) + 1)
 
-    out = ppe.map(module[0].output, data, out_keys=set(["y"]))
+    out = list(ppe.map(module[0].output, data, out_keys=set(["y"])))
     assert set(out[0].keys()) == set(["y"])
