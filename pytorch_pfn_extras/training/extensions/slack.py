@@ -215,17 +215,17 @@ class _SlackBase(extension.Extension):
 class Slack(_SlackBase):
     __doc__ = """An extension to communicate with Slack.
 
-    Example:
+    .. admonition:: Example
 
         >>> ppe.training.extensions.Slack(
-            channel="experiment-progress",
-            msg="Epoch #{manager.epoch}: loss = {val/loss}",
-            end_msg="{default} \n <@username> Check out the result!",
-
-            # Upload files at the end of the experiment.
-            filenames=["result/statistics.png"],
-            upload_trigger=(max_epoch, 'epoch'),
-        )
+        ...     channel="experiment-progress",
+        ...     msg="Epoch #{manager.epoch}: loss = {val/loss}",
+        ...     end_msg="{default} \\n <@username> Check out the result!",
+        ...
+        ...     # Upload files at the end of the experiment.
+        ...     filenames=["result/statistics.png"],
+        ...     upload_trigger=(max_epoch, 'epoch'),
+        ... )
     """ + _message_spec_doc + """
     This extension can upload files along with the message when triggered.
     ``filenames`` can be a list of filenames (the same formatting rule as
@@ -248,19 +248,20 @@ class Slack(_SlackBase):
             at the completion of the experiment.
         error_msg (str, callable, or None): A message to be sent
             when an exception is raised during the experiment.
-        context (object): Any arbitrary user object you will need when
-            generating a message.
         thread (bool): When True, subsequent messages will be
             posted as a thread of the original message.
             Default is ``True``.
         filenames (list of str or callable): A list of files that will
             be uploaded. These are string templates that can take
-            values in the same way as ``msg``.
+            values in the same way as ``msg``, or a callable that returns a
+            list of filenames.
         upload_trigger (trigger or None): Used to upload files at certain events.
             If not specified, files will be uploaded in every call.
-        token (str): Token for the slack api, if ``None`` the environment
-            variable ``SLACK_BOT_TOKEN`` will be used. Ignored if ``client`` is
-            supplied. Optional, default is ``None``.
+        context: Any arbitrary user object you will need when
+            generating a message.
+        token (str): Slack bot token. If ``None``, the environment
+            variable ``SLACK_BOT_TOKEN`` will be used.
+            Optional, default is ``None``.
     """
 
     trigger: TriggerLike = (1, 'epoch')
