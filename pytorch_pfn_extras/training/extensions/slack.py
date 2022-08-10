@@ -341,13 +341,13 @@ class Slack(_SlackBase):
 class SlackWebhook(_SlackBase):
     __doc__ = """An extension to communicate with Slack using Incoming Webhook.
 
-    Example:
+    .. admonition:: Example
 
         >>> ppe.training.extensions.SlackWebhook(
-            url="https://mycompany.slack.com/webhook/.....",
-            msg="Epoch #{manager.epoch}: loss = {val/loss}",
-            end_msg="{default} \\n <@username> Check out the result!",
-        )
+        ...     url="https://hooks.slack.com/services/Txxxxx.....",
+        ...     msg="Epoch #{manager.epoch}: loss = {val/loss}",
+        ...     end_msg="{default} \\n <@username> Check out the result!",
+        ... )
     """ + _message_spec_doc + """
     Args:
         url (str): Incoming webhook URL to send messages.
