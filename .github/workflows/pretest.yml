@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
-        torch: ['1.11.*', '1.12.*']
+        torch: ['1.9.*', '1.10.*', '1.11.*', '1.12.*']
 
     steps:
     - name: Checkout
@@ -30,8 +30,7 @@ jobs:
 
     - name: Code Style
       run: |
-        pip install pysen black==21.11b1 flake8==4.0.1 isort==5.10.1 mypy==0.910
-        pip install types-PyYAML==6.0.11 types-setuptools==63.2.0
+        pip install requirements_gh.txt
         cp "$(pip show torch | awk '/^Location:/ { print $2 }')/torch/__init__.py" stubs/torch/__init__.py
         MYPYPATH="${PWD}/stubs" pysen run lint
 
