@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
-        torch: ['1.9.*', '1.10.*', '1.11.*', '1.12.*']
+        torch: ['1.11.*', '1.12.*']
 
     steps:
     - name: Checkout
