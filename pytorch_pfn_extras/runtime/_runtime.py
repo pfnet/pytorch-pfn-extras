@@ -494,6 +494,18 @@ class PyTorchRuntime(BaseRuntime):
                 out = out.to(device)
             yield out
 
+    @classmethod
+    @contextlib.contextmanager
+    def trace(cls, event_name: str, arg: Any) -> Generator[None, None, None]:
+        """Context manager for tracing PPE events in the custom device tools.
+
+        Args:
+            event_name: The name of the event being traced
+            arg: Custom argument for the tracer
+        """
+        with torch.autograd.profiler.record_function(event_name):
+            yield
+
 
 def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
     return getattr(  # type: ignore[no-any-return]

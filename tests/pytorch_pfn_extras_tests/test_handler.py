@@ -228,12 +228,6 @@ class TestHandlerTrainSync(HandlerTester):
         assert reporter.observation['train/output'] == 1
         self._assert_called(module, to_move, 'train_post_step')
 
-    def test_handler_trace(self):
-        handler, trainer, _ = self._get_handler({})
-        data = {}
-        with handler.trace("test", data):
-            assert data["called"]
-
 
 class TestHandlerValidationSync(HandlerTester):
     def _get_handler(self, options=None):
