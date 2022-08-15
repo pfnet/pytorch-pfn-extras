@@ -317,7 +317,7 @@ class BaseRuntime:
 
     @classmethod
     @contextlib.contextmanager
-    def trace(cls, event_name: str, arg: Any) -> Generator[None, None, None]:
+    def trace(cls, event_name: Optional[str], arg: Any) -> Generator[None, None, None]:
         """Context manager for tracing PPE events in the custom device tools.
 
         Args:
@@ -500,13 +500,14 @@ class PyTorchRuntime(BaseRuntime):
 
     @classmethod
     @contextlib.contextmanager
-    def trace(cls, event_name: str, arg: Any) -> Generator[None, None, None]:
+    def trace(cls, event_name: Optional[str], arg: Any) -> Generator[None, None, None]:
         """Context manager for tracing PPE events in the custom device tools.
 
         Args:
             event_name: The name of the event being traced
             arg: Custom argument for the tracer
         """
+        assert event_name is not None
         with torch.autograd.profiler.record_function(event_name):
             yield
 

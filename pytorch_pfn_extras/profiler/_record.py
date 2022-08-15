@@ -8,8 +8,8 @@ import torch
 from pytorch_pfn_extras.profiler import _time_summary
 from pytorch_pfn_extras.runtime import runtime_registry
 
-# if TYPE_CHECKING:
-#     from pytorch_pfn_extras.runtime._runtime import DeviceLike
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.runtime._runtime import DeviceLike
 
 
 def _infer_tag_name(frame: Optional[types.FrameType], depth: int) -> str:
@@ -37,17 +37,12 @@ class _DummyReportNotification(_time_summary._ReportNotification):
 
 
 @contextmanager
-def _empty_context(tag: Optional[str]) -> Generator[None, None, None]:
-    yield
-
-
-@contextmanager
 def record(
         tag: Optional[str],
         metric: Optional[str] = None,
         use_cuda: bool = False,
         enable: bool = True,
-        device: str = 'cpu'
+        device: 'DeviceLike' = 'cpu'
 ) -> Generator[_time_summary._ReportNotification, None, None]:
 
     if not enable:
@@ -60,8 +55,6 @@ def record(
     if metric is None:
         metric = tag
 
-    runtime_tracer = _empty_context
-    # Get the runtime class for a given device and use its tracing method
     runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
         device)
     runtime_tracer = runtime_cls.trace
