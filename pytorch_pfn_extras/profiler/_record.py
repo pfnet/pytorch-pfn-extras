@@ -8,8 +8,8 @@ import torch
 from pytorch_pfn_extras.profiler import _time_summary
 from pytorch_pfn_extras.runtime import runtime_registry
 
-if TYPE_CHECKING:
-    from pytorch_pfn_extras.runtime._runtime import DeviceLike
+# if TYPE_CHECKING:
+#     from pytorch_pfn_extras.runtime._runtime import DeviceLike
 
 
 def _infer_tag_name(frame: Optional[types.FrameType], depth: int) -> str:
@@ -47,7 +47,7 @@ def record(
         metric: Optional[str] = None,
         use_cuda: bool = False,
         enable: bool = True,
-        device: Optional[DeviceLike] = 'cpu'
+        device: str = 'cpu'
 ) -> Generator[_time_summary._ReportNotification, None, None]:
 
     if not enable:
