@@ -9,7 +9,7 @@ configs {
     time_limit: {
       seconds: 3600
     }
-    command: "bash .flexci/linux/script.sh prep"
+    command: "bash .flexci/linux/main-flexci.sh prep"
   }
 }
 
@@ -25,7 +25,7 @@ configs {
     time_limit: {
       seconds: 1800
     }
-    command: "bash .flexci/linux/script.sh torch19"
+    command: "bash .flexci/linux/main-flexci.sh torch19"
   }
 }
 
@@ -41,7 +41,7 @@ configs {
     time_limit: {
       seconds: 1200
     }
-    command: "bash .flexci/linux/script.sh torch110"
+    command: "bash .flexci/linux/main-flexci.sh torch110"
   }
 }
 
@@ -57,7 +57,7 @@ configs {
     time_limit: {
       seconds: 1200
     }
-    command: "bash .flexci/linux/script.sh torch111"
+    command: "bash .flexci/linux/main-flexci.sh torch111"
   }
 }
 
@@ -73,7 +73,7 @@ configs {
     time_limit: {
       seconds: 1200
     }
-    command: "bash .flexci/linux/script.sh torch112"
+    command: "bash .flexci/linux/main-flexci.sh torch112"
   }
 }
 
