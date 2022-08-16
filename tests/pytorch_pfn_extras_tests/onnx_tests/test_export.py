@@ -156,3 +156,14 @@ def test_concat():
     )
     assert len(model.graph.node) == 1
     assert model.graph.node[0].op_type == "Concat"
+
+
+def test_norm():
+    class Net(torch.nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+
+        def forward(self, x):
+            return torch.norm(x)
+
+    run_model_test(Net(), (torch.rand(2, 3, 5, 7),), opset_version=13)

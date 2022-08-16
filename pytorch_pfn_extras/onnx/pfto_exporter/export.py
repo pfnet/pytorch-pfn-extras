@@ -367,7 +367,7 @@ class _Exporter(_ExporterOptions):
             c = cast(torch._C.Value, g.op("Constant"))
             if n.kindOf("value") == "ival":
                 ival = n.output().toIValue()
-                if isinstance(ival, list) and not isinstance(ival[0], (int, float)):
+                if isinstance(ival, list) and ival and not isinstance(ival[0], (int, float)):
                     vals: List[torch._C.Value] = []
                     for i in ival:
                         if isinstance(i, torch.Tensor):

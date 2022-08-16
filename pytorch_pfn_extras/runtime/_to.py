@@ -13,8 +13,9 @@ def to(
         module_or_tensor: ModuleOrTensor,
         device: DeviceLike,
         *,
-        config: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
         runtime_class: Optional[Type[BaseRuntime]] = None,
+        config: Optional[Dict[str, Any]] = None,
 ) -> ModuleOrTensor:
     """A function to transfer the given object to the given device.
 
@@ -33,27 +34,36 @@ def to(
             An object to be transferred.
         device (torch.device or str):
             The device that the input object is transferred to.
-        config (dict, optional):
-            A config of dictionary type that is passed to
+        options (dict, optional):
+            An options of dictionary type that is passed to
             ``runtime_class.__init__`` as an argument.
         runtime_class:
             A runtime class inherited from `BaseRuntime` class.
             If ``None``, a runtime class is automatically selected
             based on the ``device`` argument from the runtime registry.
+        config (dict, optional):
+            DEPRECATED. Use `options`.
 
     Returns:
         A `torch.Tensor` with the specified device.
     """
-    if config is None:
-        config = {}
+    if options is None:
+        options = {}
+        if config is not None:
+            options = config
+    elif config is not None:
+        raise ValueError('options and config cannot be specified together')
+
     if runtime_class is None:
         registry = ppe.runtime.runtime_registry
         runtime_class = registry.get_runtime_class_for_device_spec(device)
-    runtime = runtime_class(device, config)
+    runtime = runtime_class(device, options)
     obj = module_or_tensor
     if isinstance(obj, torch.nn.Module):
-        ppe.runtime._runtime._set_module_runtime_tag(obj, runtime)
-        return runtime.move_module(obj)
+        obj = runtime.move_module(obj)
+        for module in obj.modules():
+            ppe.runtime._runtime._set_module_runtime_tag(module, runtime)
+        return obj
     elif isinstance(obj, torch.Tensor):
         return runtime.move_tensor(obj)
     else:

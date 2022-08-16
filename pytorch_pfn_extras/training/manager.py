@@ -158,6 +158,7 @@ class _BaseExtensionsManager:
             self.reporter.add_observer(name, model)
             self.reporter.add_observers(
                 name, model.named_modules())
+        self._finalized = False
         self.max_epochs = max_epochs
         self._start_iteration = 0
         # Defer!
@@ -581,6 +582,8 @@ class ExtensionsManager(_BaseExtensionsManager):
             step_optimizers (list or None): names of the optimizers
             to call `zero_grad` and `step`
         """
+        if self._finalized:
+            raise RuntimeError('Attempted to run a finalized manager')
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
@@ -606,8 +609,13 @@ class ExtensionsManager(_BaseExtensionsManager):
                 raise
 
         if self._internal_stop_trigger(self):
+            self.finalize()
+
+    def finalize(self) -> None:
+        if not self._finalized:
             self._finalize_extensions()
             self.writer.finalize()
+            self._finalized = True
 
 
 if TYPE_CHECKING:

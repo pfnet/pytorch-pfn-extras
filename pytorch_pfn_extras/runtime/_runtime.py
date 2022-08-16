@@ -1,6 +1,6 @@
 import contextlib
 
-from typing import Any, Dict, Generator, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, Optional, Set, Tuple, Union
 
 import torch
 
@@ -291,6 +291,26 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
+    def map(
+        self,
+        func: CodeBlock,
+        iterable: Iterable[Any],
+        out_keys: Optional[Set[str]] = None,
+        device: Any = "cpu",
+    ) -> Iterable[Any]:
+        """Method called by the user to apply function to iterable efficiently.
+
+        Args:
+            func: The function to be executed
+            iterable: The data
+            out_keys: The output keys that to be moved to the host device
+            device: The torch device that contains the final outputs
+
+        Returns:
+            The result of `func`
+        """
+        raise NotImplementedError()
+
 
 class PyTorchRuntime(BaseRuntime):
     """A collections of callback functions for the devices that PyTorch
@@ -444,6 +464,25 @@ class PyTorchRuntime(BaseRuntime):
 
         return out
 
+    def map(
+        self,
+        func: CodeBlock,
+        iterable: Iterable[Any],
+        out_keys: Optional[Set[str]] = None,
+        device: Any = "cpu",
+    ) -> Iterable[Any]:
+        for data in iterable:
+            # TODO overlap computation and data transfer when using CUDA
+            out = func(data)
+            if out_keys is not None:
+                assert isinstance(out, dict)
+                out = {key: out[key] for key in out_keys}
+            if isinstance(out, dict):
+                out = {k: v.to(device) for k, v in out.items()}
+            else:
+                out = out.to(device)
+            yield out
+
 
 def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
     return getattr(  # type: ignore[no-any-return]
@@ -470,9 +509,5 @@ def named_runtime_modules(
             for name, sm in module.named_children():
                 yield from named_runtime_modules(sm, name, False, recursive)
     else:
-        if first_level or recursive:
-            for sm in module.children():
-                for descendant in sm.modules():
-                    if _module_runtime_tag(descendant) is not None:
-                        raise ValueError("Runtimes cannot be nested.")
+        # nested runtime tag is ignored
         yield module_name, module

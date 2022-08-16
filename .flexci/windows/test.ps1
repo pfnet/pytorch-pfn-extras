@@ -9,14 +9,7 @@ $ErrorActionPreference = "Stop"
 
 
 # Setup environment
-if ($test -eq "torch18") {
-    # PyTorch 1.8 + Python 3.7
-    ActivateCUDA 11.1
-    ActivatePython 3.7
-    RunOrDie python -m pip install -U pip "setuptools<59.6"
-    RunOrDieWithRetry 3 python -m pip install torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu111/torch_stable.html
-
-} elseif ($test -eq "torch19") {
+if ($test -eq "torch19") {
     # PyTorch 1.9 + Python 3.8
     ActivateCUDA 11.1
     ActivatePython 3.8
@@ -50,7 +43,7 @@ if ($test -eq "torch18") {
 RunOrDie python -V
 
 # Install common requirements
-RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna cupy-cuda102 onnxruntime
+RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna cupy-cuda102 onnxruntime slack_sdk
 RunOrDie python -m pip list
 
 # Install

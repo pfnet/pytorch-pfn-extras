@@ -61,6 +61,8 @@ Extensions
    training.extensions.ProgressBar
    training.extensions.ProfileReport
    training.extensions.snapshot
+   training.extensions.Slack
+   training.extensions.SlackWebhook
    training.extensions.VariableStatisticsPlot
 
 Triggers

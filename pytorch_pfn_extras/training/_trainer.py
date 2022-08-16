@@ -301,22 +301,32 @@ class Trainer:
                         self._idxs.put(idx)
                         self._inputs.put(x)
                         self._times.put(begin)
-                        with record(
-                            "pytorch_pfn_extras.training.Trainer:run_iteration",
-                            use_cuda=torch.cuda.is_available(),
-                            enable=self._enable_profile
-                        ) as ntf1, \
-                                self.manager.run_iteration():
-                            self._observed.put(self.manager.observation)
+                        try:
                             with record(
-                                "pytorch_pfn_extras.training.Trainer:train_step",
+                                "pytorch_pfn_extras.training.Trainer:run_iteration",
                                 use_cuda=torch.cuda.is_available(),
                                 enable=self._enable_profile
-                            ) as ntf2:
-                                self._profile_records.put([ntf0, ntf1, ntf2])
-                                self.handler.train_step(
-                                    self, idx, x, complete_fn=self._complete_step)
-                                # Check if the callback was called
+                            ) as ntf1, \
+                                    self.manager.run_iteration():
+                                self._observed.put(self.manager.observation)
+                                with record(
+                                    "pytorch_pfn_extras.training.Trainer:train_step",
+                                    use_cuda=torch.cuda.is_available(),
+                                    enable=self._enable_profile
+                                ) as ntf2:
+                                    self._profile_records.put([ntf0, ntf1, ntf2])
+                                    self.handler.train_step(
+                                        self, idx, x, complete_fn=self._complete_step)
+                                    # Check if the callback was called
+                        except Exception:
+                            # The manager has errored and called the extensions
+                            # on_error. However the manager is reusable
+                            # so training can continue and extensions state is not
+                            # finalized. On the other hand, the trainer is not
+                            # reusable, so we finalize the extensions here.
+                            self.manager.finalize()
+                            raise
+
                     if prof is not None:
                         prof.step()  # type: ignore[no-untyped-call]
                     # In some cases, DataLoaders are continuos
