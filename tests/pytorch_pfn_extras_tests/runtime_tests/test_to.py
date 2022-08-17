@@ -1,3 +1,4 @@
+import io
 import pytest
 import torch
 
@@ -63,3 +64,48 @@ def test_module_split_ppe_to_config():
     rt_layer1 = ppe.runtime._runtime._module_runtime_tag(module)
     assert isinstance(rt_layer1, MyRuntime)
     assert rt_layer1.options['opt'] == 1
+
+
+class NonPicklableRuntime(ppe.runtime.BaseRuntime):
+    def move_module(self, module):
+        # Don't do the actual move
+        return module
+
+    def initialize_module(self, module, loader_or_batch):
+        pass
+
+    def __getstate__(self):
+        raise NotImplementedError()
+
+    def __setstate__(self, state):
+        raise NotImplementedError()
+
+
+class ModuleWithCustomState(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.v = 10
+
+    def __getstate__(self):
+        return {"v": self.v * 4}
+
+    def __setstate__(self, state):
+        self.v = state["v"] // 2
+
+
+def test_save_module():
+    module = MyModule()
+    ppe.to(module, "dummy", runtime_class=NonPicklableRuntime)
+    bio = io.BytesIO()
+    torch.save(module, bio)
+    module2 = torch.load(io.BytesIO(bio.getvalue()))
+    assert module.state_dict().keys() == module2.state_dict().keys()
+    for k in module.state_dict().keys():
+        assert torch.all(module.state_dict()[k] == module2.state_dict()[k])
+
+    module = ModuleWithCustomState()
+    ppe.to(module, "dummy", runtime_class=NonPicklableRuntime)
+    bio = io.BytesIO()
+    torch.save(module, bio)
+    module2 = torch.load(io.BytesIO(bio.getvalue()))
+    assert module2.v == 20
