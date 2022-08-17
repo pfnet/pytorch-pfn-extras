@@ -1,4 +1,5 @@
 import contextlib
+import types
 
 from typing import Any, Dict, Generator, Iterable, Optional, Set, Tuple, Union
 
@@ -493,7 +494,41 @@ def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
 def _set_module_runtime_tag(
     module: torch.nn.Module, runtime: BaseRuntime
 ) -> None:
-    return setattr(module, _RUNTIME_TAG_NAME, runtime)
+    setattr(module, _RUNTIME_TAG_NAME, runtime)
+
+    def mk_getstate(orig_getstate):  # type: ignore
+        def _getstate_without_runtime(self):  # type: ignore
+            if orig_getstate is not None:
+                state = orig_getstate()
+            else:
+                state = self.__dict__
+
+            # remove runtime class and getstate
+            def _remove_runtime_class(state):  # type: ignore
+                state = {k: v for k, v in state.items() if k != _RUNTIME_TAG_NAME}
+                for k, v in state.items():
+                    if isinstance(v, dict):
+                        state[k] = _remove_runtime_class(v)  # type: ignore
+                for k in list(state.keys()):
+                    if k == "__getstate__":
+                        if orig_getstate is not None:
+                            state[k] = orig_getstate
+                        else:
+                            del state[k]
+                return state
+
+            return _remove_runtime_class(state)  # type: ignore
+        return _getstate_without_runtime
+
+    getstate = None
+    if hasattr(module, "__getstate__"):
+        getstate = module.__getstate__
+
+    setattr(  # NOQA
+        module,
+        "__getstate__",
+        types.MethodType(mk_getstate(getstate), module)  # type: ignore
+    )
 
 
 def named_runtime_modules(
