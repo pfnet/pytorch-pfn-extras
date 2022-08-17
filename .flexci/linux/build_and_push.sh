@@ -52,7 +52,6 @@ case "${TARGET}" in
         ;;
 
     torch111 )
-
         # PyTorch 1.11 + Python 3.9
         docker_build_and_push \
             --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
