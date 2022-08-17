@@ -31,9 +31,9 @@ if ($test -eq "torch19") {
     RunOrDieWithRetry 3 python -m pip install torch==1.11.* torchvision==0.12.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
 
 } elseif ($test -eq "torch112") {
-    # PyTorch 1.12 + Python 3.9
+    # PyTorch 1.12 + Python 3.10
     ActivateCUDA 11.3
-    ActivatePython 3.9
+    ActivatePython 3.10
     RunOrDie python -m pip install -U pip "setuptools<59.6"
     RunOrDieWithRetry 3 python -m pip install torch==1.12.* torchvision==0.13.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
 
