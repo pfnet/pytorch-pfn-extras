@@ -17,9 +17,9 @@ configs {
   key: "pytorch-pfn-extras.torch19-linux"
   value {
     requirement {
-      cpu: 6
+      cpu: 8
       gpu: 2
-      memory: 32
+      memory: 52
       disk: 10
     }
     time_limit: {
@@ -33,9 +33,9 @@ configs {
   key: "pytorch-pfn-extras.torch110-linux"
   value {
     requirement {
-      cpu: 6
+      cpu: 8
       gpu: 2
-      memory: 32
+      memory: 52
       disk: 10
     }
     time_limit: {
@@ -49,9 +49,9 @@ configs {
   key: "pytorch-pfn-extras.torch111-linux"
   value {
     requirement {
-      cpu: 6
+      cpu: 8
       gpu: 2
-      memory: 32
+      memory: 52
       disk: 10
     }
     time_limit: {
@@ -65,9 +65,9 @@ configs {
   key: "pytorch-pfn-extras.torch112-linux"
   value {
     requirement {
-      cpu: 6
+      cpu: 8
       gpu: 2
-      memory: 32
+      memory: 52
       disk: 10
     }
     time_limit: {
