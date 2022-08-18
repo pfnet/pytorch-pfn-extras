@@ -48,7 +48,7 @@ case "${TARGET}" in
             --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
             --build-arg python_version="3.9.7" \
             --build-arg pip_install_torch_args="torch==1.10.* torchvision==0.11.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda113 pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
+            --build-arg pip_install_dep_args="cupy-cuda11x pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
         ;;
 
     torch111 )
@@ -57,7 +57,7 @@ case "${TARGET}" in
             --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
             --build-arg python_version="3.9.7" \
             --build-arg pip_install_torch_args="torch==1.11.* torchvision==0.12.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda113 pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
+            --build-arg pip_install_dep_args="cupy-cuda11x pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
         ;;
 
     torch112 )
@@ -66,7 +66,7 @@ case "${TARGET}" in
             --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
             --build-arg python_version="3.10.5" \
             --build-arg pip_install_torch_args="torch==1.12.* torchvision==0.13.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda113 pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
+            --build-arg pip_install_dep_args="cupy-cuda11x pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
         ;;
 
     * )
