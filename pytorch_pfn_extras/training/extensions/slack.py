@@ -24,7 +24,17 @@ except ImportError:
     _slack_sdk_available = False
 
 
-_identity = f'{getpass.getuser()}@{socket.gethostname()} [PID {os.getpid()}]'
+def _failsafe(func: Callable[[], Any]) -> str:
+    # getpass.getuser() fails when user account does not exist.
+    try:
+        return str(func())
+    except Exception:
+        return 'UNKNOWN'
+
+
+_identity = (
+    f'{_failsafe(getpass.getuser)}@{_failsafe(socket.gethostname)} '
+    f'[PID {_failsafe(os.getpid)}]')
 
 
 def _default_msg(
