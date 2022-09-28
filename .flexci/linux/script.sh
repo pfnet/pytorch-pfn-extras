@@ -21,7 +21,7 @@ set -eu
 # note: These values can be overridden per project using secret environment
 # variables of FlexCI.
 export PPE_FLEXCI_GCS_BUCKET=${PPE_FLEXCI_GCS_BUCKET:-chainer-artifacts-pfn-public-ci}
-export PPE_FLEXCI_IMAGE_NAME=${PPE_FLEXCI_IMAGE_NAME:-asia.gcr.io/pfn-public-ci/pytorch-pfn-extras-ci}
+export PPE_FLEXCI_IMAGE_NAME=${PPE_FLEXCI_IMAGE_NAME:-asia-northeast1-docker.pkg.dev/pfn-artifactregistry/tmp-public-ci-dlfw/pytorch-pfn-extras-ci}
 export PPE_FLEXCI_IMAGE_REBUILD="${PPE_FLEXCI_IMAGE_REBUILD:-0}"
 export PPE_FLEXCI_IMAGE_PUSH="${PPE_FLEXCI_IMAGE_PUSH:-1}"
 
@@ -40,8 +40,7 @@ main() {
   echo "[PPE CI] PPE_FLEXCI_IMAGE_PUSH: ${PPE_FLEXCI_IMAGE_PUSH}"
 
   # Initialization.
-  prepare_docker &
-  wait
+  gcloud auth configure-docker asia-northeast1-docker.pkg.dev
 
   # Prepare docker images.
   run "${SRC_ROOT}/.flexci/linux/build_and_push.sh" "${TARGET}"
@@ -74,11 +73,6 @@ run() {
   if [ "${DRYRUN:-}" == '' ]; then
     "$@"
   fi
-}
-
-# Configure docker to pull images from gcr.io.
-prepare_docker() {
-  run gcloud auth configure-docker
 }
 
 ################################################################################
