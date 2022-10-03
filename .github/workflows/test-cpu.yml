@@ -23,7 +23,7 @@ jobs:
         pip install 'torch==1.9.*'
         pip install 'torchvision==0.10.*'
         pip install pytest
-        pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime pytorch-ignite
+        pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime pytorch-ignite marko
         pip install -v -e .
         # Test PPE is importable with minimum dependency
         python -c 'import pytorch_pfn_extras'
