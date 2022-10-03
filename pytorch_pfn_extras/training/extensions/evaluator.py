@@ -7,6 +7,7 @@ from typing import (
 
 import numpy
 import torch
+import torch.distributed
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
@@ -189,6 +190,9 @@ class Evaluator(extension.Extension):
         reporting.report(result)
         return result
 
+    def _gather_summaries(self, summary: reporting.DictSummary) -> reporting.DictSummary:
+        return summary
+
     def evaluate(self) -> Dict[str, _Scalar]:
         """Evaluates the model and returns a result dictionary.
 
@@ -240,17 +244,70 @@ class Evaluator(extension.Extension):
         if self._progress_bar:
             pbar.close()
 
+        summary = self._gather_summaries(summary)
+
         return summary.compute_mean()
 
-    def finalize(self) -> None:
-        """Finalizes the evaluator object.
 
-        This method calls the `finalize` method of each iterator that
-        this evaluator has.
-        It is called at the end of training loops.
+def _dist_gather(obj: Any) -> List[Any]:
+    world_size = torch.distributed.get_world_size()  # type: ignore[no-untyped-call]
+    placeholder = [object() for _ in range(world_size)]
+    torch.distributed.all_gather_object(placeholder, obj)  # type: ignore[no-untyped-call]
+    return placeholder
 
-        """
-        pass
+
+class DistributedEvaluator(Evaluator):
+
+    """__init__(self, iterator, target, eval_func=None, *, progress_bar=False)
+
+    An extension to evaluate models on a validation set in a distributed training setup.
+
+    In case torch.distributed is used to parallelize training iterations,
+    it is efficient to also run evaluation in parallel by splitting the validation set
+    to each worker process and conduct evaluation separately followed by aggregation
+    of results of each worker, which can be achieved by :class:~`DistributedEvaluator`.
+
+    This extension basically behaves similarly to :class:`~Evaluator`,
+    but adds an aggregation step in :func:`Evaluator.evaluate`.
+    A summary of evaluation (:class:`~DictSummary`) in each worker process
+    is collected in "all-gather" manner and then accumulated.
+    Therefore all the worker processes must attend the evaluation,
+    i.e., make sure all the processes have a :class:`~Evaluator` extension object
+    configured in the :class:`~ExtensionManager` with the same trigger.
+    All the worker process will get identical evaluation result returned by :func:`Evaluator.evaluate`
+    and reported to an observation.
+
+    It is necessary to pass a DataLoader with an appropripate sampler which properly
+    splits the validation dataset to each MPI worker process.
+    PyTorch DistributedSampler implements this, but it allows sampler repetition
+    in order to make the number of samples assigned to each process identical.
+    For evaluation purpose it distorts the evaluation result,
+    hence it is recommended to use :class:`~DistributedValidationSampler` instead.
+
+    """
+
+    def __init__(
+            self,
+            iterator: Union[torch.utils.data.DataLoader[Any],
+                            Dict[str, torch.utils.data.DataLoader[Any]]],
+            target: Union[torch.nn.Module, Dict[str, torch.nn.Module]],
+            eval_hook: Optional[Callable[['Evaluator'], None]] = None,
+            eval_func: Optional[Callable[..., Any]] = None,
+            **kwargs: Any,
+    ) -> None:
+        if not torch.distributed.is_initialized():  # type: ignore[no-untyped-call]
+            msg = "PyTorch distributed module is not initialized. " \
+                  "Initialize process group or use non-distributed Evaluator."
+            raise RuntimeError(msg)
+
+        if 'progress_bar' in kwargs:
+            rank = torch.distributed.get_rank()  # type: ignore[no-untyped-call]
+            kwargs['progress_bar'] &= (rank == 0)
+
+        super().__init__(iterator, target, eval_hook, eval_func, **kwargs)
+
+    def _gather_summaries(self, summary: reporting.DictSummary) -> reporting.DictSummary:
+        return sum(_dist_gather(summary), reporting.DictSummary())
 
 
 @contextlib.contextmanager

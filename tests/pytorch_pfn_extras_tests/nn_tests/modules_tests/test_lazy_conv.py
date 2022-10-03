@@ -3,7 +3,7 @@ from torch import nn
 
 from pytorch_pfn_extras.nn import LazyConv1d, LazyConv2d, LazyConv3d
 
-from tests.pytorch_pfn_extras_tests.nn_tests.modules_tests.test_lazy import \
+from pytorch_pfn_extras_tests.nn_tests.modules_tests.test_lazy import \
     LazyTestBase
 
 

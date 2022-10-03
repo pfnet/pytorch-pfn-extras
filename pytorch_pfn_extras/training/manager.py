@@ -4,7 +4,7 @@ import copy
 from pytorch_pfn_extras.profiler import record
 import time
 from typing import (
-    Any, Dict, Iterable, Generator, Mapping, Optional, Sequence, Union, TYPE_CHECKING
+    Any, Dict, Generator, Mapping, Optional, Sequence, Union, TYPE_CHECKING
 )
 import warnings
 
@@ -15,21 +15,12 @@ from pytorch_pfn_extras import writing
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.training import _manager_protocol
 from pytorch_pfn_extras.training import _util as util_module
 from pytorch_pfn_extras.training._transform_model import (
     default_transform_model, _TransformModel,
 )
 
 _get_time = time.perf_counter
-
-
-class IterationNotification:
-    def __init__(self) -> None:
-        self._is_completed = True
-
-    def defer(self) -> None:
-        self._is_completed = False
 
 
 class _ManagerProxy:
@@ -102,29 +93,6 @@ class _ManagerProxy:
         return self._manager.observation
 
 
-class _ManagerExecutionProxy(_ManagerProxy):
-    """
-    Object that is passed to the triggers of extensions depending if they
-    require to measure executions when using async mode
-    Note that in sync mode execution == iteration
-    """
-    @property
-    def iteration(self) -> int:
-        return self._manager.execution
-
-    @property
-    def models(self) -> Mapping[str, torch.nn.Module]:
-        raise RuntimeError('Models are not available during execution phase.')
-
-    @property
-    def raw_models(self) -> Mapping[str, torch.nn.Module]:
-        raise RuntimeError('Models are not available during execution phase.')
-
-    @property
-    def optimizers(self) -> Mapping[str, torch.optim.Optimizer]:
-        raise RuntimeError('Optimizers are not available during execution phase.')
-
-
 class _BaseExtensionsManager:
     """
     Keeps track of the extensions and the current status
@@ -190,6 +158,7 @@ class _BaseExtensionsManager:
             self.reporter.add_observer(name, model)
             self.reporter.add_observers(
                 name, model.named_modules())
+        self._finalized = False
         self.max_epochs = max_epochs
         self._start_iteration = 0
         # Defer!
@@ -275,15 +244,11 @@ class _BaseExtensionsManager:
         self.start_extensions()
         # Trigger is stateful, we close the extensions the first time
         # it evaluates to True, as it won't do it again
-        manager = self._get_proxy_for_trigger(self._stop_trigger)
-        return self._stop_trigger(manager)
+        return self._stop_trigger(self)
 
     @property
     def out(self) -> str:
-        if self.writer.out_dir is not None:
-            return self.writer.out_dir
-        else:
-            return self._out
+        return self.writer.out_dir
 
     @property
     def updater(self) -> '_BaseExtensionsManager':
@@ -295,15 +260,6 @@ class _BaseExtensionsManager:
             ' snapshot extensions (e.g., from '
             '`snapshot_iter_{.updater.iteration}` to'
             ' `snapshot_iter_{.iteration}`).', DeprecationWarning)
-        return self
-
-    # TODO(asi1024): Add type annotation of return value.
-    def _get_proxy_for_trigger(
-            self,
-            trigger: 'trigger_module.Trigger',
-    ) -> _manager_protocol.ExtensionsManagerProtocol:
-        if isinstance(trigger, trigger_module.IntervalTrigger):
-            return _ManagerExecutionProxy(self)
         return self
 
     def _prepare_for_training(
@@ -446,15 +402,8 @@ class _BaseExtensionsManager:
             for _, entry in self.extensions:
                 entry.extension.on_error(self, exc, tb)
 
-    def run_extensions(
-            self, *, completed: bool = True, only_iterations: bool = True) -> None:
-        if completed:
-            # Check if the model is available for the iteration just
-            # completed, i.e., the iteration number is already incremented.
-            self._model_available = self.needs_model_state(self.iteration)
-        else:
-            self._model_available = False
-
+    def run_extensions(self) -> None:
+        self._model_available = self.needs_model_state(self.iteration)
         to_run = []
         for name, entry in self.extensions:
             # When iterations are deferred we only
@@ -462,15 +411,7 @@ class _BaseExtensionsManager:
             # the training status to advance
             # those are extensions set to execute
             # in a given interval of executions
-            is_async = (hasattr(entry.extension, 'is_async')
-                        and entry.extension.is_async)
-            if ((not completed and not is_async)
-                    or (completed and is_async and only_iterations)):
-                continue
-            manager: _manager_protocol.ExtensionsManagerProtocol = self
-            if is_async:
-                manager = self._get_proxy_for_trigger(entry.trigger)
-            if entry.trigger(manager):
+            if entry.trigger(self):
                 # Execution of snapshot extensions are deferred until all the
                 # triggers are evaluated.
                 # If we don't do this, when two (or more) snapshot extensions
@@ -523,7 +464,7 @@ class _BaseExtensionsManager:
             # if we use `getattr`
             try:
                 if entry.extension.finalize:
-                    entry.extension.finalize()
+                    entry.extension.finalize(self)
             except AttributeError:
                 pass
 
@@ -627,47 +568,11 @@ class ExtensionsManager(_BaseExtensionsManager):
         self._prepare_for_training(0, 0, iters_per_epoch)
 
     @contextlib.contextmanager
-    def complete_iteration(
-            self,
-            *,
-            observation: Optional[reporting.Observation] = None,
-            step_optimizers: Optional[Iterable[str]] = None,
-    ) -> Generator[None, None, None]:
-        """ Context manager to complete deferred iterations.
-
-        Args:
-            step_optimizers (list or None): names of the optimizers
-            to call `zero_grad` and `step`
-        """
-
-        # This manager is needed because we need a reporting environment
-        # for extensions to work properly.
-
-        if observation is None:
-            observation = {}
-        step_optimizers_names: Iterable[str] = []
-        if step_optimizers is not None:
-            step_optimizers_names = step_optimizers
-        self.observation = observation
-        with self.reporter.scope(observation):
-            try:
-                for name in step_optimizers_names:
-                    self._optimizers[name].zero_grad()
-                yield
-                for name in step_optimizers_names:
-                    self._optimizers[name].step()
-                self.iteration += 1
-                self.run_extensions(completed=True, only_iterations=True)
-            except Exception as e:
-                self._run_on_error(e)
-                raise
-
-    @contextlib.contextmanager
     def run_iteration(
             self,
             *,
             step_optimizers: Optional[Sequence[str]] = None
-    ) -> Generator[IterationNotification, None, None]:
+    ) -> Generator[None, None, None]:
         """Context manager to run an iteration.
 
         This manager can additionally run a step in the
@@ -677,11 +582,12 @@ class ExtensionsManager(_BaseExtensionsManager):
             step_optimizers (list or None): names of the optimizers
             to call `zero_grad` and `step`
         """
+        if self._finalized:
+            raise RuntimeError('Attempted to run a finalized manager')
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
 
-        notification = IterationNotification()
         step_optimizers_names: Sequence[str] = []
         if step_optimizers is not None:
             step_optimizers_names = step_optimizers
@@ -690,31 +596,26 @@ class ExtensionsManager(_BaseExtensionsManager):
             try:
                 for name in step_optimizers_names:
                     self._optimizers[name].zero_grad()
-                yield notification
-                if notification._is_completed:
-                    for name in step_optimizers_names:
-                        self._optimizers[name].step()
+                yield
+                for name in step_optimizers_names:
+                    self._optimizers[name].step()
                 # The iteration count is increased just before calling the
                 # extensions.
-                if notification._is_completed:
-                    self.iteration += 1
-                    self.execution += 1
-                    self.run_extensions(completed=True, only_iterations=False)
-                else:
-                    # execution is the number of times
-                    # a run_iteration event was not complete
-                    # but operations on the model were performed.
-                    # it is used to trigger extensions that
-                    # needs to run regardless of the training state
-                    self.execution += 1
-                    self.run_extensions(completed=False, only_iterations=False)
+                self.iteration += 1
+                self.execution += 1
+                self.run_extensions()
             except Exception as e:
                 self._run_on_error(e)
                 raise
 
         if self._internal_stop_trigger(self):
+            self.finalize()
+
+    def finalize(self) -> None:
+        if not self._finalized:
             self._finalize_extensions()
             self.writer.finalize()
+            self._finalized = True
 
 
 if TYPE_CHECKING:

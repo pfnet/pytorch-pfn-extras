@@ -31,7 +31,7 @@ class QueueWriter(Writer, Generic[_Worker]):
             optional, defaults to None
         out_dir: str. Specifies the directory this writer will use.
             It takes precedence over the one specified in `__call__`
-            optional, defaults to None
+            optional, defaults to ``''``
         task: Callable object. Its ``__call__`` must have a same interface to
             ``Writer.__call__``. This object is directly put into the queue.
 
@@ -44,7 +44,7 @@ class QueueWriter(Writer, Generic[_Worker]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: Optional[str] = None,
+            out_dir: str = '',
             task: Optional[_TaskFun] = None,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
@@ -119,7 +119,7 @@ class ThreadQueueWriter(QueueWriter[threading.Thread]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: Optional[str] = None,
+            out_dir: str = '',
             task: Optional[_TaskFun] = None
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, task=task, out_dir=out_dir)
@@ -152,7 +152,7 @@ class ProcessQueueWriter(QueueWriter[multiprocessing.Process]):
             self,
             savefun: _SaveFun = torch.save,
             fs: _FileSystem = None,
-            out_dir: Optional[str] = None,
+            out_dir: str = '',
             task: Optional[_TaskFun] = None
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, task=task)

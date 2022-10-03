@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 import pytorch_pfn_extras as ppe
@@ -55,6 +56,7 @@ def _get_bn_stats_test_checkpoint(cp_type):
     return (bn.weight, bn.bias, bn.running_mean, bn.running_var)
 
 
+@pytest.mark.gpu
 def test_checkpoint():
     baseline = _get_bn_stats_test_checkpoint('none')
     ckpt = _get_bn_stats_test_checkpoint('bnaware')

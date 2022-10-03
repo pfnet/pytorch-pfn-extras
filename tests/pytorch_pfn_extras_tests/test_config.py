@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+import pytest
 
 from pytorch_pfn_extras.config import Config
 from pytorch_pfn_extras.config import customize_type
@@ -261,3 +262,46 @@ class TestConfig(unittest.TestCase):
              ' -> !/0 of {bar} -> !/ of {foo}'.format(
                  foo=os.path.join(temp, 'foo.json'),
                  bar=os.path.join(temp, 'bar.json'))))
+
+    def test_config_with_args_update(self):
+        config = Config({
+            'foo': {
+                'ls': ['first']
+            }
+        }, self.types)
+
+        assert config['/foo/ls/0'] == 'first'
+        config.update_via_args([('/foo/ls/0', 'changed')])
+        assert config['/foo/ls/0'] == 'changed'
+
+    def test_config_with_args_update_type_conversion(self):
+        config = Config({
+            'foo': {
+                'ls': [0]
+            }
+        }, self.types)
+
+        assert config['/foo/ls/0'] == 0
+        config.update_via_args([('/foo/ls/0', '16')])
+        assert config['/foo/ls/0'] == 16
+
+    def test_config_with_args_update_type_conversion_bool(self):
+        config = Config({
+            'foo': {
+                'ls': [True]
+            }
+        }, self.types)
+
+        assert config['/foo/ls/0']
+        config.update_via_args([('/foo/ls/0', False)])
+        assert not config['/foo/ls/0']
+        config.update_via_args([('/foo/ls/0', "False")])
+        assert not config['/foo/ls/0']
+        config.update_via_args([('/foo/ls/0', "true")])
+        assert config['/foo/ls/0']
+        config.update_via_args([('/foo/ls/0', "TRUE")])
+        assert config['/foo/ls/0']
+        config.update_via_args([('/foo/ls/0', "false")])
+        assert not config['/foo/ls/0']
+        with pytest.raises(ValueError):
+            config.update_via_args([('/foo/ls/0', "alse")])

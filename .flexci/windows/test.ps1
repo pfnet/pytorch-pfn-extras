@@ -9,14 +9,7 @@ $ErrorActionPreference = "Stop"
 
 
 # Setup environment
-if ($test -eq "torch18") {
-    # PyTorch 1.8 + Python 3.7
-    ActivateCUDA 11.1
-    ActivatePython 3.7
-    RunOrDie python -m pip install -U pip "setuptools<59.6"
-    RunOrDieWithRetry 3 python -m pip install torch==1.8.* torchvision==0.9.* -f https://download.pytorch.org/whl/cu111/torch_stable.html
-
-} elseif ($test -eq "torch19") {
+if ($test -eq "torch19") {
     # PyTorch 1.9 + Python 3.8
     ActivateCUDA 11.1
     ActivatePython 3.8
@@ -30,13 +23,27 @@ if ($test -eq "torch18") {
     RunOrDie python -m pip install -U pip "setuptools<59.6"
     RunOrDieWithRetry 3 python -m pip install torch==1.10.* torchvision==0.11.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
 
+} elseif ($test -eq "torch111") {
+    # PyTorch 1.11 + Python 3.9
+    ActivateCUDA 11.3
+    ActivatePython 3.9
+    RunOrDie python -m pip install -U pip "setuptools<59.6"
+    RunOrDieWithRetry 3 python -m pip install torch==1.11.* torchvision==0.12.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
+
+} elseif ($test -eq "torch112") {
+    # PyTorch 1.12 + Python 3.10
+    ActivateCUDA 11.3
+    ActivatePython 3.10
+    RunOrDie python -m pip install -U pip "setuptools<59.6"
+    RunOrDieWithRetry 3 python -m pip install torch==1.12.* torchvision==0.13.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
+
 } else {
     throw "Unsupported test variant: $test"
 }
 RunOrDie python -V
 
 # Install common requirements
-RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna cupy-cuda102 onnxruntime marko
+RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna cupy-cuda102 onnxruntime slack_sdk marko
 RunOrDie python -m pip list
 
 # Install

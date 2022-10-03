@@ -1,6 +1,7 @@
 import contextlib
+import types
 
-from typing import Any, Dict, Generator, Iterable, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, Optional, Set, Tuple, Union
 
 import torch
 
@@ -291,6 +292,26 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
+    def map(
+        self,
+        func: CodeBlock,
+        iterable: Iterable[Any],
+        out_keys: Optional[Set[str]] = None,
+        device: Any = "cpu",
+    ) -> Iterable[Any]:
+        """Method called by the user to apply function to iterable efficiently.
+
+        Args:
+            func: The function to be executed
+            iterable: The data
+            out_keys: The output keys that to be moved to the host device
+            device: The torch device that contains the final outputs
+
+        Returns:
+            The result of `func`
+        """
+        raise NotImplementedError()
+
 
 class PyTorchRuntime(BaseRuntime):
     """A collections of callback functions for the devices that PyTorch
@@ -406,8 +427,8 @@ class PyTorchRuntime(BaseRuntime):
             def _scale(x: torch.Tensor) -> torch.Tensor:
                 return self._grad_scaler.scale(x)  # type: ignore[no-any-return]
 
-        if code_block.optimizer is not None:
-            code_block.optimizer.zero_grad()
+        for optimizer in code_block.optimizers:
+            optimizer.zero_grad()
 
         # with autocast
         with _autocast(enabled=self._autocast):
@@ -430,16 +451,38 @@ class PyTorchRuntime(BaseRuntime):
             else:
                 _scale(out[code_block.backprop_from]).backward()  # type: ignore
 
-        if code_block.optimizer is None:
+        if len(code_block.optimizers) == 0:
             return out
 
         if self._grad_scaler is not None:
-            self._grad_scaler.step(code_block.optimizer)
+            # TODO support multiple optimizers with grad scaler
+            assert len(code_block.optimizers) == 1
+            self._grad_scaler.step(code_block.optimizers[0])
             self._grad_scaler.update()
         else:
-            code_block.optimizer.step()
+            for optimizer in code_block.optimizers:
+                optimizer.step()
 
         return out
+
+    def map(
+        self,
+        func: CodeBlock,
+        iterable: Iterable[Any],
+        out_keys: Optional[Set[str]] = None,
+        device: Any = "cpu",
+    ) -> Iterable[Any]:
+        for data in iterable:
+            # TODO overlap computation and data transfer when using CUDA
+            out = func(data)
+            if out_keys is not None:
+                assert isinstance(out, dict)
+                out = {key: out[key] for key in out_keys}
+            if isinstance(out, dict):
+                out = {k: v.to(device) for k, v in out.items()}
+            else:
+                out = out.to(device)
+            yield out
 
 
 def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
@@ -451,7 +494,41 @@ def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
 def _set_module_runtime_tag(
     module: torch.nn.Module, runtime: BaseRuntime
 ) -> None:
-    return setattr(module, _RUNTIME_TAG_NAME, runtime)
+    setattr(module, _RUNTIME_TAG_NAME, runtime)
+
+    def mk_getstate(orig_getstate):  # type: ignore
+        def _getstate_without_runtime(self):  # type: ignore
+            if orig_getstate is not None:
+                state = orig_getstate()
+            else:
+                state = self.__dict__
+
+            # remove runtime class and getstate
+            def _remove_runtime_class(state):  # type: ignore
+                state = {k: v for k, v in state.items() if k != _RUNTIME_TAG_NAME}
+                for k, v in state.items():
+                    if isinstance(v, dict):
+                        state[k] = _remove_runtime_class(v)  # type: ignore
+                for k in list(state.keys()):
+                    if k == "__getstate__":
+                        if orig_getstate is not None:
+                            state[k] = orig_getstate
+                        else:
+                            del state[k]
+                return state
+
+            return _remove_runtime_class(state)  # type: ignore
+        return _getstate_without_runtime
+
+    getstate = None
+    if hasattr(module, "__getstate__"):
+        getstate = module.__getstate__
+
+    setattr(  # NOQA
+        module,
+        "__getstate__",
+        types.MethodType(mk_getstate(getstate), module)  # type: ignore
+    )
 
 
 def named_runtime_modules(
@@ -467,9 +544,5 @@ def named_runtime_modules(
             for name, sm in module.named_children():
                 yield from named_runtime_modules(sm, name, False, recursive)
     else:
-        if first_level or recursive:
-            for sm in module.children():
-                for descendant in sm.modules():
-                    if _module_runtime_tag(descendant) is not None:
-                        raise ValueError("Runtimes cannot be nested.")
+        # nested runtime tag is ignored
         yield module_name, module

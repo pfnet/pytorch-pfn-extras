@@ -2,13 +2,20 @@ import pytest
 import torch
 import torchvision
 
-from tests.pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
+import pytorch_pfn_extras
+from pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
+
+
+if pytorch_pfn_extras.requires("1.12.0"):
+    resnet18_kwargs = {'weights': None}
+else:
+    resnet18_kwargs = {'pretrained': True}
 
 
 def test_eval_resnet18():
     torch.manual_seed(100)
     run_model_test(
-        torchvision.models.resnet.resnet18(pretrained=True),
+        torchvision.models.resnet.resnet18(**resnet18_kwargs),
         (torch.rand(1, 3, 224, 224),),
         rtol=1e-03,
         use_gpu=True,
@@ -19,7 +26,7 @@ def test_eval_resnet18():
 @pytest.mark.xfail
 def test_train_resnet18():
     run_model_test(
-        torchvision.models.resnet.resnet18(pretrained=True),
+        torchvision.models.resnet.resnet18(**resnet18_kwargs),
         (torch.rand(1, 3, 224, 224),),
         rtol=1e-03,
         use_gpu=True,

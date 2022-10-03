@@ -2,7 +2,7 @@ import onnx
 import pytest
 import torch
 
-from tests.pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
+from pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
 
 
 def test_simple():
@@ -138,3 +138,32 @@ def test_dynamic_axes():
     assert model.graph.input[1].type.tensor_type.shape.dim[0].dim_param == "y_dynamic_axes_1"
     assert model.graph.input[1].type.tensor_type.shape.dim[1].dim_param == "y_dynamic_axes_2"
     assert model.graph.output[0].type.tensor_type.shape.dim[0].dim_param == "out_dynamic_axes_1"
+
+
+@pytest.mark.filterwarnings("ignore:No input args:UserWarning")
+def test_concat():
+    model: onnx.ModelProto = run_model_test(
+        AnyModel(lambda m: torch.cat((m.x, m.y), axis=0),
+                 {"x": _aranges(2, 3, 2), "y": _aranges(3, 3, 2)}),
+        (),
+    )
+    assert len(model.graph.node) == 1
+    assert model.graph.node[0].op_type == "Concat"
+    model = run_model_test(
+        AnyModel(lambda m: torch.cat((m.x, m.y), axis=1),
+                 {"x": _aranges(2, 3, 2), "y": _aranges(2, 3, 2)}),
+        (),
+    )
+    assert len(model.graph.node) == 1
+    assert model.graph.node[0].op_type == "Concat"
+
+
+def test_norm():
+    class Net(torch.nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+
+        def forward(self, x):
+            return torch.norm(x)
+
+    run_model_test(Net(), (torch.rand(2, 3, 5, 7),), opset_version=13)

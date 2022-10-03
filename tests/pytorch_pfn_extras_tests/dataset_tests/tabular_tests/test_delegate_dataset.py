@@ -2,7 +2,7 @@ import pytest
 
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras.dataset import tabular
-from tests.pytorch_pfn_extras_tests.dataset_tests.tabular_tests import dummy_dataset  # NOQA
+from pytorch_pfn_extras_tests.dataset_tests.tabular_tests import dummy_dataset  # NOQA
 
 
 @pytest.mark.parametrize(

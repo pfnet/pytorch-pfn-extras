@@ -6,6 +6,13 @@ import pytest
 import pytorch_pfn_extras as ppe
 
 
+def torch_testing_assert_close(*args, **kwargs):
+    if ppe.requires("1.10.0"):
+        torch.testing.assert_close(*args, **kwargs)
+    else:
+        torch.testing.assert_allclose(*args, **kwargs)
+
+
 class MockRuntime(ppe.runtime.BaseRuntime):
     def __init__(self, device, options):
         super().__init__(device, options)
@@ -14,10 +21,10 @@ class MockRuntime(ppe.runtime.BaseRuntime):
         self._called_module = None
 
     def move_module(self, module):
-        pass
+        return module
 
     def move_tensor(self, tensor):
-        pass
+        return tensor
 
     def convert_batch(self, batch):
         class BatchWrapper:
@@ -136,7 +143,8 @@ class HandlerTester:
                 assert getattr(mod._ppe_runtime, f'_{function}_called')
                 assert mod._ppe_runtime._called_module == mod
             else:
-                assert not hasattr(mod, '_ppe_runtime')
+                if hasattr(mod, '_ppe_runtime'):
+                    assert mod._ppe_runtime._called_module != mod
 
 
 class TestHandlerTrainSync(HandlerTester):
@@ -180,9 +188,7 @@ class TestHandlerTrainSync(HandlerTester):
         module = trainer.models['main']
         self._move_modules(module, to_move)
         # Should check that the handler completes
-        assert not handler.pending_iters
         handler.train_epoch_end(trainer)
-        assert not handler.pending_iters
         self._assert_called(module, to_move, 'train_epoch_end')
         assert logic._train_epoch_end_called
 
@@ -270,150 +276,6 @@ class TestHandlerValidationSync(HandlerTester):
             handler.eval_post_step(evaluator, 0, None, {'output': 1})
         assert reporter.observation['val/output'] == 1
         self._assert_called(module, to_move, 'eval_post_step')
-
-
-class AsyncResult(ppe.handler.DeferredResult):
-    def __init__(self):
-        self._period = 10
-        self._count = 0
-        self._done = False
-
-    def done(self):
-        self._count += 1
-        if self._count == self._period:
-            self._done = True
-        return self._done
-
-    def wait(self):
-        self._done = True
-
-    def get(self):
-        if self._done or (self._count == self._period):
-            return 1
-        return None
-
-
-class AsyncResult2(ppe.handler.DeferredResult):
-    # This class is needed to test multiple entries when
-    # dealing with dicts of deferred results
-    # if everyone has different counters, we dont have a common
-    # step for all of them, as their `done` method may not be called
-    # every iteration because the handler does an early return if a single
-    # async object is not done
-    def done(self):
-        return True
-
-    def wait(self):
-        return self
-
-    def get(self):
-        return 2
-
-
-class AsyncModel(torch.nn.Module):
-    def forward(self, *args, **kwargs):
-        return AsyncResult()
-
-
-class AsyncModelDictOfAsync(torch.nn.Module):
-    def forward(self, *args, **kwargs):
-        return {'out': AsyncResult()}
-
-
-class AsyncModelDictOfMultiAsync(torch.nn.Module):
-    def forward(self, *args, **kwargs):
-        return {'out1': AsyncResult(), 'out2': AsyncResult2(), 'out3': 3}
-
-
-class TestAsyncHandler:
-    def _get_handler(self, options):
-        ppe.runtime.runtime_registry.register('test_rt', MockRuntime)
-        logic = MockLogic()
-        handler = ppe.handler.Handler(
-            logic, MockRuntime('test_rt', {}), options
-        )
-        return handler
-
-    @pytest.mark.parametrize(
-        'model_cls',
-        [AsyncModel, AsyncModelDictOfAsync, AsyncModelDictOfMultiAsync]
-    )
-    def test_train_step_async(self, model_cls):
-        options = {'eval_report_keys': ['output']}
-        trainer = MockTrainer()
-        handler = self._get_handler(options)
-        trainer.models['main'] = model_cls()
-        ppe.to(trainer.models['main'], 'test_rt')
-        prev_batch_idx = 0
-
-        def callback(batch_idx, outs, is_deferred):
-            print(batch_idx, outs)
-            nonlocal prev_batch_idx
-            # Check that iterations complete in order
-            assert prev_batch_idx == batch_idx
-            prev_batch_idx += 1
-            assert outs in (1, {'out': 1}, {'out1': 1, 'out2': 2, 'out3': 3})
-
-        for i in range(40):
-            handler.train_step(trainer, i, None, callback)
-        assert prev_batch_idx == 4
-        assert len(handler.pending_iters['main']) == 36
-
-        handler.train_epoch_end(trainer)
-        assert prev_batch_idx == 40
-        assert len(handler.pending_iters['main']) == 0
-
-    def test_eval_step_async(self):
-        options = {'eval_report_keys': ['output']}
-        handler = self._get_handler(options)
-        evaluator = MockEvaluator()
-        evaluator.models['main'] = AsyncModel()
-        ppe.to(evaluator.models['main'], 'test_rt')
-        prev_batch_idx = 0
-
-        def callback(batch_idx, outs, is_deferred):
-            nonlocal prev_batch_idx
-            # Check that iterations complete in order
-            assert prev_batch_idx == batch_idx
-            prev_batch_idx += 1
-            assert outs == 1
-
-        for i in range(40):
-            handler.eval_step(evaluator, i, None, callback)
-
-        assert prev_batch_idx == 4
-        assert len(handler.pending_iters['main']) == 36
-        handler.eval_loop_end(evaluator)
-        assert prev_batch_idx == 40
-        assert len(handler.pending_iters['main']) == 0
-
-    def test_setup_multi_device_split_invalid(self):
-        options = {'eval_report_keys': ['output']}
-        trainer = MockTrainer()
-        handler = self._get_handler(options)
-        amodel = AsyncModel()
-        amodel.sm1 = trainer.models['main'].sm1
-        amodel.sm2 = trainer.models['main'].sm2
-        trainer.models['main'] = amodel
-        ppe.to(trainer.models['main'].sm1, 'test_rt')
-        ppe.to(trainer.models['main'].sm2, 'cpu')
-        handler._setup(trainer.models, [], None)
-
-        def callback(batch_idx, outs, is_deferred):
-            pass
-
-        with pytest.raises(RuntimeError, match='models splitted'):
-            handler.train_step(trainer, 0, None, callback)
-
-        evaluator = MockEvaluator()
-        handler = self._get_handler(options)
-        evaluator.models['main'] = amodel
-        ppe.to(evaluator.models['main'].sm1, 'test_rt')
-        ppe.to(evaluator.models['main'].sm2, 'cpu')
-        handler._setup(evaluator.models, [], None)
-
-        with pytest.raises(RuntimeError, match='models splitted'):
-            handler.eval_step(trainer, 0, None, callback)
 
 
 @pytest.mark.gpu
@@ -507,8 +369,8 @@ class TestLogic:
         model = models['main']
         assert input.grad is not None
         # The gradient of a linear layer is its transposed weight
-        torch.testing.assert_allclose(input.grad, model.weight.T)
-        torch.testing.assert_allclose(out, model(input))
+        torch_testing_assert_close(input.grad, model.weight.T)
+        torch_testing_assert_close(out, model(input))
 
     @pytest.mark.parametrize(
         'to_backprop',
@@ -549,11 +411,11 @@ class TestLogic:
         grad = torch.zeros(1)
         for val in to_backprop:
             grad = grad + getattr(model, f'l{val}').weight.T
-        torch.testing.assert_allclose(input.grad, grad)
+        torch_testing_assert_close(input.grad, grad)
 
         # Check that logic step does not change the value of weight
         for val in original_parameters:
-            torch.testing.assert_allclose(
+            torch_testing_assert_close(
                 original_parameters[val], getattr(model, f'l{val}').weight)
 
     def test_train_step_backward_nograd(self):
@@ -607,7 +469,7 @@ class TestLogic:
         w_grad = model.weight.grad.clone().detach()
         logic.train_step_optimizers(model, optimizers, 0)
         # Checks that the value was correctly updated
-        torch.testing.assert_allclose(m_weight - w_grad, model.weight.T)
+        torch_testing_assert_close(m_weight - w_grad, model.weight.T)
 
     @pytest.mark.gpu
     def test_grad_scaler(self):
@@ -619,12 +481,12 @@ class TestLogic:
         m_weight = model.weight.clone().detach()
         w_grad = model.weight.grad.clone().detach()
         # The gradient of a linear layer is its transposed weight
-        torch.testing.assert_allclose(input.grad, scaler.scale(model.weight.T))
-        torch.testing.assert_allclose(out, model(input))
+        torch_testing_assert_close(input.grad, scaler.scale(model.weight.T))
+        torch_testing_assert_close(out, model(input))
         logic.train_step_optimizers(model, optimizers, 0)
         # Checks that the value was correctly updated and gradients deescaled
         # before the update
-        torch.testing.assert_allclose(
+        torch_testing_assert_close(
             scaler.scale(m_weight) - w_grad, scaler.scale(model.weight.T))
 
     @pytest.mark.gpu
@@ -659,4 +521,4 @@ class TestLogic:
         models = {'main': model}
         models['main'].eval()
         out = logic.eval_step(models, 0, input)
-        torch.testing.assert_allclose(out, model(input))
+        torch_testing_assert_close(out, model(input))

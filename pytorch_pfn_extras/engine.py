@@ -11,7 +11,7 @@ from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.runtime._runtime import DeviceLike
-    from pytorch_pfn_extras import training
+    from pytorch_pfn_extras.training import extension
     from pytorch_pfn_extras.training.trigger import TriggerLike
     from pytorch_pfn_extras.training._trainer import Trainer
     from pytorch_pfn_extras.training._evaluator import Evaluator
@@ -24,7 +24,8 @@ def create_trainer(
         optimizers: Union[torch.optim.Optimizer, Mapping[str, torch.optim.Optimizer]],
         max_epochs: int,
         *,
-        extensions: Optional[Sequence['training.Extension']] = None,
+        extensions: Optional[Sequence[Union['extension.ExtensionLike',
+                                            'extension.ExtensionEntry']]] = None,
         out_dir: str = 'result',
         stop_trigger: 'TriggerLike' = None,
         writer: Optional['writing.Writer'] = None,
@@ -39,6 +40,8 @@ def create_trainer(
         handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Mapping[str, Any]] = None,
+        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
+        **kwargs: Any,
 ) -> 'Trainer':
     """Creates a trainer object.
 
@@ -83,6 +86,9 @@ def create_trainer(
         runtime_options:
             Options that are set to the runtime object. See the documentation
             of `ppe.runtime.PyTorchRuntime` for details.
+        profile:
+            A `torch.profiler.profile` object to collect the performance
+            metrics.
     """
 
     options = options.copy() if options else {}
@@ -111,6 +117,8 @@ def create_trainer(
         extensions=extensions, out_dir=out_dir,
         stop_trigger=stop_trigger, writer=writer,
         transform_model=transform_model,
+        profile=profile,
+        **kwargs,
     )
 
 
@@ -124,6 +132,7 @@ def create_evaluator(
         handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Mapping[str, Any]] = None,
+        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
 ) -> 'Evaluator':
     """Creates an evaluator object. The return value of this function is
     expected to be fed to `ppe.engine.create_trainer` as an argument.
@@ -153,6 +162,9 @@ def create_evaluator(
         runtime_options:
             Options that are set to the runtime object. See the documentation
             of `ppe.handler.Handler` for details.
+        profile:
+            A `torch.profiler.profile` object to collect the performance
+            metrics.
     """
 
     metrics = metrics if metrics else []
@@ -181,4 +193,5 @@ def create_evaluator(
         models=models,
         progress_bar=progress_bar,
         metrics=metrics,
+        profile=profile,
     )

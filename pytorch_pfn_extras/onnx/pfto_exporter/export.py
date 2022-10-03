@@ -9,6 +9,8 @@ import onnx.helper
 import onnx.numpy_helper
 import onnx.shape_inference
 import pytorch_pfn_extras
+import pytorch_pfn_extras.onnx._constants
+from pytorch_pfn_extras.onnx._globals import GLOBALS
 import torch
 import torch.jit
 import torch.onnx.symbolic_helper as sym_hel
@@ -24,15 +26,25 @@ torch._C.Graph.returnNode = torch._C.Graph.return_node  # type: ignore[attr-defi
 torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defined]
 
 _ppe_ignore_scope: str = "_ppe_as_out_module"
+_list_create_ops: List[str] = ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"]
 
 
 def _custom_unpack_list(list_value: torch._C.Value) -> List[torch._C.Value]:
     list_node = list_value.node()
-    assert list_node.kind() in ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"], f"Unknown list operator: {list_node}"
+    assert list_node.kind() in _list_create_ops, f"Unknown list operator: {list_node}"
     return list(list_node.inputs())
 
 
+def _is_value(x: Any) -> bool:
+    return isinstance(x, torch._C.Value)
+
+
+def _custom_is_packed_list(list_value: torch._C.Value) -> bool:
+    return _is_value(list_value) and list_value.node().kind() in _list_create_ops
+
+
 sym_hel._unpack_list = _custom_unpack_list
+sym_hel._is_packed_list = _custom_is_packed_list
 
 
 def _unique_id(v: torch._C.Value) -> TorchValueID:
@@ -48,7 +60,7 @@ def _type_to_proto(t: torch._C.TensorType) -> onnx.TypeProto:
         return onnx.TypeProto()
 
     ret: onnx.TypeProto = onnx.TypeProto()
-    ret.denotation = repr(t)
+    ret.denotation = repr(t).upper()
 
     if t.kind() == "ListType":
         ret.sequence_type.elem_type.CopyFrom(_type_to_proto(cast(torch._C.TensorType, t.getElementType())))
@@ -294,6 +306,7 @@ class _Exporter(_ExporterOptions):
         # onnx only supports tensors, so we turn all out number types into tensors
         torch._C._jit_pass_erase_number_types(graph)  # type: ignore[attr-defined]
 
+        input_names: List[str] = []
         if self.input_names is not None:
             input_names = self.input_names.copy()
             if self.self_id is not None:
@@ -306,7 +319,7 @@ class _Exporter(_ExporterOptions):
             for name, out in zip(self.output_names, graph.outputs()):
                 out.setDebugName(name)
         torch._C._jit_pass_onnx_set_dynamic_input_shape(  # type: ignore[attr-defined]
-            graph, self.dynamic_axes or {}, input_names or []
+            graph, self.dynamic_axes or {}, input_names
         )
 
         return graph
@@ -318,7 +331,7 @@ class _Exporter(_ExporterOptions):
         else:
             self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
 
-        if self.do_constant_folding and self.opset_version in torch.onnx.constant_folding_opset_versions:
+        if self.do_constant_folding and self.opset_version in pytorch_pfn_extras.onnx._constants.onnx_constant_folding_opsets:
             folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]
                 graph, self.vars, self.opset_version
             )
@@ -367,7 +380,7 @@ class _Exporter(_ExporterOptions):
             c = cast(torch._C.Value, g.op("Constant"))
             if n.kindOf("value") == "ival":
                 ival = n.output().toIValue()
-                if isinstance(ival, list) and not isinstance(ival[0], (int, float)):
+                if isinstance(ival, list) and ival and not isinstance(ival[0], (int, float)):
                     vals: List[torch._C.Value] = []
                     for i in ival:
                         if isinstance(i, torch.Tensor):
@@ -477,11 +490,15 @@ class _Exporter(_ExporterOptions):
             # TODO(twata): Use repr(pyobj) in scope name or doc_string
             return cast(Callable, pyobj.symbolic)
         else:
+            domain = ""
             if ns == "prim":
-                op = f"prim_{op}"
-            if sym_reg.is_registered_op(op, "", self.opset_version):  # type: ignore[no-untyped-call]
+                if pytorch_pfn_extras.requires('1.11'):
+                    domain = "prim"
+                else:
+                    op = f"prim_{op}"
+            if sym_reg.is_registered_op(op, domain, self.opset_version):  # type: ignore[no-untyped-call]
                 return cast(
-                    Callable, sym_reg.get_registered_op(op, "", self.opset_version)  # type: ignore[no-untyped-call]
+                    Callable, sym_reg.get_registered_op(op, domain, self.opset_version)  # type: ignore[no-untyped-call]
                 )
             else:
                 return None
@@ -498,6 +515,8 @@ class _Exporter(_ExporterOptions):
         node_inputs = list(n.inputs())
         if n.kind() == "prim::PythonOp":
             node_inputs.extend(n.scalar_args())
+            if "module" in attrs:
+                del attrs["module"]
         sym_outs = _to_tuple_if_not_sequence(sym_func(g, *node_inputs, **attrs))
         assert len(sym_outs) == n.outputsSize(), f"{sym_outs}: {len(sym_outs)} vs {n.outputsSize()}"
 
@@ -515,6 +534,7 @@ class _Exporter(_ExporterOptions):
                 if i in start_vals:
                     continue
                 ret.add(i.node())
+                start_vals.add(i)
                 target_vals.extend(list(i.node().inputs()))
             return list(ret)
 
@@ -692,7 +712,7 @@ class _Exporter(_ExporterOptions):
                     register_val_name(_unique_id(i), value_name(i), shadow=True)
                     continue
                 if _unique_id(i) not in val_tab:
-                    register_val_name(_unique_id(v), value_name(i))
+                    register_val_name(_unique_id(i), value_name(i))
 
             for o in n.outputs():
                 if _unique_id(o) not in val_tab:
@@ -715,7 +735,10 @@ class _Exporter(_ExporterOptions):
 
             new_nd = onnx.NodeProto()
             new_nd.name = node_name(n)
-            new_nd.op_type = n.kind().split("::")[-1]
+            ns, op = n.kind().split("::")
+            new_nd.op_type = op
+            if ns not in ["onnx", "prim"]:
+                new_nd.domain = ns
             if n.kind() == "prim::If":
                 if n in self.node_doc_string:
                     new_nd.doc_string = f"""## Symbolic node
@@ -833,6 +856,8 @@ class _Exporter(_ExporterOptions):
             inout_names.append(k)
             onnx_outputs.append(onnx_value(v, k))
             if idx < len(self.outputs):
+                if isinstance(self.outputs[idx], tuple):
+                    raise RuntimeError('Models returning nested lists/tuples are not supported yet')
                 _apply_tensor_info_to_value_info(onnx_outputs[-1], self.outputs[idx])
                 apply_dynamic_axes_info(onnx_outputs[-1], k)
 
@@ -851,9 +876,20 @@ class _Exporter(_ExporterOptions):
 
         self.log("ONNX printable graph", onnx.helper.printable_graph(graph))
 
+        def get_model_opset_imports(graph: onnx.GraphProto) -> List[onnx.OperatorSetIdProto]:
+            opsets = {onnx.defs.ONNX_DOMAIN: self.opset_version}
+            for node in graph.node:
+                if node.domain != onnx.defs.ONNX_DOMAIN:
+                    opsets[node.domain] = 1
+            opset_imports = []
+            for domain, version in opsets.items():
+                opset_imports.append(onnx.helper.make_opsetid(domain, version))
+            return opset_imports
+
         model: onnx.ModelProto = onnx.helper.make_model(
             graph,
-            opset_imports=[onnx.helper.make_opsetid("", self.opset_version)],
+            opset_imports=get_model_opset_imports(graph),
+            producer_name="pfto",
         )
         model = self.check_model(model)
 
@@ -871,11 +907,11 @@ class _Exporter(_ExporterOptions):
             assert not to_utils.is_in_onnx_export()  # type: ignore[no-untyped-call]
             with to_utils.select_model_mode_for_export(self.original_model, self.training):
                 to_utils.__IN_ONNX_EXPORT = True
-                prev_opset_version = sym_hel._export_onnx_opset_version
+                prev_opset_version = GLOBALS.export_onnx_opset_version
                 sym_hel._set_opset_version(self.opset_version)  # type: ignore[no-untyped-call]
-                prev_export_type = sym_hel._operator_export_type
+                prev_export_type = GLOBALS.operator_export_type
                 sym_hel._set_operator_export_type(self.operator_export_type)  # type: ignore[no-untyped-call]
-                prev_shape_inference = sym_hel._onnx_shape_inference
+                prev_shape_inference = GLOBALS.onnx_shape_inference
                 sym_hel._set_onnx_shape_inference(  # type: ignore[no-untyped-call]
                     False  # TODO(twata): Use `self.onnx_shape_inference`
                 )

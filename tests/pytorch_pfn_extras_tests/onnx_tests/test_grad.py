@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.onnx
 
 from pytorch_pfn_extras.onnx import grad
-from tests.pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
+from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")

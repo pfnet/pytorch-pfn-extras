@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import pytorch_pfn_extras as ppe
-from tests.pytorch_pfn_extras_tests.dataset_tests.tabular_tests import dummy_dataset  # NOQA
+from pytorch_pfn_extras_tests.dataset_tests.tabular_tests import dummy_dataset  # NOQA
 
 
 # filter out invalid combinations of params

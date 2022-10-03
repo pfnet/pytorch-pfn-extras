@@ -81,6 +81,8 @@ def main():
                         help='For Saving the current Model')
     parser.add_argument('--snapshot', type=str, default=None,
                         help='path to snapshot file')
+    parser.add_argument('--slack', type=str, default=None,
+                        help='post to the specified Slack channel')
     args = parser.parse_args()
     use_cuda = args.cuda and torch.cuda.is_available()
 
@@ -136,6 +138,21 @@ def main():
                                 'val/loss', 'val/acc']),
         extensions.snapshot(),
     ]
+
+    if args.slack is not None:
+        my_extensions.append(extensions.Slack(
+            channel=args.slack,
+            msg='Epoch #{manager.epoch}: val/loss = {val/loss}',
+            # Surround the username with <> to mention.
+            end_msg='{default}\n<@your_slack_user_name>',
+
+            # Upload any artifacts generated during the training.
+            filenames=['result/statistics.png'],
+            # You can specify when to upload these files.
+            # e.g., only at the final epoch:
+            # upload_trigger=(args.epochs, 'epoch'),
+        ))
+
     # Custom stop triggers can be added to the manager and
     # their status accessed through `manager.stop_trigger`
     trigger = None

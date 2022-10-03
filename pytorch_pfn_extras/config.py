@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Callable, Dict, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Union
 import reprlib
 
 
@@ -137,6 +137,23 @@ class Config(object):
                     *_parse_key(config[1:], config_key[:-1])[:2], trace))
             else:
                 return cache(config)
+
+    def update_via_args(self, args: Sequence[Tuple[str, Any]]) -> None:
+        for k, v in args:
+            n_k, c_k = _parse_key(k, ())[:2]
+            if (n_k, c_k) in self._cache:
+                if (
+                    isinstance(self._cache[(n_k, c_k)], bool)
+                    and isinstance(v, str)
+                ):
+                    if not v.lower() in ("true", "false"):
+                        raise ValueError(
+                            f'bool should be true/false. Found {v}'
+                        )
+                    v = v.lower() == "true"
+                self._cache[(n_k, c_k)] = type(self._cache[(n_k, c_k)])(v)
+            else:
+                self._cache[(n_k, c_k)] = v
 
 
 def _parse_key(

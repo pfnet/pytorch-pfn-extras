@@ -141,6 +141,6 @@ class ProfileReport(extension.Extension):
             self._trigger.load_state_dict(to_load["_trigger"])
         self._log = json.loads(to_load["_log"])
 
-    def finalize(self) -> None:
+    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
         if self._writer is not None:
             self._writer.finalize()

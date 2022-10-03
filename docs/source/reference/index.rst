@@ -47,9 +47,12 @@ Extensions
 .. autosummary::
    :toctree: generated/
 
+   training.extensions.BestValue
    training.extensions.Evaluator
    training.extensions.LogReport
+   training.extensions.MaxValue
    training.extensions.MicroAverage
+   training.extensions.MinValue
    training.extensions.observe_lr
    training.extensions.observe_value
    training.extensions.ParameterStatistics
@@ -58,6 +61,8 @@ Extensions
    training.extensions.ProgressBar
    training.extensions.ProfileReport
    training.extensions.snapshot
+   training.extensions.Slack
+   training.extensions.SlackWebhook
    training.extensions.VariableStatisticsPlot
 
 Triggers

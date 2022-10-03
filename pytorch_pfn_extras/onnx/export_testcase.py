@@ -11,10 +11,10 @@ import warnings
 import onnx
 import onnx.numpy_helper
 import pytorch_pfn_extras
+import pytorch_pfn_extras.onnx._constants
 import torch
 import torch.autograd
 from torch.onnx import OperatorExportTypes
-from torch.onnx.symbolic_helper import _default_onnx_opset_version
 from torch.onnx.utils import \
     _export as torch_export, _model_to_graph as torch_model_to_graph
 
@@ -111,7 +111,12 @@ def _export_util(
         operator_export_type = OperatorExportTypes.ONNX_ATEN if\
             aten else OperatorExportTypes.RAW  # type: ignore
     elif operator_export_type is None:
-        if torch.onnx.PYTORCH_ONNX_CAFFE2_BUNDLE:
+        if pytorch_pfn_extras.requires("1.12.0"):
+            use_onnx_aten_fallback = torch.onnx._CAFFE2_ATEN_FALLBACK  # type: ignore[attr-defined]
+        else:
+            use_onnx_aten_fallback = torch.onnx.PYTORCH_ONNX_CAFFE2_BUNDLE  # type: ignore[attr-defined]
+
+        if use_onnx_aten_fallback:
             operator_export_type = OperatorExportTypes.ONNX_ATEN_FALLBACK
         else:
             operator_export_type = OperatorExportTypes.ONNX
@@ -122,12 +127,14 @@ def _export_util(
     try:
         torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
         if pytorch_pfn_extras.requires('1.10.0'):
+            checker_error = getattr(torch.onnx, "CheckerError", None)
+            if checker_error is None:
+                checker_error = torch.onnx.utils.ONNXCheckerError  # type: ignore[attr-defined]
             try:
                 enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
                 return torch_export(  # type: ignore[no-untyped-call]
                     model, args, f, **kwargs)
-            # this class will change in torch 1.11 to torch.onnx.utils.CheckerError
-            except torch.onnx.utils.ONNXCheckerError:  # type: ignore[attr-defined]
+            except checker_error:
                 if enable_onnx_checker:
                     raise
         else:
@@ -150,7 +157,7 @@ def _export(
     bytesio = io.BytesIO()
     opset_ver = kwargs.get('opset_version', None)
     if opset_ver is None:
-        opset_ver = _default_onnx_opset_version
+        opset_ver = pytorch_pfn_extras.onnx._constants.onnx_default_opset
         kwargs['opset_version'] = opset_ver
     if use_pfto or not pytorch_pfn_extras.requires('1.10.0'):
         strip_doc_string = kwargs.get('strip_doc_string', True)
@@ -226,7 +233,7 @@ def export(
 
 
 def export_testcase(
-        model: torch.nn.Module,
+        model: Union[torch.nn.Module, torch.jit.ScriptModule],
         args: Any,
         out_dir: str,
         *,
@@ -281,6 +288,9 @@ def export_testcase(
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
         input_names=input_names, **kwargs)
+    if isinstance(model, torch.jit.ScriptModule):
+        assert outs is None
+        outs = model(*args)
     if isinstance(outs, torch.Tensor):
         outs = outs,
     elif outs is None:

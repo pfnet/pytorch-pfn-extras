@@ -3,7 +3,7 @@ import itertools
 import numpy as np
 import pytest
 
-from tests.pytorch_pfn_extras_tests.dataset_tests.tabular_tests import (
+from pytorch_pfn_extras_tests.dataset_tests.tabular_tests import (
     dummy_dataset,
 )  # NOQA
 

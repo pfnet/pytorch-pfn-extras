@@ -87,7 +87,7 @@ class Extension:
         raise AttributeError('{} object has no attribute {}'.format(
             type(self).__name__, name))
 
-    def finalize(self) -> None:
+    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
         """Finalizes the extension.
 
         This method is called at the end of the training loop.
@@ -162,8 +162,8 @@ class _WrappedExtension(Extension):
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         self._ext(manager)
 
-    def finalize(self) -> None:
-        getattr(self._ext, 'finalize', super().finalize)()
+    def finalize(self, manager: ExtensionsManagerProtocol) -> None:
+        getattr(self._ext, 'finalize', super().finalize)(manager)
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         getattr(self._ext, 'initialize', super().initialize)(manager)
@@ -185,7 +185,7 @@ def make_extension(
         trigger: 'TriggerLike' = Extension.trigger,
         default_name: Optional[str] = None,
         priority: int = Extension.priority,
-        finalizer: Callable[[], None] = lambda: None,
+        finalizer: 'ExtensionLike' = lambda manager: None,
         initializer: 'ExtensionLike' = lambda manager: None,
         on_error: _OnErrorType = lambda manager, exc, tb: None,
 ) -> Callable[['ExtensionLike'], 'ExtensionLike']:

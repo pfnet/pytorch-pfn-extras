@@ -82,3 +82,14 @@ Please note that this is an oversimplified description and that developing a
 runtime that is 100% compatible with PyTorch requires to wrap the substitute
 forward function with ``torch.autograd.Function`` among several other concerns
 such as ``state_dict`` manipulation to ensure correcteness.
+
+Runtime Registry
+-------------------
+
+When creating a new ``Runtime`` class for custom needs, they need to be registered
+in a global ``runtime_registry`` object as detailed above.
+This object is of the ``_RuntimeRegistry`` type and it maintains a map of strings and
+``Runtime`` types. The keys are the devices passed to ``ppe.to`` and the
+types will be the type of the ``Runtime`` object that ``ppe.to`` will use to treat the
+module or tensor. Beware that users are not supposed to interact directly with this class, only
+with the ``runtime_registry.register`` to register new runtimes.

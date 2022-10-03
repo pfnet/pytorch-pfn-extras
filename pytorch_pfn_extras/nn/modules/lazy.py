@@ -129,7 +129,7 @@ class LazyInitializationMixin:
 
 class UninitializedParameter(torch.nn.Parameter):
 
-    def __repr__(self) -> str:
+    def __repr__(self) -> str:  # type: ignore[override]
         return 'Uninitialized lazy parameter'
 
     def share_memory_(self) -> 'UninitializedParameter':

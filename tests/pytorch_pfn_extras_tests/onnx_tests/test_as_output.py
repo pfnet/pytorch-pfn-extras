@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.onnx
 
 from pytorch_pfn_extras.onnx import as_output
-from tests.pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
+from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -93,5 +93,40 @@ def test_no_as_output():
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
     assert 'Conv_0' in named_nodes
     assert 'MatMul_2' in named_nodes
+
+    assert len([v.name for v in actual_onnx.graph.output]) == 1
+
+
+@pytest.mark.skipif(
+    not pytorch_pfn_extras.requires("1.10.0"),
+    reason='skip for PyTorch 1.9 or earlier')
+def test_as_output_in_scripting():
+
+    class Net(nn.Module):
+
+        def __init__(self):
+            super(Net, self).__init__()
+            self.conv = nn.Conv2d(1, 6, 3)
+            self.linear = nn.Linear(30, 20, bias=False)
+
+        def forward(self, x, b):
+            h = self.conv(x)
+            if b:  # IF statement to check scripted (not traced) IR
+                h = -h
+            h = as_output("h", h)
+            h = self.linear(h)
+            return h
+
+    model = torch.jit.script(Net())
+    x = torch.ones((1, 1, 32, 32))
+    b = torch.tensor(True)
+    with pytest.warns(UserWarning):
+        output_dir = _helper(model, (x, b), 'as_output', use_pfto=False)
+
+    actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
+    named_nodes = {n.name: n for n in actual_onnx.graph.node}
+    assert 'Conv_0' in named_nodes
+    assert 'If_2' in named_nodes
+    assert 'MatMul_6' in named_nodes
 
     assert len([v.name for v in actual_onnx.graph.output]) == 1

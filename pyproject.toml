@@ -1,3 +1,6 @@
+[build-system]
+requires = ["setuptools<64", "wheel"]
+
 [tool.pysen]
 version = "0.10.1"
 

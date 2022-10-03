@@ -1,19 +1,19 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Set, Union
+from typing import Any, Callable, Dict, List, Optional, Set
 
 import torch
 
 
 @dataclass
 class CodeBlock:
-    """Class that is used to specify and apply actions to a ``torch.nn.Module``.
+    """Class that is used to specify and apply actions to a callable.
 
     CodeBlocks are used in Logic classes to write device agnostic codes, as
     the device runtime is in charge of doing the execution of the module with
     the actions requested from the codeblock
 
     Args:
-       func: The module to be operated according to the specified options.
+       func: The function to be operated according to the specified options.
        optimizer: The Optimizer that will be used for parameter update.
        backprop: Flag to specify if gradients are to be calculated.
        backprop_from: Select a single output from the block execution to perform
@@ -21,8 +21,8 @@ class CodeBlock:
        backprop_to: Name of the values where backpropagation will be stopped.
        state: Data that can be used during the CodeBlock execution.
     """
-    func: torch.nn.Module
-    optimizer: Optional[torch.optim.Optimizer]
+    func: Callable
+    optimizers: List[torch.optim.Optimizer]
     backprop: bool
     backprop_from: Optional[str]
     backprop_to: Optional[Set[str]]
@@ -52,8 +52,8 @@ class CodeBlock:
 
 
 def update_parameters(
-    block: Union[torch.nn.Module, CodeBlock],
-    optimizer: torch.optim.Optimizer,
+    block: Callable,
+    optimizers: List[torch.optim.Optimizer],
     backprop_from: Optional[str] = None,
     backprop_to: Optional[Set[str]] = None,
 ) -> CodeBlock:
@@ -64,7 +64,7 @@ def update_parameters(
 
     Args:
        block: ``torch.nn.Module`` or ``CodeBlock`` to update the parameters.
-       optimizer: The Optimizer that will be used for parameter update.
+       optimizers: The list of Optimizer that will be used for parameter update.
        backprop_from: Select a single output from the block execution to perform
            the gradient calculation.
        backprop_to: Name of the values where backpropagation will be stopped.
@@ -72,29 +72,20 @@ def update_parameters(
     Returns: A ``CodeBlock`` object.
     """
     if isinstance(block, CodeBlock):
-        func = block.func
-        state = block.state
-        runtime = block.runtime
         assert not block.backprop
-    else:
-        assert isinstance(block, torch.nn.Module)
-        func = block
-        state = {}
-        runtime = block._ppe_runtime
+    codeblock = forward(block)
     return CodeBlock(
-        func=func,
-        optimizer=optimizer,
+        func=codeblock.func,
+        optimizers=optimizers,
         backprop=True,
         backprop_from=backprop_from,
         backprop_to=backprop_to,
-        state=state,
-        runtime=runtime,
+        state=codeblock.state,
+        runtime=codeblock.runtime,
     )
 
 
-def forward(
-    block: Union[torch.nn.Module, CodeBlock],
-) -> CodeBlock:
+def forward(block: Callable) -> CodeBlock:
     """
     Returns a ``CodeBlock`` that performs the forward pass for the given
     ``torch.nn.Module`` or another ``CodeBlock``.
@@ -109,13 +100,20 @@ def forward(
         state = block.state
         runtime = block.runtime
     else:
-        assert isinstance(block, torch.nn.Module)
+        module = None
+        if isinstance(block, torch.nn.Module):
+            module = block
+        else:
+            module = getattr(block, '__self__', None)
+            assert module is not None
         func = block
         state = {}
-        runtime = getattr(block, '_ppe_runtime', None)
+        runtime = getattr(module, '_ppe_runtime', None)
+        assert runtime is not None
+
     return CodeBlock(
         func=func,
-        optimizer=None,
+        optimizers=[],
         backprop=False,
         backprop_from=None,
         backprop_to=None,

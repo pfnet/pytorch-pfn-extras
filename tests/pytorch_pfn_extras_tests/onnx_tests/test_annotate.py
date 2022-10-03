@@ -16,7 +16,7 @@ import torch.onnx
 from pytorch_pfn_extras.onnx import annotate
 from pytorch_pfn_extras.onnx import apply_annotation
 from pytorch_pfn_extras.onnx import scoped_anchor
-from tests.pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
+from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -374,8 +374,8 @@ def test_scoped_anchor_multiple_inout():
     anchor_node, pre_node, next_node = named_nodes['Anchor_0_start']
     # anchor_attrs = [a.name for a in anchor_node.attribute]
     assert pre_node is None
-    assert next_node.name == 'Concat_4'
+    assert next_node.name.startswith('Concat_')
     anchor_node, pre_node, next_node = named_nodes['Anchor_0_end']
     # anchor_attrs = [a.name for a in anchor_node.attribute]
-    assert pre_node.name == 'Split_10'
+    assert pre_node.name.startswith('Split_')
     assert next_node is None
