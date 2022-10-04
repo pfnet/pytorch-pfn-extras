@@ -157,7 +157,8 @@ def _export(
     bytesio = io.BytesIO()
     opset_ver = kwargs.get('opset_version', None)
     force_verbose = False
-    original_log = torch.onnx.log
+    if pytorch_pfn_extras.requires('1.12.0'):
+        original_log = torch.onnx.log
     if opset_ver is None:
         opset_ver = pytorch_pfn_extras.onnx._constants.onnx_default_opset
         kwargs['opset_version'] = opset_ver
