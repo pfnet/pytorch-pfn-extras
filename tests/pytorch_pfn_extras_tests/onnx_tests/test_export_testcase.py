@@ -75,7 +75,9 @@ def test_export_testcase():
     model = Net().to('cpu')
     x = torch.zeros((1, 1, 28, 28))
 
-    output_dir = _helper(model, x, 'mnist', output_grad=True, metadata=True)
+    output_dir = _helper(
+        model, x, 'mnist', output_grad=True, metadata=True,
+        check_reconstruct=False)
 
     assert os.path.isdir(output_dir)
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))
@@ -159,10 +161,12 @@ def test_model_not_overwrite():
     x = torch.zeros((1, 1, 28, 28))
 
     dir_name = 'multiple_test_dataset'
-    output_dir = _helper(model, x, dir_name)
+    output_dir = _helper(model, x, dir_name, check_reconstruct=False)
     assert os.path.isdir(output_dir)
 
-    output_dir = _helper(model, x + 0.5, dir_name, model_overwrite=False)
+    output_dir = _helper(
+        model, x + 0.5, dir_name,
+        model_overwrite=False, check_reconstruct=False)
 
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_1')
     assert os.path.isfile(os.path.join(test_data_set_dir, 'input_0.pb'))
@@ -355,7 +359,8 @@ def test_export_testcase_options():
 
     output_dir = _helper(
         model, x, 'mnist_stripped_tensor_data',
-        opset_version=11, strip_doc_string=False)
+        opset_version=11, strip_doc_string=False,
+        check_reconstruct=False)
 
     onnx_model = onnx.load(os.path.join(
         output_dir, 'model.onnx'), load_external_data=False)
@@ -396,7 +401,8 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
     output_dir = _helper(
         model, args=(x, unused), d='net_with_unused_input_without_input_names',
         opset_version=11, strip_doc_string=False,
-        keep_initializers_as_inputs=keep_initializers_as_inputs)
+        keep_initializers_as_inputs=keep_initializers_as_inputs,
+        check_reconstruct=False)
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.exists(os.path.join(test_data_set_dir, 'input_0.pb'))
@@ -412,7 +418,7 @@ def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
         model, args=(x, unused), d='net_with_unused_input_with_input_names',
         opset_version=11, strip_doc_string=False,
         keep_initializers_as_inputs=keep_initializers_as_inputs,
-        input_names=['x', 'unused'])
+        input_names=['x', 'unused'], check_reconstruct=False)
     assert os.path.isdir(output_dir)
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_0')
     assert os.path.exists(os.path.join(test_data_set_dir, 'input_0.pb'))
