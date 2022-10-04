@@ -9,6 +9,7 @@ from typing import List, Set, Tuple
 
 _scope_re = re.compile("(.+), scope: ([^ ]+)")
 _const_vals_re = re.compile(r"value= ([\d\- ]+) \[ \w+Type\{\d+\} \]")
+_const_typed_val_re = re.compile(r"value=\[ \w+Type\{(-?[\d\.e-]+)\} \]")
 _const_val_re = re.compile(r"value=\{(-?[\d\.e-]+)\}")
 _func_re = re.compile(r" = \^(\w+)\(")
 
@@ -27,6 +28,7 @@ def _process_line(line: str) -> Tuple[str, str]:
     line = line.replace("onnx::SequenceConstruct", "prim::ListConstruct")
     if "prim::Constant" in line:
         line = re.sub(_const_vals_re, lambda m: f"value=[{m[1].replace('  ', ', ')}]", line)
+        line = re.sub(_const_typed_val_re, r"value=\1", line)
         line = re.sub(_const_val_re, r"value=\1", line)
 
     func_match = re.search(_func_re, line)
