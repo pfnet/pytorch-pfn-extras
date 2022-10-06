@@ -80,7 +80,7 @@ def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str,
     outputs: List[str] = ["%" + o.name.split(".")[-1] for o in model.graph.output]
     body = "\n    ".join(lines)
 
-    initializer_name_re = re.compile(r"^%(\w+) [:=]")
+    initializer_name_re = re.compile(r"^%([\w.]+) [:=]")
     params: List[Tuple[str, torch.Tensor]] = []
     for i in model.graph.initializer:
         i_name = re.match(initializer_name_re, i.doc_string)
