@@ -66,7 +66,8 @@ def _helper(model, args, d, use_pfto=True, check_reconstruct=True, **kwargs):
         kwargs["strip_doc_string"] = False
     export_testcase(model, args, output_dir, use_pfto=use_pfto, **kwargs)
     if check_reconstruct and use_pfto and not kwargs["strip_doc_string"]:
-        reconstruct(onnx.load(os.path.join(output_dir, "model.onnx")))
+        reconstruct(pytorch_pfn_extras.onnx.load_model(
+            os.path.join(output_dir, "model.onnx")))
     return output_dir
 
 
@@ -266,7 +267,7 @@ def test_export_testcase_strip_large_tensor_data():
     output_dir = _helper(
         model, x, 'mnist_stripped_tensor_data',
         output_grad=True, strip_large_tensor_data=True,
-        metadata=True)
+        metadata=True, check_reconstruct=False)
 
     assert os.path.isdir(output_dir)
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))
