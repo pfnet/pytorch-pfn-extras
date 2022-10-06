@@ -267,7 +267,7 @@ def test_export_testcase_strip_large_tensor_data():
     output_dir = _helper(
         model, x, 'mnist_stripped_tensor_data',
         output_grad=True, strip_large_tensor_data=True,
-        metadata=True, check_reconstruct=False)
+        metadata=True)
 
     assert os.path.isdir(output_dir)
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))

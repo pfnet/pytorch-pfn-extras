@@ -6,6 +6,8 @@ import re
 from collections import OrderedDict
 from typing import List, Set, Tuple
 
+import pytorch_pfn_extras.onnx.unstrip_tensor
+
 
 _scope_re = re.compile("(.+), scope: ([^ ]+)")
 _const_vals_re = re.compile(r"value= ([\d\- ]+) \[ \w+Type\{\d+\} \]")
@@ -86,7 +88,12 @@ def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str,
         i_name = re.match(initializer_name_re, i.doc_string)
         if i_name:
             inputs.append(f"%{i_name[1]}")
-            params.append((i.name, torch.from_numpy(onnx.numpy_helper.to_array(i).copy())))
+
+            i_u = onnx.TensorProto()
+            i_u.CopyFrom(i)
+            pytorch_pfn_extras.onnx.unstrip_tensor._unstrip_tensor(i_u)
+            t = torch.from_numpy(onnx.numpy_helper.to_array(i_u).copy())
+            params.append((i.name, t))
 
     src: str = f"""graph({", ".join(inputs)}):
     {body}
