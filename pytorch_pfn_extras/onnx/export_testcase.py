@@ -158,7 +158,7 @@ def _export(
     opset_ver = kwargs.get('opset_version', None)
     force_verbose = False
     if pytorch_pfn_extras.requires('1.12.0'):
-        original_log = torch.onnx.log
+        original_log = torch.onnx.log  # type: ignore[attr-defined]
     if opset_ver is None:
         opset_ver = pytorch_pfn_extras.onnx._constants.onnx_default_opset
         kwargs['opset_version'] = opset_ver
@@ -173,9 +173,10 @@ def _export(
                 #  Following line won't work because verbose mode always
                 # enable logging so we are replacing python function instead:
                 # torch.onnx.disable_log()
-                def no_op(*args):
+                def no_op(*args: Any) -> None:
                     pass
-                torch.onnx.log = no_op
+
+                torch.onnx.log = no_op  # type: ignore[attr-defined]
         kwargs['verbose'] = True
     with init_annotate(model, opset_ver) as ann, \
             as_output.trace(model) as (model, outputs), \
@@ -199,7 +200,7 @@ def _export(
 
     if force_verbose:
         # torch.onnx.enable_log()
-        torch.onnx.log = original_log
+        torch.onnx.log = original_log  # type: ignore[attr-defined]
 
     return onnx_graph, outs
 
