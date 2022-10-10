@@ -94,6 +94,7 @@ def _export_util(
         model: torch.nn.Module,
         args: Sequence[Any],
         f: IO,
+        return_output: bool = False,
         **kwargs: Any,
 ) -> Any:
     """Wrap operator type to export
@@ -137,6 +138,9 @@ def _export_util(
             except checker_error:
                 if enable_onnx_checker:
                     raise
+                if return_output:
+                    # Re-run the model to obtain the output.
+                    return model(*args)
         else:
             kwargs['_retain_param_name'] = True
             return torch_export(  # type: ignore[no-untyped-call]
@@ -151,6 +155,7 @@ def _export(
         strip_large_tensor_data: bool = False,
         large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
         use_pfto: bool = False,
+        return_output: bool = False,
         **kwargs: Any,
 ) -> Tuple[onnx.ModelProto, Any]:
     model.zero_grad()
@@ -186,7 +191,7 @@ def _export(
                 model, args, bytesio, **kwargs)
         else:
             outs = _export_util(
-                model, args, bytesio, **kwargs)
+                model, args, bytesio, return_output=return_output, **kwargs)
         onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)
@@ -233,6 +238,7 @@ def export(
     """
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
+        return_output=return_output,
         **kwargs)
 
     if hasattr(f, 'write'):
@@ -311,8 +317,7 @@ def export_testcase(
         outs = model(*args)
     if isinstance(outs, torch.Tensor):
         outs = outs,
-    elif outs is None:
-        outs = ()
+    assert outs is not None
     # Remove unused inputs
     # - When keep_initializers_as_inputs=True, inputs contains initializers.
     #   So we have to filt initializers.
