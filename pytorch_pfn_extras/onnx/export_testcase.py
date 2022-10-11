@@ -199,8 +199,9 @@ def _export(
         _strip_large_initializer_raw_data(onnx_graph, large_tensor_threshold)
 
     if force_verbose:
-        # torch.onnx.enable_log()
-        torch.onnx.log = original_log  # type: ignore[attr-defined]
+        if pytorch_pfn_extras.requires('1.12.0'):
+            # torch.onnx.enable_log()
+            torch.onnx.log = original_log  # type: ignore[attr-defined]
 
     return onnx_graph, outs
 
