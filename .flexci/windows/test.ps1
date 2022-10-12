@@ -15,6 +15,7 @@ if ($test -eq "torch19") {
     ActivatePython 3.8
     RunOrDie python -m pip install -U pip "setuptools<59.6"
     RunOrDieWithRetry 3 python -m pip install torch==1.9.* torchvision==0.10.* -f https://download.pytorch.org/whl/cu111/torch_stable.html
+    RunOrDie python -m pip install -U pip "pytorch-ignite==0.4.9"
 
 } elseif ($test -eq "torch110") {
     # PyTorch 1.10 + Python 3.9
