@@ -155,7 +155,7 @@ def _export(
         strip_large_tensor_data: bool = False,
         large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
         use_pfto: bool = False,
-        return_output: bool = False,
+        return_output: bool = True,
         **kwargs: Any,
 ) -> Tuple[onnx.ModelProto, Any]:
     model.zero_grad()
