@@ -156,6 +156,9 @@ def _export(
     model.zero_grad()
     bytesio = io.BytesIO()
     opset_ver = kwargs.get('opset_version', None)
+    force_verbose = False
+    if pytorch_pfn_extras.requires('1.12.0'):
+        original_log = torch.onnx.log  # type: ignore[attr-defined]
     if opset_ver is None:
         opset_ver = pytorch_pfn_extras.onnx._constants.onnx_default_opset
         kwargs['opset_version'] = opset_ver
@@ -164,6 +167,16 @@ def _export(
         kwargs['strip_doc_string'] = False
     else:
         strip_doc_string = kwargs.pop('strip_doc_string', True)
+        if not kwargs.get('verbose', False):
+            force_verbose = True
+            if pytorch_pfn_extras.requires('1.12.0'):
+                #  Following line won't work because verbose mode always
+                # enable logging so we are replacing python function instead:
+                # torch.onnx.disable_log()
+                def no_op(*args: Any) -> None:
+                    pass
+
+                torch.onnx.log = no_op  # type: ignore[attr-defined]
         kwargs['verbose'] = True
     with init_annotate(model, opset_ver) as ann, \
             as_output.trace(model) as (model, outputs), \
@@ -184,6 +197,11 @@ def _export(
 
     if strip_large_tensor_data:
         _strip_large_initializer_raw_data(onnx_graph, large_tensor_threshold)
+
+    if force_verbose:
+        if pytorch_pfn_extras.requires('1.12.0'):
+            # torch.onnx.enable_log()
+            torch.onnx.log = original_log  # type: ignore[attr-defined]
 
     return onnx_graph, outs
 
