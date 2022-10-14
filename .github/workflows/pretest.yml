@@ -23,7 +23,7 @@ jobs:
     - name: Install
       run: |
         pip install -U pip wheel
-        pip install 'torch==${{ matrix.torch }}'
+        pip install 'torch==${{ matrix.torch }}' --extra-index-url https://download.pytorch.org/whl/cpu
         pip install -v -e .
         # Test PPE is importable with minimum dependency
         python -c 'import pytorch_pfn_extras'
