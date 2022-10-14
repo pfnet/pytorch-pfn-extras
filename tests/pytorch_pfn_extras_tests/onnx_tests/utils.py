@@ -37,11 +37,13 @@ def run_model_test(
         skip_oxrt = True
     with tempfile.NamedTemporaryFile() as f:
         f.close()
+        rng_state = torch.get_rng_state()
         expected = model(*args)
         if not isinstance(expected, tuple):
             expected = (expected,)
 
         if check_torch_export:
+            torch.set_rng_state(rng_state)
             with tempfile.NamedTemporaryFile() as torch_f:
                 torch.onnx.export(
                     model,
@@ -56,6 +58,7 @@ def run_model_test(
             input_names = [f"input_{idx}" for idx, _ in enumerate(args)]
         if output_names is None:
             output_names = [f"output_{idx}" for idx, _ in enumerate(expected)]
+        torch.set_rng_state(rng_state)
         actual = pfto_export(
             model,
             args,
