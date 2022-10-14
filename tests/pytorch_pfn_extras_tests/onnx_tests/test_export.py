@@ -181,6 +181,6 @@ def test_nested():
         def forward(self, *hidden):
             return self.rnn(self.x, tuple(hidden))
 
-    m = run_model_test(
+    run_model_test(
         Model(), (torch.randn(2, 7, 17), torch.randn(2, 7, 17)),
         skip_oxrt=True, output_names=["a", "b", "c"])
