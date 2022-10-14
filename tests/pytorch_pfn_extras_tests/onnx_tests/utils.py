@@ -41,6 +41,7 @@ def run_model_test(
         if not isinstance(expected, tuple):
             expected = (expected,)
 
+        te_model = None
         if check_torch_export:
             with tempfile.NamedTemporaryFile() as torch_f:
                 torch.onnx.export(
@@ -51,6 +52,8 @@ def run_model_test(
                     output_names=output_names,
                     **kwargs,
                 )
+                torch_f.flush()
+                te_model = onnx.load(torch_f.name)
 
         if input_names is None:
             input_names = [f"input_{idx}" for idx, _ in enumerate(args)]
@@ -70,7 +73,13 @@ def run_model_test(
         assert len(actual) == len(expected)
 
         for a, e in zip(actual, expected):
-            assert torch.isclose(a, e, rtol=rtol, atol=atol).all()
+            if isinstance(a, torch.Tensor) and isinstance(e, torch.Tensor):
+                assert torch.isclose(a, e, rtol=rtol, atol=atol).all()
+
+        pfto_model = onnx.load(f.name)
+        if te_model is not None:
+            assert len(te_model.graph.output) == len(pfto_model.graph.output)
+            assert len(te_model.graph.input) == len(pfto_model.graph.input)
 
         if skip_oxrt:
             return onnx.load(f.name)
@@ -81,4 +90,4 @@ def run_model_test(
             cmp = torch.isclose(torch.tensor(a), e.cpu(), rtol=rtol, atol=atol)
             assert cmp.all(), f"{cmp.logical_not().count_nonzero()} / {cmp.numel()} values failed"
 
-        return onnx.load(f.name)
+        return pfto_model
