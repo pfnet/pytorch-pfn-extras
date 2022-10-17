@@ -853,7 +853,7 @@ class _Exporter(_ExporterOptions):
             opsets = {onnx.defs.ONNX_DOMAIN: self.opset_version}
             for node in graph.node:
                 if node.domain != onnx.defs.ONNX_DOMAIN:
-                    opsets[node.domain] = 1
+                    opsets[node.domain] = self.custom_opsets.get(node.domain, 1)
             opset_imports = []
             for domain, version in opsets.items():
                 opset_imports.append(onnx.helper.make_opsetid(domain, version))
