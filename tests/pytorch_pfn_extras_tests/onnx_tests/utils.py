@@ -52,7 +52,7 @@ def run_model_test(
                     output_names=output_names,
                     **kwargs,
                 )
-                torch_f.flush()
+                torch_f.close()
                 te_model = onnx.load(torch_f.name)
 
         if input_names is None:
