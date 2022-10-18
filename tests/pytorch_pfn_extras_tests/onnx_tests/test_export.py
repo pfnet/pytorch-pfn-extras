@@ -218,4 +218,3 @@ def test_custom_opsets():
     for o in m.opset_import:
         if o.domain == 'org.chainer':
             assert o.version == ver
-
