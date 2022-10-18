@@ -184,3 +184,38 @@ def test_nested():
     run_model_test(
         Model(), (torch.randn(2, 7, 17), torch.randn(2, 7, 17)),
         skip_oxrt=True, output_names=["a", "b", "c"])
+
+
+def test_custom_opsets():
+    class Func(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, a):
+            return a + 10
+
+        @staticmethod
+        def symbolic(g, a):
+            return g.op(
+                "org.chainer::Add",
+                a,
+                g.op("Constant", value_t=torch.tensor([10], dtype=torch.float)),
+            )
+
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+
+        def forward(self, x):
+            return Func.apply(x) + 10
+
+    ver = 9
+    m = run_model_test(
+        Model(), (torch.randn(2, 7, 17),),
+        skip_oxrt=True,
+        custom_opsets={"org.chainer": ver})
+
+    assert len(m.opset_import) == 2
+
+    for o in m.opset_import:
+        if o.domain == 'org.chainer':
+            assert o.version == ver
+
