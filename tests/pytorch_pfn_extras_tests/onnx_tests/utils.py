@@ -44,15 +44,15 @@ def run_model_test(
         te_model = None
         if check_torch_export:
             with tempfile.NamedTemporaryFile() as torch_f:
+                torch_f.close()
                 torch.onnx.export(
                     model,
                     args,
-                    torch_f,
+                    torch_f.name,
                     input_names=input_names,
                     output_names=output_names,
                     **kwargs,
                 )
-                torch_f.close()
                 te_model = onnx.load(torch_f.name)
 
         if input_names is None:
@@ -82,7 +82,7 @@ def run_model_test(
             assert len(te_model.graph.input) == len(pfto_model.graph.input)
 
         if skip_oxrt:
-            return onnx.load(f.name)
+            return pfto_model
 
         ort_session = ort.InferenceSession(f.name)
         actual = ort_session.run(None, {k: v.cpu().numpy() for k, v in zip(input_names, args)})
