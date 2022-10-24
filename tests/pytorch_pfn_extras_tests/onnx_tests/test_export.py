@@ -180,3 +180,54 @@ def test_rand():
     run_model_test(
         Net(), (torch.rand(2, 3),),
         opset_version=13, skip_oxrt=True)
+
+
+@pytest.mark.filterwarnings("ignore::torch.jit.TracerWarning")
+@pytest.mark.filterwarnings("ignore:Exporting a model to ONNX with a batch_size other than 1.*:UserWarning")
+def test_nested():
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.rnn = torch.nn.LSTM(13, 17, 2)
+            self.x = torch.nn.parameter.Parameter(torch.randn(3, 7, 13))
+
+        def forward(self, *hidden):
+            return self.rnn(self.x, tuple(hidden))
+
+    run_model_test(
+        Model(), (torch.randn(2, 7, 17), torch.randn(2, 7, 17)),
+        skip_oxrt=True, output_names=["a", "b", "c"])
+
+
+def test_custom_opsets():
+    class Func(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, a):
+            return a + 10
+
+        @staticmethod
+        def symbolic(g, a):
+            return g.op(
+                "org.chainer::Add",
+                a,
+                g.op("Constant", value_t=torch.tensor([10], dtype=torch.float)),
+            )
+
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+
+        def forward(self, x):
+            return Func.apply(x) + 10
+
+    ver = 9
+    m = run_model_test(
+        Model(), (torch.randn(2, 7, 17),),
+        skip_oxrt=True,
+        custom_opsets={"org.chainer": ver})
+
+    assert len(m.opset_import) == 2
+
+    for o in m.opset_import:
+        if o.domain == 'org.chainer':
+            assert o.version == ver

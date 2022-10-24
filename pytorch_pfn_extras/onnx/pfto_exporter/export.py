@@ -95,10 +95,11 @@ def _remove_prefix(text: str, prefix: str) -> str:
     return text[text.startswith(prefix) and len(prefix) :]
 
 
-def _to_tuple_if_not_sequence(v: Any) -> Any:
-    if not isinstance(v, (list, tuple)):
-        v = (v,)
-    return v
+def _to_tuple_if_not_sequence(v: Any) -> Tuple:
+    if isinstance(v, (list, tuple)):
+        return tuple(v)
+    else:
+        return (v,)
 
 
 def onnx_node_doc_string(onnx_node: torch._C.Node, torch_node: torch._C.Node) -> str:
@@ -217,7 +218,8 @@ class _Exporter(_ExporterOptions):
 
         # TODO(twata): Use `self.traced` instead or use traced result outputs
         self._restore_state()
-        self.outputs = _to_tuple_if_not_sequence(self.original_model(*self.inputs))
+        self.original_outputs = self.original_model(*self.inputs)
+        self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
         self.g: torch._C.Graph = self.traced.inlined_graph
         self.vars: Dict[str, torch.IValue] = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
         self.self_id: Optional[TorchValueID] = None
@@ -773,7 +775,7 @@ class _Exporter(_ExporterOptions):
         )
 
         # TODO(twata): Remove unnecessary outputs. Graph#eraseOutput isn't available
-        # while self.g.outputsSize() > len(self.outputs):
+        # while self.g.outputsSize() > len(self.flat_outputs):
         #     self.g.eraseOutput(self.g.outputsSize() - 1)
 
         self.optimize_onnx(self.g)
@@ -838,10 +840,8 @@ class _Exporter(_ExporterOptions):
             k = val_tab[_unique_id(v)]
             inout_names.append(k)
             onnx_outputs.append(onnx_value(v, k))
-            if idx < len(self.outputs):
-                if isinstance(self.outputs[idx], tuple):
-                    raise RuntimeError('Models returning nested lists/tuples are not supported yet')
-                _apply_tensor_info_to_value_info(onnx_outputs[-1], self.outputs[idx])
+            if idx < len(self.flat_outputs):
+                _apply_tensor_info_to_value_info(onnx_outputs[-1], self.flat_outputs[idx])
                 apply_dynamic_axes_info(onnx_outputs[-1], k)
 
         graph = onnx.helper.make_graph(
@@ -863,7 +863,7 @@ class _Exporter(_ExporterOptions):
             opsets = {onnx.defs.ONNX_DOMAIN: self.opset_version}
             for node in graph.node:
                 if node.domain != onnx.defs.ONNX_DOMAIN:
-                    opsets[node.domain] = 1
+                    opsets[node.domain] = self.custom_opsets.get(node.domain, 1)
             opset_imports = []
             for domain, version in opsets.items():
                 opset_imports.append(onnx.helper.make_opsetid(domain, version))
@@ -926,4 +926,4 @@ def export(
     ex = _Exporter(model, inputs=args, **kwargs)
     ex.generate(f)
 
-    return ex.outputs
+    return ex.original_outputs
