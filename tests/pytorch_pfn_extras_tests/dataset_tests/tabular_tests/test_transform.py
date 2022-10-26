@@ -189,7 +189,7 @@ def test_transform(in_mode, out_mode, indices, key_indices, with_batch):
 )
 class TestTransformInvalid:
 
-    def setup(self):
+    def setup_method(self):
         self.count = 0
 
     def _transform(self, a, b, c):
