@@ -11,6 +11,7 @@ import onnx.shape_inference
 import pytorch_pfn_extras
 import pytorch_pfn_extras.onnx._constants
 from pytorch_pfn_extras.onnx._globals import GLOBALS
+from pytorch_pfn_extras.torchscript import run_jit_pass
 import torch
 import torch.jit
 import torch.onnx.symbolic_helper as sym_hel
@@ -233,25 +234,20 @@ class _Exporter(_ExporterOptions):
     def is_self(self, v: torch._C.Value) -> bool:
         return _unique_id(v) == self.self_id
 
-    # Run jit pass with post lint
-    def run_jit_pass(self, p: Callable, g: torch._C.Graph, *args: object) -> None:
-        p(g, *args)
-        torch._C._jit_pass_lint(g)
-
     # torch level graph optimizer based on `to_utils._optimize_graph`
     def optimize_torch(self, graph: torch._C.Graph) -> torch._C.Graph:
-        self.run_jit_pass(torch._C._jit_pass_inline_fork_wait, graph)  # type: ignore[attr-defined]
+        run_jit_pass(torch._C._jit_pass_inline_fork_wait, graph)  # type: ignore[attr-defined]
         if self.torch_constant_prop:
-            self.run_jit_pass(torch._C._jit_pass_constant_propagation, graph)  # type: ignore[attr-defined]
+            run_jit_pass(torch._C._jit_pass_constant_propagation, graph)  # type: ignore[attr-defined]
 
         # _split_tensor_list_constants(graph, graph)
         # run dce to eliminate dead parts of the graph that might have been
         # left behind by things like symbolic_override
-        self.run_jit_pass(torch._C._jit_pass_dce, graph)
+        run_jit_pass(torch._C._jit_pass_dce, graph)
 
-        self.run_jit_pass(torch._C._jit_pass_canonicalize_graph_fuser_ops, graph)  # type: ignore[attr-defined]
+        run_jit_pass(torch._C._jit_pass_canonicalize_graph_fuser_ops, graph)  # type: ignore[attr-defined]
         torch._C._jit_pass_peephole(graph, True)  # type: ignore[attr-defined]
-        self.run_jit_pass(torch._C._jit_pass_fuse_addmm, graph)  # type: ignore[attr-defined]
+        run_jit_pass(torch._C._jit_pass_fuse_addmm, graph)  # type: ignore[attr-defined]
 
         torch._C._jit_pass_peephole(graph, True)  # type: ignore[attr-defined]
         torch._C._jit_pass_lower_all_tuples(graph)  # type: ignore[attr-defined]
@@ -316,9 +312,9 @@ class _Exporter(_ExporterOptions):
     # ONNX level graph optimizer
     def optimize_onnx(self, graph: torch._C.Graph) -> torch._C.Graph:
         if pytorch_pfn_extras.requires("1.9.0"):
-            self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
+            run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
         else:
-            self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
+            run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
 
         if self.do_constant_folding and self.opset_version in pytorch_pfn_extras.onnx._constants.onnx_constant_folding_opsets:
             folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]
@@ -343,7 +339,7 @@ class _Exporter(_ExporterOptions):
             torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects(graph)  # type: ignore[attr-defined]
 
         if self.onnx_peephole:
-            self.run_jit_pass(torch._C._jit_pass_onnx_peephole, graph, self.opset_version, self.fixed_batch_size)
+            run_jit_pass(torch._C._jit_pass_onnx_peephole, graph, self.opset_version, self.fixed_batch_size)
 
         return graph
 
@@ -756,11 +752,11 @@ class _Exporter(_ExporterOptions):
 
         # Remove old prim and aten nodes by running DCE
         # After nodes is emited to ONNX nodes, all side effects should be removed
-        self.run_jit_pass(
+        run_jit_pass(
             torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects, self.g  # type: ignore[attr-defined]
         )
         # Run again to remove nodes only depending to aten node
-        self.run_jit_pass(
+        run_jit_pass(
             torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects, self.g  # type: ignore[attr-defined]
         )
 
