@@ -111,7 +111,7 @@ def test_export_testcase_return_output():
 
     output_dir = _get_output_dir('export_filename')
 
-    if pytorch_pfn_extras.requires("1.6.0"):
+    if pytorch_pfn_extras.requires("1.6.0") and not pytorch_pfn_extras.requires("1.13"):
         with pytest.warns(UserWarning):
             (out,) = export_testcase(model, x, output_dir, return_output=True)
     else:

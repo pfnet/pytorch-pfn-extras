@@ -15,7 +15,7 @@ from pytorch_pfn_extras.torchscript import run_jit_pass
 import torch
 import torch.jit
 import torch.onnx.symbolic_helper as sym_hel
-import torch.onnx.symbolic_registry as sym_reg
+import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
 import torch.onnx.utils as to_utils
 from torch.onnx import OperatorExportTypes
 
@@ -28,6 +28,12 @@ torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defi
 
 _ppe_ignore_scope: str = "_ppe_as_out_module"
 _list_create_ops: List[str] = ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"]
+
+if pytorch_pfn_extras.requires("1.13"):
+    from torch.onnx._internal import jit_utils
+    GraphContext = jit_utils.GraphContext
+else:
+    GraphContext = torch._C.Graph  # type: ignore
 
 
 def _custom_unpack_list(list_value: torch._C.Value) -> List[torch._C.Value]:
@@ -182,7 +188,14 @@ class _Exporter(_ExporterOptions):
 
         # Load symbolic opset
         assert self.opset_version is not None
-        sym_reg.register_version("", self.opset_version)  # type: ignore[no-untyped-call]
+        if not pytorch_pfn_extras.requires("1.13.0"):
+            sym_reg.register_version("", self.opset_version)  # type: ignore[no-untyped-call,attr-defined]
+
+        if pytorch_pfn_extras.requires("1.13.0"):
+            if isinstance(self.training, bool) or self.training is None:
+                self.training = torch.onnx.TrainingMode.TRAINING \
+                    if self.training \
+                    else torch.onnx.TrainingMode.TRAINING
 
         self.original_model = model
         self.inputs = _to_tuple_if_not_sequence(inputs)
@@ -213,6 +226,9 @@ class _Exporter(_ExporterOptions):
         self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
         self.g: torch._C.Graph = self.traced.inlined_graph
         self.vars: Dict[str, torch.IValue] = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
+        self.torch2onnx_var: Dict[torch._C.Value, torch._C.Value] = {
+            i: i for i in self.g.inputs()
+        }
         self.self_id: Optional[TorchValueID] = None
         self.self_name: Optional[str] = None
         first_arg = list(self.g.inputs())[0]
@@ -361,7 +377,7 @@ class _Exporter(_ExporterOptions):
         if n.mustBeNone():
             return
 
-        def gen_const(g: torch._C.Graph, value: Any = None) -> torch._C.Value:
+        def gen_const(g: GraphContext, value: Any = None) -> torch._C.Value:
             c = cast(torch._C.Value, g.op("Constant"))
             if n.kindOf("value") == "ival":
                 ival = n.output().toIValue()
@@ -406,7 +422,7 @@ class _Exporter(_ExporterOptions):
         is_integer_output: bool = n.output().type().getElementType().kind() == "IntType"
         if len(list(n.inputs())) > 0 and is_integer_output:
 
-            def gen_concat(g: torch._C.Graph, *args: Any) -> torch._C.Value:
+            def gen_concat(g: GraphContext, *args: Any) -> torch._C.Value:
                 seq: List[torch._C.Value] = []
                 for i in args:
                     if i.type().kind() == "IntType" or len(i.type().sizes()) == 0:
@@ -420,7 +436,7 @@ class _Exporter(_ExporterOptions):
             self.run_symbolic_function(g, n, gen_concat)
         else:
 
-            def gen_seq(g: torch._C.Graph, *args: Any) -> torch._C.Value:
+            def gen_seq(g: GraphContext, *args: Any) -> torch._C.Value:
                 if len(args) == 0:
                     return cast(torch._C.Value, g.op("SequenceEmpty"))  # TODO(twata): Set dtype attribute
                 else:
@@ -474,13 +490,15 @@ class _Exporter(_ExporterOptions):
             return cast(Callable, pyobj.symbolic)
         else:
             domain = ""
+            if pytorch_pfn_extras.requires("1.13"):
+                domain = "aten"
             if ns == "prim":
                 if pytorch_pfn_extras.requires('1.11'):
                     domain = "prim"
                 else:
                     op = f"prim_{op}"
             if sym_reg.is_registered_op(op, domain, self.opset_version):  # type: ignore[no-untyped-call]
-                return cast(
+                return cast(  # type: ignore[redundant-cast]
                     Callable, sym_reg.get_registered_op(op, domain, self.opset_version)  # type: ignore[no-untyped-call]
                 )
             else:
@@ -492,15 +510,35 @@ class _Exporter(_ExporterOptions):
             if a == "value" and n.kindOf("value") == "ival":
                 attrs[a] = n.output().toIValue()
             else:
-                attrs[a] = n[a]
-        if "inplace" in attrs:
-            del attrs["inplace"]
+                if pytorch_pfn_extras.requires("1.13"):
+                    attrs[a] = sym_hel._node_get(n, a)
+                else:
+                    attrs[a] = n[a]
+        for ignore_keys in ("inplace", "Subgraph"):
+            if ignore_keys in attrs:
+                del attrs[ignore_keys]
         node_inputs = list(n.inputs())
         if n.kind() == "prim::PythonOp":
             node_inputs.extend(n.scalar_args())
             if "module" in attrs:
                 del attrs["module"]
-        sym_outs = _to_tuple_if_not_sequence(sym_func(g, *node_inputs, **attrs))
+        if pytorch_pfn_extras.requires("1.13"):
+            g_ctx = GraphContext(
+                graph=g, block=n.owningBlock(),
+                opset=self.opset_version, original_node=n,
+                params_dict=self.vars, env=self.torch2onnx_var)
+        else:
+            g_ctx = g  # type: ignore
+        if (
+                hasattr(torch.onnx.utils, "_need_symbolic_context")
+                and torch.onnx.utils._need_symbolic_context(sym_func)
+        ):
+            ctx = torch.onnx.SymbolicContext(
+                params_dict=self.vars, env=self.torch2onnx_var, cur_node=n, onnx_block=n.owningBlock(),
+            )  # type: ignore[no-untyped-call]
+            sym_outs = _to_tuple_if_not_sequence(sym_func(ctx, g_ctx, *node_inputs, **attrs))
+        else:
+            sym_outs = _to_tuple_if_not_sequence(sym_func(g_ctx, *node_inputs, **attrs))
         assert len(sym_outs) == n.outputsSize(), f"{sym_outs}: {len(sym_outs)} vs {n.outputsSize()}"
 
         def list_added_nodes() -> List[torch._C.Node]:
@@ -539,6 +577,9 @@ class _Exporter(_ExporterOptions):
             assert len(old_out.uses()) == 0
             new_out.copyMetadata(old_out)
 
+            # Setting env with new_out since it's already replaced
+            self.torch2onnx_var[new_out] = new_out
+
     def generate_onnx_node(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         node_kind: str = n.kind()
         if node_kind in self.handler:
@@ -549,7 +590,7 @@ class _Exporter(_ExporterOptions):
         if self.operator_export_type in [OperatorExportTypes.ONNX_ATEN, OperatorExportTypes.ONNX_FALLTHROUGH] or (
             self.operator_export_type == OperatorExportTypes.ONNX_ATEN_FALLBACK and f is None
         ):
-            def gen_aten_node(g: torch._C.Graph, *inputs: Any) -> Union[torch._C.Value, Sequence[torch._C.Value]]:
+            def gen_aten_node(g: GraphContext, *inputs: Any) -> Any:
                 ret = g.op("ATen", *inputs, outputs=len(list(n.outputs())))
                 v: torch._C.Value = cast(torch._C.Value, ret) if n.outputsSize() == 1 else cast(Sequence[torch._C.Value], ret)[-1]
                 v.node().copyAttributes(n)
@@ -557,7 +598,7 @@ class _Exporter(_ExporterOptions):
                 return ret
 
             f = gen_aten_node
-        assert f is not None, f"Symbolic function for {n.kind()} not found"
+        assert f is not None, f"Symbolic function for {n.kind()} for opset {self.opset_version} not found"
         self.run_symbolic_function(g, n, f)
 
     def check_model(self, model: onnx.ModelProto) -> onnx.ModelProto:
@@ -735,7 +776,10 @@ class _Exporter(_ExporterOptions):
                     if n.kindOf(attr_name) == "t":
                         attr = onnx.helper.make_attribute(attr_name, _tensor_to_proto(n.t(attr_name)))
                     else:
-                        attr = onnx.helper.make_attribute(attr_name, n[attr_name])
+                        if pytorch_pfn_extras.requires('1.13'):
+                            attr = onnx.helper.make_attribute(attr_name, sym_hel._node_get(n, attr_name))
+                        else:
+                            attr = onnx.helper.make_attribute(attr_name, n[attr_name])
                     new_nd.attribute.append(attr)
             assign_onnx_values(new_nd.input, new_nd.name, n.inputs())
             assign_onnx_values(new_nd.output, new_nd.name, n.outputs())
@@ -875,25 +919,40 @@ class _Exporter(_ExporterOptions):
         try:
             assert not to_utils.is_in_onnx_export()  # type: ignore[no-untyped-call]
             with to_utils.select_model_mode_for_export(self.original_model, self.training):
-                to_utils.__IN_ONNX_EXPORT = True
                 prev_opset_version = GLOBALS.export_onnx_opset_version
-                sym_hel._set_opset_version(self.opset_version)  # type: ignore[no-untyped-call]
                 prev_export_type = GLOBALS.operator_export_type
-                sym_hel._set_operator_export_type(self.operator_export_type)  # type: ignore[no-untyped-call]
                 prev_shape_inference = GLOBALS.onnx_shape_inference
-                sym_hel._set_onnx_shape_inference(  # type: ignore[no-untyped-call]
-                    False  # TODO(twata): Use `self.onnx_shape_inference`
-                )
+                if pytorch_pfn_extras.requires('1.13'):
+                    GLOBALS.in_onnx_export = True
+                    GLOBALS.export_onnx_opset_version = self.opset_version
+                    GLOBALS.operator_export_type = self.operator_export_type
+                    GLOBALS.onnx_shape_inference = False
+                else:
+                    to_utils.__IN_ONNX_EXPORT = True  # type: ignore[attr-defined]
+                    sym_hel._set_opset_version(self.opset_version)  # type: ignore[no-untyped-call]
+                    sym_hel._set_operator_export_type(self.operator_export_type)  # type: ignore[no-untyped-call]
+                    sym_hel._set_onnx_shape_inference(  # type: ignore[no-untyped-call]
+                        False  # TODO(twata): Use `self.onnx_shape_inference`
+                    )
                 self._run_trace()
                 self.model: onnx.ModelProto = self.generate_onnx()
         finally:
-            to_utils.__IN_ONNX_EXPORT = False
-            if prev_opset_version is not None:
-                sym_hel._set_opset_version(prev_opset_version)  # type: ignore[no-untyped-call]
-            if prev_shape_inference is not None:
-                sym_hel._set_operator_export_type(prev_export_type)  # type: ignore[no-untyped-call]
-            if prev_shape_inference is not None:
-                sym_hel._set_onnx_shape_inference(prev_shape_inference)  # type: ignore[no-untyped-call]
+            if pytorch_pfn_extras.requires("1.13"):
+                GLOBALS.in_onnx_export = False
+                if prev_opset_version is not None:
+                    GLOBALS.export_onnx_opset_version = prev_opset_version
+                if prev_export_type is not None:
+                    GLOBALS.operator_export_type = prev_export_type
+                if prev_shape_inference is not None:
+                    GLOBALS.onnx_shape_inference = prev_shape_inference
+            else:
+                to_utils.__IN_ONNX_EXPORT = False  # type: ignore[attr-defined]
+                if prev_opset_version is not None:
+                    sym_hel._set_opset_version(prev_opset_version)  # type: ignore[no-untyped-call]
+                if prev_export_type is not None:
+                    sym_hel._set_operator_export_type(prev_export_type)  # type: ignore[no-untyped-call]
+                if prev_shape_inference is not None:
+                    sym_hel._set_onnx_shape_inference(prev_shape_inference)  # type: ignore[no-untyped-call]
 
     def generate(self, f: Union[str, typing.IO]) -> None:
         if isinstance(f, str):
