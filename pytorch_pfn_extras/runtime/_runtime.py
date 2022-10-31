@@ -435,6 +435,7 @@ class PyTorchRuntime(BaseRuntime):
             out = code_block.func(**batch)
 
         # codeblocks return Dicts-per-se so it is not necessary to normalize
+        to_backprop = []
         if code_block.backprop:
             if code_block.backprop_from is None:
                 for v in out.values():
@@ -447,10 +448,15 @@ class PyTorchRuntime(BaseRuntime):
                             or v.dtype.is_complex
                         )
                     ):
-                        _scale(v).backward()  # type: ignore[no-untyped-call]
+                        to_backprop.append(_scale(v))
             else:
-                _scale(out[code_block.backprop_from]).backward()  # type: ignore
+                to_backprop.append(_scale(out[code_block.backprop_from]))
 
+        for v in to_backprop:
+            if code_block.backprop_fn is not None:
+                code_block.backprop_fn(v)  # type: ignore
+            else:
+                v.backward()  # type: ignore[no-untyped-call]
         if len(code_block.optimizers) == 0:
             return out
 

@@ -26,6 +26,7 @@ class CodeBlock:
     backprop: bool
     backprop_from: Optional[str]
     backprop_to: Optional[Set[str]]
+    backprop_fn : Optional[Callable[..., Any]]
     state: Dict[str, Any]
     runtime: Any
 
@@ -56,6 +57,7 @@ def update_parameters(
     optimizers: List[torch.optim.Optimizer],
     backprop_from: Optional[str] = None,
     backprop_to: Optional[Set[str]] = None,
+    backprop_fn : Optional[Callable[..., Any]] = None,
 ) -> CodeBlock:
     """
     Returns a ``CodeBlock`` that performs the forward, backward passes and
@@ -80,6 +82,7 @@ def update_parameters(
         backprop=True,
         backprop_from=backprop_from,
         backprop_to=backprop_to,
+        backrpop_fn=backprop_fn,
         state=codeblock.state,
         runtime=codeblock.runtime,
     )
@@ -117,6 +120,7 @@ def forward(block: Callable) -> CodeBlock:
         backprop=False,
         backprop_from=None,
         backprop_to=None,
+        backprop_fn=None,
         state=state,
         runtime=runtime,
     )
