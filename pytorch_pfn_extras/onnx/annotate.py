@@ -7,7 +7,13 @@ import onnx.helper
 import torch
 import torch.nn as nn
 import torch.onnx
-import torch.onnx.symbolic_registry as sym_reg
+
+# To avoid errors importing torch >= 1.13
+try:
+    import torch.onnx.symbolic_registry as sym_reg
+    _sym_reg_available = True
+except ImportError:
+    _sym_reg_available = False
 
 
 class _AnnotationInit(object):
@@ -31,7 +37,10 @@ class _AnnotationInit(object):
     def setup(self, model: nn.Module, opset_ver: int) -> None:
         self._model: Optional[nn.Module] = model
         # dryrun to register every aten ops
-        sym_reg.register_version('', opset_ver)  # type: ignore[no-untyped-call]
+        if _sym_reg_available:
+            sym_reg.register_version('', opset_ver)  # type: ignore[no-untyped-call]
+        else:
+            raise RuntimeError('ONNX is not avilable for PyTorch>=1.13')
         self.opset_ver = opset_ver
 
     @property

@@ -14,10 +14,17 @@ from pytorch_pfn_extras.onnx._globals import GLOBALS
 from pytorch_pfn_extras.torchscript import run_jit_pass
 import torch
 import torch.jit
-import torch.onnx.symbolic_helper as sym_hel
-import torch.onnx.symbolic_registry as sym_reg
 import torch.onnx.utils as to_utils
 from torch.onnx import OperatorExportTypes
+
+# To avoid errors importing torch >= 1.13
+try:
+    import torch.onnx.symbolic_helper as sym_hel
+    import torch.onnx.symbolic_registry as sym_reg
+    _sym_reg_available = True
+except ImportError:
+    _sym_reg_available = False
+
 
 TorchValueID = typing.NewType("TorchValueID", int)
 ONNXValueID = typing.NewType("ONNXValueID", str)
@@ -44,8 +51,9 @@ def _custom_is_packed_list(list_value: torch._C.Value) -> bool:
     return _is_value(list_value) and list_value.node().kind() in _list_create_ops
 
 
-sym_hel._unpack_list = _custom_unpack_list
-sym_hel._is_packed_list = _custom_is_packed_list
+if _sym_reg_available:
+    sym_hel._unpack_list = _custom_unpack_list
+    sym_hel._is_packed_list = _custom_is_packed_list
 
 
 def _unique_id(v: torch._C.Value) -> TorchValueID:
