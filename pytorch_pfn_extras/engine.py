@@ -72,7 +72,7 @@ def create_trainer(
             Device name used for selecting a corresponding runtime class.
         logic:
             A logic object. If `None` is given, an logic object is instantiated
-            from the default logic class.
+            from the :class:`pytorch_pfn_extras.handler.CodeBlockLogic` class.
         transform_model:
             A function to transform a model structure, often used to unwrap the
             a module from DDP module.
@@ -96,7 +96,7 @@ def create_trainer(
     runtime_options = dict(
         runtime_options if runtime_options
         else options.pop('runtime', {}))
-    logic = handler_module.Logic() if logic is None else logic
+    logic = handler_module.CodeBlockLogic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
@@ -151,7 +151,7 @@ def create_evaluator(
             output for the reporting.
         logic:
             A logic object. If `None` is given, an logic object is instantiated
-            from the default logic class.
+            from the :class:`pytorch_pfn_extras.handler.CodeBlockLogic` class.
         handler_class:
             A handler class that instantiates a handler object. If `None` is
             given, `ppe.handler.Handler` is used as a default handler class.
@@ -173,7 +173,7 @@ def create_evaluator(
     runtime_options = dict(
         runtime_options if runtime_options
         else options.pop('runtime', {}))
-    logic = handler_module.Logic() if logic is None else logic
+    logic = handler_module.CodeBlockLogic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
