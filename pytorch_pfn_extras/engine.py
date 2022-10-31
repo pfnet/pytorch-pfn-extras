@@ -128,7 +128,7 @@ def create_evaluator(
         progress_bar: bool = False,
         device: 'DeviceLike' = 'cpu',
         metrics: Optional[Sequence['MetricType']] = None,
-        logic: Optional[handler_module.Logic] = None,
+        logic: Optional[handler_module.BaseLogic] = None,
         handler_class: Optional[Type[handler_module.Handler]] = None,
         options: Optional[Dict[str, Any]] = None,
         runtime_options: Optional[Mapping[str, Any]] = None,
