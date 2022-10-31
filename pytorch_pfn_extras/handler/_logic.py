@@ -434,6 +434,7 @@ class CodeBlockLogic(BaseLogic):
             list(optimizers.values()),
             self.backward_outputs,
             None,
+            self._backward_fn,
         )(batch)
 
     def train_validation_begin(

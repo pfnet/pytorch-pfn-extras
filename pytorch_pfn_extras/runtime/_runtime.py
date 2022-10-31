@@ -432,7 +432,7 @@ class PyTorchRuntime(BaseRuntime):
 
         # with autocast
         with _autocast(enabled=self._autocast):
-            out = code_block.func(**batch)
+            out = code_block.func(batch)
 
         # codeblocks return Dicts-per-se so it is not necessary to normalize
         to_backprop = []

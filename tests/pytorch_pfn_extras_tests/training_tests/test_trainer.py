@@ -74,8 +74,8 @@ def test_trainer(device, path):
     if not torch.cuda.is_available() and device == 'cuda':
         pytest.skip()
     model = MyModel()
-    ppe.to(model, device)
     model_with_loss = MyModelWithLossFn(model)
+    ppe.to(model_with_loss, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
         [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
@@ -109,8 +109,8 @@ def test_trainer_no_to(path):
 def test_trainer_invalid_options(path):
     device = 'cpu'
     model = MyModel()
-    ppe.to(model, device)
     model_with_loss = MyModelWithLossFn(model)
+    ppe.to(model_with_loss, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     extensions = _make_extensions()
     options = {'UNKNOWN_OPTIONS': True}
@@ -129,8 +129,8 @@ def test_train_with_evaluator(device, progress_bar, path):
     if not torch.cuda.is_available() and device == 'cuda':
         pytest.skip()
     model = MyModel()
-    ppe.to(model, device)
     model_with_loss = MyModelWithLossFn(model)
+    ppe.to(model_with_loss, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
         [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
@@ -158,8 +158,8 @@ def test_evaluator_trigger(evaluator_trigger, path):
     device = 'cpu'
     progress_bar = False
     model = MyModel()
-    ppe.to(model, device)
     model_with_loss = MyModelWithLossFn(model)
+    ppe.to(model_with_loss, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
         [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
@@ -183,8 +183,8 @@ def test_evaluator_dict(path):
     device = 'cpu'
     progress_bar = False
     model = MyModel()
-    ppe.to(model, device)
     model_with_loss = MyModelWithLossFn(model)
+    ppe.to(model_with_loss, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
         [(torch.rand(20,), torch.rand(10,)) for i in range(10)])
@@ -220,8 +220,8 @@ def test_train_result_equal(device, path):
 
     def get_result_from_trainer():
         model = MyModel()
-        ppe.to(model, device)
         model_with_loss = MyModelWithLossFn(model)
+        ppe.to(model_with_loss, device)
         optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
         extensions = _make_extensions()
 
@@ -238,8 +238,8 @@ def test_train_result_equal(device, path):
 
     def get_result_from_training_loop():
         model = MyModel()
-        ppe.to(model, device)
         model_with_loss = MyModelWithLossFn(model)
+        ppe.to(model_with_loss, device)
         optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
 
         model_with_loss.train()
@@ -293,8 +293,8 @@ def _compare_states(s1, s2):
 class TestTrainerState:
     def _get_trainer(self, epochs, out_dir):
         model = MyModel()
-        ppe.to(model, 'cpu')
         model_with_loss = MyModelWithLossFn(model)
+        ppe.to(model_with_loss, 'cpu')
         optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
         extensions = _make_extensions()
         trainer = engine.create_trainer(
@@ -356,8 +356,8 @@ def test_trainer_dict_input(device, progress_bar, path):
     if not torch.cuda.is_available() and device == 'cuda':
         pytest.skip()
     model = MyModel()
-    ppe.to(model, device)
     model_with_loss = MyModelWithLossDictOutput(model)
+    ppe.to(model_with_loss, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
         [{'x': torch.rand(20,), 't': torch.rand(10,)} for i in range(10)])
@@ -405,8 +405,8 @@ def test_trainer_namedtuple_input(device, progress_bar, path):
     if not torch.cuda.is_available() and device == 'cuda':
         pytest.skip()
     model = MyModel()
-    ppe.to(model, device)
     model_with_loss = ModelNamedTupleIO(model)
+    ppe.to(model_with_loss, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
         [Input(torch.rand(20,), torch.rand(10,), str(i)) for i in range(10)])
