@@ -190,7 +190,10 @@ class _Exporter(_ExporterOptions):
 
         # Load symbolic opset
         assert self.opset_version is not None
-        sym_reg.register_version("", self.opset_version)  # type: ignore[no-untyped-call]
+        if _sym_reg_available:
+            sym_reg.register_version("", self.opset_version)  # type: ignore[no-untyped-call]
+        else:
+            raise RuntimeError("ONNX is not available for PyTorch>=1.13")
 
         self.original_model = model
         self.inputs = _to_tuple_if_not_sequence(inputs)
