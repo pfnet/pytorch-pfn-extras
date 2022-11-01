@@ -290,7 +290,7 @@ class _Exporter(_ExporterOptions):
         if self.operator_export_type == torch.onnx.OperatorExportTypes.ONNX_ATEN_FALLBACK:
             sym_hel._quantized_ops.clear()
             # Unpack quantized weights for conv and linear ops and insert into graph.
-            torch._C._jit_pass_onnx_unpack_quantized_weights(graph, self.vars)  # type: ignore[attr-defined]
+            torch._C._jit_pass_onnx_unpack_quantized_weights(graph, self.vars, caffe2=False)  # type: ignore[attr-defined]
             # Insert permutes before and after each conv op to ensure correct order.
             torch._C._jit_pass_onnx_quantization_insert_permutes(graph, self.vars)  # type: ignore[attr-defined]
 
@@ -419,7 +419,7 @@ class _Exporter(_ExporterOptions):
 
     def handle_list_construct(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         # Concat if int type input
-        is_integer_output: bool = n.output().type().getElementType().kind() == "IntType"
+        is_integer_output: bool = cast(torch._C.TensorType, n.output().type()).getElementType().kind() == "IntType"
         if len(list(n.inputs())) > 0 and is_integer_output:
 
             def gen_concat(g: Any, *args: Any) -> torch._C.Value:
