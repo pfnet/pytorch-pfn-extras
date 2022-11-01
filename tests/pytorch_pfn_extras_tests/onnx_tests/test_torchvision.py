@@ -12,7 +12,6 @@ else:
     resnet18_kwargs = {'pretrained': True}
 
 
-@pytest.mark.xfail
 @pytest.mark.filterwarnings("ignore:Converting a tensor to a Python boolean might cause the trace to be incorrect:torch.jit.TracerWarning")
 def test_eval_resnet18():
     run_model_test(

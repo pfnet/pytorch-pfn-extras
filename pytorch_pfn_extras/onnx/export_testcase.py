@@ -167,7 +167,7 @@ def _export(
         if "training" in kwargs and (isinstance(kwargs["training"], bool) or kwargs['training'] is None):
             kwargs["training"] = torch.onnx.TrainingMode.TRAINING \
                 if kwargs["training"] \
-                else torch.onnx.TrainingMode.TRAINING
+                else torch.onnx.TrainingMode.EVAL
 
     if pytorch_pfn_extras.requires('1.12.0'):
         original_log = torch.onnx.log  # type: ignore[attr-defined]

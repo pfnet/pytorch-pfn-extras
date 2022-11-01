@@ -195,7 +195,7 @@ class _Exporter(_ExporterOptions):
             if isinstance(self.training, bool) or self.training is None:
                 self.training = torch.onnx.TrainingMode.TRAINING \
                     if self.training \
-                    else torch.onnx.TrainingMode.TRAINING
+                    else torch.onnx.TrainingMode.EVAL
 
         self.original_model = model
         self.inputs = _to_tuple_if_not_sequence(inputs)
