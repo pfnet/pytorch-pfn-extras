@@ -377,7 +377,7 @@ class _Exporter(_ExporterOptions):
         if n.mustBeNone():
             return
 
-        def gen_const(g: GraphContext, value: Any = None) -> torch._C.Value:
+        def gen_const(g: Any, value: Any = None) -> torch._C.Value:
             c = cast(torch._C.Value, g.op("Constant"))
             if n.kindOf("value") == "ival":
                 ival = n.output().toIValue()
@@ -422,7 +422,7 @@ class _Exporter(_ExporterOptions):
         is_integer_output: bool = n.output().type().getElementType().kind() == "IntType"
         if len(list(n.inputs())) > 0 and is_integer_output:
 
-            def gen_concat(g: GraphContext, *args: Any) -> torch._C.Value:
+            def gen_concat(g: Any, *args: Any) -> torch._C.Value:
                 seq: List[torch._C.Value] = []
                 for i in args:
                     if i.type().kind() == "IntType" or len(i.type().sizes()) == 0:
@@ -436,7 +436,7 @@ class _Exporter(_ExporterOptions):
             self.run_symbolic_function(g, n, gen_concat)
         else:
 
-            def gen_seq(g: GraphContext, *args: Any) -> torch._C.Value:
+            def gen_seq(g: Any, *args: Any) -> torch._C.Value:
                 if len(args) == 0:
                     return cast(torch._C.Value, g.op("SequenceEmpty"))  # TODO(twata): Set dtype attribute
                 else:
@@ -511,7 +511,7 @@ class _Exporter(_ExporterOptions):
                 attrs[a] = n.output().toIValue()
             else:
                 if pytorch_pfn_extras.requires("1.13"):
-                    attrs[a] = sym_hel._node_get(n, a)
+                    attrs[a] = sym_hel._node_get(n, a)  # type: ignore[attr-defined]
                 else:
                     attrs[a] = n[a]
         for ignore_keys in ("inplace", "Subgraph"):
@@ -531,9 +531,9 @@ class _Exporter(_ExporterOptions):
             g_ctx = g  # type: ignore
         if (
                 hasattr(torch.onnx.utils, "_need_symbolic_context")
-                and torch.onnx.utils._need_symbolic_context(sym_func)
+                and torch.onnx.utils._need_symbolic_context(sym_func)  # type: ignore[attr-defined]
         ):
-            ctx = torch.onnx.SymbolicContext(
+            ctx = torch.onnx.SymbolicContext(  # type: ignore[attr-defined]
                 params_dict=self.vars, env=self.torch2onnx_var, cur_node=n, onnx_block=n.owningBlock(),
             )  # type: ignore[no-untyped-call]
             sym_outs = _to_tuple_if_not_sequence(sym_func(ctx, g_ctx, *node_inputs, **attrs))
@@ -590,7 +590,7 @@ class _Exporter(_ExporterOptions):
         if self.operator_export_type in [OperatorExportTypes.ONNX_ATEN, OperatorExportTypes.ONNX_FALLTHROUGH] or (
             self.operator_export_type == OperatorExportTypes.ONNX_ATEN_FALLBACK and f is None
         ):
-            def gen_aten_node(g: GraphContext, *inputs: Any) -> Any:
+            def gen_aten_node(g: Any, *inputs: Any) -> Any:
                 ret = g.op("ATen", *inputs, outputs=len(list(n.outputs())))
                 v: torch._C.Value = cast(torch._C.Value, ret) if n.outputsSize() == 1 else cast(Sequence[torch._C.Value], ret)[-1]
                 v.node().copyAttributes(n)
@@ -777,7 +777,7 @@ class _Exporter(_ExporterOptions):
                         attr = onnx.helper.make_attribute(attr_name, _tensor_to_proto(n.t(attr_name)))
                     else:
                         if pytorch_pfn_extras.requires('1.13'):
-                            attr = onnx.helper.make_attribute(attr_name, sym_hel._node_get(n, attr_name))
+                            attr = onnx.helper.make_attribute(attr_name, sym_hel._node_get(n, attr_name))  # type: ignore[attr-defined]
                         else:
                             attr = onnx.helper.make_attribute(attr_name, n[attr_name])
                     new_nd.attribute.append(attr)
