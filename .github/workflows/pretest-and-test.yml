@@ -7,7 +7,12 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        torch: ['1.9.*', '1.10.*', '1.11.*', '1.12.*']
+        torch:
+        - '1.9.*'
+        - '1.10.*'
+        - '1.11.*'
+        - '1.12.*'
+        # - '1.13.*'
 
     steps:
     - name: Checkout
@@ -19,6 +24,15 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.8'
+
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache
+          ~/.onnx
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}-${{ matrix.torch }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
 
     - name: Install
       run: |
@@ -41,3 +55,17 @@ jobs:
         pushd example
         mypy . --config-file ../setup.cfg --allow-untyped-defs --allow-untyped-calls
         popd
+
+    - name: Install for pytest
+      run: |
+        pip install -U pip wheel
+        pip install 'torch==${{ matrix.torch }}' torchvision --extra-index-url https://download.pytorch.org/whl/cpu
+        pip install pytest
+        pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime pytorch-ignite
+        pip install -v -e .
+        # Test PPE is importable with pytest dependency
+        python -c 'import pytorch_pfn_extras'
+
+    - name: Test CPU only
+      run: |
+        pytest -m "not gpu" tests
