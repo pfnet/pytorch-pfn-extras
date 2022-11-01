@@ -377,7 +377,7 @@ class _Exporter(_ExporterOptions):
         if n.mustBeNone():
             return
 
-        def gen_const(g: Any, value: Any = None) -> torch._C.Value:
+        def gen_const(g: GraphContext, value: Any = None) -> torch._C.Value:
             c = cast(torch._C.Value, g.op("Constant"))
             if n.kindOf("value") == "ival":
                 ival = n.output().toIValue()
@@ -422,7 +422,7 @@ class _Exporter(_ExporterOptions):
         is_integer_output: bool = cast(torch._C.TensorType, n.output().type()).getElementType().kind() == "IntType"
         if len(list(n.inputs())) > 0 and is_integer_output:
 
-            def gen_concat(g: Any, *args: Any) -> torch._C.Value:
+            def gen_concat(g: GraphContext, *args: Any) -> torch._C.Value:
                 seq: List[torch._C.Value] = []
                 for i in args:
                     if i.type().kind() == "IntType" or len(i.type().sizes()) == 0:
@@ -436,7 +436,7 @@ class _Exporter(_ExporterOptions):
             self.run_symbolic_function(g, n, gen_concat)
         else:
 
-            def gen_seq(g: Any, *args: Any) -> torch._C.Value:
+            def gen_seq(g: GraphContext, *args: Any) -> torch._C.Value:
                 if len(args) == 0:
                     return cast(torch._C.Value, g.op("SequenceEmpty"))  # TODO(twata): Set dtype attribute
                 else:
@@ -590,7 +590,7 @@ class _Exporter(_ExporterOptions):
         if self.operator_export_type in [OperatorExportTypes.ONNX_ATEN, OperatorExportTypes.ONNX_FALLTHROUGH] or (
             self.operator_export_type == OperatorExportTypes.ONNX_ATEN_FALLBACK and f is None
         ):
-            def gen_aten_node(g: Any, *inputs: Any) -> Any:
+            def gen_aten_node(g: GraphContext, *inputs: Any) -> Any:
                 ret = g.op("ATen", *inputs, outputs=len(list(n.outputs())))
                 v: torch._C.Value = cast(torch._C.Value, ret) if n.outputsSize() == 1 else cast(Sequence[torch._C.Value], ret)[-1]
                 v.node().copyAttributes(n)
