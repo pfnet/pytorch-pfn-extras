@@ -21,4 +21,4 @@ if pytorch_pfn_extras.requires("1.13.0"):
         torch.onnx.utils.register_custom_op_symbolic(
             f"{domain}::{op_type}", f, opset_version)
 else:
-    from torch.onnx.symolic_registry import *
+    from torch.onnx.symbolic_registry import *
