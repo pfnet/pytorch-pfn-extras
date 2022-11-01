@@ -923,7 +923,7 @@ class _Exporter(_ExporterOptions):
                 prev_export_type = GLOBALS.operator_export_type
                 prev_shape_inference = GLOBALS.onnx_shape_inference
                 if pytorch_pfn_extras.requires('1.13'):
-                    GLOBALS.in_onnx_export = True
+                    GLOBALS.in_onnx_export = True  # type: ignore[attr-defined]
                     GLOBALS.export_onnx_opset_version = self.opset_version
                     GLOBALS.operator_export_type = self.operator_export_type
                     GLOBALS.onnx_shape_inference = False
@@ -938,7 +938,7 @@ class _Exporter(_ExporterOptions):
                 self.model: onnx.ModelProto = self.generate_onnx()
         finally:
             if pytorch_pfn_extras.requires("1.13"):
-                GLOBALS.in_onnx_export = False
+                GLOBALS.in_onnx_export = False  # type: ignore[attr-defined]
                 if prev_opset_version is not None:
                     GLOBALS.export_onnx_opset_version = prev_opset_version
                 if prev_export_type is not None:
