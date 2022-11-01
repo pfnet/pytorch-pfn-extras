@@ -14,6 +14,7 @@ else:
 
 @pytest.mark.filterwarnings("ignore:Converting a tensor to a Python boolean might cause the trace to be incorrect:torch.jit.TracerWarning")
 def test_eval_resnet18():
+    torch.manual_seed(100)
     run_model_test(
         torchvision.models.resnet.resnet18(**resnet18_kwargs),
         (torch.rand(1, 3, 224, 224),),
