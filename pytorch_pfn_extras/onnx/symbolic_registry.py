@@ -5,16 +5,16 @@ if pytorch_pfn_extras.requires("1.13.0"):
     import torch.onnx._internal.registration as reg
     import torch.onnx.utils
 
-    def is_registered_op(op_type: str, domain: str, opset_version: int) -> Any:
-        return reg.registry.is_registered_op(f"{domain}::{op_type}", opset_version)
+    def is_registered_op(op_type: str, domain: str, version: int) -> Any:
+        return reg.registry.is_registered_op(f"{domain}::{op_type}", version)
 
     Value = torch._C.Value
     SymbolicFunction = Callable[..., Union[Value, Tuple[Value]]]
 
-    def get_registered_op(op_type: str, domain: str, opset_version: int) -> SymbolicFunction:
+    def get_registered_op(op_type: str, domain: str, version: int) -> SymbolicFunction:
         group = reg.registry.get_function_group(f"{domain}::{op_type}")
         assert group is not None
-        ret = group.get(opset_version)
+        ret = group.get(version)
         assert ret is not None
         return cast(Callable, ret)  # type: ignore[redundant-cast]
 
