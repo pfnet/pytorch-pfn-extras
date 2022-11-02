@@ -204,7 +204,16 @@ class _Exporter(_ExporterOptions):
         self.node_doc_string: Dict[torch._C.Node, str] = {}
         self.node_scope: Dict[torch._C.Node, str] = {}
 
+        self.rng_state = torch.get_rng_state()
+        if torch.cuda.is_available():
+            self.cuda_rng_state = torch.cuda.get_rng_state_all()
+
         self._convert()
+
+    def _restore_state(self) -> None:
+        torch.set_rng_state(self.rng_state)
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(self.cuda_rng_state)
 
     def _run_trace(self) -> None:
         # TODO(twata): Use `torch._C._craete_graph_by_tracing` instead.
@@ -222,6 +231,7 @@ class _Exporter(_ExporterOptions):
 """
 
         # TODO(twata): Use `self.traced` instead or use traced result outputs
+        self._restore_state()
         self.original_outputs = self.original_model(*self.inputs)
         self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
         self.g: torch._C.Graph = self.traced.inlined_graph

@@ -169,6 +169,19 @@ def test_norm():
     run_model_test(Net(), (torch.rand(2, 3, 5, 7),), opset_version=13)
 
 
+def test_rand():
+    class Net(torch.nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+
+        def forward(self, x):
+            return torch.rand(3) * x
+
+    run_model_test(
+        Net(), (torch.rand(2, 3),),
+        opset_version=13, skip_oxrt=True)
+
+
 @pytest.mark.filterwarnings("ignore::torch.jit.TracerWarning")
 @pytest.mark.filterwarnings("ignore:Exporting a model to ONNX with a batch_size other than 1.*:UserWarning")
 @pytest.mark.filterwarnings("ignore:The shape inference of prim..Constant type is missing.*:UserWarning")
