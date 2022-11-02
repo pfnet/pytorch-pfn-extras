@@ -44,6 +44,7 @@ def test_grad_no_export():
     assert y.shape == (1, 1, 32, 20)
 
 
+@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad():
     if not pytorch_pfn_extras.requires('1.8.0'):
@@ -83,17 +84,27 @@ def test_grad():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    assert 'Conv_2' in named_nodes
-    assert 'Gradient_3' in named_nodes
-    assert 'MatMul_5' in named_nodes
+    if pytorch_pfn_extras.requires("1.13"):
+        assert '/_ppe_as_out_module/conv/Conv' in named_nodes
+        assert '/_ppe_as_out_module/Gradient' in named_nodes
+        assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
+    else:
+        assert 'Conv_2' in named_nodes
+        assert 'Gradient_3' in named_nodes
+        assert 'MatMul_5' in named_nodes
 
     assert list([v.name for v in actual_onnx.graph.output]) == [
         "v9_MatMul", "Gradient_y_0", "Gradient_x_0_0"
     ]
-    assert named_nodes["Conv_2"].input[0] == "Gradient_x_0_0"
-    assert named_nodes["Conv_2"].output[0] == "Gradient_y_0"
+    if pytorch_pfn_extras.requires("1.13"):
+        assert named_nodes["/_ppe_as_out_module/conv/Conv"].input[0] == "Gradient_x_0_0"
+        assert named_nodes["/_ppe_as_out_module/conv/Conv"].output[0] == "Gradient_y_0"
+    else:
+        assert named_nodes["Conv_2"].input[0] == "Gradient_x_0_0"
+        assert named_nodes["Conv_2"].output[0] == "Gradient_y_0"
 
 
+@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad_multiple_times():
     if not pytorch_pfn_extras.requires("1.8.0"):
@@ -142,21 +153,35 @@ def test_grad_multiple_times():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    assert 'Conv_2' in named_nodes
-    assert 'Conv_6' in named_nodes
-    assert 'Gradient_3' in named_nodes
-    assert 'Gradient_7' in named_nodes
-    assert 'MatMul_10' in named_nodes
+    if pytorch_pfn_extras.requires("1.13"):
+        assert '/_ppe_as_out_module/conv/Conv' in named_nodes
+        assert '/_ppe_as_out_module/conv_1/Conv' in named_nodes
+        assert '/_ppe_as_out_module/Gradient' in named_nodes
+        assert '/_ppe_as_out_module/Gradient_1' in named_nodes
+        assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
+    else:
+        assert 'Conv_2' in named_nodes
+        assert 'Conv_6' in named_nodes
+        assert 'Gradient_3' in named_nodes
+        assert 'Gradient_7' in named_nodes
+        assert 'MatMul_10' in named_nodes
 
     assert list([v.name for v in actual_onnx.graph.output]) == [
         "v14_MatMul", "Gradient_y_0", "Gradient_x_0_0", "Gradient_y_1", "Gradient_x_0_1"
     ]
-    assert named_nodes["Conv_2"].input[0] == "Gradient_x_0_0"
-    assert named_nodes["Conv_2"].output[0] == "Gradient_y_0"
-    assert named_nodes["Conv_6"].input[0] == "Gradient_x_0_1"
-    assert named_nodes["Conv_6"].output[0] == "Gradient_y_1"
+    if pytorch_pfn_extras.requires("1.13"):
+        assert named_nodes["/_ppe_as_out_module/conv/Conv"].input[0] == "Gradient_x_0_0"
+        assert named_nodes["/_ppe_as_out_module/conv/Conv"].output[0] == "Gradient_y_0"
+        assert named_nodes["/_ppe_as_out_module/conv_1/Conv"].input[0] == "Gradient_x_0_1"
+        assert named_nodes["/_ppe_as_out_module/conv_1/Conv"].output[0] == "Gradient_y_1"
+    else:
+        assert named_nodes["Conv_2"].input[0] == "Gradient_x_0_0"
+        assert named_nodes["Conv_2"].output[0] == "Gradient_y_0"
+        assert named_nodes["Conv_6"].input[0] == "Gradient_x_0_1"
+        assert named_nodes["Conv_6"].output[0] == "Gradient_y_1"
 
 
+@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad_with_multiple_inputs():
     if not pytorch_pfn_extras.requires("1.8.0"):
@@ -198,13 +223,23 @@ def test_grad_with_multiple_inputs():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    assert 'Conv_5' in named_nodes
-    assert 'Gradient_6' in named_nodes
-    assert 'MatMul_8' in named_nodes
+    if pytorch_pfn_extras.requires("1.13"):
+        assert '/_ppe_as_out_module/conv/Conv' in named_nodes
+        assert '/_ppe_as_out_module/Gradient' in named_nodes
+        assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
+    else:
+        assert 'Conv_5' in named_nodes
+        assert 'Gradient_6' in named_nodes
+        assert 'MatMul_8' in named_nodes
 
     assert list([v.name for v in actual_onnx.graph.output]) == [
         "v13_MatMul", "Gradient_y_0", "Gradient_x_0_0", "Gradient_x_1_0"
     ]
-    assert named_nodes["Concat_4"].input[0] == "Gradient_x_0_0"
-    assert named_nodes["Concat_4"].input[1] == "Gradient_x_1_0"
-    assert named_nodes["Conv_5"].output[0] == "Gradient_y_0"
+    if pytorch_pfn_extras.requires("1.13"):
+        assert named_nodes["/_ppe_as_out_module/Concat"].input[0] == "Gradient_x_0_0"
+        assert named_nodes["/_ppe_as_out_module/Concat"].input[1] == "Gradient_x_1_0"
+        assert named_nodes["/_ppe_as_out_module/conv/Conv"].output[0] == "Gradient_y_0"
+    else:
+        assert named_nodes["Concat_4"].input[0] == "Gradient_x_0_0"
+        assert named_nodes["Concat_4"].input[1] == "Gradient_x_1_0"
+        assert named_nodes["Conv_5"].output[0] == "Gradient_y_0"

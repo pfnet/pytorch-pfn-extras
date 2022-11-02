@@ -97,6 +97,7 @@ def test_no_as_output():
     assert len([v.name for v in actual_onnx.graph.output]) == 1
 
 
+@pytest.mark.xfail
 @pytest.mark.skipif(
     not pytorch_pfn_extras.requires("1.10.0"),
     reason='skip for PyTorch 1.9 or earlier')

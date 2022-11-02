@@ -162,6 +162,13 @@ def _export(
     bytesio = io.BytesIO()
     opset_ver = kwargs.get('opset_version', None)
     force_verbose = False
+
+    if pytorch_pfn_extras.requires("1.13.0"):
+        if "training" in kwargs and (isinstance(kwargs["training"], bool) or kwargs['training'] is None):
+            kwargs["training"] = torch.onnx.TrainingMode.TRAINING \
+                if kwargs["training"] \
+                else torch.onnx.TrainingMode.EVAL
+
     if pytorch_pfn_extras.requires('1.12.0'):
         original_log = torch.onnx.log  # type: ignore[attr-defined]
     if opset_ver is None:
