@@ -15,7 +15,6 @@ from pytorch_pfn_extras.torchscript import run_jit_pass
 import torch
 import torch.jit
 import torch.onnx.symbolic_helper as sym_hel
-import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
 import torch.onnx.utils as to_utils
 from torch.onnx import OperatorExportTypes
 
@@ -189,6 +188,8 @@ class _Exporter(_ExporterOptions):
         # Load symbolic opset
         assert self.opset_version is not None
         if not pytorch_pfn_extras.requires("1.13.0"):
+            import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
+
             sym_reg.register_version("", self.opset_version)  # type: ignore[no-untyped-call,attr-defined]
 
         if pytorch_pfn_extras.requires("1.13.0"):
@@ -507,6 +508,9 @@ class _Exporter(_ExporterOptions):
                     domain = "prim"
                 else:
                     op = f"prim_{op}"
+
+            import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
+
             if sym_reg.is_registered_op(op, domain, self.opset_version):  # type: ignore[no-untyped-call]
                 return cast(  # type: ignore[redundant-cast]
                     Callable, sym_reg.get_registered_op(op, domain, self.opset_version)  # type: ignore[no-untyped-call]
