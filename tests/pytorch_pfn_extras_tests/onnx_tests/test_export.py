@@ -233,3 +233,7 @@ def test_custom_opsets():
     for o in m.opset_import:
         if o.domain == 'org.chainer':
             assert o.version == ver
+
+
+def test_softmax():
+    run_model_test(torch.nn.Softmax(3), (torch.randn(1, 10, 30, 30),))
