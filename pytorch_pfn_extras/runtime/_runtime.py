@@ -1,12 +1,16 @@
 import contextlib
 import types
 
-from typing import Any, Dict, Generator, Iterable, Optional, Set, Tuple, Union
+from typing import (
+    Any, Dict, Generator, Iterable, Optional, Set, Tuple, Union, TYPE_CHECKING
+)
 
 import torch
 
 from pytorch_pfn_extras.handler._code_block import CodeBlock
-from pytorch_pfn_extras.training import Evaluator, Trainer
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training import Evaluator, Trainer
 
 _amp_enabled = False
 
@@ -159,7 +163,7 @@ class BaseRuntime:
 
     def train_pre_step(
         self,
-        trainer: Trainer,
+        trainer: 'Trainer',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -182,7 +186,7 @@ class BaseRuntime:
 
     def train_post_step(
         self,
-        trainer: Trainer,
+        trainer: 'Trainer',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -238,7 +242,7 @@ class BaseRuntime:
 
     def eval_pre_step(
         self,
-        evaluator: Evaluator,
+        evaluator: 'Evaluator',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -258,7 +262,7 @@ class BaseRuntime:
 
     def eval_post_step(
         self,
-        evaluator: Evaluator,
+        evaluator: 'Evaluator',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -311,6 +315,17 @@ class BaseRuntime:
             The result of `func`
         """
         raise NotImplementedError()
+
+    @classmethod
+    @contextlib.contextmanager
+    def trace(cls, event_name: Optional[str], arg: Any) -> Generator[None, None, None]:
+        """Context manager for tracing PPE events in the custom device tools.
+
+        Args:
+            event_name: The name of the event being traced
+            arg: Custom argument for the tracer
+        """
+        yield
 
 
 class PyTorchRuntime(BaseRuntime):
@@ -379,7 +394,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_pre_step(
         self,
-        trainer: Trainer,
+        trainer: 'Trainer',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -388,7 +403,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_post_step(
         self,
-        trainer: Trainer,
+        trainer: 'Trainer',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -398,7 +413,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_pre_step(
         self,
-        evaluator: Evaluator,
+        evaluator: 'Evaluator',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -407,7 +422,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_post_step(
         self,
-        evaluator: Evaluator,
+        evaluator: 'Evaluator',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -483,6 +498,19 @@ class PyTorchRuntime(BaseRuntime):
             else:
                 out = out.to(device)
             yield out
+
+    @classmethod
+    @contextlib.contextmanager
+    def trace(cls, event_name: Optional[str], arg: Any) -> Generator[None, None, None]:
+        """Context manager for tracing PPE events in the custom device tools.
+
+        Args:
+            event_name: The name of the event being traced
+            arg: Custom argument for the tracer
+        """
+        assert event_name is not None
+        with torch.autograd.profiler.record_function(event_name):
+            yield
 
 
 def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
