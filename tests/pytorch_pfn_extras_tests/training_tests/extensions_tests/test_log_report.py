@@ -65,6 +65,7 @@ def test_output(format, append):
                 assert 0 < this_epoch['elapsed_time']
 
 
+@pytest.mark.filterwarnings("ignore:`np.bool8` is a deprecated alias for `np.bool_`:DeprecationWarning")
 def test_tensorboard_writer():
     pytest.importorskip('tensorboard')
 

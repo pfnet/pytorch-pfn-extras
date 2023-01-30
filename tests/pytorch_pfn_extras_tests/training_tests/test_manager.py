@@ -537,5 +537,33 @@ def test_extensions_accessing_models_without_flag(priority):
                 pass
 
 
+def test_finalize():
+    class DummyExt(ppe.training.Extension):
+        def __init__(self):
+            self.call_cnt = 0
+            self.finalized = False
+
+        def __call__(self, manager):
+            self.call_cnt += 1
+
+        def finalize(self, manager):
+            self.finalized = True
+
+    optimizers = {'main': object()}
+    manager = ppe.training.ExtensionsManager(
+        {}, optimizers, 1, iters_per_epoch=1)
+    ext = DummyExt()
+    manager.extend(ext)
+
+    with manager.run_iteration():
+        pass
+    assert ext.call_cnt == 1
+    assert ext.finalized
+
+    with pytest.raises(RuntimeError, match="finalized manager"):
+        with manager.run_iteration():
+            pass
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v', '-s'])

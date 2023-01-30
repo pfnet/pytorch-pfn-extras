@@ -9,23 +9,7 @@ configs {
     time_limit: {
       seconds: 3600
     }
-    command: "bash .flexci/linux/script.sh prep"
-  }
-}
-
-configs {
-  key: "pytorch-pfn-extras.torch18-linux"
-  value {
-    requirement {
-      cpu: 6
-      gpu: 2
-      memory: 32
-      disk: 10
-    }
-    time_limit: {
-      seconds: 1800
-    }
-    command: "bash .flexci/linux/script.sh torch18"
+    command: "bash .flexci/linux/main-flexci.sh prep"
   }
 }
 
@@ -33,15 +17,15 @@ configs {
   key: "pytorch-pfn-extras.torch19-linux"
   value {
     requirement {
-      cpu: 6
+      cpu: 8
       gpu: 2
-      memory: 32
+      memory: 52
       disk: 10
     }
     time_limit: {
       seconds: 1800
     }
-    command: "bash .flexci/linux/script.sh torch19"
+    command: "bash .flexci/linux/main-flexci.sh torch19"
   }
 }
 
@@ -49,15 +33,15 @@ configs {
   key: "pytorch-pfn-extras.torch110-linux"
   value {
     requirement {
-      cpu: 6
+      cpu: 8
       gpu: 2
-      memory: 32
+      memory: 52
       disk: 10
     }
     time_limit: {
       seconds: 1200
     }
-    command: "bash .flexci/linux/script.sh torch110"
+    command: "bash .flexci/linux/main-flexci.sh torch110"
   }
 }
 
@@ -65,15 +49,15 @@ configs {
   key: "pytorch-pfn-extras.torch111-linux"
   value {
     requirement {
-      cpu: 6
+      cpu: 8
       gpu: 2
-      memory: 32
+      memory: 52
       disk: 10
     }
     time_limit: {
       seconds: 1200
     }
-    command: "bash .flexci/linux/script.sh torch111"
+    command: "bash .flexci/linux/main-flexci.sh torch111"
   }
 }
 
@@ -81,32 +65,31 @@ configs {
   key: "pytorch-pfn-extras.torch112-linux"
   value {
     requirement {
-      cpu: 6
+      cpu: 8
       gpu: 2
-      memory: 32
+      memory: 52
       disk: 10
     }
     time_limit: {
       seconds: 1200
     }
-    command: "bash .flexci/linux/script.sh torch112"
+    command: "bash .flexci/linux/main-flexci.sh torch112"
   }
 }
 
 configs {
-  key: "pytorch-pfn-extras.torch18-win"
+  key: "pytorch-pfn-extras.torch113-linux"
   value {
     requirement {
-      cpu: 4
+      cpu: 8
       gpu: 2
-      memory: 24
+      memory: 52
       disk: 10
-      image: "windows"
     }
     time_limit: {
-      seconds: 1800
+      seconds: 1200
     }
-    command: ".flexci\\windows\\run.bat torch18"
+    command: "bash .flexci/linux/main-flexci.sh torch113"
   }
 }
 
@@ -175,5 +158,22 @@ configs {
       seconds: 1200
     }
     command: ".flexci\\windows\\run.bat torch112"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch113-win"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 2
+      memory: 24
+      disk: 10
+      image: "windows"
+    }
+    time_limit: {
+      seconds: 1200
+    }
+    command: ".flexci\\windows\\run.bat torch113"
   }
 }

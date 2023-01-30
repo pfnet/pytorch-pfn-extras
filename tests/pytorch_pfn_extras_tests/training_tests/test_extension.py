@@ -94,7 +94,7 @@ def test_on_error():
 
     optimizers = {'main': object()}
     manager = ppe.training.ExtensionsManager(
-        {}, optimizers, 1, iters_per_epoch=1)
+        {}, optimizers, 1, iters_per_epoch=2)
     ext = DummyExt()
     manager.extend(ext)
 

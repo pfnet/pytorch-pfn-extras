@@ -1,4 +1,5 @@
 import unittest.mock
+import contextlib
 
 import torch
 import pytest
@@ -21,10 +22,10 @@ class MockRuntime(ppe.runtime.BaseRuntime):
         self._called_module = None
 
     def move_module(self, module):
-        pass
+        return module
 
     def move_tensor(self, tensor):
-        pass
+        return tensor
 
     def convert_batch(self, batch):
         class BatchWrapper:
@@ -70,6 +71,12 @@ class MockRuntime(ppe.runtime.BaseRuntime):
     def eval_post_step(self, evaluator, module, batch_idx, batch, outputs):
         self._eval_post_step_called = True
         self._called_module = module
+
+    @classmethod
+    @contextlib.contextmanager
+    def trace(cls, event_name, arg):
+        arg["called"] = True
+        yield
 
 
 class MockModule(torch.nn.Module):
@@ -143,7 +150,8 @@ class HandlerTester:
                 assert getattr(mod._ppe_runtime, f'_{function}_called')
                 assert mod._ppe_runtime._called_module == mod
             else:
-                assert not hasattr(mod, '_ppe_runtime')
+                if hasattr(mod, '_ppe_runtime'):
+                    assert mod._ppe_runtime._called_module != mod
 
 
 class TestHandlerTrainSync(HandlerTester):

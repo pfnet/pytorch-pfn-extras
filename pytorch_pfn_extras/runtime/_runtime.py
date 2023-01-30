@@ -1,11 +1,16 @@
 import contextlib
+import types
 
-from typing import Any, Dict, Generator, Iterable, Optional, Tuple, Union
+from typing import (
+    Any, Dict, Generator, Iterable, Optional, Set, Tuple, Union, TYPE_CHECKING
+)
 
 import torch
 
 from pytorch_pfn_extras.handler._code_block import CodeBlock
-from pytorch_pfn_extras.training import Evaluator, Trainer
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.training import Evaluator, Trainer
 
 _amp_enabled = False
 
@@ -158,7 +163,7 @@ class BaseRuntime:
 
     def train_pre_step(
         self,
-        trainer: Trainer,
+        trainer: 'Trainer',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -181,7 +186,7 @@ class BaseRuntime:
 
     def train_post_step(
         self,
-        trainer: Trainer,
+        trainer: 'Trainer',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -237,7 +242,7 @@ class BaseRuntime:
 
     def eval_pre_step(
         self,
-        evaluator: Evaluator,
+        evaluator: 'Evaluator',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -257,7 +262,7 @@ class BaseRuntime:
 
     def eval_post_step(
         self,
-        evaluator: Evaluator,
+        evaluator: 'Evaluator',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -290,6 +295,37 @@ class BaseRuntime:
             The results of executing the codeblock on this runtime.
         """
         raise NotImplementedError()
+
+    def map(
+        self,
+        func: CodeBlock,
+        iterable: Iterable[Any],
+        out_keys: Optional[Set[str]] = None,
+        device: Any = "cpu",
+    ) -> Iterable[Any]:
+        """Method called by the user to apply function to iterable efficiently.
+
+        Args:
+            func: The function to be executed
+            iterable: The data
+            out_keys: The output keys that to be moved to the host device
+            device: The torch device that contains the final outputs
+
+        Returns:
+            The result of `func`
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    @contextlib.contextmanager
+    def trace(cls, event_name: Optional[str], arg: Any) -> Generator[None, None, None]:
+        """Context manager for tracing PPE events in the custom device tools.
+
+        Args:
+            event_name: The name of the event being traced
+            arg: Custom argument for the tracer
+        """
+        yield
 
 
 class PyTorchRuntime(BaseRuntime):
@@ -358,7 +394,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_pre_step(
         self,
-        trainer: Trainer,
+        trainer: 'Trainer',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -367,7 +403,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_post_step(
         self,
-        trainer: Trainer,
+        trainer: 'Trainer',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -377,7 +413,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_pre_step(
         self,
-        evaluator: Evaluator,
+        evaluator: 'Evaluator',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -386,7 +422,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_post_step(
         self,
-        evaluator: Evaluator,
+        evaluator: 'Evaluator',
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -444,6 +480,38 @@ class PyTorchRuntime(BaseRuntime):
 
         return out
 
+    def map(
+        self,
+        func: CodeBlock,
+        iterable: Iterable[Any],
+        out_keys: Optional[Set[str]] = None,
+        device: Any = "cpu",
+    ) -> Iterable[Any]:
+        for data in iterable:
+            # TODO overlap computation and data transfer when using CUDA
+            out = func(data)
+            if out_keys is not None:
+                assert isinstance(out, dict)
+                out = {key: out[key] for key in out_keys}
+            if isinstance(out, dict):
+                out = {k: v.to(device) for k, v in out.items()}
+            else:
+                out = out.to(device)
+            yield out
+
+    @classmethod
+    @contextlib.contextmanager
+    def trace(cls, event_name: Optional[str], arg: Any) -> Generator[None, None, None]:
+        """Context manager for tracing PPE events in the custom device tools.
+
+        Args:
+            event_name: The name of the event being traced
+            arg: Custom argument for the tracer
+        """
+        assert event_name is not None
+        with torch.autograd.profiler.record_function(event_name):
+            yield
+
 
 def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
     return getattr(  # type: ignore[no-any-return]
@@ -454,7 +522,41 @@ def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
 def _set_module_runtime_tag(
     module: torch.nn.Module, runtime: BaseRuntime
 ) -> None:
-    return setattr(module, _RUNTIME_TAG_NAME, runtime)
+    setattr(module, _RUNTIME_TAG_NAME, runtime)
+
+    def mk_getstate(orig_getstate):  # type: ignore
+        def _getstate_without_runtime(self):  # type: ignore
+            if orig_getstate is not None:
+                state = orig_getstate()
+            else:
+                state = self.__dict__
+
+            # remove runtime class and getstate
+            def _remove_runtime_class(state):  # type: ignore
+                state = {k: v for k, v in state.items() if k != _RUNTIME_TAG_NAME}
+                for k, v in state.items():
+                    if isinstance(v, dict):
+                        state[k] = _remove_runtime_class(v)  # type: ignore
+                for k in list(state.keys()):
+                    if k == "__getstate__":
+                        if orig_getstate is not None:
+                            state[k] = orig_getstate
+                        else:
+                            del state[k]
+                return state
+
+            return _remove_runtime_class(state)  # type: ignore
+        return _getstate_without_runtime
+
+    getstate = None
+    if hasattr(module, "__getstate__"):
+        getstate = module.__getstate__
+
+    setattr(  # NOQA
+        module,
+        "__getstate__",
+        types.MethodType(mk_getstate(getstate), module)  # type: ignore
+    )
 
 
 def named_runtime_modules(
@@ -470,9 +572,5 @@ def named_runtime_modules(
             for name, sm in module.named_children():
                 yield from named_runtime_modules(sm, name, False, recursive)
     else:
-        if first_level or recursive:
-            for sm in module.children():
-                for descendant in sm.modules():
-                    if _module_runtime_tag(descendant) is not None:
-                        raise ValueError("Runtimes cannot be nested.")
+        # nested runtime tag is ignored
         yield module_name, module

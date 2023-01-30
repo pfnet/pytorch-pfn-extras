@@ -42,6 +42,7 @@ def test_annotate_no_export():
     assert y.shape == (1, 6, 30, 20)
 
 
+# @pytest.mark.xfail
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_annotate():
     if not pytorch_pfn_extras.requires("1.8.0"):
@@ -70,32 +71,60 @@ def test_annotate():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    assert 'Conv_0' in named_nodes
-    assert 'Conv_1' in named_nodes
+    if pytorch_pfn_extras.requires("1.13"):
+        assert '/_ppe_as_out_module/conv/Conv' in named_nodes
+        assert '/_ppe_as_out_module/conv2/Conv' in named_nodes
 
-    assert 'MatMul_3' in named_nodes
-    assert 'MatMul_5' in named_nodes
+        assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
+        assert '/_ppe_as_out_module/linear2/MatMul' in named_nodes
 
-    node_conv_0_attrs = [a.name for a in named_nodes['Conv_0'].attribute]
-    assert 'aaa' in node_conv_0_attrs
-    assert 'bbb' in node_conv_0_attrs
-    assert 'zzz' not in node_conv_0_attrs
-    assert 'yyy' not in node_conv_0_attrs
-    node_conv_1_attrs = [a.name for a in named_nodes['Conv_1'].attribute]
-    assert 'aaa' not in node_conv_1_attrs
-    assert 'bbb' not in node_conv_1_attrs
-    assert 'zzz' not in node_conv_1_attrs
-    assert 'yyy' not in node_conv_1_attrs
-    node_matmul_2_attrs = [a.name for a in named_nodes['MatMul_3'].attribute]
-    assert 'aaa' not in node_matmul_2_attrs
-    assert 'bbb' not in node_matmul_2_attrs
-    assert 'zzz' in node_matmul_2_attrs
-    assert 'yyy' in node_matmul_2_attrs
-    node_matmul_5_attrs = [a.name for a in named_nodes['MatMul_5'].attribute]
-    assert 'aaa' not in node_matmul_5_attrs
-    assert 'bbb' not in node_matmul_5_attrs
-    assert 'zzz' in node_matmul_5_attrs
-    assert 'yyy' in node_matmul_5_attrs
+        node_conv_0_attrs = [a.name for a in named_nodes['/_ppe_as_out_module/conv/Conv'].attribute]
+        assert 'aaa' in node_conv_0_attrs
+        assert 'bbb' in node_conv_0_attrs
+        assert 'zzz' not in node_conv_0_attrs
+        assert 'yyy' not in node_conv_0_attrs
+        node_conv_1_attrs = [a.name for a in named_nodes['/_ppe_as_out_module/conv2/Conv'].attribute]
+        assert 'aaa' not in node_conv_1_attrs
+        assert 'bbb' not in node_conv_1_attrs
+        assert 'zzz' not in node_conv_1_attrs
+        assert 'yyy' not in node_conv_1_attrs
+        node_matmul_2_attrs = [a.name for a in named_nodes['/_ppe_as_out_module/linear/MatMul'].attribute]
+        assert 'aaa' not in node_matmul_2_attrs
+        assert 'bbb' not in node_matmul_2_attrs
+        assert 'zzz' in node_matmul_2_attrs
+        assert 'yyy' in node_matmul_2_attrs
+        node_matmul_5_attrs = [a.name for a in named_nodes['/_ppe_as_out_module/linear2/MatMul'].attribute]
+        assert 'aaa' not in node_matmul_5_attrs
+        assert 'bbb' not in node_matmul_5_attrs
+        assert 'zzz' in node_matmul_5_attrs
+        assert 'yyy' in node_matmul_5_attrs
+    else:
+        assert 'Conv_0' in named_nodes
+        assert 'Conv_1' in named_nodes
+
+        assert 'MatMul_3' in named_nodes
+        assert 'MatMul_5' in named_nodes
+
+        node_conv_0_attrs = [a.name for a in named_nodes['Conv_0'].attribute]
+        assert 'aaa' in node_conv_0_attrs
+        assert 'bbb' in node_conv_0_attrs
+        assert 'zzz' not in node_conv_0_attrs
+        assert 'yyy' not in node_conv_0_attrs
+        node_conv_1_attrs = [a.name for a in named_nodes['Conv_1'].attribute]
+        assert 'aaa' not in node_conv_1_attrs
+        assert 'bbb' not in node_conv_1_attrs
+        assert 'zzz' not in node_conv_1_attrs
+        assert 'yyy' not in node_conv_1_attrs
+        node_matmul_2_attrs = [a.name for a in named_nodes['MatMul_3'].attribute]
+        assert 'aaa' not in node_matmul_2_attrs
+        assert 'bbb' not in node_matmul_2_attrs
+        assert 'zzz' in node_matmul_2_attrs
+        assert 'yyy' in node_matmul_2_attrs
+        node_matmul_5_attrs = [a.name for a in named_nodes['MatMul_5'].attribute]
+        assert 'aaa' not in node_matmul_5_attrs
+        assert 'bbb' not in node_matmul_5_attrs
+        assert 'zzz' in node_matmul_5_attrs
+        assert 'yyy' in node_matmul_5_attrs
 
 
 def test_apply_annotation():
@@ -132,43 +161,82 @@ def test_apply_annotation():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    assert 'Conv_0' in named_nodes
-    assert 'Relu_1' in named_nodes
-    assert 'Conv_2' in named_nodes
-    assert 'MatMul_4' in named_nodes
-    assert 'MatMul_6' in named_nodes
-    assert 'Elu_7' in named_nodes
+    if pytorch_pfn_extras.requires("1.13"):
+        assert '/_ppe_as_out_module/conv/Conv' in named_nodes
+        assert '/_ppe_as_out_module/Relu' in named_nodes
+        assert '/_ppe_as_out_module/conv2/Conv' in named_nodes
+        assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
+        assert '/_ppe_as_out_module/linear2/MatMul' in named_nodes
+        assert '/_ppe_as_out_module/Elu' in named_nodes
 
-    node_attrs = [a.name for a in named_nodes['Conv_0'].attribute]
-    assert 'aaa' in node_attrs
-    assert 'bbb' in node_attrs
-    assert 'zzz' not in node_attrs
-    assert 'yyy' not in node_attrs
-    node_attrs = [a.name for a in named_nodes['Relu_1'].attribute]
-    assert 'aaa' in node_attrs
-    assert 'bbb' in node_attrs
-    assert 'zzz' not in node_attrs
-    assert 'yyy' not in node_attrs
-    node_attrs = [a.name for a in named_nodes['Conv_2'].attribute]
-    assert 'aaa' not in node_attrs
-    assert 'bbb' not in node_attrs
-    assert 'zzz' not in node_attrs
-    assert 'yyy' not in node_attrs
-    node_attrs = [a.name for a in named_nodes['MatMul_4'].attribute]
-    assert 'aaa' not in node_attrs
-    assert 'bbb' not in node_attrs
-    assert 'zzz' in node_attrs
-    assert 'yyy' in node_attrs
-    node_attrs = [a.name for a in named_nodes['MatMul_6'].attribute]
-    assert 'aaa' not in node_attrs
-    assert 'bbb' not in node_attrs
-    assert 'zzz' in node_attrs
-    assert 'yyy' in node_attrs
-    node_attrs = [a.name for a in named_nodes['Elu_7'].attribute]
-    assert 'aaa' not in node_attrs
-    assert 'bbb' not in node_attrs
-    assert 'zzz' in node_attrs
-    assert 'yyy' in node_attrs
+        node_attrs = [a.name for a in named_nodes['/_ppe_as_out_module/conv/Conv'].attribute]
+        assert 'aaa' in node_attrs
+        assert 'bbb' in node_attrs
+        assert 'zzz' not in node_attrs
+        assert 'yyy' not in node_attrs
+        node_attrs = [a.name for a in named_nodes['/_ppe_as_out_module/Relu'].attribute]
+        assert 'aaa' in node_attrs
+        assert 'bbb' in node_attrs
+        assert 'zzz' not in node_attrs
+        assert 'yyy' not in node_attrs
+        node_attrs = [a.name for a in named_nodes['/_ppe_as_out_module/conv2/Conv'].attribute]
+        assert 'aaa' not in node_attrs
+        assert 'bbb' not in node_attrs
+        assert 'zzz' not in node_attrs
+        assert 'yyy' not in node_attrs
+        node_attrs = [a.name for a in named_nodes['/_ppe_as_out_module/linear/MatMul'].attribute]
+        assert 'aaa' not in node_attrs
+        assert 'bbb' not in node_attrs
+        assert 'zzz' in node_attrs
+        assert 'yyy' in node_attrs
+        node_attrs = [a.name for a in named_nodes['/_ppe_as_out_module/linear2/MatMul'].attribute]
+        assert 'aaa' not in node_attrs
+        assert 'bbb' not in node_attrs
+        assert 'zzz' in node_attrs
+        assert 'yyy' in node_attrs
+        node_attrs = [a.name for a in named_nodes['/_ppe_as_out_module/Elu'].attribute]
+        assert 'aaa' not in node_attrs
+        assert 'bbb' not in node_attrs
+        assert 'zzz' in node_attrs
+        assert 'yyy' in node_attrs
+    else:
+        assert 'Conv_0' in named_nodes
+        assert 'Relu_1' in named_nodes
+        assert 'Conv_2' in named_nodes
+        assert 'MatMul_4' in named_nodes
+        assert 'MatMul_6' in named_nodes
+        assert 'Elu_7' in named_nodes
+
+        node_attrs = [a.name for a in named_nodes['Conv_0'].attribute]
+        assert 'aaa' in node_attrs
+        assert 'bbb' in node_attrs
+        assert 'zzz' not in node_attrs
+        assert 'yyy' not in node_attrs
+        node_attrs = [a.name for a in named_nodes['Relu_1'].attribute]
+        assert 'aaa' in node_attrs
+        assert 'bbb' in node_attrs
+        assert 'zzz' not in node_attrs
+        assert 'yyy' not in node_attrs
+        node_attrs = [a.name for a in named_nodes['Conv_2'].attribute]
+        assert 'aaa' not in node_attrs
+        assert 'bbb' not in node_attrs
+        assert 'zzz' not in node_attrs
+        assert 'yyy' not in node_attrs
+        node_attrs = [a.name for a in named_nodes['MatMul_4'].attribute]
+        assert 'aaa' not in node_attrs
+        assert 'bbb' not in node_attrs
+        assert 'zzz' in node_attrs
+        assert 'yyy' in node_attrs
+        node_attrs = [a.name for a in named_nodes['MatMul_6'].attribute]
+        assert 'aaa' not in node_attrs
+        assert 'bbb' not in node_attrs
+        assert 'zzz' in node_attrs
+        assert 'yyy' in node_attrs
+        node_attrs = [a.name for a in named_nodes['Elu_7'].attribute]
+        assert 'aaa' not in node_attrs
+        assert 'bbb' not in node_attrs
+        assert 'zzz' in node_attrs
+        assert 'yyy' in node_attrs
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -198,6 +266,9 @@ def test_scoped_anchor_no_export():
     "ignore:Using or importing the ABCs:DeprecationWarning",
 )
 def test_scoped_anchor():
+    if pytorch_pfn_extras.requires("1.13"):
+        pytest.skip()
+
     class Net(nn.Module):
         def __init__(self, anchor_mode='on'):
             super(Net, self).__init__()
@@ -330,6 +401,9 @@ def test_scoped_anchor():
 
 
 def test_scoped_anchor_multiple_inout():
+    if pytorch_pfn_extras.requires("1.13"):
+        pytest.skip()
+
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()

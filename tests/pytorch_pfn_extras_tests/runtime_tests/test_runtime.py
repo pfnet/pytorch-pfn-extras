@@ -1,3 +1,5 @@
+import contextlib
+
 import pytest
 import torch
 
@@ -129,3 +131,42 @@ def test_module_change_forward():
 
     ppe.to(module, device='dummy', runtime_class=ForwardIntercepterRuntime)
     assert int(module(None)) == 5
+
+
+def test_map():
+    class Module(torch.nn.Module):
+        def output(self, x):
+            return {"y": x * 2, "z": x + 1}
+
+    module = torch.nn.Sequential(Module())
+    data = [{"x": torch.ones(1)}, {"x": torch.ones(2)}]
+    ppe.to(module, device="cpu")
+    out = list(ppe.map(module[0].output, data))
+    assert len(out) == 2
+    assert set(out[0].keys()) == set(["y", "z"])
+    assert torch.allclose(out[0]["y"], torch.ones(1) * 2)
+    assert torch.allclose(out[0]["z"], torch.ones(1) + 1)
+
+    out = list(ppe.map(module[0].output, data, out_keys=set(["y"])))
+    assert set(out[0].keys()) == set(["y"])
+
+
+def test_tracer():
+    called = 0
+
+    class TracerRuntime(ppe.runtime.BaseRuntime):
+        @classmethod
+        @contextlib.contextmanager
+        def trace(cls, event_name, arg):
+            nonlocal called
+            called = 1
+            yield
+            called = 2
+
+    assert called == 0
+    with ppe.runtime.BaseRuntime.trace('dummy', None):
+        assert called == 0
+    assert called == 0
+    with TracerRuntime.trace('dummy', None):
+        assert called == 1
+    assert called == 2

@@ -1,4 +1,5 @@
 import dataclasses
+import types
 import typing
 import warnings
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
@@ -11,10 +12,10 @@ import onnx.shape_inference
 import pytorch_pfn_extras
 import pytorch_pfn_extras.onnx._constants
 from pytorch_pfn_extras.onnx._globals import GLOBALS
+from pytorch_pfn_extras.torchscript import run_jit_pass
 import torch
 import torch.jit
 import torch.onnx.symbolic_helper as sym_hel
-import torch.onnx.symbolic_registry as sym_reg
 import torch.onnx.utils as to_utils
 from torch.onnx import OperatorExportTypes
 
@@ -27,6 +28,12 @@ torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defi
 
 _ppe_ignore_scope: str = "_ppe_as_out_module"
 _list_create_ops: List[str] = ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"]
+
+if pytorch_pfn_extras.requires("1.13"):
+    from torch.onnx._internal import jit_utils
+    GraphContext = jit_utils.GraphContext
+else:
+    GraphContext = torch._C.Graph  # type: ignore
 
 
 def _custom_unpack_list(list_value: torch._C.Value) -> List[torch._C.Value]:
@@ -95,10 +102,11 @@ def _remove_prefix(text: str, prefix: str) -> str:
     return text[text.startswith(prefix) and len(prefix) :]
 
 
-def _to_tuple_if_not_sequence(v: Any) -> Any:
-    if not isinstance(v, (list, tuple)):
-        v = (v,)
-    return v
+def _to_tuple_if_not_sequence(v: Any) -> Tuple:
+    if isinstance(v, (list, tuple)):
+        return tuple(v)
+    else:
+        return (v,)
 
 
 def onnx_node_doc_string(onnx_node: torch._C.Node, torch_node: torch._C.Node) -> str:
@@ -180,7 +188,16 @@ class _Exporter(_ExporterOptions):
 
         # Load symbolic opset
         assert self.opset_version is not None
-        sym_reg.register_version("", self.opset_version)  # type: ignore[no-untyped-call]
+        if not pytorch_pfn_extras.requires("1.13.0"):
+            import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
+
+            sym_reg.register_version("", self.opset_version)  # type: ignore[no-untyped-call,attr-defined]
+
+        if pytorch_pfn_extras.requires("1.13.0"):
+            if isinstance(self.training, bool) or self.training is None:
+                self.training = torch.onnx.TrainingMode.TRAINING \
+                    if self.training \
+                    else torch.onnx.TrainingMode.EVAL
 
         self.original_model = model
         self.inputs = _to_tuple_if_not_sequence(inputs)
@@ -189,7 +206,16 @@ class _Exporter(_ExporterOptions):
         self.node_doc_string: Dict[torch._C.Node, str] = {}
         self.node_scope: Dict[torch._C.Node, str] = {}
 
+        self.rng_state = torch.get_rng_state()
+        if torch.cuda.is_available():
+            self.cuda_rng_state = torch.cuda.get_rng_state_all()
+
         self._convert()
+
+    def _restore_state(self) -> None:
+        torch.set_rng_state(self.rng_state)
+        if torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(self.cuda_rng_state)
 
     def _run_trace(self) -> None:
         # TODO(twata): Use `torch._C._craete_graph_by_tracing` instead.
@@ -207,9 +233,14 @@ class _Exporter(_ExporterOptions):
 """
 
         # TODO(twata): Use `self.traced` instead or use traced result outputs
-        self.outputs = _to_tuple_if_not_sequence(self.original_model(*self.inputs))
+        self._restore_state()
+        self.original_outputs = self.original_model(*self.inputs)
+        self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
         self.g: torch._C.Graph = self.traced.inlined_graph
         self.vars: Dict[str, torch.IValue] = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
+        self.torch2onnx_var: Dict[torch._C.Value, torch._C.Value] = {
+            i: i for i in self.g.inputs()
+        }
         self.self_id: Optional[TorchValueID] = None
         self.self_name: Optional[str] = None
         first_arg = list(self.g.inputs())[0]
@@ -226,30 +257,25 @@ class _Exporter(_ExporterOptions):
         self.log("Optimized graph", self.g)
 
         self.log("Original traced graph", self.traced.graph)
-        self.log("State dict", "\n".join([f"- {k}: {v}" for k, v in self.vars.items()]))
+        self.log("State dict", lambda: "\n".join([f"- {k}: {v}" for k, v in self.vars.items()]))
 
     def is_self(self, v: torch._C.Value) -> bool:
         return _unique_id(v) == self.self_id
 
-    # Run jit pass with post lint
-    def run_jit_pass(self, p: Callable, g: torch._C.Graph, *args: object) -> None:
-        p(g, *args)
-        torch._C._jit_pass_lint(g)
-
     # torch level graph optimizer based on `to_utils._optimize_graph`
     def optimize_torch(self, graph: torch._C.Graph) -> torch._C.Graph:
-        self.run_jit_pass(torch._C._jit_pass_inline_fork_wait, graph)  # type: ignore[attr-defined]
+        run_jit_pass(torch._C._jit_pass_inline_fork_wait, graph)  # type: ignore[attr-defined]
         if self.torch_constant_prop:
-            self.run_jit_pass(torch._C._jit_pass_constant_propagation, graph)  # type: ignore[attr-defined]
+            run_jit_pass(torch._C._jit_pass_constant_propagation, graph)  # type: ignore[attr-defined]
 
         # _split_tensor_list_constants(graph, graph)
         # run dce to eliminate dead parts of the graph that might have been
         # left behind by things like symbolic_override
-        self.run_jit_pass(torch._C._jit_pass_dce, graph)
+        run_jit_pass(torch._C._jit_pass_dce, graph)
 
-        self.run_jit_pass(torch._C._jit_pass_canonicalize_graph_fuser_ops, graph)  # type: ignore[attr-defined]
+        run_jit_pass(torch._C._jit_pass_canonicalize_graph_fuser_ops, graph)  # type: ignore[attr-defined]
         torch._C._jit_pass_peephole(graph, True)  # type: ignore[attr-defined]
-        self.run_jit_pass(torch._C._jit_pass_fuse_addmm, graph)  # type: ignore[attr-defined]
+        run_jit_pass(torch._C._jit_pass_fuse_addmm, graph)  # type: ignore[attr-defined]
 
         torch._C._jit_pass_peephole(graph, True)  # type: ignore[attr-defined]
         torch._C._jit_pass_lower_all_tuples(graph)  # type: ignore[attr-defined]
@@ -276,7 +302,7 @@ class _Exporter(_ExporterOptions):
         if self.operator_export_type == torch.onnx.OperatorExportTypes.ONNX_ATEN_FALLBACK:
             sym_hel._quantized_ops.clear()
             # Unpack quantized weights for conv and linear ops and insert into graph.
-            torch._C._jit_pass_onnx_unpack_quantized_weights(graph, self.vars)  # type: ignore[attr-defined]
+            torch._C._jit_pass_onnx_unpack_quantized_weights(graph, self.vars, caffe2=False)  # type: ignore[attr-defined]
             # Insert permutes before and after each conv op to ensure correct order.
             torch._C._jit_pass_onnx_quantization_insert_permutes(graph, self.vars)  # type: ignore[attr-defined]
 
@@ -314,9 +340,9 @@ class _Exporter(_ExporterOptions):
     # ONNX level graph optimizer
     def optimize_onnx(self, graph: torch._C.Graph) -> torch._C.Graph:
         if pytorch_pfn_extras.requires("1.9.0"):
-            self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
+            run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
         else:
-            self.run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
+            run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
 
         if self.do_constant_folding and self.opset_version in pytorch_pfn_extras.onnx._constants.onnx_constant_folding_opsets:
             folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]
@@ -341,13 +367,16 @@ class _Exporter(_ExporterOptions):
             torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects(graph)  # type: ignore[attr-defined]
 
         if self.onnx_peephole:
-            self.run_jit_pass(torch._C._jit_pass_onnx_peephole, graph, self.opset_version, self.fixed_batch_size)
+            run_jit_pass(torch._C._jit_pass_onnx_peephole, graph, self.opset_version, self.fixed_batch_size)
 
         return graph
 
     def log(self, title: str, v: Any, debug: bool = False) -> None:
         if not (self.verbose or debug):
             return
+
+        if isinstance(v, types.FunctionType):
+            v = v()
 
         s = f"""## {title}
 {v}"""
@@ -367,7 +396,7 @@ class _Exporter(_ExporterOptions):
             c = cast(torch._C.Value, g.op("Constant"))
             if n.kindOf("value") == "ival":
                 ival = n.output().toIValue()
-                if isinstance(ival, list) and not isinstance(ival[0], (int, float)):
+                if isinstance(ival, list) and ival and not isinstance(ival[0], (int, float)):
                     vals: List[torch._C.Value] = []
                     for i in ival:
                         if isinstance(i, torch.Tensor):
@@ -405,7 +434,7 @@ class _Exporter(_ExporterOptions):
 
     def handle_list_construct(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         # Concat if int type input
-        is_integer_output: bool = n.output().type().getElementType().kind() == "IntType"
+        is_integer_output: bool = cast(torch._C.TensorType, n.output().type()).getElementType().kind() == "IntType"
         if len(list(n.inputs())) > 0 and is_integer_output:
 
             def gen_concat(g: torch._C.Graph, *args: Any) -> torch._C.Value:
@@ -476,13 +505,18 @@ class _Exporter(_ExporterOptions):
             return cast(Callable, pyobj.symbolic)
         else:
             domain = ""
+            if pytorch_pfn_extras.requires("1.13"):
+                domain = "aten"
             if ns == "prim":
                 if pytorch_pfn_extras.requires('1.11'):
                     domain = "prim"
                 else:
                     op = f"prim_{op}"
+
+            import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
+
             if sym_reg.is_registered_op(op, domain, self.opset_version):  # type: ignore[no-untyped-call]
-                return cast(
+                return cast(  # type: ignore[redundant-cast]
                     Callable, sym_reg.get_registered_op(op, domain, self.opset_version)  # type: ignore[no-untyped-call]
                 )
             else:
@@ -494,15 +528,35 @@ class _Exporter(_ExporterOptions):
             if a == "value" and n.kindOf("value") == "ival":
                 attrs[a] = n.output().toIValue()
             else:
-                attrs[a] = n[a]
-        if "inplace" in attrs:
-            del attrs["inplace"]
+                if pytorch_pfn_extras.requires("1.13"):
+                    attrs[a] = sym_hel._node_get(n, a)  # type: ignore[attr-defined]
+                else:
+                    attrs[a] = n[a]
+        for ignore_keys in ("inplace", "Subgraph"):
+            if ignore_keys in attrs:
+                del attrs[ignore_keys]
         node_inputs = list(n.inputs())
         if n.kind() == "prim::PythonOp":
             node_inputs.extend(n.scalar_args())
             if "module" in attrs:
                 del attrs["module"]
-        sym_outs = _to_tuple_if_not_sequence(sym_func(g, *node_inputs, **attrs))
+        if pytorch_pfn_extras.requires("1.13"):
+            g_ctx = GraphContext(
+                graph=g, block=n.owningBlock(),
+                opset=self.opset_version, original_node=n,
+                params_dict=self.vars, env=self.torch2onnx_var)
+        else:
+            g_ctx = g  # type: ignore
+        if (
+                hasattr(torch.onnx.utils, "_need_symbolic_context")
+                and torch.onnx.utils._need_symbolic_context(sym_func)  # type: ignore[attr-defined]
+        ):
+            ctx = torch.onnx.SymbolicContext(  # type: ignore[attr-defined]
+                params_dict=self.vars, env=self.torch2onnx_var, cur_node=n, onnx_block=n.owningBlock(),
+            )  # type: ignore[no-untyped-call]
+            sym_outs = _to_tuple_if_not_sequence(sym_func(ctx, g_ctx, *node_inputs, **attrs))
+        else:
+            sym_outs = _to_tuple_if_not_sequence(sym_func(g_ctx, *node_inputs, **attrs))
         assert len(sym_outs) == n.outputsSize(), f"{sym_outs}: {len(sym_outs)} vs {n.outputsSize()}"
 
         def list_added_nodes() -> List[torch._C.Node]:
@@ -527,7 +581,7 @@ class _Exporter(_ExporterOptions):
 
         self.log(f"Converting node {n.kind()}", n)
         if len(sym_nodes) > 0:
-            self.log(f"Converted node {n.kind()}", "\n".join([str(i) for i in sym_nodes]))
+            self.log(f"Converted node {n.kind()}", lambda: "\n".join([str(i) for i in sym_nodes]))
 
         # Generate doc string before old node lifetime ends
         for sym_nd in sym_nodes:
@@ -541,6 +595,9 @@ class _Exporter(_ExporterOptions):
             assert len(old_out.uses()) == 0
             new_out.copyMetadata(old_out)
 
+            # Setting env with new_out since it's already replaced
+            self.torch2onnx_var[new_out] = new_out
+
     def generate_onnx_node(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         node_kind: str = n.kind()
         if node_kind in self.handler:
@@ -551,7 +608,7 @@ class _Exporter(_ExporterOptions):
         if self.operator_export_type in [OperatorExportTypes.ONNX_ATEN, OperatorExportTypes.ONNX_FALLTHROUGH] or (
             self.operator_export_type == OperatorExportTypes.ONNX_ATEN_FALLBACK and f is None
         ):
-            def gen_aten_node(g: torch._C.Graph, *inputs: Any) -> Union[torch._C.Value, Sequence[torch._C.Value]]:
+            def gen_aten_node(g: torch._C.Graph, *inputs: Any) -> Any:
                 ret = g.op("ATen", *inputs, outputs=len(list(n.outputs())))
                 v: torch._C.Value = cast(torch._C.Value, ret) if n.outputsSize() == 1 else cast(Sequence[torch._C.Value], ret)[-1]
                 v.node().copyAttributes(n)
@@ -559,7 +616,7 @@ class _Exporter(_ExporterOptions):
                 return ret
 
             f = gen_aten_node
-        assert f is not None, f"Symbolic function for {n.kind()} not found"
+        assert f is not None, f"Symbolic function for {n.kind()} for opset {self.opset_version} not found"
         self.run_symbolic_function(g, n, f)
 
     def check_model(self, model: onnx.ModelProto) -> onnx.ModelProto:
@@ -737,7 +794,10 @@ class _Exporter(_ExporterOptions):
                     if n.kindOf(attr_name) == "t":
                         attr = onnx.helper.make_attribute(attr_name, _tensor_to_proto(n.t(attr_name)))
                     else:
-                        attr = onnx.helper.make_attribute(attr_name, n[attr_name])
+                        if pytorch_pfn_extras.requires('1.13'):
+                            attr = onnx.helper.make_attribute(attr_name, sym_hel._node_get(n, attr_name))  # type: ignore[attr-defined]
+                        else:
+                            attr = onnx.helper.make_attribute(attr_name, n[attr_name])
                     new_nd.attribute.append(attr)
             assign_onnx_values(new_nd.input, new_nd.name, n.inputs())
             assign_onnx_values(new_nd.output, new_nd.name, n.outputs())
@@ -754,16 +814,16 @@ class _Exporter(_ExporterOptions):
 
         # Remove old prim and aten nodes by running DCE
         # After nodes is emited to ONNX nodes, all side effects should be removed
-        self.run_jit_pass(
+        run_jit_pass(
             torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects, self.g  # type: ignore[attr-defined]
         )
         # Run again to remove nodes only depending to aten node
-        self.run_jit_pass(
+        run_jit_pass(
             torch._C._jit_pass_dce_allow_deleting_nodes_with_side_effects, self.g  # type: ignore[attr-defined]
         )
 
         # TODO(twata): Remove unnecessary outputs. Graph#eraseOutput isn't available
-        # while self.g.outputsSize() > len(self.outputs):
+        # while self.g.outputsSize() > len(self.flat_outputs):
         #     self.g.eraseOutput(self.g.outputsSize() - 1)
 
         self.optimize_onnx(self.g)
@@ -828,10 +888,8 @@ class _Exporter(_ExporterOptions):
             k = val_tab[_unique_id(v)]
             inout_names.append(k)
             onnx_outputs.append(onnx_value(v, k))
-            if idx < len(self.outputs):
-                if isinstance(self.outputs[idx], tuple):
-                    raise RuntimeError('Models returning nested lists/tuples are not supported yet')
-                _apply_tensor_info_to_value_info(onnx_outputs[-1], self.outputs[idx])
+            if idx < len(self.flat_outputs):
+                _apply_tensor_info_to_value_info(onnx_outputs[-1], self.flat_outputs[idx])
                 apply_dynamic_axes_info(onnx_outputs[-1], k)
 
         graph = onnx.helper.make_graph(
@@ -847,13 +905,13 @@ class _Exporter(_ExporterOptions):
             # ],
         )
 
-        self.log("ONNX printable graph", onnx.helper.printable_graph(graph))
+        self.log("ONNX printable graph", lambda: onnx.helper.printable_graph(graph))
 
         def get_model_opset_imports(graph: onnx.GraphProto) -> List[onnx.OperatorSetIdProto]:
             opsets = {onnx.defs.ONNX_DOMAIN: self.opset_version}
             for node in graph.node:
                 if node.domain != onnx.defs.ONNX_DOMAIN:
-                    opsets[node.domain] = 1
+                    opsets[node.domain] = self.custom_opsets.get(node.domain, 1)
             opset_imports = []
             for domain, version in opsets.items():
                 opset_imports.append(onnx.helper.make_opsetid(domain, version))
@@ -879,25 +937,40 @@ class _Exporter(_ExporterOptions):
         try:
             assert not to_utils.is_in_onnx_export()  # type: ignore[no-untyped-call]
             with to_utils.select_model_mode_for_export(self.original_model, self.training):
-                to_utils.__IN_ONNX_EXPORT = True
                 prev_opset_version = GLOBALS.export_onnx_opset_version
-                sym_hel._set_opset_version(self.opset_version)  # type: ignore[no-untyped-call]
                 prev_export_type = GLOBALS.operator_export_type
-                sym_hel._set_operator_export_type(self.operator_export_type)  # type: ignore[no-untyped-call]
                 prev_shape_inference = GLOBALS.onnx_shape_inference
-                sym_hel._set_onnx_shape_inference(  # type: ignore[no-untyped-call]
-                    False  # TODO(twata): Use `self.onnx_shape_inference`
-                )
+                if pytorch_pfn_extras.requires('1.13'):
+                    GLOBALS.in_onnx_export = True  # type: ignore[attr-defined]
+                    GLOBALS.export_onnx_opset_version = self.opset_version
+                    GLOBALS.operator_export_type = self.operator_export_type
+                    GLOBALS.onnx_shape_inference = False
+                else:
+                    to_utils.__IN_ONNX_EXPORT = True  # type: ignore[attr-defined]
+                    sym_hel._set_opset_version(self.opset_version)  # type: ignore[no-untyped-call]
+                    sym_hel._set_operator_export_type(self.operator_export_type)  # type: ignore[no-untyped-call]
+                    sym_hel._set_onnx_shape_inference(  # type: ignore[no-untyped-call]
+                        False  # TODO(twata): Use `self.onnx_shape_inference`
+                    )
                 self._run_trace()
                 self.model: onnx.ModelProto = self.generate_onnx()
         finally:
-            to_utils.__IN_ONNX_EXPORT = False
-            if prev_opset_version is not None:
-                sym_hel._set_opset_version(prev_opset_version)  # type: ignore[no-untyped-call]
-            if prev_shape_inference is not None:
-                sym_hel._set_operator_export_type(prev_export_type)  # type: ignore[no-untyped-call]
-            if prev_shape_inference is not None:
-                sym_hel._set_onnx_shape_inference(prev_shape_inference)  # type: ignore[no-untyped-call]
+            if pytorch_pfn_extras.requires("1.13"):
+                GLOBALS.in_onnx_export = False  # type: ignore[attr-defined]
+                if prev_opset_version is not None:
+                    GLOBALS.export_onnx_opset_version = prev_opset_version
+                if prev_export_type is not None:
+                    GLOBALS.operator_export_type = prev_export_type
+                if prev_shape_inference is not None:
+                    GLOBALS.onnx_shape_inference = prev_shape_inference
+            else:
+                to_utils.__IN_ONNX_EXPORT = False  # type: ignore[attr-defined]
+                if prev_opset_version is not None:
+                    sym_hel._set_opset_version(prev_opset_version)  # type: ignore[no-untyped-call]
+                if prev_export_type is not None:
+                    sym_hel._set_operator_export_type(prev_export_type)  # type: ignore[no-untyped-call]
+                if prev_shape_inference is not None:
+                    sym_hel._set_onnx_shape_inference(prev_shape_inference)  # type: ignore[no-untyped-call]
 
     def generate(self, f: Union[str, typing.IO]) -> None:
         if isinstance(f, str):
@@ -916,4 +989,4 @@ def export(
     ex = _Exporter(model, inputs=args, **kwargs)
     ex.generate(f)
 
-    return ex.outputs
+    return ex.original_outputs
