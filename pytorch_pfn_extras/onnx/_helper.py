@@ -15,7 +15,7 @@ def _detach(x: Any) -> Any:
         return x
 
 
-def no_grad(fn: Callable[..., Any], *args, **kwargs) -> Any:
+def no_grad(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     with torch.no_grad():  # type: ignore[no-untyped-call]
         out = fn(*args, **kwargs)
     # torch.no_grad() does not export `detach` op when tracing
