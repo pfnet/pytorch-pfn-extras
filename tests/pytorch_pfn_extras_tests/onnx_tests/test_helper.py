@@ -1,8 +1,3 @@
-import os
-
-import onnx
-import onnx.checker
-import onnx.numpy_helper
 import pytest
 import pytorch_pfn_extras
 import torch
@@ -10,7 +5,6 @@ import torch.nn as nn
 import torch.onnx
 
 from pytorch_pfn_extras.onnx import no_grad
-from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
