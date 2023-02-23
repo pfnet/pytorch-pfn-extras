@@ -20,6 +20,7 @@ from torch.onnx.utils import \
 
 from pytorch_pfn_extras.onnx import _as_output as as_output
 from pytorch_pfn_extras.onnx import _grad as grad
+from pytorch_pfn_extras.onnx import _lax as lax
 from pytorch_pfn_extras.onnx.annotate import init_annotate
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
     LARGE_TENSOR_DATA_THRESHOLD
@@ -192,7 +193,8 @@ def _export(
         kwargs['verbose'] = True
     with init_annotate(model, opset_ver) as ann, \
             as_output.trace(model) as (model, outputs), \
-            grad.init_grad_state():
+            grad.init_grad_state(), \
+            lax.init_lax_state():
         if use_pfto:
             outs = pfto_export(
                 model, args, bytesio, **kwargs)
@@ -203,6 +205,7 @@ def _export(
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)
         outputs.add_outputs_to_model(onnx_graph)
+        lax.postprocess(onnx_graph)
         if strip_doc_string:
             for node in onnx_graph.graph.node:
                 node.doc_string = b''
