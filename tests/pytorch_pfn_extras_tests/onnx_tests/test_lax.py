@@ -370,7 +370,3 @@ def test_lax_nested():
     actual = ort_session.run(None, {"x": x.cpu().numpy()})
     expected = model(x)
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
-
-
-if __name__ == "__main__":
-    test_while_loop()

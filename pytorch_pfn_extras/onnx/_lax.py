@@ -81,7 +81,10 @@ def _trace() -> bool:
 
 
 def fori_loop(
-    lower: int, upper: int, body_fn: Callable[[torch.Tensor, State], State], init_val: State
+    lower: int,
+    upper: int,
+    body_fn: Callable[[torch.Tensor, State], State],
+    init_val: State,
 ) -> State:
     def _run(lower: int, upper: int, init_val: State) -> State:
         val = init_val
@@ -106,9 +109,13 @@ def fori_loop(
             "lower": lower,
             "upper": upper,
             "it_name": f"fori_loop_it_{n_call}",
-            "init_val_names": [f"fori_loop_prev_state_{n_call}_{i}" for i in range(n_val)],
+            "init_val_names": [
+                f"fori_loop_prev_state_{n_call}_{i}" for i in range(n_val)
+            ],
             "val_names": [f"fori_loop_state_{n_call}_{i}" for i in range(n_val)],
-            "val_dtypes": [_torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(init_val)],
+            "val_dtypes": [
+                _torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(init_val)
+            ],
         }
         _lax_state.n_call += 1
         _lax_state.input_for_postproc[n_call] = for_postproc
@@ -124,7 +131,9 @@ def fori_loop(
         # trace first iteration
         it = torch.full(size=(), fill_value=lower, dtype=torch.int64)
         it = as_output(for_postproc["it_name"], it)
-        init_val = _apply(init_val, lambda i, val: as_output(for_postproc["init_val_names"][i], val))
+        init_val = _apply(
+            init_val, lambda i, val: as_output(for_postproc["init_val_names"][i], val)
+        )
         val = body_fn(it, init_val)
         val = _apply(val, lambda i, val: as_output(for_postproc["val_names"][i], val))
         out = [
@@ -139,7 +148,11 @@ def fori_loop(
         return _run(lower, upper, init_val)
 
 
-def while_loop(cond_fn: Callable[[State], torch.Tensor], body_fn: Callable[[State], State], init_val: State) -> State:
+def while_loop(
+        cond_fn: Callable[[State], torch.Tensor],
+        body_fn: Callable[[State], State],
+        init_val: State,
+) -> State:
     def _run() -> State:
         val = init_val
         while cond_fn(val):
@@ -159,9 +172,13 @@ def while_loop(cond_fn: Callable[[State], torch.Tensor], body_fn: Callable[[Stat
             "n_call": n_call,
             "cond_name": f"while_loop_cond_{n_call}",
             "cond_out_name": f"while_loop_cond_out_{n_call}",
-            "init_val_names": [f"while_loop_prev_state_{n_call}_{i}" for i in range(n_val)],
+            "init_val_names": [
+                f"while_loop_prev_state_{n_call}_{i}" for i in range(n_val)
+            ],
             "val_names": [f"while_loop_state_{n_call}_{i}" for i in range(n_val)],
-            "val_dtypes": [_torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(init_val)],
+            "val_dtypes": [
+                _torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(init_val)
+            ],
         }
         _lax_state.n_call += 1
         _lax_state.input_for_postproc[n_call] = for_postproc
@@ -180,11 +197,15 @@ def while_loop(cond_fn: Callable[[State], torch.Tensor], body_fn: Callable[[Stat
            val = body_fn(val)
         =>
         cond_init = cond_fn(val)
-        val = Loop(None, cond_init, lambda _, _, state: cond_fn(state), body_fn(state), val)
+        val = Loop(
+            None, cond_init, lambda _, _, state: cond_fn(state), body_fn(state), val
+        )
         """
         cond_init = cond_fn(init_val)
         cond_init = as_output(for_postproc["cond_name"], cond_init)
-        init_val = _apply(init_val, lambda i, val: as_output(for_postproc["init_val_names"][i], val))
+        init_val = _apply(
+            init_val, lambda i, val: as_output(for_postproc["init_val_names"][i], val)
+        )
         val = body_fn(init_val)
         cond = cond_fn(val)
         val = _apply(val, lambda i, val: as_output(for_postproc["val_names"][i], val))
@@ -202,7 +223,10 @@ def while_loop(cond_fn: Callable[[State], torch.Tensor], body_fn: Callable[[Stat
 
 
 def cond(
-        pred: torch.Tensor, true_fn: Callable[[State], State], false_fn: Callable[[State], State], operands: State
+        pred: torch.Tensor,
+        true_fn: Callable[[State], State],
+        false_fn: Callable[[State], State],
+        operands: State,
 ) -> State:
     def _run() -> State:
         if pred:
@@ -233,22 +257,29 @@ def cond(
             "n_call": n_call,
             "pred_name": f"cond_pred_{n_call}",
             "operand_names": [f"cond_prev_state_{n_call}_{i}" for i in range(n_val)],
-            "operand_dtypes": [_torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(operands)],
             "true_names": [f"cond_prev_true_{n_call}_{i}" for i in range(n_out)],
             "false_names": [f"cond_prev_false_{n_call}_{i}" for i in range(n_out)],
             "out_names": [f"cond_prev_out_{n_call}_{i}" for i in range(n_out)],
-            "out_dtypes": [_torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(actual)],
+            "out_dtypes": [
+                _torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(actual)
+            ],
         }
         _lax_state.n_call += 1
         _lax_state.input_for_postproc[n_call] = for_postproc
 
         # trace both branches
         pred = as_output(for_postproc["pred_name"], pred)
-        operands = _apply(operands, lambda i, val: as_output(for_postproc["operand_names"][i], val))
+        operands = _apply(
+            operands, lambda i, val: as_output(for_postproc["operand_names"][i], val)
+        )
         out_true = true_fn(operands)
-        out_true = _apply(out_true, lambda i, val: as_output(for_postproc["true_names"][i], val))
+        out_true = _apply(
+            out_true, lambda i, val: as_output(for_postproc["true_names"][i], val)
+        )
         out_false = false_fn(operands)
-        out_false = _apply(out_false, lambda i, val: as_output(for_postproc["false_names"][i], val))
+        out_false = _apply(
+            out_false, lambda i, val: as_output(for_postproc["false_names"][i], val)
+        )
         if pred:
             out = out_true
         else:
@@ -266,7 +297,9 @@ def cond(
         return _run()
 
 
-def _make_constant_scalar(name: str, dtype: onnx.TensorProto.DataType, value: Any) -> onnx.NodeProto:
+def _make_constant_scalar(
+        name: str, dtype: onnx.TensorProto.DataType, value: Any
+) -> onnx.NodeProto:
     if dtype == onnx.TensorProto.STRING:
         return onnx.helper.make_node(
             "Constant",
@@ -293,7 +326,9 @@ def _make_constant_scalar(name: str, dtype: onnx.TensorProto.DataType, value: An
     )
 
 
-def _to_value_infos(names: List[str], dtypes: List[Any], shapes: List[Any]) -> List[onnx.TensorProto]:
+def _to_value_infos(
+        names: List[str], dtypes: List[Any], shapes: List[Any]
+) -> List[onnx.TensorProto]:
     return [
         onnx.helper.make_tensor_value_info(name, dtype, shape)
         for name, dtype, shape in zip(names, dtypes, shapes)
@@ -493,8 +528,11 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
             onnx_graph.graph.node.insert(idx + 2, loop_node)
             for node in nodes:
                 onnx_graph.graph.node.remove(node)
+            unused_outputs = set(
+                val_names + init_val_names + [cond_name, cond_out_name]
+            )
             for output in list(onnx_graph.graph.output):
-                if output.name in set(val_names + init_val_names + [cond_name, cond_out_name]):
+                if output.name in unused_outputs:
                     onnx_graph.graph.output.remove(output)
         elif for_postproc["type"] == "cond":
             n_call = for_postproc["n_call"]
@@ -569,8 +607,9 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
                 if set(node.output) & set(out_names):
                     assert node.op_type == "Identity"
                     onnx_graph.graph.node.remove(node)
+            unused_outputs = set(true_names + false_names + out_names + operand_names)
             for output in list(onnx_graph.graph.output):
-                if output.name in set(true_names + false_names + out_names + operand_names):
+                if output.name in unused_outputs:
                     onnx_graph.graph.output.remove(output)
         else:
             raise RuntimeError("Invalid lax type: " + for_postproc["type"])
