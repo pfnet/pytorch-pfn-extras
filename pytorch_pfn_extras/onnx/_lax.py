@@ -11,7 +11,6 @@ from pytorch_pfn_extras.onnx._as_output import as_output
 
 _lax_state = threading.local()
 
-# copy from https://github.com/pytorch/pytorch/blob/e180ca652f8a38c479a3eff1080efe69cbc11621/torch/testing/_internal/common_utils.py#L367
 _torch_dtype_to_onnx_dtype_dict = {
     torch.bool: onnx.TensorProto.BOOL,
     torch.uint8: onnx.TensorProto.UINT8,
@@ -54,7 +53,7 @@ class _DummyOpForControlFlow(torch.autograd.Function):
         return init_val
 
 
-State = Union[torch.Tensor, Tuple[torch.Tensor]]
+State = Union[torch.Tensor, Tuple[torch.Tensor, ...]]
 
 
 def _as_tuple(val: State) -> Tuple[torch.Tensor]:
@@ -140,7 +139,82 @@ def fori_loop(
         return _run(lower, upper, init_val)
 
 
+def while_loop(cond_fn: Callable[[State], torch.Tensor], body_fn: Callable[[State], State], init_val: State) -> State:
+    def _run() -> State:
+        val = init_val
+        while cond_fn(val):
+            val = body_fn(val)
+        return val
+
+    if _trace():  # type: ignore
+        is_tensor_state = isinstance(init_val, torch.Tensor)
+
+        err_msg = "ppe.onnx.jax.while_loop() can only be used in conjunction " + \
+            "with export functions under ppe.onnx"
+        assert hasattr(_lax_state, "n_call"), err_msg
+        n_call = _lax_state.n_call
+        n_val = len(_as_tuple(init_val))
+        for_postproc = {
+            "type": "while_loop",
+            "n_call": n_call,
+            "cond_name": f"while_loop_cond_{n_call}",
+            "cond_out_name": f"while_loop_cond_out_{n_call}",
+            "init_val_names": [f"while_loop_prev_state_{n_call}_{i}" for i in range(n_val)],
+            "val_names": [f"while_loop_state_{n_call}_{i}" for i in range(n_val)],
+            "val_dtypes": [_torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(init_val)],
+        }
+        _lax_state.n_call += 1
+        _lax_state.input_for_postproc[n_call] = for_postproc
+
+        # use dummy output to return the correct outputs
+        try:
+            prev = _lax_state.ignore_trace
+            _lax_state.ignore_trace = True
+            actual = _run()
+        finally:
+            _lax_state.ignore_trace = prev
+
+        # trace first iteration
+        """
+        while cond_fn(val):
+           val = body_fn(val)
+        =>
+        cond_init = cond_fn(val)
+        val = Loop(None, cond_init, lambda _, _, state: cond_fn(state), body_fn(state), val)
+        """
+        cond_init = cond_fn(init_val)
+        cond_init = as_output(for_postproc["cond_name"], cond_init)
+        init_val = _apply(init_val, lambda i, val: as_output(for_postproc["init_val_names"][i], val))
+        val = body_fn(init_val)
+        cond = cond_fn(val)
+        val = _apply(val, lambda i, val: as_output(for_postproc["val_names"][i], val))
+        cond = as_output(for_postproc["cond_out_name"], cond)
+        out = [
+            _DummyOpForControlFlow.apply(v, act)
+            for v, act in zip(_as_tuple(val), _as_tuple(actual))
+        ]
+        if is_tensor_state:
+            return out[0]
+        else:
+            return tuple(out)
+    else:
+        return _run()
+
+
 def _make_constant_scalar(name: str, dtype: onnx.TensorProto.DataType, value: Any) -> onnx.NodeProto:
+    if dtype == onnx.TensorProto.STRING:
+        return onnx.helper.make_node(
+            "Constant",
+            inputs=[],
+            outputs=[name],
+            value=onnx.helper.make_tensor(
+                name="",
+                data_type=dtype,
+                dims=[],
+                vals=[value.encode()],
+            ),
+        )
+
     return onnx.helper.make_node(
         "Constant",
         inputs=[],
@@ -161,7 +235,9 @@ def _to_value_infos(names: List[str], dtypes: List[Any], shapes: List[Any]) -> L
     ]
 
 
-def _find_nodes(graph: onnx.GraphProto, in_names: List[str], out_names: List[str]) -> Tuple[int, List[onnx.NodeProto]]:
+def _find_nodes(
+        graph: onnx.GraphProto, in_names: List[str], out_names: List[str]
+) -> Tuple[int, List[onnx.NodeProto]]:
     class HashableNode:
         def __init__(self, node: onnx.NodeProto) -> None:
             self.node = node
@@ -240,8 +316,12 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
             # Create input of Loop op
             M_name = f"ppe_lax_Loop_{n_call}_M"
             cond_name = f"ppe_lax_Loop_{n_call}_cond"
-            M_const_node = _make_constant_scalar(M_name, onnx.TensorProto.INT64, upper - lower)
-            cond_const_node = _make_constant_scalar(cond_name, onnx.TensorProto.BOOL, True)
+            M_const_node = _make_constant_scalar(
+                M_name, onnx.TensorProto.INT64, upper - lower
+            )
+            cond_const_node = _make_constant_scalar(
+                cond_name, onnx.TensorProto.BOOL, True
+            )
 
             # Create loop_body
             cond_out_name = f"ppe_lax_Loop_{n_call}_cond_out"
@@ -253,7 +333,9 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
             )
             cnt_name = f"ppe_lax_Loop_{n_call}_cnt"
             lower_name = f"ppe_lax_Loop_{n_call}_lower"
-            lower_node = _make_constant_scalar(lower_name, onnx.TensorProto.INT64, lower)
+            lower_node = _make_constant_scalar(
+                lower_name, onnx.TensorProto.INT64, lower
+            )
             it_node = onnx.helper.make_node(
                 "Add",
                 inputs=[cnt_name, lower_name],
@@ -297,6 +379,57 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
                     onnx_graph.graph.node.remove(node)
             for output in list(onnx_graph.graph.output):
                 if output.name in set(val_names + init_val_names + [it_name]):
+                    onnx_graph.graph.output.remove(output)
+        elif for_postproc["type"] == "while_loop":
+            n_call = for_postproc["n_call"]
+            cond_name = for_postproc["cond_name"]
+            cond_out_name = for_postproc["cond_out_name"]
+            init_val_names = for_postproc["init_val_names"]
+            val_names = for_postproc["val_names"]
+            val_dtypes = for_postproc["val_dtypes"]
+
+            # Create input of Loop op
+            M_name = f"ppe_lax_Loop_{n_call}_M"
+            # TODO use empty string to represent infinite loop
+            M_const_node = _make_constant_scalar(
+                M_name, onnx.TensorProto.INT64, torch.iinfo(torch.long).max
+            )
+
+            # Create loop_body
+            cnt_name = f"ppe_lax_Loop_{n_call}_cnt"
+            idx, nodes = _find_nodes(
+                onnx_graph.graph,
+                init_val_names,
+                val_names + [cond_out_name],
+            )
+            loop_body = onnx.helper.make_graph(
+                nodes=nodes,
+                name=f"ppe_lax_Loop_{n_call}_body",
+                inputs=_to_value_infos(
+                    [cnt_name, cond_name] + init_val_names,
+                    [onnx.TensorProto.INT64, onnx.TensorProto.BOOL] + val_dtypes,
+                    [(), ()] + [None] * len(init_val_names),
+                ),
+                outputs=_to_value_infos(
+                    [cond_out_name] + val_names,
+                    [onnx.TensorProto.BOOL] + val_dtypes,
+                    [()] + [None] * len(val_names),
+                ),
+            )
+            loop_node = onnx.helper.make_node(
+                name=f"ppe_lax_Loop_{n_call}",
+                op_type="Loop",
+                inputs=[M_name, cond_name] + init_val_names,
+                outputs=val_names,
+                body=loop_body,
+            )
+            assert len(nodes) != 0
+            onnx_graph.graph.node.insert(idx, M_const_node)
+            onnx_graph.graph.node.insert(idx + 2, loop_node)
+            for node in nodes:
+                onnx_graph.graph.node.remove(node)
+            for output in list(onnx_graph.graph.output):
+                if output.name in set(val_names + init_val_names + [cond_name, cond_out_name]):
                     onnx_graph.graph.output.remove(output)
         else:
             raise RuntimeError("Invalid lax type: " + for_postproc["type"])

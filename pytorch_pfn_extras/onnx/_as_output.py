@@ -119,7 +119,9 @@ class _ExplicitIdentity(torch.autograd.Function):
         return g.op("Identity", x)
 
 
-def as_output(name: str, value: torch.Tensor, add_identity: bool = True) -> torch.Tensor:
+def as_output(
+        name: str, value: torch.Tensor, add_identity: bool = True
+) -> torch.Tensor:
     if torch.jit.is_scripting():  # type: ignore[no-untyped-call]
         warnings.warn(
             '`as_output` seen in TorchScript compilation. The value is no '

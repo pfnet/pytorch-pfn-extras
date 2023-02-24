@@ -61,7 +61,7 @@ def test_grad_no_export():
     assert y.shape == (1, 1, 32, 20)
 
 
-@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
+@pytest.mark.filterwarnings("ignore:Converting a tensor:")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad():
     if not pytorch_pfn_extras.requires('1.8.0'):

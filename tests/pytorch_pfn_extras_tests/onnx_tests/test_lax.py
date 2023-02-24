@@ -41,7 +41,6 @@ def test_fori_loop_no_export():
     torch.testing.assert_close(y, y_expected)
 
 
-@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_fori_loop():
     if not pytorch_pfn_extras.requires('1.8.0'):
@@ -81,7 +80,6 @@ def test_fori_loop():
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
 
 
-@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_fori_loop_with_tuple_state():
     if not pytorch_pfn_extras.requires('1.8.0'):
@@ -125,7 +123,81 @@ def test_fori_loop_with_tuple_state():
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
 
 
-@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_while_loop_no_export():
+    if not pytorch_pfn_extras.requires('1.8.0'):
+        pytest.skip('skip for PyTorch 1.7 or earlier')
+
+    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.linear = nn.Linear(1, 1)
+            self.linear.weight.data[:] = 2
+            self.linear.bias.data[:] = 3
+
+        def forward(self, x):
+            def cond_fn(x):
+                return x.sum() < 100
+
+            def body_fn(x):
+                return self.linear(x)
+            h = lax.while_loop(cond_fn, body_fn, x)
+            return h
+
+    model = Net()
+    x = torch.tensor([[0], [1]]).float()
+    out = model(x)
+    assert out.sum().item() > 100
+
+
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+@pytest.mark.filterwarnings("ignore:Converting a tensor to a Python boolean might cause the trace to be incorrect:torch.jit.TracerWarning")
+def test_while_loop():
+    if not pytorch_pfn_extras.requires('1.8.0'):
+        pytest.skip('skip for PyTorch 1.7 or earlier')
+
+    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+
+    class Net(nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.linear = nn.Linear(1, 1)
+            self.linear.weight.data[:] = 2
+            self.linear.bias.data[:] = 3
+
+        def forward(self, x):
+            def cond_fn(x):
+                return x.sum() < 100
+
+            def body_fn(x):
+                return self.linear(x)
+            h = lax.while_loop(cond_fn, body_fn, x)
+            return h
+
+    model = Net()
+    x = torch.tensor([[0], [1]]).float()
+    output_dir = _helper(
+        model,
+        x,
+        'while_loop',
+        input_names=("x",),
+        enable_onnx_checker=False,
+        use_pfto=False,
+        do_constant_folding=False,
+    )
+
+    actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
+    assert len([x for x in actual_onnx.graph.node if x.op_type == "Loop"]) == 1
+    ort_session = ort.InferenceSession(os.path.join(output_dir, "model.onnx"))
+    actual = ort_session.run(None, {"x": x.cpu().numpy()})
+    expected = model(x)
+    torch.testing.assert_close(expected, torch.tensor(actual[0]))
+
+
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_lax_multiple_times():
     if not pytorch_pfn_extras.requires('1.8.0'):
@@ -172,7 +244,6 @@ def test_lax_multiple_times():
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
 
 
-@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_lax_nested():
     if not pytorch_pfn_extras.requires('1.8.0'):
@@ -220,3 +291,7 @@ def test_lax_nested():
     actual = ort_session.run(None, {"x": x.cpu().numpy()})
     expected = model(x)
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
+
+
+if __name__ == "__main__":
+    test_while_loop()
