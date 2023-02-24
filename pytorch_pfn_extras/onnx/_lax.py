@@ -3,7 +3,7 @@ import torch
 import threading
 import onnx
 import onnx.helper
-from typing import Generator, Callable, Any, List, Tuple
+from typing import Generator, Callable, Any, List, Tuple, Union
 from contextlib import contextmanager
 
 from pytorch_pfn_extras.onnx._as_output import as_output
@@ -31,9 +31,11 @@ _torch_dtype_to_onnx_dtype_dict = {
 def init_lax_state() -> Generator[None, None, None]:
     _lax_state.n_call = 0
     _lax_state.input_for_postproc = {}
+    _lax_state.ignore_trace = False
     try:
         yield
     finally:
+        _lax_state.ignore_trace = None
         _lax_state.n_call = None
         _lax_state.input_for_postproc = None
 
@@ -52,7 +54,7 @@ class _ExplicitIdentity(torch.autograd.Function):
         return g.op("Identity", it)
 
 
-class _DummyForiLoop(torch.autograd.Function):
+class _DummyOpForControlFlow(torch.autograd.Function):
     @staticmethod
     def forward(  # type: ignore
         ctx: Any,
@@ -66,48 +68,91 @@ class _DummyForiLoop(torch.autograd.Function):
         return init_val
 
 
+State = Union[torch.Tensor, Tuple[torch.Tensor]]
+
+
+def _as_tuple(val: State) -> Tuple[torch.Tensor]:
+    if isinstance(val, torch.Tensor):
+        return tuple([val])
+    else:
+        assert isinstance(val, tuple)
+        return val
+
+
+def _apply(val: State, f: Callable[[int, torch.Tensor], torch.Tensor]) -> State:
+    if isinstance(val, torch.Tensor):
+        return f(0, val)
+    else:
+        assert isinstance(val, tuple)
+        return tuple([f(i, v) for i, v in enumerate(val)])
+
+
+def _trace() -> bool:
+    if not torch.jit.is_tracing():
+        return False
+    if hasattr(_lax_state, "ignore_trace") and _lax_state.ignore_trace:
+        return False
+    return True
+
+
 def fori_loop(
-    lower: int, upper: int, body_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor], init_val: torch.Tensor
-) -> torch.Tensor:
-    def _run(lower: int, upper: int, init_val: torch.Tensor) -> torch.Tensor:
+    lower: int, upper: int, body_fn: Callable[[torch.Tensor, State], State], init_val: State
+) -> State:
+    def _run(lower: int, upper: int, init_val: State) -> State:
         val = init_val
         for i in range(lower, upper):
             it = torch.full(size=(), fill_value=i)
             val = body_fn(it, val)
         return val
 
-    if torch.jit.is_tracing():  # type: ignore
+    if _trace():  # type: ignore
         if lower >= upper:
             return init_val
+        is_tensor_state = isinstance(init_val, torch.Tensor)
 
         err_msg = "ppe.onnx.jax.fori_loop() can only be used in conjunction " + \
             "with export functions under ppe.onnx"
         assert hasattr(_lax_state, "n_call"), err_msg
         n_call = _lax_state.n_call
+        n_val = len(_as_tuple(init_val))
         for_postproc = {
             "type": "fori_loop",
             "n_call": n_call,
             "lower": lower,
             "upper": upper,
             "it_name": f"fori_loop_it_{n_call}",
-            "init_val_names": [f"fori_loop_prev_state_0_{n_call}"],
-            "val_names": [f"fori_loop_state_0_{n_call}"],
-            "val_dtypes": [_torch_dtype_to_onnx_dtype_dict[init_val.dtype]],
+            "init_val_names": [f"fori_loop_prev_state_{n_call}_{i}" for i in range(n_val)],
+            "val_names": [f"fori_loop_state_{n_call}_{i}" for i in range(n_val)],
+            "val_dtypes": [_torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(init_val)],
         }
         _lax_state.n_call += 1
         _lax_state.input_for_postproc[n_call] = for_postproc
+
+        # use dummy output to return the correct outputs
+        try:
+            prev = _lax_state.ignore_trace
+            _lax_state.ignore_trace = True
+            actual = _run(lower, upper, init_val)
+        finally:
+            _lax_state.ignore_trace = prev
 
         # trace first iteration
         it = torch.full(size=(), fill_value=lower, dtype=torch.int64)
         it = _ExplicitIdentity.apply(it)
         it = as_output(for_postproc["it_name"], it)
-        init_val = _ExplicitIdentity.apply(init_val)
-        init_val = as_output(for_postproc["init_val_names"][0], init_val)
+        init_val = _apply(init_val, lambda i, val: _ExplicitIdentity.apply(val))
+        init_val = _apply(init_val, lambda i, val: as_output(for_postproc["init_val_names"][i], val))
         val = body_fn(it, init_val)
-        val = as_output(for_postproc["val_names"][0], val)
-        # use dummy function for other iterations
-        actual = _run(lower + 1, upper, val)
-        return _DummyForiLoop.apply(val, actual)
+        val = _apply(val, lambda i, val: as_output(for_postproc["val_names"][i], val))
+        val = _apply(val, lambda i, val: _ExplicitIdentity.apply(val))
+        out = [
+            _DummyOpForControlFlow.apply(v, act)
+            for v, act in zip(_as_tuple(val), _as_tuple(actual))
+        ]
+        if is_tensor_state:
+            return out[0]
+        else:
+            return tuple(out)
     else:
         return _run(lower, upper, init_val)
 
@@ -197,7 +242,10 @@ def _find_nodes(graph: onnx.GraphProto, in_names: List[str], out_names: List[str
 
 def postprocess(onnx_graph: onnx.ModelProto) -> None:
     assert hasattr(_lax_state, "input_for_postproc")
-    for for_postproc in _lax_state.input_for_postproc.values():
+    postprocs = list(_lax_state.input_for_postproc.items())
+    # Do postprocessing in reverse order to handle nested control flows
+    postprocs.sort(key=lambda v: -v[0])
+    for _, for_postproc in postprocs:
         if for_postproc["type"] == "fori_loop":
             n_call = for_postproc["n_call"]
             lower = for_postproc["lower"]
