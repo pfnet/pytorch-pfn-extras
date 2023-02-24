@@ -40,20 +40,6 @@ def init_lax_state() -> Generator[None, None, None]:
         _lax_state.input_for_postproc = None
 
 
-# Add Identity function to prevent constant folding in torch.onnx
-class _ExplicitIdentity(torch.autograd.Function):
-    @staticmethod
-    def forward(  # type: ignore
-        ctx: Any,
-        it: torch.Tensor,
-    ) -> torch.Tensor:
-        return it
-
-    @staticmethod
-    def symbolic(g, it):  # type: ignore
-        return g.op("Identity", it)
-
-
 class _DummyOpForControlFlow(torch.autograd.Function):
     @staticmethod
     def forward(  # type: ignore
@@ -138,16 +124,10 @@ def fori_loop(
 
         # trace first iteration
         it = torch.full(size=(), fill_value=lower, dtype=torch.int64)
-        it = _ExplicitIdentity.apply(it)
         it = as_output(for_postproc["it_name"], it)
-        it = _ExplicitIdentity.apply(it)
-        init_val = _apply(init_val, lambda i, val: _ExplicitIdentity.apply(val))
         init_val = _apply(init_val, lambda i, val: as_output(for_postproc["init_val_names"][i], val))
-        init_val = _apply(init_val, lambda i, val: _ExplicitIdentity.apply(val))
         val = body_fn(it, init_val)
-        val = _apply(val, lambda i, val: _ExplicitIdentity.apply(val))
         val = _apply(val, lambda i, val: as_output(for_postproc["val_names"][i], val))
-        val = _apply(val, lambda i, val: _ExplicitIdentity.apply(val))
         out = [
             _DummyOpForControlFlow.apply(v, act)
             for v, act in zip(_as_tuple(val), _as_tuple(actual))
