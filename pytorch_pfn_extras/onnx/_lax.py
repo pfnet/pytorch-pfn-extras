@@ -201,6 +201,71 @@ def while_loop(cond_fn: Callable[[State], torch.Tensor], body_fn: Callable[[Stat
         return _run()
 
 
+def cond(
+        pred: torch.Tensor, true_fn: Callable[[State], State], false_fn: Callable[[State], State], operands: State
+) -> State:
+    def _run() -> State:
+        if pred:
+            return true_fn(operands)
+        else:
+            return false_fn(operands)
+
+    if _trace():  # type: ignore
+        is_tensor_state = isinstance(operands, torch.Tensor)
+
+        err_msg = "ppe.onnx.jax.while_loop() can only be used in conjunction " + \
+            "with export functions under ppe.onnx"
+        assert hasattr(_lax_state, "n_call"), err_msg
+
+        # use dummy output to return the correct outputs
+        try:
+            prev = _lax_state.ignore_trace
+            _lax_state.ignore_trace = True
+            actual = _run()
+        finally:
+            _lax_state.ignore_trace = prev
+
+        n_call = _lax_state.n_call
+        n_val = len(_as_tuple(operands))
+        n_out = len(_as_tuple(actual))
+        for_postproc = {
+            "type": "cond",
+            "n_call": n_call,
+            "pred_name": f"cond_pred_{n_call}",
+            "operand_names": [f"cond_prev_state_{n_call}_{i}" for i in range(n_val)],
+            "operand_dtypes": [_torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(operands)],
+            "true_names": [f"cond_prev_true_{n_call}_{i}" for i in range(n_out)],
+            "false_names": [f"cond_prev_false_{n_call}_{i}" for i in range(n_out)],
+            "out_names": [f"cond_prev_out_{n_call}_{i}" for i in range(n_out)],
+            "out_dtypes": [_torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(actual)],
+        }
+        _lax_state.n_call += 1
+        _lax_state.input_for_postproc[n_call] = for_postproc
+
+        # trace both branches
+        pred = as_output(for_postproc["pred_name"], pred)
+        operands = _apply(operands, lambda i, val: as_output(for_postproc["operand_names"][i], val))
+        out_true = true_fn(operands)
+        out_true = _apply(out_true, lambda i, val: as_output(for_postproc["true_names"][i], val))
+        out_false = false_fn(operands)
+        out_false = _apply(out_false, lambda i, val: as_output(for_postproc["false_names"][i], val))
+        if pred:
+            out = out_true
+        else:
+            out = out_false
+        out = _apply(out, lambda i, val: as_output(for_postproc["out_names"][i], val))
+        out = [
+            _DummyOpForControlFlow.apply(v, act)
+            for v, act in zip(_as_tuple(out), _as_tuple(actual))
+        ]
+        if is_tensor_state:
+            return out[0]
+        else:
+            return tuple(out)
+    else:
+        return _run()
+
+
 def _make_constant_scalar(name: str, dtype: onnx.TensorProto.DataType, value: Any) -> onnx.NodeProto:
     if dtype == onnx.TensorProto.STRING:
         return onnx.helper.make_node(
@@ -430,6 +495,82 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
                 onnx_graph.graph.node.remove(node)
             for output in list(onnx_graph.graph.output):
                 if output.name in set(val_names + init_val_names + [cond_name, cond_out_name]):
+                    onnx_graph.graph.output.remove(output)
+        elif for_postproc["type"] == "cond":
+            n_call = for_postproc["n_call"]
+            pred_name = for_postproc["pred_name"]
+            operand_names = for_postproc["operand_names"]
+            true_names = for_postproc["true_names"]
+            false_names = for_postproc["false_names"]
+            out_names = for_postproc["out_names"]
+            out_dtypes = for_postproc["out_dtypes"]
+
+            # Create input of Loop op
+            M_name = f"ppe_lax_Loop_{n_call}_M"
+            # TODO use empty string to represent infinite loop
+            M_const_node = _make_constant_scalar(
+                M_name, onnx.TensorProto.INT64, torch.iinfo(torch.long).max
+            )
+
+            # Create then_branch
+            then_idx, then_nodes = _find_nodes(
+                onnx_graph.graph,
+                operand_names,
+                true_names,
+            )
+            then_branch = onnx.helper.make_graph(
+                nodes=then_nodes,
+                name=f"pee_lax_If_{n_call}_then",
+                inputs=[],
+                outputs=_to_value_infos(
+                    true_names,
+                    out_dtypes,
+                    [None] * len(out_dtypes)
+                )
+            )
+            # Create else_branch
+            else_idx, else_nodes = _find_nodes(
+                onnx_graph.graph,
+                operand_names,
+                false_names,
+            )
+            else_branch = onnx.helper.make_graph(
+                nodes=else_nodes,
+                name=f"pee_lax_If_{n_call}_else",
+                inputs=[],
+                outputs=_to_value_infos(
+                    false_names,
+                    out_dtypes,
+                    [None] * len(out_dtypes)
+                )
+            )
+
+            if_node = onnx.helper.make_node(
+                name=f"ppe_lax_If_{n_call}",
+                op_type="If",
+                inputs=[pred_name],
+                outputs=out_names,
+                then_branch=then_branch,
+                else_branch=else_branch,
+            )
+            idx = max(then_idx, else_idx)
+            onnx_graph.graph.node.insert(idx, if_node)
+            nodes = then_nodes + else_nodes
+            for node in nodes:
+                if node in onnx_graph.graph.node:
+                    onnx_graph.graph.node.remove(node)
+            # remove Identity from {true/false} to out
+            for node in list(onnx_graph.graph.node):
+                if node.op_type == "If":
+                    continue
+                if set(node.input) & set(true_names + false_names):
+                    assert node.op_type == "Identity"
+                    onnx_graph.graph.node.remove(node)
+                if set(node.output) & set(out_names):
+                    assert node.op_type == "Identity"
+                    onnx_graph.graph.node.remove(node)
+            for output in list(onnx_graph.graph.output):
+                if output.name in set(true_names + false_names + out_names + operand_names):
                     onnx_graph.graph.output.remove(output)
         else:
             raise RuntimeError("Invalid lax type: " + for_postproc["type"])
