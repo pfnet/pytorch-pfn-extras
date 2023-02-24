@@ -140,9 +140,12 @@ def fori_loop(
         it = torch.full(size=(), fill_value=lower, dtype=torch.int64)
         it = _ExplicitIdentity.apply(it)
         it = as_output(for_postproc["it_name"], it)
+        it = _ExplicitIdentity.apply(it)
         init_val = _apply(init_val, lambda i, val: _ExplicitIdentity.apply(val))
         init_val = _apply(init_val, lambda i, val: as_output(for_postproc["init_val_names"][i], val))
+        init_val = _apply(init_val, lambda i, val: _ExplicitIdentity.apply(val))
         val = body_fn(it, init_val)
+        val = _apply(val, lambda i, val: _ExplicitIdentity.apply(val))
         val = _apply(val, lambda i, val: as_output(for_postproc["val_names"][i], val))
         val = _apply(val, lambda i, val: _ExplicitIdentity.apply(val))
         out = [
@@ -192,7 +195,7 @@ def _find_nodes(graph: onnx.GraphProto, in_names: List[str], out_names: List[str
             return False
 
     nodes = set()
-    visited = set()
+    cached_results = {}
 
     name_to_nodes = {}
     node_to_index = {}
@@ -204,25 +207,24 @@ def _find_nodes(graph: onnx.GraphProto, in_names: List[str], out_names: List[str
             name_to_nodes[input].append(node)
 
     def _find_output_node(node: HashableNode) -> bool:
-        if node in visited:
-            return False
+        if node in cached_results:
+            return cached_results[node]
 
-        visited.add(node)
         if len(set(node.node.output) & set(out_names)) != 0:
             nodes.add(node)
+            cached_results[node] = True
             return True
+        found = False
         for output in node.node.output:
-            found = False
             if output not in name_to_nodes:
                 continue
             for next in name_to_nodes[output]:
                 if _find_output_node(HashableNode(next)):
                     found = True
-                    break
-            if found:
-                nodes.add(node)
-                return True
-        return False
+        cached_results[node] = found
+        if found:
+            nodes.add(node)
+        return found
 
     for node in graph.node:
         if len(set(node.input) & set(in_names)) != 0:
@@ -231,7 +233,7 @@ def _find_nodes(graph: onnx.GraphProto, in_names: List[str], out_names: List[str
         if len(set(node.output) & set(out_names)):
             nodes.add(HashableNode(node))
 
-    idx = min([node_to_index[node] for node in nodes])
+    idx = max([node_to_index[node] for node in nodes])
 
     # sort by original order
     node_sorted = [x.node for x in nodes]
@@ -284,7 +286,7 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
                 val_names,
             )
             loop_body = onnx.helper.make_graph(
-                nodes=[lower_node, it_node, ] + nodes + [cond_out_node],
+                nodes=[lower_node, it_node] + nodes + [cond_out_node],
                 name=f"ppe_lax_Loop_{n_call}_body",
                 inputs=_to_value_infos(
                     [cnt_name, cond_name] + init_val_names,
@@ -308,14 +310,13 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
             onnx_graph.graph.node.insert(idx, M_const_node)
             onnx_graph.graph.node.insert(idx + 1, cond_const_node)
             onnx_graph.graph.node.insert(idx + 2, loop_node)
-            onnx_graph.graph.node.insert(idx, _make_constant_scalar("/Constant_output_0", onnx.TensorProto.BOOL, True))
             for node in nodes:
                 onnx_graph.graph.node.remove(node)
             for node in onnx_graph.graph.node:
-                if it_name in node.output:
+                if it_name in node.output or it_name in node.input:
                     onnx_graph.graph.node.remove(node)
             for output in list(onnx_graph.graph.output):
-                if output.name in val_names or output.name in init_val_names or output.name == it_name:
+                if output.name in set(val_names + init_val_names + [it_name]):
                     onnx_graph.graph.output.remove(output)
         else:
             raise RuntimeError("Invalid lax type: " + for_postproc["type"])
