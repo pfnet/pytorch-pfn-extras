@@ -8,6 +8,8 @@ on:
 jobs:
   nightly-test:
     runs-on: ubuntu-22.04
+    env:
+      JUPYTER_PLATFORM_DIRS: "1"
 
     steps:
     - name: Checkout

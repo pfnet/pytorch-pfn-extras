@@ -58,6 +58,7 @@ RunOrDie python -m pip list
 RunOrDie python -m pip install -e .
 
 # Unit Test
+$Env:JUPYTER_PLATFORM_DIRS = "1"
 RunOrDie python -m pytest tests
 
 # Examples

@@ -46,6 +46,7 @@ class _ComparableHandler(_handler_module.BaseHandler):
         self._batch_idx: Optional[int] = None
         self._dir = dir
         self._epoch: Optional[int] = None
+        self._entry_runtime = self._handler._entry_runtime  # type: ignore[attr-defined]
 
     def train_setup(self, trainer: _trainer._Trainer, loader: Any) -> None:
         self._handler.train_setup(trainer, loader)

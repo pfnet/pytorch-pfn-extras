@@ -4,8 +4,10 @@ import math
 from pathlib import Path
 
 import onnx
+import onnx.helper
 import onnx.numpy_helper
 import numpy
+import pytorch_pfn_extras as ppe
 
 from pytorch_pfn_extras.onnx import strip_large_tensor as strip
 
@@ -31,7 +33,10 @@ def _unstrip_tensor(tensor: onnx.TensorProto) -> None:
     if ave is None or var is None:
         return None
 
-    np_dtype = onnx.mapping.TENSOR_TYPE_TO_NP_TYPE[tensor.data_type]
+    if ppe.requires("1.13", "onnx"):
+        np_dtype = onnx.helper.tensor_dtype_to_np_dtype(tensor.data_type)
+    else:
+        np_dtype = onnx.mapping.TENSOR_TYPE_TO_NP_TYPE[tensor.data_type]
     dummy_array = numpy.random.normal(ave, math.sqrt(var), tensor.dims).astype(np_dtype)
     dummy_tensor = onnx.numpy_helper.from_array(dummy_array)
     tensor.data_location = onnx.TensorProto.DEFAULT

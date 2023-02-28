@@ -1,4 +1,5 @@
 import dataclasses
+import types
 import typing
 import warnings
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
@@ -15,7 +16,6 @@ from pytorch_pfn_extras.torchscript import run_jit_pass
 import torch
 import torch.jit
 import torch.onnx.symbolic_helper as sym_hel
-import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
 import torch.onnx.utils as to_utils
 from torch.onnx import OperatorExportTypes
 
@@ -189,6 +189,8 @@ class _Exporter(_ExporterOptions):
         # Load symbolic opset
         assert self.opset_version is not None
         if not pytorch_pfn_extras.requires("1.13.0"):
+            import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
+
             sym_reg.register_version("", self.opset_version)  # type: ignore[no-untyped-call,attr-defined]
 
         if pytorch_pfn_extras.requires("1.13.0"):
@@ -255,7 +257,7 @@ class _Exporter(_ExporterOptions):
         self.log("Optimized graph", self.g)
 
         self.log("Original traced graph", self.traced.graph)
-        self.log("State dict", "\n".join([f"- {k}: {v}" for k, v in self.vars.items()]))
+        self.log("State dict", lambda: "\n".join([f"- {k}: {v}" for k, v in self.vars.items()]))
 
     def is_self(self, v: torch._C.Value) -> bool:
         return _unique_id(v) == self.self_id
@@ -372,6 +374,9 @@ class _Exporter(_ExporterOptions):
     def log(self, title: str, v: Any, debug: bool = False) -> None:
         if not (self.verbose or debug):
             return
+
+        if isinstance(v, types.FunctionType):
+            v = v()
 
         s = f"""## {title}
 {v}"""
@@ -507,6 +512,9 @@ class _Exporter(_ExporterOptions):
                     domain = "prim"
                 else:
                     op = f"prim_{op}"
+
+            import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
+
             if sym_reg.is_registered_op(op, domain, self.opset_version):  # type: ignore[no-untyped-call]
                 return cast(  # type: ignore[redundant-cast]
                     Callable, sym_reg.get_registered_op(op, domain, self.opset_version)  # type: ignore[no-untyped-call]
@@ -573,7 +581,7 @@ class _Exporter(_ExporterOptions):
 
         self.log(f"Converting node {n.kind()}", n)
         if len(sym_nodes) > 0:
-            self.log(f"Converted node {n.kind()}", "\n".join([str(i) for i in sym_nodes]))
+            self.log(f"Converted node {n.kind()}", lambda: "\n".join([str(i) for i in sym_nodes]))
 
         # Generate doc string before old node lifetime ends
         for sym_nd in sym_nodes:
@@ -897,7 +905,7 @@ class _Exporter(_ExporterOptions):
             # ],
         )
 
-        self.log("ONNX printable graph", onnx.helper.printable_graph(graph))
+        self.log("ONNX printable graph", lambda: onnx.helper.printable_graph(graph))
 
         def get_model_opset_imports(graph: onnx.GraphProto) -> List[onnx.OperatorSetIdProto]:
             opsets = {onnx.defs.ONNX_DOMAIN: self.opset_version}
