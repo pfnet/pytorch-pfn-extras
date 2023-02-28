@@ -133,6 +133,8 @@ torch_dtype_to_onnx_data_type = {
     torch.bool: onnx.TensorProto.DataType.BOOL,
     torch.float64: onnx.TensorProto.DataType.DOUBLE,
     torch.float16: onnx.TensorProto.DataType.FLOAT16,
+    torch.complex64: onnx.TensorProto.DataType.COMPLEX64,
+    torch.complex128: onnx.TensorProto.DataType.COMPLEX128,
 }
 
 
@@ -165,6 +167,7 @@ class _ExporterOptions:
     onnx_data_prop: bool = True
     onnx_lowprecision_cast: bool = True
     onnx_peephole: bool = True
+    onnx_scalar_type_analysis: bool = True
     fixed_batch_size: bool = False
 
     input_names: Optional[List[str]] = None
@@ -339,10 +342,11 @@ class _Exporter(_ExporterOptions):
 
     # ONNX level graph optimizer
     def optimize_onnx(self, graph: torch._C.Graph) -> torch._C.Graph:
-        if pytorch_pfn_extras.requires("1.9.0"):
-            run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
-        else:
-            run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
+        if self.onnx_scalar_type_analysis:
+            if pytorch_pfn_extras.requires("1.9.0"):
+                run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
+            else:
+                run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
 
         if self.do_constant_folding and self.opset_version in pytorch_pfn_extras.onnx._constants.onnx_constant_folding_opsets:
             folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]

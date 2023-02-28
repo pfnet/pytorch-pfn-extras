@@ -237,3 +237,18 @@ def test_custom_opsets():
 
 def test_softmax():
     run_model_test(torch.nn.Softmax(3), (torch.randn(1, 10, 30, 30),))
+
+
+def test_complex():
+    class Complex(torch.nn.Module):
+        def forward(self, x):
+            return x + 1
+
+    x = torch.rand(32, 32, dtype=torch.complex64)
+    run_model_test(
+        Complex(),
+        (x,),
+        check_torch_export=False,
+        onnx_scalar_type_analysis=False,
+        skip_oxrt=True,  # Add op in ONNX spec doesn't support complex input
+    )
