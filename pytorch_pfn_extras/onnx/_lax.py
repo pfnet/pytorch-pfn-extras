@@ -281,13 +281,13 @@ def cond(
             out_false, lambda i, val: as_output(for_postproc["false_names"][i], val)
         )
         if pred:
-            out = out_true
+            _out = out_true
         else:
-            out = out_false
-        out = _apply(out, lambda i, val: as_output(for_postproc["out_names"][i], val))
+            _out = out_false
+        _out = _apply(_out, lambda i, val: as_output(for_postproc["out_names"][i], val))
         out: List[torch.Tensor] = [
             _DummyOpForControlFlow.apply(v, act)
-            for v, act in zip(_as_tuple(out), _as_tuple(actual))
+            for v, act in zip(_as_tuple(_out), _as_tuple(actual))
         ]
         if is_tensor_state:
             return out[0]
