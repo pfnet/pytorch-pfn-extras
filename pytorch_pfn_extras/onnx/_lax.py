@@ -3,7 +3,7 @@ import torch
 import threading
 import onnx
 import onnx.helper
-from typing import Generator, Callable, Any, List, Tuple, Union
+from typing import Generator, Callable, Any, List, Tuple, Union, Dict
 from contextlib import contextmanager
 
 from pytorch_pfn_extras.onnx._as_output import as_output
@@ -56,7 +56,7 @@ class _DummyOpForControlFlow(torch.autograd.Function):
 State = Union[torch.Tensor, Tuple[torch.Tensor, ...]]
 
 
-def _as_tuple(val: State) -> Tuple[torch.Tensor]:
+def _as_tuple(val: State) -> Tuple[torch.Tensor, ...]:
     if isinstance(val, torch.Tensor):
         return tuple([val])
     else:
@@ -73,7 +73,7 @@ def _apply(val: State, f: Callable[[int, torch.Tensor], torch.Tensor]) -> State:
 
 
 def _trace() -> bool:
-    if not torch.jit.is_tracing():
+    if not torch.jit.is_tracing():  # type: ignore[no-untyped-call]
         return False
     if hasattr(_lax_state, "ignore_trace") and _lax_state.ignore_trace:
         return False
@@ -136,7 +136,7 @@ def fori_loop(
         )
         val = body_fn(it, init_val)
         val = _apply(val, lambda i, val: as_output(for_postproc["val_names"][i], val))
-        out = [
+        out: List[torch.Tensor] = [
             _DummyOpForControlFlow.apply(v, act)
             for v, act in zip(_as_tuple(val), _as_tuple(actual))
         ]
@@ -210,7 +210,7 @@ def while_loop(
         cond = cond_fn(val)
         val = _apply(val, lambda i, val: as_output(for_postproc["val_names"][i], val))
         cond = as_output(for_postproc["cond_out_name"], cond)
-        out = [
+        out: List[torch.Tensor] = [
             _DummyOpForControlFlow.apply(v, act)
             for v, act in zip(_as_tuple(val), _as_tuple(actual))
         ]
@@ -285,7 +285,7 @@ def cond(
         else:
             out = out_false
         out = _apply(out, lambda i, val: as_output(for_postproc["out_names"][i], val))
-        out = [
+        out: List[torch.Tensor] = [
             _DummyOpForControlFlow.apply(v, act)
             for v, act in zip(_as_tuple(out), _as_tuple(actual))
         ]
@@ -347,13 +347,13 @@ def _find_nodes(
 
         def __eq__(self, other: Any) -> bool:
             if isinstance(other, HashableNode):
-                return self.node == other.node
+                return bool(self.node == other.node)
             return False
 
     nodes = set()
-    cached_results = {}
+    cached_results: Dict[HashableNode, bool] = {}
 
-    name_to_nodes = {}
+    name_to_nodes: Dict[str, List[onnx.NodeProto]] = {}
     node_to_index = {}
     for i, node in enumerate(graph.node):
         node_to_index[HashableNode(node)] = i
@@ -402,7 +402,7 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
     assert hasattr(_lax_state, "input_for_postproc")
     postprocs = list(_lax_state.input_for_postproc.items())
     # Do postprocessing in reverse order to handle nested control flows
-    postprocs.sort(key=lambda v: -v[0])
+    postprocs.sort(key=lambda v: -v[0])  # type: ignore
     for _, for_postproc in postprocs:
         if for_postproc["type"] == "fori_loop":
             n_call = for_postproc["n_call"]
@@ -453,12 +453,12 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
                 inputs=_to_value_infos(
                     [cnt_name, cond_name] + init_val_names,
                     [onnx.TensorProto.INT64, onnx.TensorProto.BOOL] + val_dtypes,
-                    [(), ()] + [None] * len(init_val_names),
+                    [(), ()] + [None] * len(init_val_names),  # type: ignore
                 ),
                 outputs=_to_value_infos(
                     [cond_out_name] + val_names,
                     [onnx.TensorProto.BOOL] + val_dtypes,
-                    [()] + [None] * len(val_names),
+                    [()] + [None] * len(val_names),  # type: ignore
                 ),
             )
             loop_node = onnx.helper.make_node(
@@ -508,12 +508,12 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
                 inputs=_to_value_infos(
                     [cnt_name, cond_name] + init_val_names,
                     [onnx.TensorProto.INT64, onnx.TensorProto.BOOL] + val_dtypes,
-                    [(), ()] + [None] * len(init_val_names),
+                    [(), ()] + [None] * len(init_val_names),  # type: ignore
                 ),
                 outputs=_to_value_infos(
                     [cond_out_name] + val_names,
                     [onnx.TensorProto.BOOL] + val_dtypes,
-                    [()] + [None] * len(val_names),
+                    [()] + [None] * len(val_names),  # type: ignore
                 ),
             )
             loop_node = onnx.helper.make_node(
@@ -563,7 +563,7 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
                 outputs=_to_value_infos(
                     true_names,
                     out_dtypes,
-                    [None] * len(out_dtypes)
+                    [None] * len(out_dtypes)  # type: ignore
                 )
             )
             # Create else_branch
@@ -579,7 +579,7 @@ def postprocess(onnx_graph: onnx.ModelProto) -> None:
                 outputs=_to_value_infos(
                     false_names,
                     out_dtypes,
-                    [None] * len(out_dtypes)
+                    [None] * len(out_dtypes)  # type: ignore
                 )
             )
 
