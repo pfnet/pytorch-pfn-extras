@@ -105,7 +105,7 @@ class _ExplicitIdentity(torch.autograd.Function):
         ctx: Any,
         x: torch.Tensor,
     ) -> torch.Tensor:
-        return x
+        return x.clone()
 
     @staticmethod
     def backward(  # type: ignore
