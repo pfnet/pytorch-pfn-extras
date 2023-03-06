@@ -1,4 +1,12 @@
-# equivalent to [jax.lax](https://jax.readthedocs.io/en/latest/jax.lax.html)
+"""
+This file provides APIs to define control-flow operators (e.g., onnx::Loop and onnx::If)
+when using `ppe.onnx.export`.
+`torch.jit` records only `first loop` during tracing, and ppe.onnx inserts control-flow
+operators after exporting ONNX.
+
+APIs are almost same as [jax.lax](https://jax.readthedocs.io/en/latest/jax.lax.html).
+"""
+
 import torch
 import threading
 import onnx
