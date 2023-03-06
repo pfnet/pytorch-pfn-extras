@@ -107,8 +107,8 @@ def test_grad():
         assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
     else:
         assert 'Conv_2' in named_nodes
-        assert 'Gradient_3' in named_nodes
-        assert 'MatMul_5' in named_nodes
+        assert 'Gradient_4' in named_nodes
+        assert 'MatMul_6' in named_nodes
 
     assert list([v.name for v in actual_onnx.graph.output]) == [
         "v10_MatMul", "Gradient_y_0", "Gradient_x_0_0"
@@ -179,10 +179,10 @@ def test_grad_multiple_times():
         assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
     else:
         assert 'Conv_2' in named_nodes
-        assert 'Conv_6' in named_nodes
-        assert 'Gradient_3' in named_nodes
-        assert 'Gradient_7' in named_nodes
-        assert 'MatMul_10' in named_nodes
+        assert 'Conv_7' in named_nodes
+        assert 'Gradient_4' in named_nodes
+        assert 'Gradient_9' in named_nodes
+        assert 'MatMul_12' in named_nodes
 
     assert list([v.name for v in actual_onnx.graph.output]) == [
         "v16_MatMul", "Gradient_y_0", "Gradient_x_0_0", "Gradient_y_1", "Gradient_x_0_1"
@@ -197,8 +197,8 @@ def test_grad_multiple_times():
     else:
         assert named_nodes["Conv_2"].input[0] == "Gradient_x_0_0"
         assert named_nodes["Conv_2"].output[0] == y0_in
-        assert named_nodes["Conv_6"].input[0] == "Gradient_x_0_1"
-        assert named_nodes["Conv_6"].output[0] == y1_in
+        assert named_nodes["Conv_7"].input[0] == "Gradient_x_0_1"
+        assert named_nodes["Conv_7"].output[0] == y1_in
 
 
 @pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
@@ -249,8 +249,8 @@ def test_grad_with_multiple_inputs():
         assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
     else:
         assert 'Conv_5' in named_nodes
-        assert 'Gradient_6' in named_nodes
-        assert 'MatMul_8' in named_nodes
+        assert 'Gradient_7' in named_nodes
+        assert 'MatMul_9' in named_nodes
 
     assert list([v.name for v in actual_onnx.graph.output]) == [
         "v14_MatMul", "Gradient_y_0", "Gradient_x_0_0", "Gradient_x_1_0"
