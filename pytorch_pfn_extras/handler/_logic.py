@@ -383,6 +383,7 @@ class CodeBlockLogic(BaseLogic):
         self.backward_outputs = options.pop('backward_outputs', None)
         if self.backward_outputs is not None:
             assert isinstance(self.backward_outputs, str)
+        self._backward_fn = options.pop('backward_function', None)
 
     def train_epoch_begin(
             self,
@@ -433,6 +434,7 @@ class CodeBlockLogic(BaseLogic):
             list(optimizers.values()),
             self.backward_outputs,
             None,
+            self._backward_fn,
         )(batch)
 
     def train_validation_begin(

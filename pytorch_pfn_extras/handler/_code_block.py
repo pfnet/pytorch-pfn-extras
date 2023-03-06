@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Set
 
 import torch
+import pytorch_pfn_extras as ppe
 
 
 @dataclass
@@ -26,6 +27,7 @@ class CodeBlock:
     backprop: bool
     backprop_from: Optional[str]
     backprop_to: Optional[Set[str]]
+    backprop_fn : Optional[Callable[..., Any]]
     state: Dict[str, Any]
     runtime: Any
 
@@ -56,6 +58,7 @@ def update_parameters(
     optimizers: List[torch.optim.Optimizer],
     backprop_from: Optional[str] = None,
     backprop_to: Optional[Set[str]] = None,
+    backprop_fn : Optional[Callable[..., Any]] = None,
 ) -> CodeBlock:
     """
     Returns a ``CodeBlock`` that performs the forward, backward passes and
@@ -80,6 +83,7 @@ def update_parameters(
         backprop=True,
         backprop_from=backprop_from,
         backprop_to=backprop_to,
+        backprop_fn=backprop_fn,
         state=codeblock.state,
         runtime=codeblock.runtime,
     )
@@ -106,9 +110,34 @@ def forward(block: Callable) -> CodeBlock:
         else:
             module = getattr(block, '__self__', None)
             assert module is not None
-        func = block
+        runtime = ppe.runtime._runtime._module_runtime_tag(module)
+
+        def _forward(batch: Any) -> Any:
+
+            def _normalize_outputs(outputs: Any) -> Dict[str, Any]:
+                target: Dict[str, Any]
+                if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
+                    # namedtuple
+                    target = outputs._asdict()  # type: ignore[attr-defined]
+                elif isinstance(outputs, dict):
+                    target = outputs
+                elif isinstance(outputs, (list, tuple)):
+                    target = {str(i): out for i, out in enumerate(outputs)}
+                else:
+                    target = {"0": outputs}
+                return target
+
+            if isinstance(batch, tuple) and hasattr(batch, '_fields'):
+                # namedtuple
+                return _normalize_outputs(block(batch))
+            if isinstance(batch, dict):
+                return _normalize_outputs(block(**batch))
+            if isinstance(batch, (list, tuple)):
+                return _normalize_outputs(block(*batch))
+            return _normalize_outputs(block(batch))
+
+        func = _forward
         state = {}
-        runtime = getattr(module, '_ppe_runtime', None)
         assert runtime is not None
 
     return CodeBlock(
@@ -117,6 +146,7 @@ def forward(block: Callable) -> CodeBlock:
         backprop=False,
         backprop_from=None,
         backprop_to=None,
+        backprop_fn=None,
         state=state,
         runtime=runtime,
     )
