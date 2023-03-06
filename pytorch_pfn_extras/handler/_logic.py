@@ -1,27 +1,10 @@
-import contextlib
-from typing import Any, Dict, Generator, Iterable, Mapping, Optional
+from typing import Any, Dict, Iterable, Mapping, Optional
 import warnings
 
+import torch
+
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
-
-_amp_enabled = False
-
-
-try:
-    import torch.cuda.amp
-    _amp_enabled = torch.cuda.is_available() and hasattr(
-        torch.cuda.amp, 'autocast')
-except ImportError:
-    pass
-
-
-@contextlib.contextmanager
-def torch_autocast(enabled: bool = True) -> Generator[None, None, None]:
-    if _amp_enabled:
-        with torch.cuda.amp.autocast(enabled):  # type: ignore[no-untyped-call]
-            yield
-    else:
-        yield
+from pytorch_pfn_extras.utils import _autocast
 
 
 def _normalize_outputs(outputs: Any) -> Dict[str, Any]:
@@ -179,7 +162,14 @@ class Logic(BaseLogic):
                     the gradient.
                 * ``'autocast'`` (bool):
                     If ``True``, ``torch.cuda.amp.autocast`` is enabled.
-                    Default is ``False``.
+                    Default is ``False``. This is deprecated in favor of
+                    ``autocast_options``.
+                * ``'autocast_options'`` (bool):
+                    Options to pass to ``torch.autocast``. Includes
+                    ``device_type``, ``dtype`` among others.
+                    Default is ``None``.
+            * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
+                A gradient scaler that outputs are applied to.
                 * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
                     A gradient scaler that outputs are applied to.
         """
@@ -191,11 +181,23 @@ class Logic(BaseLogic):
 
         self.backward_outputs = options.pop('backward_outputs', None)
         self._grad_scaler = options.pop('grad_scaler', None)
-        self._autocast = options.pop('autocast', False)
-        self._backward_fn = options.pop('backward_function', None)
 
-        if not _amp_enabled:
-            if self._grad_scaler is not None or self._autocast:
+        self._backward_fn = options.pop('backward_function', None)
+        enable_autocast = options.get("autocast", False)
+        autocast_options = options.get("autocast_options", None)
+        # Default to old behavior
+        if autocast_options is None:
+            autocast_options = {
+                "device_type": "cuda" if enable_autocast else "cpu",
+                "enabled": enable_autocast
+            }
+        self._autocast = _autocast._AutocastManager(autocast_options)
+
+        if not _autocast._amp_enabled:
+            if (
+                self._grad_scaler is not None
+                or autocast_options["device_type"] == "cuda"
+            ):
                 raise RuntimeError('Requested AMP features but torch.cuda.amp'
                                    ' is not enabled')
 
@@ -290,7 +292,7 @@ class Logic(BaseLogic):
             batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
                 Input tensors feeded to the model of the current step.
         """
-        with torch_autocast(enabled=self._autocast):
+        with self._autocast.autocast():
             optimizers[self.model_name].zero_grad()
             outs = self._forward(models[self.model_name], batch)
             to_back_outs = _normalize_outputs(outs)
