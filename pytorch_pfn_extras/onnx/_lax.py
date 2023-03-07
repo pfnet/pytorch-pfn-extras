@@ -83,9 +83,30 @@ def _apply(val: State, f: Callable[[int, torch.Tensor], torch.Tensor]) -> State:
 def _trace() -> bool:
     if not torch.jit.is_tracing():  # type: ignore[no-untyped-call]
         return False
+    err_msg = "functions in ppe.onnx.lax can only be used in conjunction " + \
+        "with export functions under ppe.onnx"
+    assert hasattr(_lax_state, "ignore_trace"), err_msg
     if hasattr(_lax_state, "ignore_trace") and _lax_state.ignore_trace:
         return False
     return True
+
+
+def _create_and_register_postproc(create_postproc: Callable[[int], Dict[str, Any]]) -> None:
+    n_call = _lax_state.n_call
+    for_postproc = create_postproc(n_call)
+    _lax_state.n_call += 1
+    _lax_state.input_for_postproc[n_call] = for_postproc
+    return for_postproc
+
+
+@contextmanager
+def ignore_trace() -> Generator[None, None, None]:
+    try:
+        prev = _lax_state.ignore_trace
+        _lax_state.ignore_trace = True
+        yield
+    finally:
+        _lax_state.ignore_trace = prev
 
 
 def fori_loop(
@@ -106,12 +127,8 @@ def fori_loop(
             return init_val
         is_tensor_state = isinstance(init_val, torch.Tensor)
 
-        err_msg = "ppe.onnx.jax.fori_loop() can only be used in conjunction " + \
-            "with export functions under ppe.onnx"
-        assert hasattr(_lax_state, "n_call"), err_msg
-        n_call = _lax_state.n_call
         n_val = len(_as_tuple(init_val))
-        for_postproc = {
+        for_postproc = _create_and_register_postproc(lambda n_call: {
             "type": "fori_loop",
             "n_call": n_call,
             "lower": lower,
@@ -124,17 +141,11 @@ def fori_loop(
             "val_dtypes": [
                 _torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(init_val)
             ],
-        }
-        _lax_state.n_call += 1
-        _lax_state.input_for_postproc[n_call] = for_postproc
+        })
 
         # use dummy output to return the correct outputs
-        try:
-            prev = _lax_state.ignore_trace
-            _lax_state.ignore_trace = True
+        with ignore_trace():
             actual = _run(lower, upper, init_val)
-        finally:
-            _lax_state.ignore_trace = prev
 
         # trace first iteration
         it = torch.full(size=(), fill_value=lower, dtype=torch.int64)
@@ -170,12 +181,8 @@ def while_loop(
     if _trace():  # type: ignore
         is_tensor_state = isinstance(init_val, torch.Tensor)
 
-        err_msg = "ppe.onnx.jax.while_loop() can only be used in conjunction " + \
-            "with export functions under ppe.onnx"
-        assert hasattr(_lax_state, "n_call"), err_msg
-        n_call = _lax_state.n_call
         n_val = len(_as_tuple(init_val))
-        for_postproc = {
+        while_postproc = _create_and_register_postproc(lambda n_call: {
             "type": "while_loop",
             "n_call": n_call,
             "cond_name": f"while_loop_cond_{n_call}",
@@ -187,17 +194,11 @@ def while_loop(
             "val_dtypes": [
                 _torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(init_val)
             ],
-        }
-        _lax_state.n_call += 1
-        _lax_state.input_for_postproc[n_call] = for_postproc
+        })
 
         # use dummy output to return the correct outputs
-        try:
-            prev = _lax_state.ignore_trace
-            _lax_state.ignore_trace = True
+        with ignore_trace():
             actual = _run()
-        finally:
-            _lax_state.ignore_trace = prev
 
         # trace first iteration
         """
@@ -210,14 +211,14 @@ def while_loop(
         )
         """
         cond_init = cond_fn(init_val)
-        cond_init = as_output(for_postproc["cond_name"], cond_init)
+        cond_init = as_output(while_postproc["cond_name"], cond_init)
         init_val = _apply(
-            init_val, lambda i, val: as_output(for_postproc["init_val_names"][i], val)
+            init_val, lambda i, val: as_output(while_postproc["init_val_names"][i], val)
         )
         val = body_fn(init_val)
         cond = cond_fn(val)
-        val = _apply(val, lambda i, val: as_output(for_postproc["val_names"][i], val))
-        cond = as_output(for_postproc["cond_out_name"], cond)
+        val = _apply(val, lambda i, val: as_output(while_postproc["val_names"][i], val))
+        cond = as_output(while_postproc["cond_out_name"], cond)
         out: List[torch.Tensor] = [
             _DummyOpForControlFlow.apply(v, act)
             for v, act in zip(_as_tuple(val), _as_tuple(actual))
@@ -245,22 +246,13 @@ def cond(
     if _trace():  # type: ignore
         is_tensor_state = isinstance(operands, torch.Tensor)
 
-        err_msg = "ppe.onnx.jax.while_loop() can only be used in conjunction " + \
-            "with export functions under ppe.onnx"
-        assert hasattr(_lax_state, "n_call"), err_msg
-
         # use dummy output to return the correct outputs
-        try:
-            prev = _lax_state.ignore_trace
-            _lax_state.ignore_trace = True
+        with ignore_trace():
             actual = _run()
-        finally:
-            _lax_state.ignore_trace = prev
 
-        n_call = _lax_state.n_call
         n_val = len(_as_tuple(operands))
         n_out = len(_as_tuple(actual))
-        for_postproc = {
+        cond_postproc = _create_and_register_postproc(lambda n_call: {
             "type": "cond",
             "n_call": n_call,
             "pred_name": f"cond_pred_{n_call}",
@@ -271,28 +263,26 @@ def cond(
             "out_dtypes": [
                 _torch_dtype_to_onnx_dtype_dict[v.dtype] for v in _as_tuple(actual)
             ],
-        }
-        _lax_state.n_call += 1
-        _lax_state.input_for_postproc[n_call] = for_postproc
+        })
 
         # trace both branches
-        pred = as_output(for_postproc["pred_name"], pred)
+        pred = as_output(cond_postproc["pred_name"], pred)
         operands = _apply(
-            operands, lambda i, val: as_output(for_postproc["operand_names"][i], val)
+            operands, lambda i, val: as_output(cond_postproc["operand_names"][i], val)
         )
         out_true = true_fn(operands)
         out_true = _apply(
-            out_true, lambda i, val: as_output(for_postproc["true_names"][i], val)
+            out_true, lambda i, val: as_output(cond_postproc["true_names"][i], val)
         )
         out_false = false_fn(operands)
         out_false = _apply(
-            out_false, lambda i, val: as_output(for_postproc["false_names"][i], val)
+            out_false, lambda i, val: as_output(cond_postproc["false_names"][i], val)
         )
         if pred:
             _out = out_true
         else:
             _out = out_false
-        _out = _apply(_out, lambda i, val: as_output(for_postproc["out_names"][i], val))
+        _out = _apply(_out, lambda i, val: as_output(cond_postproc["out_names"][i], val))
         out: List[torch.Tensor] = [
             _DummyOpForControlFlow.apply(v, act)
             for v, act in zip(_as_tuple(_out), _as_tuple(actual))
