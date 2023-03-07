@@ -315,14 +315,11 @@ class PyTorchRuntime(BaseRuntime):
         device_spec (torch.device or str): The device.
         options (dict, optional): The configuration options.
 
-            * ``'autocast'`` (bool):
+            * ``'autocast'`` (bool or dict):
                 If ``True``, ``torch.cuda.amp.autocast`` is enabled.
                 Default is ``False``. This is deprecated in favor of
-                ``autocast_options``.
-            * ``'autocast_options'`` (bool):
-                Options to pass to ``torch.autocast``. Includes
-                ``device_type``, ``dtype`` among others.
-                Default is ``None``.
+                dict type. If dict, Options to pass to ``torch.autocast``.
+                Includes ``device_type``, ``dtype`` among others.
             * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
                 A gradient scaler that outputs are applied to.
     """
@@ -333,24 +330,9 @@ class PyTorchRuntime(BaseRuntime):
         super().__init__(device_spec, options)
         self._grad_scaler = options.get("grad_scaler", None)
         enable_autocast = options.get("autocast", False)
-        autocast_options = options.get("autocast_options", None)
-        # Default to old behavior
-        if autocast_options is None:
-            autocast_options = {
-                "device_type": "cuda" if enable_autocast else "cpu",
-                "enabled": enable_autocast
-            }
-        self._autocast = _autocast._AutocastManager(autocast_options)
-        if not _autocast._amp_enabled:
-            if (
-                self._grad_scaler is not None
-                or autocast_options["device_type"] == "cuda"
-            ):
-                raise RuntimeError(
-                    "Requested AMP features but torch.cuda.amp"
-                    " is not enabled"
-                )
-
+        self._autocast = _autocast._AutocastManager(
+            enable_autocast, self._grad_scaler is not None
+        )
         if self._grad_scaler is not None:
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
                 raise RuntimeError(

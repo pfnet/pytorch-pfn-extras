@@ -310,14 +310,15 @@ class TestHandlerAutocast:
         def callback(batch_idx, outs):
             nonlocal completed
             if "autocast" in options:
-                if options["autocast"]:
-                    assert outs.dtype == torch.float16
+                if isinstance(options["autocast"], bool):
+                    if options["autocast"]:
+                        assert outs.dtype == torch.float16
+                    else:
+                        assert outs.dtype == torch.float32
                 else:
-                    assert outs.dtype == torch.float32
-            else:
-                if options["autocast_options"]["device_type"] == "cuda":
-                    assert outs.dtype == options["autocast_options"]["dtype"]
-                # For some reason result for CPU is float32 instead of bfloat16
+                    if options["autocast"]["device_type"] == "cuda":
+                        assert outs.dtype == options["autocast"]["dtype"]
+                    # For some reason result for CPU is float32 instead of bfloat16
             completed = True
 
         inputs = {
@@ -347,7 +348,7 @@ class TestHandlerAutocast:
     )
     def test_autocast_options(self, device_type, dtype):
         self.run_autocast(
-            {"autocast_options": {'device_type': device_type, "dtype": dtype}}
+            {"autocast": {'device_type': device_type, "dtype": dtype}}
         )
 
 
