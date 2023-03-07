@@ -4,7 +4,6 @@ import pytest
 import torch
 
 import pytorch_pfn_extras as ppe
-import pytorch_pfn_extras.utils.comparer
 
 
 class Model(torch.nn.Module):

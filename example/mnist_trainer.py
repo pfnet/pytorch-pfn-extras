@@ -9,7 +9,6 @@ from torchvision import datasets, transforms
 
 import pytorch_pfn_extras as ppe
 import pytorch_pfn_extras.training.extensions as extensions
-import pytorch_pfn_extras.utils.comparer as comparer
 
 
 class Net(nn.Module):
@@ -193,8 +192,8 @@ def main():
 
     # Run comparison between devices when requested.
     if args.compare_dump is not None or args.compare_with is not None:
-        comp = comparer.Comparer(
-            compare_fn=comparer.get_default_comparer(rtol=1e-2),
+        comp = ppe.utils.comparer.Comparer(
+            compare_fn=ppe.utils.comparer.get_default_comparer(rtol=1e-2),
             outputs=['loss'],
         )
         if args.compare_dump is None:

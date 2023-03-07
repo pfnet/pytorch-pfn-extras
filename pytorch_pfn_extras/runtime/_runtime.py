@@ -8,7 +8,7 @@ from typing import (
 import torch
 
 from pytorch_pfn_extras.handler._code_block import CodeBlock
-from pytorch_pfn_extras.utils import _autocast
+from pytorch_pfn_extras.runtime import _autocast
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training import Evaluator, Trainer

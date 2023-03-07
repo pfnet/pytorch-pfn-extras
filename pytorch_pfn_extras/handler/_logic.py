@@ -4,7 +4,7 @@ import warnings
 import torch
 
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
-from pytorch_pfn_extras.utils import _autocast
+from pytorch_pfn_extras.runtime import _autocast
 
 
 def _normalize_outputs(outputs: Any) -> Dict[str, Any]:

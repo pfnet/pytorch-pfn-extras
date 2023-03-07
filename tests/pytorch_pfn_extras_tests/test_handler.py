@@ -332,13 +332,13 @@ class TestHandlerAutocast:
         self.run_autocast({'autocast': autocast})
 
     def test_autocast_not_enabled(self):
-        old_enable = ppe.utils._autocast._amp_enabled
+        old_enable = ppe.runtime._autocast._amp_enabled
         try:
-            ppe.utils._autocast._amp_enabled = False
+            ppe.runtime._autocast._amp_enabled = False
             with pytest.raises(RuntimeError):
                 ppe.handler.Logic(options={'autocast': True})
         finally:
-            ppe.utils._autocast._amp_enabled = old_enable
+            ppe.runtime._autocast._amp_enabled = old_enable
 
     @pytest.mark.skipif(not ppe.requires("1.10.0"), reason="requires PyTorch>=1.10")
     @pytest.mark.parametrize(
@@ -522,14 +522,14 @@ class TestLogic:
 
     @pytest.mark.gpu
     def test_disabled_grad_scaler(self):
-        old_enable = ppe.utils._autocast._amp_enabled
+        old_enable = ppe.runtime._autocast._amp_enabled
         try:
-            ppe.utils._autocast._amp_enabled = False
+            ppe.runtime._autocast._amp_enabled = False
             options = {'grad_scaler': torch.cuda.amp.GradScaler()}
             with pytest.raises(RuntimeError):
                 ppe.handler.Logic(options=options)
         finally:
-            ppe.utils._autocast._amp_enabled = old_enable
+            ppe.runtime._autocast._amp_enabled = old_enable
 
     def test_train_validation_begin(self):
         logic = ppe.handler.Logic()
