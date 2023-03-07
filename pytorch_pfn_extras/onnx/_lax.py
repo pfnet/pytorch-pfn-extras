@@ -36,6 +36,7 @@ _torch_dtype_to_onnx_dtype_dict = {
 
 @contextmanager
 def init_lax_state() -> Generator[None, None, None]:
+    # `n_call` attribute is to avoid duplicate name created by as_output
     _lax_state.n_call = 0
     _lax_state.input_for_postproc = {}
     _lax_state.ignore_trace = False
