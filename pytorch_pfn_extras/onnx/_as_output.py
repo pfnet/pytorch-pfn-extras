@@ -98,12 +98,39 @@ def trace(
         _outputs.outputs = None
 
 
-def as_output(name: str, value: torch.Tensor) -> torch.Tensor:
+# Add Identity function to prevent constant folding in torch.onnx
+class _ExplicitIdentity(torch.autograd.Function):
+    @staticmethod
+    def forward(  # type: ignore
+        ctx: Any,
+        x: torch.Tensor,
+    ) -> torch.Tensor:
+        return x.clone()
+
+    @staticmethod
+    def backward(  # type: ignore
+        ctx: Any,
+        dx: torch.Tensor,
+    ) -> torch.Tensor:
+        return dx
+
+    @staticmethod
+    def symbolic(g, x):  # type: ignore
+        return g.op("Identity", x)
+
+
+def as_output(
+        name: str, value: torch.Tensor, add_identity: bool = True
+) -> torch.Tensor:
     if torch.jit.is_scripting():  # type: ignore[no-untyped-call]
         warnings.warn(
             '`as_output` seen in TorchScript compilation. The value is no '
             'longer an output in the exported onnx.')
         return value
     if hasattr(_outputs, "outputs") and _outputs.outputs is not None:
+        if add_identity:
+            value = _ExplicitIdentity.apply(value)
         _outputs.outputs.add(name, value)
+        if add_identity:
+            value = _ExplicitIdentity.apply(value)
     return value
