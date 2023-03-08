@@ -92,7 +92,9 @@ def _trace() -> bool:
     return True
 
 
-def _create_and_register_postproc(create_postproc: Callable[[int], Dict[str, Any]]) -> None:
+def _create_and_register_postproc(
+        create_postproc: Callable[[int], Dict[str, Any]]
+) -> Dict[str, Any]:
     n_call = _lax_state.n_call
     for_postproc = create_postproc(n_call)
     _lax_state.n_call += 1
