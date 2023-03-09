@@ -1,5 +1,5 @@
 import torch
-from typing import Callable, Any
+from typing import Callable, Any, Type, TypeVar
 
 import pytorch_pfn_extras as ppe
 
@@ -24,7 +24,11 @@ def no_grad(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     return _detach(out)
 
 
-def suppress_symbolic_warnings(cls):
+T = TypeVar('T')
+
+
+# Using hack from https://stackoverflow.com/a/56856290
+def suppress_symbolic_warnings(cls: Type[T]) -> Type[T]:
     global torch
     assert issubclass(cls, torch.autograd.Function)
     assert hasattr(cls, "symbolic")
@@ -36,8 +40,10 @@ def suppress_symbolic_warnings(cls):
     import torch.onnx._globals
 
     orig_symbolic = cls.symbolic
-    @staticmethod
-    def new_symbolic(g, *args):
+
+    # Untyped due to type checker in torch.onnx
+    @staticmethod  # type: ignore[misc]
+    def new_symbolic(g, *args, **kwargs):  # type: ignore[no-untyped-def]
         if isinstance(g, torch._C.Graph):
             ctx = torch.onnx._internal.jit_utils.GraphContext(
                 graph=g,
@@ -47,9 +53,9 @@ def suppress_symbolic_warnings(cls):
                 params_dict=torch.onnx.utils._params_dict,
                 env={},
             )
-            return orig_symbolic(ctx, *args)
-        return orig_symbolic(g, *args)
-    
+            return orig_symbolic(ctx, *args, **kwargs)
+        return orig_symbolic(g, *args, **kwargs)
+
     cls.symbolic = new_symbolic
 
     return cls
