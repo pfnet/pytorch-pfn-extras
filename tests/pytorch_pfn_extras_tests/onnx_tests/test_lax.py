@@ -13,7 +13,6 @@ from pytorch_pfn_extras.onnx import lax
 from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_fori_loop_no_export():
     if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
@@ -41,7 +40,6 @@ def test_fori_loop_no_export():
     torch.testing.assert_close(y, y_expected)
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_fori_loop():
     if not pytorch_pfn_extras.requires('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
@@ -80,7 +78,6 @@ def test_fori_loop():
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_fori_loop_with_tuple_state():
     if not pytorch_pfn_extras.requires('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
@@ -123,7 +120,6 @@ def test_fori_loop_with_tuple_state():
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_while_loop_no_export():
     if not pytorch_pfn_extras.requires('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
@@ -153,7 +149,6 @@ def test_while_loop_no_export():
     assert out.sum().item() > 100
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.filterwarnings("ignore:Converting a tensor to a Python boolean might cause the trace to be incorrect:torch.jit.TracerWarning")
 def test_while_loop():
     if not pytorch_pfn_extras.requires('1.8.0'):
@@ -230,7 +225,6 @@ def test_cond_no_export():
     assert out[1] == -1
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.filterwarnings("ignore:Converting a tensor to a Python boolean might cause the trace to be incorrect:torch.jit.TracerWarning")
 def test_cond():
     if not pytorch_pfn_extras.requires('1.8.0'):
@@ -277,7 +271,6 @@ def test_cond():
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_lax_multiple_times():
     if not pytorch_pfn_extras.requires('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
@@ -323,7 +316,6 @@ def test_lax_multiple_times():
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_lax_nested():
     if not pytorch_pfn_extras.requires('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')

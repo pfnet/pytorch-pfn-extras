@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import torch
 import torch.onnx
 import threading
+from pytorch_pfn_extras.onnx._helper import suppress_symbolic_warnings
 from pytorch_pfn_extras.onnx._as_output import as_output
 
 
@@ -48,6 +49,7 @@ def grad(
             input_names.append(input_name)
             inputs_l[i] = as_output(input_name, input, add_identity=False)
 
+        @suppress_symbolic_warnings
         class _Gradient(torch.autograd.Function):
             @staticmethod
             def forward(  # type: ignore
