@@ -18,7 +18,7 @@ def _configure_logging(
     global _logger
     filename = os.environ.get('PPE_LOG_FILENAME', filename)
     if filename is None:
-        handler = logging.StreamHandler()
+        handler: logging.Handler = logging.StreamHandler()
     else:
         handler = logging.FileHandler(filename)
     handler.setFormatter(logging.Formatter(format))
