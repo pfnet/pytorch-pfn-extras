@@ -58,6 +58,7 @@ jobs:
         pip install pytest
         pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime pytorch-ignite
         pip install -v -e .
+        pip list -v
         # Test PPE is importable with pytest dependency
         python -c 'import pytorch_pfn_extras'
 
