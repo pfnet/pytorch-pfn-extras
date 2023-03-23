@@ -218,6 +218,8 @@ class Trainer:
         self._train_len = train_len
         self._eval_len = eval_len
 
+        device = self.handler._entry_runtime.device_spec  # type: ignore[attr-defined]
+
         class _EvaluatorExt:
             def __init__(
                     self,
@@ -282,19 +284,22 @@ class Trainer:
                     with record(
                         "pytorch_pfn_extras.training.Trainer:iteration",
                         use_cuda=torch.cuda.is_available(),
-                        enable=self._enable_profile
+                        enable=self._enable_profile,
+                        device=device
                     ) as ntf0:
                         try:
                             with record(
                                 "pytorch_pfn_extras.training.Trainer:get_data",
-                                enable=self._enable_profile
+                                enable=self._enable_profile,
+                                device=device
                             ):
                                 x = next(loader_iter)
                         except StopIteration:
                             loader_iter = iter(train_loader)
                             with record(
                                 "pytorch_pfn_extras.training.Trainer:get_data",
-                                enable=self._enable_profile
+                                enable=self._enable_profile,
+                                device=device
                             ):
                                 x = next(loader_iter)
                         begin = time.time()
@@ -305,14 +310,16 @@ class Trainer:
                             with record(
                                 "pytorch_pfn_extras.training.Trainer:run_iteration",
                                 use_cuda=torch.cuda.is_available(),
-                                enable=self._enable_profile
+                                enable=self._enable_profile,
+                                device=device
                             ) as ntf1, \
                                     self.manager.run_iteration():
                                 self._observed.put(self.manager.observation)
                                 with record(
                                     "pytorch_pfn_extras.training.Trainer:train_step",
                                     use_cuda=torch.cuda.is_available(),
-                                    enable=self._enable_profile
+                                    enable=self._enable_profile,
+                                    device=device
                                 ) as ntf2:
                                     self._profile_records.put([ntf0, ntf1, ntf2])
                                     self.handler.train_step(

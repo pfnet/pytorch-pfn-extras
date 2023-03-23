@@ -30,7 +30,7 @@ except ImportError:
     _ipython_module_available = False
 
 
-if _util._is_notebook():
+if _ipython_module_available and _util._is_notebook():
     PrintReport = PrintReportNotebook
     ProgressBar = ProgressBarNotebook
 else:
