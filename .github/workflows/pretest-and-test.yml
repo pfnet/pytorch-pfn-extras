@@ -56,7 +56,7 @@ jobs:
         pip install -U pip wheel
         pip install 'torch==${{ matrix.torch }}' torchvision --extra-index-url https://download.pytorch.org/whl/cpu
         pip install pytest
-        pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime pytorch-ignite
+        pip install matplotlib tensorboard ipykernel ipython ipywidgets pandas optuna onnx onnxruntime pytorch-ignite
         pip install -v -e .
         pip list -v
         # Test PPE is importable with pytest dependency
