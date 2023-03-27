@@ -1,11 +1,15 @@
 from contextlib import contextmanager
 import inspect
-from typing import Any, Callable, Generator, Iterable, Optional, TypeVar
+from typing import Any, Callable, Generator, Iterable, Optional, TypeVar, TYPE_CHECKING
 import types
 
 import torch
 
 from pytorch_pfn_extras.profiler import _time_summary
+from pytorch_pfn_extras.runtime import runtime_registry
+
+if TYPE_CHECKING:
+    from pytorch_pfn_extras.runtime._runtime import DeviceLike
 
 
 def _infer_tag_name(frame: Optional[types.FrameType], depth: int) -> str:
@@ -38,6 +42,7 @@ def record(
         metric: Optional[str] = None,
         use_cuda: bool = False,
         enable: bool = True,
+        device: 'DeviceLike' = 'cpu'
 ) -> Generator[_time_summary._ReportNotification, None, None]:
 
     if not enable:
@@ -50,10 +55,14 @@ def record(
     if metric is None:
         metric = tag
 
+    runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
+        device)
+    runtime_tracer = runtime_cls.trace
+
     if use_cuda:
         torch.cuda.nvtx.range_push(tag)  # type: ignore[no-untyped-call]
     try:
-        with torch.autograd.profiler.record_function(tag):
+        with runtime_tracer(tag, None):
             time_summary = _time_summary.get_time_summary()
             with time_summary.report(metric, use_cuda) as ntf:
                 yield ntf

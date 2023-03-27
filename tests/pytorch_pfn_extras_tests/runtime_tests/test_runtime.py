@@ -1,3 +1,5 @@
+import contextlib
+
 import pytest
 import torch
 
@@ -147,3 +149,24 @@ def test_map():
 
     out = list(ppe.map(module[0].output, data, out_keys=set(["y"])))
     assert set(out[0].keys()) == set(["y"])
+
+
+def test_tracer():
+    called = 0
+
+    class TracerRuntime(ppe.runtime.BaseRuntime):
+        @classmethod
+        @contextlib.contextmanager
+        def trace(cls, event_name, arg):
+            nonlocal called
+            called = 1
+            yield
+            called = 2
+
+    assert called == 0
+    with ppe.runtime.BaseRuntime.trace('dummy', None):
+        assert called == 0
+    assert called == 0
+    with TracerRuntime.trace('dummy', None):
+        assert called == 1
+    assert called == 2

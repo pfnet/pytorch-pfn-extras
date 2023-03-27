@@ -115,9 +115,11 @@ def _broadcast(
         get_foreach_wrapper().multi_tensor_scale(src, values, 1.0)
 
 
-def _group_by_type(values: Sequence[torch.Tensor]) -> List[List[torch.Tensor]]:
+def _group_by_type(values: Sequence[Optional[torch.Tensor]]) -> List[List[torch.Tensor]]:
     groups: Dict[torch.dtype, List[torch.Tensor]] = {}
     for value in values:
+        if value is None:
+            continue
         if value.dtype not in groups:
             groups[value.dtype] = []
         groups[value.dtype].append(value)

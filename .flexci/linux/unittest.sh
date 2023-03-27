@@ -12,6 +12,7 @@ pip list
 
 # Run unit tests
 pushd tests
+JUPYTER_PLATFORM_DIRS=1 \
 python -m pytest --cov-report=html --cov pytorch_pfn_extras .
 popd
 

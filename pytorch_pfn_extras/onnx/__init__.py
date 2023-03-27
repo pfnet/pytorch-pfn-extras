@@ -11,6 +11,8 @@ try:
     from pytorch_pfn_extras.onnx._as_output import as_output  # NOQA
     from pytorch_pfn_extras.onnx._grad import grad  # NOQA
     from pytorch_pfn_extras.onnx.load import load_model  # NOQA
+    from pytorch_pfn_extras.onnx._helper import no_grad  # NOQA
+    import pytorch_pfn_extras.onnx._lax as lax  # NOQA
     available = True
 except ImportError:
     available = False

@@ -1,4 +1,5 @@
 import unittest.mock
+import contextlib
 
 import torch
 import pytest
@@ -70,6 +71,12 @@ class MockRuntime(ppe.runtime.BaseRuntime):
     def eval_post_step(self, evaluator, module, batch_idx, batch, outputs):
         self._eval_post_step_called = True
         self._called_module = module
+
+    @classmethod
+    @contextlib.contextmanager
+    def trace(cls, event_name, arg):
+        arg["called"] = True
+        yield
 
 
 class MockModule(torch.nn.Module):

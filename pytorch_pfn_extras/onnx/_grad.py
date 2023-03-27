@@ -46,7 +46,7 @@ def grad(
         for i, input in enumerate(inputs):
             input_name = f"Gradient_x_{i}_{n_grad_call}"
             input_names.append(input_name)
-            inputs_l[i] = as_output(input_name, input)
+            inputs_l[i] = as_output(input_name, input, add_identity=False)
 
         class _Gradient(torch.autograd.Function):
             @staticmethod
@@ -85,7 +85,7 @@ def grad(
             @staticmethod
             def symbolic(g, output, grad_output, *inputs):  # type: ignore
                 return g.op(
-                    "Gradient",
+                    "ai.onnx.preview::Gradient",
                     *inputs,
                     xs_s=input_names,
                     zs_s=[],

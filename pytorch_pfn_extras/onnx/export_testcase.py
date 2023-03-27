@@ -20,6 +20,7 @@ from torch.onnx.utils import \
 
 from pytorch_pfn_extras.onnx import _as_output as as_output
 from pytorch_pfn_extras.onnx import _grad as grad
+from pytorch_pfn_extras.onnx import _lax as lax
 from pytorch_pfn_extras.onnx.annotate import init_annotate
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
     LARGE_TENSOR_DATA_THRESHOLD
@@ -94,6 +95,7 @@ def _export_util(
         model: torch.nn.Module,
         args: Sequence[Any],
         f: IO,
+        return_output: bool = False,
         **kwargs: Any,
 ) -> Any:
     """Wrap operator type to export
@@ -137,6 +139,9 @@ def _export_util(
             except checker_error:
                 if enable_onnx_checker:
                     raise
+                if return_output:
+                    # Re-run the model to obtain the output.
+                    return model(*args)
         else:
             kwargs['_retain_param_name'] = True
             return torch_export(  # type: ignore[no-untyped-call]
@@ -151,11 +156,22 @@ def _export(
         strip_large_tensor_data: bool = False,
         large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
         use_pfto: bool = False,
+        return_output: bool = True,
         **kwargs: Any,
 ) -> Tuple[onnx.ModelProto, Any]:
     model.zero_grad()
     bytesio = io.BytesIO()
     opset_ver = kwargs.get('opset_version', None)
+    force_verbose = False
+
+    if pytorch_pfn_extras.requires("1.13.0"):
+        if "training" in kwargs and (isinstance(kwargs["training"], bool) or kwargs['training'] is None):
+            kwargs["training"] = torch.onnx.TrainingMode.TRAINING \
+                if kwargs["training"] \
+                else torch.onnx.TrainingMode.EVAL
+
+    if pytorch_pfn_extras.requires('1.12.0'):
+        original_log = torch.onnx.log  # type: ignore[attr-defined]
     if opset_ver is None:
         opset_ver = pytorch_pfn_extras.onnx._constants.onnx_default_opset
         kwargs['opset_version'] = opset_ver
@@ -164,26 +180,43 @@ def _export(
         kwargs['strip_doc_string'] = False
     else:
         strip_doc_string = kwargs.pop('strip_doc_string', True)
+        if not kwargs.get('verbose', False):
+            force_verbose = True
+            if pytorch_pfn_extras.requires('1.12.0'):
+                #  Following line won't work because verbose mode always
+                # enable logging so we are replacing python function instead:
+                # torch.onnx.disable_log()
+                def no_op(*args: Any) -> None:
+                    pass
+
+                torch.onnx.log = no_op  # type: ignore[attr-defined]
         kwargs['verbose'] = True
     with init_annotate(model, opset_ver) as ann, \
             as_output.trace(model) as (model, outputs), \
-            grad.init_grad_state():
+            grad.init_grad_state(), \
+            lax.init_lax_state():
         if use_pfto:
             outs = pfto_export(
                 model, args, bytesio, **kwargs)
         else:
             outs = _export_util(
-                model, args, bytesio, **kwargs)
+                model, args, bytesio, return_output=return_output, **kwargs)
         onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)
         outputs.add_outputs_to_model(onnx_graph)
+        lax.postprocess(onnx_graph)
         if strip_doc_string:
             for node in onnx_graph.graph.node:
                 node.doc_string = b''
 
     if strip_large_tensor_data:
         _strip_large_initializer_raw_data(onnx_graph, large_tensor_threshold)
+
+    if force_verbose:
+        if pytorch_pfn_extras.requires('1.12.0'):
+            # torch.onnx.enable_log()
+            torch.onnx.log = original_log  # type: ignore[attr-defined]
 
     return onnx_graph, outs
 
@@ -215,6 +248,7 @@ def export(
     """
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
+        return_output=return_output,
         **kwargs)
 
     if hasattr(f, 'write'):
@@ -293,8 +327,7 @@ def export_testcase(
         outs = model(*args)
     if isinstance(outs, torch.Tensor):
         outs = outs,
-    elif outs is None:
-        outs = ()
+    assert outs is not None
     # Remove unused inputs
     # - When keep_initializers_as_inputs=True, inputs contains initializers.
     #   So we have to filt initializers.
