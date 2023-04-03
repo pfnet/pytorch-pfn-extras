@@ -317,7 +317,10 @@ class PyTorchRuntime(BaseRuntime):
 
             * ``'autocast'`` (bool or dict):
                 If ``True``, ``torch.cuda.amp.autocast`` is enabled.
-                Default is ``False``. This is deprecated in favor of
+                using ``{"enabled": True, "device_type": "cuda"}``
+                as autocast options.
+                Default is ``False`` which corresponds to the following options
+                ``{"enabled": False, "device_type": "cuda"}``
                 dict type. If dict, Options to pass to ``torch.autocast``.
                 Includes ``device_type``, ``dtype`` among others.
             * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
@@ -329,9 +332,11 @@ class PyTorchRuntime(BaseRuntime):
     ) -> None:
         super().__init__(device_spec, options)
         self._grad_scaler = options.get("grad_scaler", None)
-        enable_autocast = options.get("autocast", False)
+        autocast_options = options.get("autocast", False)
+        if isinstance(autocast_options, bool):
+            autocast_options = {"enabled": autocast_options, "device_type": "cuda"}
         self._autocast = _autocast._AutocastManager(
-            enable_autocast, self._grad_scaler is not None
+            autocast_options, self._grad_scaler is not None
         )
         if self._grad_scaler is not None:
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):

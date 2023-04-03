@@ -1,11 +1,12 @@
 import contextlib
-from typing import Any, Dict, Generator, Union
+from typing import Any, Dict, Generator
+from pytorch_pfn_extras._torch_version import requires
 
-_amp_enabled = False
+_cuda_amp_available = False
 
 try:
     import torch.cuda.amp
-    _amp_enabled = torch.cuda.is_available() and hasattr(
+    _cuda_amp_available = torch.cuda.is_available() and hasattr(
         torch.cuda.amp, 'autocast')
 except ImportError:
     pass
@@ -14,10 +15,9 @@ except ImportError:
 class _AutocastManager:
     def __init__(
         self,
-        autocast_options: Union[bool, Dict[str, Any]],
+        autocast_options: Dict[str, Any],
         has_grad_scaler: bool,
     ) -> None:
-        from pytorch_pfn_extras._torch_version import requires
         options = {}
         if isinstance(autocast_options, dict):
             options.update(autocast_options)
@@ -37,7 +37,7 @@ class _AutocastManager:
         ):
             raise RuntimeError("Autocast only work with CUDA devices for PyTorch 1.9")
 
-        if not _amp_enabled:
+        if not _cuda_amp_available:
             if (
                 has_grad_scaler
                 or self._options["device_type"] == "cuda"
@@ -49,7 +49,7 @@ class _AutocastManager:
     def autocast(self, enabled: bool = True) -> Generator[None, None, None]:
         # CUDA Availability was checked in Runtime Constructor
         if self._use_old_ac:
-            with torch.cuda.amp.autocast(self._options["enabled"]):  # type: ignore[no-untyped-call]
+            with torch.cuda.amp.autocast(**self._options):  # type: ignore[no-untyped-call]
                 yield
         else:
             with torch.autocast(**self._options):  # type: ignore[no-untyped-call,attr-defined]

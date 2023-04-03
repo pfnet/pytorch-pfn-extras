@@ -11,7 +11,7 @@ from pytorch_pfn_extras.runtime import _autocast
 # Deprecated: kept for backward compatibility of user code
 @contextlib.contextmanager
 def torch_autocast(enabled: bool = True) -> Generator[None, None, None]:
-    if _autocast._amp_enabled:
+    if _autocast._cuda_amp_available:
         with torch.cuda.amp.autocast(enabled):  # type: ignore[no-untyped-call]
             yield
     else:
@@ -173,11 +173,12 @@ class Logic(BaseLogic):
                     the gradient.
                 * ``'autocast'`` (bool or dict):
                     If ``True``, ``torch.cuda.amp.autocast`` is enabled.
-                    Default is ``False``. This is deprecated in favor of
+                    using ``{"enabled": True, "device_type": "cuda"}``
+                    as autocast options.
+                    Default is ``False`` which corresponds to the following options
+                    ``{"enabled": False, "device_type": "cuda"}``
                     dict type. If dict, Options to pass to ``torch.autocast``.
                     Includes ``device_type``, ``dtype`` among others.
-                * ``'autocast_options'`` (bool):
-                    Default is ``None``.
             * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
                 A gradient scaler that outputs are applied to.
                 * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
@@ -193,9 +194,11 @@ class Logic(BaseLogic):
         self._grad_scaler = options.pop('grad_scaler', None)
 
         self._backward_fn = options.pop('backward_function', None)
-        enable_autocast = options.get("autocast", False)
+        autocast_options = options.get("autocast", False)
+        if isinstance(autocast_options, bool):
+            autocast_options = {"enabled": autocast_options, "device_type": "cuda"}
         self._autocast = _autocast._AutocastManager(
-            enable_autocast, self._grad_scaler is not None
+            autocast_options, self._grad_scaler is not None
         )
 
         if self._grad_scaler is not None:
