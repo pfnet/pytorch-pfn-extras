@@ -18,17 +18,7 @@ class _AutocastManager:
         autocast_options: Dict[str, Any],
         has_grad_scaler: bool,
     ) -> None:
-        options = {}
-        if isinstance(autocast_options, dict):
-            options.update(autocast_options)
-        else:
-            assert isinstance(autocast_options, bool)
-            # Default to old behavior
-            options = {
-                "device_type": "cuda" if autocast_options else "cpu",
-                "enabled": autocast_options
-            }
-        self._options = options
+        self._options = autocast_options
         self._use_old_ac = not requires("1.10.0")
         if (
             self._use_old_ac
@@ -40,7 +30,7 @@ class _AutocastManager:
         if not _cuda_amp_available:
             if (
                 has_grad_scaler
-                or self._options["device_type"] == "cuda"
+                or (self._options["enabled"] and self._options["device_type"] == "cuda")
             ):
                 raise RuntimeError('Requested AMP features but torch.cuda.amp'
                                    ' is not enabled')
