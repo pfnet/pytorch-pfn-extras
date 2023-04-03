@@ -528,6 +528,6 @@ def test_trainer_with_clousure_logic(device, progress_bar, path):
     trainer = engine.create_trainer(
         model_with_loss, optimizer, 20,
         device=device, evaluator=evaluator, extensions=extensions,
-        out_dir=path, logic=ppe.handler.ClousureLogic(backward_outputs=["loss"])
+        out_dir=path, logic=ppe.handler.ClousureLogic(options={"backward_outputs": ["loss"]})
     )
     trainer.run(data, data)
