@@ -466,14 +466,16 @@ class CodeBlockLogic(BaseLogic):
         outs = forward(model)(batch)
         return outs
 
+
 @dataclasses.dataclass
 class ClousureModelOutput:
     outs: Any
     loss: torch.Tensor
 
-    def __float__(self):
+    def __float__(self) -> float:
         return float(self.loss)
-    
+
+
 class ClousureLogic(BaseLogic):
 
     def __init__(
@@ -516,7 +518,7 @@ class ClousureLogic(BaseLogic):
                                    'torch.cuda.amp.GradScaler object')
             else:
                 raise RuntimeError('torch.cuda.amp.GradScaler does not support clousure step mode.')
-            
+
     def _forward(self, model: torch.nn.Module, batch: Any) -> Any:
         if isinstance(batch, tuple) and hasattr(batch, '_fields'):
             # namedtuple
@@ -605,7 +607,7 @@ class ClousureLogic(BaseLogic):
             batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
                 Input tensors feeded to the model of the current step.
         """
-        def clousure():
+        def clousure() -> ClousureModelOutput:
             with torch_autocast(enabled=self._autocast):
                 optimizers[self.model_name].zero_grad()
                 outs = self._forward(models[self.model_name], batch)
@@ -622,9 +624,9 @@ class ClousureLogic(BaseLogic):
                 outs=outs,
                 loss=loss,
             )
-        
+
         optimizer = optimizers[self.model_name]
-        clousure_model_output = optimizer.step(clousure)
+        clousure_model_output: ClousureModelOutput = optimizer.step(clousure)  # type: ignore
         if not isinstance(clousure_model_output, ClousureModelOutput):
             raise RuntimeError(f"{type(clousure_model_output)} type object returned from optimizer.step with clousure. optimizer.step is expected to return ppe.handler.ClousureModelOutput.")
         return clousure_model_output.outs
@@ -658,4 +660,3 @@ class ClousureLogic(BaseLogic):
         model = models[self.model_name]
         outs = self._forward(model, batch)
         return outs
-    
