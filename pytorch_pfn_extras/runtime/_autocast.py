@@ -39,7 +39,7 @@ class _AutocastManager:
     def autocast(self, enabled: bool = True) -> Generator[None, None, None]:
         # CUDA Availability was checked in Runtime Constructor
         if self._use_old_ac:
-            with torch.cuda.amp.autocast(**self._options):  # type: ignore[no-untyped-call]
+            with torch.cuda.amp.autocast(self._options["enabled"]):  # type: ignore[no-untyped-call]
                 yield
         else:
             with torch.autocast(**self._options):  # type: ignore[no-untyped-call,attr-defined]
