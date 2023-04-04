@@ -172,15 +172,12 @@ class Logic(BaseLogic):
                     A list of names of outputs that require compution of
                     the gradient.
                 * ``'autocast'`` (bool or dict):
-                    If ``True``, ``torch.cuda.amp.autocast`` is enabled.
+                    If ``True``, ``torch.autocast`` (or ``torch.cuda.amp.autocast`` for PyTorch 1.9 or earlier) is enabled,
                     using ``{"enabled": True, "device_type": "cuda"}``
                     as autocast options.
-                    Default is ``False`` which corresponds to the following options
-                    ``{"enabled": False, "device_type": "cuda"}``
-                    dict type. If dict, Options to pass to ``torch.autocast``.
-                    Includes ``device_type``, ``dtype`` among others.
-            * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
-                A gradient scaler that outputs are applied to.
+                    The default is ``False`` which corresponds to the following options
+                    ``{"enabled": False, "device_type": "cuda"}``.
+                    If dict, options are passed to ``torch.autocast``.
                 * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
                     A gradient scaler that outputs are applied to.
         """

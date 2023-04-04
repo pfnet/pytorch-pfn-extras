@@ -18,12 +18,13 @@ class _AutocastManager:
         autocast_options: Dict[str, Any],
         has_grad_scaler: bool,
     ) -> None:
+        autocast_options = autocast_options.copy()
+        self._enabled = autocast_options.pop('enabled', True)
+        self._device_type = autocast_options.pop('device_type', 'cuda')
         self._options = autocast_options
         self._use_old_ac = not requires("1.10.0")
         if (
-            self._use_old_ac
-            and self._options.get("enabled", False)
-            and self._options.get("device_type", "cuda") != "cuda"
+            self._enabled and self._use_old_ac and self._device_type == 'cuda'
         ):
             raise RuntimeError("Autocast only work with CUDA devices for PyTorch 1.9")
 
@@ -39,8 +40,8 @@ class _AutocastManager:
     def autocast(self, enabled: bool = True) -> Generator[None, None, None]:
         # CUDA Availability was checked in Runtime Constructor
         if self._use_old_ac:
-            with torch.cuda.amp.autocast(self._options["enabled"]):  # type: ignore[no-untyped-call]
+            with torch.cuda.amp.autocast(enabled=self._enabled, **self._options):  # type: ignore[no-untyped-call]
                 yield
         else:
-            with torch.autocast(**self._options):  # type: ignore[no-untyped-call,attr-defined]
+            with torch.autocast(self._device_type, enabled=self._enabled, **self._options):  # type: ignore[no-untyped-call,attr-defined]
                 yield
