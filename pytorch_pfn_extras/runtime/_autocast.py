@@ -31,7 +31,7 @@ class _AutocastManager:
         if not _cuda_amp_available:
             if (
                 has_grad_scaler
-                or (self._options["enabled"] and self._options["device_type"] == "cuda")
+                or (self._enabled and self._device_type == "cuda")
             ):
                 raise RuntimeError('Requested AMP features but torch.cuda.amp'
                                    ' is not enabled')
@@ -40,7 +40,7 @@ class _AutocastManager:
     def autocast(self, enabled: bool = True) -> Generator[None, None, None]:
         # CUDA Availability was checked in Runtime Constructor
         if self._use_old_ac:
-            with torch.cuda.amp.autocast(enabled=self._enabled, **self._options):  # type: ignore[no-untyped-call]
+            with torch.cuda.amp.autocast(enabled=self._enabled, **self._options):  # type: ignore[no-untyped-call, call-arg]
                 yield
         else:
             with torch.autocast(self._device_type, enabled=self._enabled, **self._options):  # type: ignore[no-untyped-call,attr-defined]
