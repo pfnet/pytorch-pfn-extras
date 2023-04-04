@@ -463,7 +463,8 @@ class _BaseExtensionsManager:
             # Some mock objects for tests give errors
             # if we use `getattr`
             try:
-                entry.extension.finalize(self)
+                if entry.extension.finalize:  # type: ignore[truthy-function]
+                    entry.extension.finalize(self)
             except AttributeError:
                 pass
 
