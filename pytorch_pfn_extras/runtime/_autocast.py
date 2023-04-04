@@ -24,7 +24,7 @@ class _AutocastManager:
         self._options = autocast_options
         self._use_old_ac = not requires("1.10.0")
         if (
-            self._enabled and self._use_old_ac and self._device_type == 'cuda'
+            self._enabled and self._use_old_ac and self._device_type != 'cuda'
         ):
             raise RuntimeError("Autocast only work with CUDA devices for PyTorch 1.9")
 
