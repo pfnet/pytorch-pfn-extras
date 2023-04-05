@@ -514,7 +514,7 @@ def test_trainer_with_clousure_logic(device, progress_bar, path):
     if not torch.cuda.is_available() and device == 'cuda':
         pytest.skip()
     model = MyModel()
-    model_with_loss = MyModelWithLossDictOutput(model)
+    model_with_loss = MyModelWithLossFn(model)
     ppe.to(model_with_loss, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
