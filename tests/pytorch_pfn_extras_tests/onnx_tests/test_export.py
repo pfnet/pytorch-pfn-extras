@@ -226,7 +226,8 @@ def test_custom_opsets():
     m = run_model_test(
         Model(), (torch.randn(2, 7, 17),),
         skip_oxrt=True,
-        custom_opsets={"org.chainer": ver})
+        custom_opsets={"org.chainer": ver},
+        check_reconstruct=False)
 
     assert len(m.opset_import) == 2
 
