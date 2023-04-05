@@ -480,23 +480,8 @@ class ClousureLogic(Logic):
 
     def consume_options(self, options: Dict[str, Any]) -> None:
         super().consume_options(options)
-
-        self.backward_outputs = options.pop('backward_outputs', None)
-        self._grad_scaler = options.pop('grad_scaler', None)
-        self._autocast = options.pop('autocast', False)
-        self._backward_fn = options.pop('backward_function', None)
-
-        if not _amp_enabled:
-            if self._grad_scaler is not None or self._autocast:
-                raise RuntimeError('Requested AMP features but torch.cuda.amp'
-                                   ' is not enabled')
-
         if self._grad_scaler is not None:
-            if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
-                raise RuntimeError('grad_scaler should be a '
-                                   'torch.cuda.amp.GradScaler object')
-            else:
-                raise RuntimeError('torch.cuda.amp.GradScaler does not support clousure step mode.')
+            raise RuntimeError('torch.cuda.amp.GradScaler does not support clousure step mode.')
 
     def train_step(
             self,
