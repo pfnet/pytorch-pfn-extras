@@ -129,8 +129,8 @@ def as_output(
         return value
     if hasattr(_outputs, "outputs") and _outputs.outputs is not None:
         if add_identity:
-            value = _ExplicitIdentity.apply(value)
+            value = _ExplicitIdentity.apply(value)  # type: ignore[no-untyped-call]
         _outputs.outputs.add(name, value)
         if add_identity:
-            value = _ExplicitIdentity.apply(value)
+            value = _ExplicitIdentity.apply(value)  # type: ignore[no-untyped-call]
     return value

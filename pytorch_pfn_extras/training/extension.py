@@ -141,7 +141,7 @@ class Extension:
         serializes nothing by default.
 
         """
-        pass
+        return {}
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         pass
