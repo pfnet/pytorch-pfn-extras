@@ -57,7 +57,7 @@ def _unstrip_graph(graph: onnx.GraphProto) -> None:
 
 
 def _unstrip_onnx_from_path(path: Path) -> onnx.GraphProto:
-    onnx_graph = onnx.load(path, load_external_data=False)
+    onnx_graph = onnx.load(str(path), load_external_data=False)
     _unstrip_graph(onnx_graph.graph)
     return onnx_graph
 
