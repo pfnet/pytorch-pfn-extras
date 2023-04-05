@@ -24,7 +24,6 @@ jobs:
       with:
         path: |
           ~/.cache
-          ~/.onnx
         key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}-${{ matrix.torch }}
         restore-keys: |
           ${{ runner.os }}-pip-
