@@ -600,7 +600,7 @@ class _Exporter(_ExporterOptions):
 
         # Place onnx::Identity node instead node when none is added
         if len(sym_nodes) == 0:
-            sym_out = g.op("Identity", sym_outs[0])
+            sym_out = g_ctx.op("Identity", sym_outs[0])
             assert isinstance(sym_out, torch._C.Value)
             sym_outs = sym_out,
             sym_nodes = [sym_out.node()]
