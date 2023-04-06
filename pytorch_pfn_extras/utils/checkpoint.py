@@ -47,4 +47,4 @@ def checkpoint(function: torch.nn.Module, *args: Any, **kwargs: Any) -> Any:
     if kwargs:
         raise ValueError(
             'Unexpected keyword arguments: ' + ','.join(arg for arg in kwargs))
-    return _CheckpointFunction.apply(function, preserve, *args)
+    return _CheckpointFunction.apply(function, preserve, *args)  # type: ignore[no-untyped-call]

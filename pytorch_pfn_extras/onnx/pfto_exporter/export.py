@@ -74,14 +74,14 @@ def _type_to_proto(t: torch._C.TensorType) -> onnx.TypeProto:
         return ret
 
     if t.kind() == "IntType":
-        ret.tensor_type.elem_type = onnx.TensorProto.DataType.INT64
+        ret.tensor_type.elem_type = onnx.TensorProto.DataType.INT64  # type: ignore[attr-defined]
         ret.tensor_type.shape.CopyFrom(onnx.TensorShapeProto())
         return ret
 
     assert t.kind() == "TensorType", f"Not Tensor type(actual: {t.kind()}): {t}"
 
     if t.scalarType() is None:
-        ret.tensor_type.elem_type = onnx.TensorProto.DataType.UNDEFINED
+        ret.tensor_type.elem_type = onnx.TensorProto.DataType.UNDEFINED  # type: ignore[attr-defined]
     else:
         ret.tensor_type.elem_type = int(  # type: ignore
             sym_hel.cast_pytorch_to_onnx[t.scalarType()]  # type: ignore[index]
@@ -124,17 +124,17 @@ def onnx_node_doc_string(onnx_node: torch._C.Node, torch_node: torch._C.Node) ->
 
 
 torch_dtype_to_onnx_data_type = {
-    torch.float32: onnx.TensorProto.DataType.FLOAT,
-    torch.uint8: onnx.TensorProto.DataType.UINT8,
-    torch.int8: onnx.TensorProto.DataType.INT8,
-    torch.int16: onnx.TensorProto.DataType.INT16,
-    torch.int32: onnx.TensorProto.DataType.INT32,
-    torch.int64: onnx.TensorProto.DataType.INT64,
-    torch.bool: onnx.TensorProto.DataType.BOOL,
-    torch.float64: onnx.TensorProto.DataType.DOUBLE,
-    torch.float16: onnx.TensorProto.DataType.FLOAT16,
-    torch.complex64: onnx.TensorProto.DataType.COMPLEX64,
-    torch.complex128: onnx.TensorProto.DataType.COMPLEX128,
+    torch.float32: onnx.TensorProto.DataType.FLOAT,  # type: ignore[attr-defined]
+    torch.uint8: onnx.TensorProto.DataType.UINT8,  # type: ignore[attr-defined]
+    torch.int8: onnx.TensorProto.DataType.INT8,  # type: ignore[attr-defined]
+    torch.int16: onnx.TensorProto.DataType.INT16,  # type: ignore[attr-defined]
+    torch.int32: onnx.TensorProto.DataType.INT32,  # type: ignore[attr-defined]
+    torch.int64: onnx.TensorProto.DataType.INT64,  # type: ignore[attr-defined]
+    torch.bool: onnx.TensorProto.DataType.BOOL,  # type: ignore[attr-defined]
+    torch.float64: onnx.TensorProto.DataType.DOUBLE,  # type: ignore[attr-defined]
+    torch.float16: onnx.TensorProto.DataType.FLOAT16,  # type: ignore[attr-defined]
+    torch.complex64: onnx.TensorProto.DataType.COMPLEX64,  # type: ignore[attr-defined]
+    torch.complex128: onnx.TensorProto.DataType.COMPLEX128,  # type: ignore[attr-defined]
 }
 
 
@@ -839,8 +839,8 @@ class _Exporter(_ExporterOptions):
         def onnx_value(v: torch._C.Value, name: ONNXValueID) -> onnx.ValueInfoProto:
             return onnx.helper.make_value_info(
                 name,
-                None if v.type() is None else _type_to_proto(cast(torch._C.TensorType, v.type())),
-                doc_string=None if self.strip_doc_string else repr(v),
+                onnx.TypeProto() if v.type() is None else _type_to_proto(cast(torch._C.TensorType, v.type())),
+                doc_string="" if self.strip_doc_string else repr(v),
             )
 
         def apply_dynamic_axes_info(out: onnx.ValueInfoProto, k: str) -> None:

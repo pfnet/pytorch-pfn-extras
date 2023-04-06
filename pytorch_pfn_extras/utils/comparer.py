@@ -729,7 +729,7 @@ class Comparer:
         with concurrent.futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
             futures = []
             for _, (engine, args, kwargs) in self._engines.items():
-                futures.append(executor.submit(self._run_engine, engine, args, kwargs))
+                futures.append(executor.submit(self._run_engine, engine, args, kwargs))  # type: ignore[arg-type]
             for future in concurrent.futures.as_completed(futures):
                 future.result()
 

@@ -159,7 +159,7 @@ def fori_loop(
         val = body_fn(it, init_val)
         val = _apply(val, lambda i, val: as_output(for_postproc["val_names"][i], val))
         out: List[torch.Tensor] = [
-            _DummyOpForControlFlow.apply(v, act)
+            _DummyOpForControlFlow.apply(v, act)  # type: ignore[no-untyped-call]
             for v, act in zip(_as_tuple(val), _as_tuple(actual))
         ]
         if is_tensor_state:
@@ -223,7 +223,7 @@ def while_loop(
         val = _apply(val, lambda i, val: as_output(while_postproc["val_names"][i], val))
         cond = as_output(while_postproc["cond_out_name"], cond)
         out: List[torch.Tensor] = [
-            _DummyOpForControlFlow.apply(v, act)
+            _DummyOpForControlFlow.apply(v, act)  # type: ignore[no-untyped-call]
             for v, act in zip(_as_tuple(val), _as_tuple(actual))
         ]
         if is_tensor_state:
@@ -287,7 +287,7 @@ def cond(
             _out = out_false
         _out = _apply(_out, lambda i, val: as_output(cond_postproc["out_names"][i], val))
         out: List[torch.Tensor] = [
-            _DummyOpForControlFlow.apply(v, act)
+            _DummyOpForControlFlow.apply(v, act)  # type: ignore[no-untyped-call]
             for v, act in zip(_as_tuple(_out), _as_tuple(actual))
         ]
         if is_tensor_state:

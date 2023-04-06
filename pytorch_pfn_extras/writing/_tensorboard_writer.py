@@ -74,7 +74,7 @@ class TensorBoardWriter(object):
             raise TypeError('target must be dict or list of dicts')
         keys = stats_cpu.keys()
         if self._stats is not None:
-            keys = self._stats
+            keys = self._stats  # type: ignore[assignment]
         for key in keys:
             value = stats_cpu[key]
             self._writer.add_scalar(  # type: ignore[no-untyped-call]
