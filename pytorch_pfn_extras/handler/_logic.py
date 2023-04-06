@@ -502,7 +502,7 @@ class ClousureLogic(Logic):
                 Input tensors feeded to the model of the current step.
         """
         def clousure() -> ClousureModelOutput:
-            with torch_autocast(enabled=self._autocast):
+            with self._autocast.autocast():
                 optimizers[self.model_name].zero_grad()
                 outs = self._forward(models[self.model_name], batch)
             to_back_outs = _normalize_outputs(outs)
