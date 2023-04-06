@@ -1,4 +1,5 @@
 import contextlib
+import dataclasses
 from typing import Any, Dict, Generator, Iterable, Mapping, Optional
 import warnings
 
@@ -464,3 +465,80 @@ class CodeBlockLogic(BaseLogic):
         model = models[self.model_name]
         outs = forward(model)(batch)
         return outs
+
+
+@dataclasses.dataclass
+class ClousureModelOutput:
+    outs: Any
+    loss: torch.Tensor
+
+    def __float__(self) -> float:
+        return float(self.loss)
+
+
+class ClousureLogic(Logic):
+
+    def consume_options(self, options: Dict[str, Any]) -> None:
+        super().consume_options(options)
+        if self._grad_scaler is not None:
+            raise RuntimeError('torch.cuda.amp.GradScaler does not support clousure step mode.')
+
+    def train_step(
+            self,
+            models: Mapping[str, torch.nn.Module],
+            optimizers: Mapping[str, torch.optim.Optimizer],
+            batch_idx: int,
+            batch: Any,
+    ) -> Any:
+        """A method invokes the model forward and backward passes and performs an optimization step.
+
+        Args:
+            models (dict of torch.nn.Module):
+                The models.
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of training steps already finished.
+            batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
+                Input tensors feeded to the model of the current step.
+        """
+        def clousure() -> ClousureModelOutput:
+            with torch_autocast(enabled=self._autocast):
+                optimizers[self.model_name].zero_grad()
+                outs = self._forward(models[self.model_name], batch)
+            to_back_outs = _normalize_outputs(outs)
+            if len(to_back_outs) > 1:
+                raise RuntimeError("Clousure step with multiple outputs is not supported.")
+            elif len(to_back_outs) == 0:
+                raise RuntimeError("No backward target found.")
+
+            self._backward(to_back_outs)
+            loss, = to_back_outs.values()
+            return ClousureModelOutput(
+                outs=outs,
+                loss=loss,
+            )
+
+        optimizer = optimizers[self.model_name]
+        clousure_model_output: ClousureModelOutput = optimizer.step(clousure)  # type: ignore
+        if not isinstance(clousure_model_output, ClousureModelOutput):
+            raise RuntimeError(f"{type(clousure_model_output)} type object returned from optimizer.step with clousure. optimizer.step is expected to return ppe.handler.ClousureModelOutput.")
+        return clousure_model_output.outs
+
+    def train_step_optimizers(
+            self,
+            models: Mapping[str, torch.nn.Module],
+            optimizers: Mapping[str, torch.optim.Optimizer],
+            batch_idx: int,
+    ) -> None:
+        """In clousure mode, the stepping of the optimizer cannot be changed.
+
+        If you want to change the stepping of the optimizer, please use the normal Logic class.
+
+        Args:
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of steps already finished.
+        """
+        pass

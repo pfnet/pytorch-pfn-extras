@@ -506,3 +506,28 @@ def test_trainer_profile():
     )
     trainer.run(data, data)
     assert trace_handler.call_count == 20  # n_epochs
+
+
+@pytest.mark.parametrize('device', ['cpu', 'cuda'])
+@pytest.mark.parametrize('progress_bar', [True, False])
+def test_trainer_with_clousure_logic(device, progress_bar, path):
+    if not torch.cuda.is_available() and device == 'cuda':
+        pytest.skip()
+    model = MyModel()
+    model_with_loss = MyModelWithLossFn(model)
+    ppe.to(model_with_loss, device)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [{'x': torch.rand(20,), 't': torch.rand(10,)} for i in range(10)])
+    extensions = _make_extensions()
+
+    evaluator = engine.create_evaluator(
+        model_with_loss, device=device, progress_bar=progress_bar,
+        logic=ppe.handler.ClousureLogic())
+
+    trainer = engine.create_trainer(
+        model_with_loss, optimizer, 20,
+        device=device, evaluator=evaluator, extensions=extensions,
+        out_dir=path, logic=ppe.handler.ClousureLogic(options={"backward_outputs": ["loss"]})
+    )
+    trainer.run(data, data)

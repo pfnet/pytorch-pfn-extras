@@ -529,3 +529,9 @@ class TestLogic:
         models['main'].eval()
         out = logic.eval_step(models, 0, input)
         torch_testing_assert_close(out, model(input))
+
+    @pytest.mark.gpu
+    def test_use_grad_scaler_with_clousure(self):
+        options = {'grad_scaler': torch.cuda.amp.GradScaler()}
+        with pytest.raises(RuntimeError):
+            ppe.handler.ClousureLogic(options=options)
