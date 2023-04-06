@@ -1,23 +1,18 @@
 import contextlib
+import dataclasses
 from typing import Any, Dict, Generator, Iterable, Mapping, Optional
 import warnings
 
+import torch
+
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
-
-_amp_enabled = False
-
-
-try:
-    import torch.cuda.amp
-    _amp_enabled = torch.cuda.is_available() and hasattr(
-        torch.cuda.amp, 'autocast')
-except ImportError:
-    pass
+from pytorch_pfn_extras.runtime import _autocast
 
 
+# Deprecated: kept for backward compatibility of user code
 @contextlib.contextmanager
 def torch_autocast(enabled: bool = True) -> Generator[None, None, None]:
-    if _amp_enabled:
+    if _autocast._cuda_amp_available:
         with torch.cuda.amp.autocast(enabled):  # type: ignore[no-untyped-call]
             yield
     else:
@@ -177,9 +172,13 @@ class Logic(BaseLogic):
                 * ``'backward_outputs'`` (list of str):
                     A list of names of outputs that require compution of
                     the gradient.
-                * ``'autocast'`` (bool):
-                    If ``True``, ``torch.cuda.amp.autocast`` is enabled.
-                    Default is ``False``.
+                * ``'autocast'`` (bool or dict):
+                    If ``True``, ``torch.autocast`` (or ``torch.cuda.amp.autocast`` for PyTorch 1.9 or earlier) is enabled,
+                    using ``{"enabled": True, "device_type": "cuda"}``
+                    as autocast options.
+                    The default is ``False`` which corresponds to the following options
+                    ``{"enabled": False, "device_type": "cuda"}``.
+                    If dict, options are passed to ``torch.autocast``.
                 * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
                     A gradient scaler that outputs are applied to.
         """
@@ -191,13 +190,14 @@ class Logic(BaseLogic):
 
         self.backward_outputs = options.pop('backward_outputs', None)
         self._grad_scaler = options.pop('grad_scaler', None)
-        self._autocast = options.pop('autocast', False)
-        self._backward_fn = options.pop('backward_function', None)
 
-        if not _amp_enabled:
-            if self._grad_scaler is not None or self._autocast:
-                raise RuntimeError('Requested AMP features but torch.cuda.amp'
-                                   ' is not enabled')
+        self._backward_fn = options.pop('backward_function', None)
+        autocast_options = options.get("autocast", False)
+        if isinstance(autocast_options, bool):
+            autocast_options = {"enabled": autocast_options, "device_type": "cuda"}
+        self._autocast = _autocast._AutocastManager(
+            autocast_options, self._grad_scaler is not None
+        )
 
         if self._grad_scaler is not None:
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
@@ -290,7 +290,7 @@ class Logic(BaseLogic):
             batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
                 Input tensors feeded to the model of the current step.
         """
-        with torch_autocast(enabled=self._autocast):
+        with self._autocast.autocast():
             optimizers[self.model_name].zero_grad()
             outs = self._forward(models[self.model_name], batch)
             to_back_outs = _normalize_outputs(outs)
@@ -464,3 +464,80 @@ class CodeBlockLogic(BaseLogic):
         model = models[self.model_name]
         outs = forward(model)(batch)
         return outs
+
+
+@dataclasses.dataclass
+class ClousureModelOutput:
+    outs: Any
+    loss: torch.Tensor
+
+    def __float__(self) -> float:
+        return float(self.loss)
+
+
+class ClousureLogic(Logic):
+
+    def consume_options(self, options: Dict[str, Any]) -> None:
+        super().consume_options(options)
+        if self._grad_scaler is not None:
+            raise RuntimeError('torch.cuda.amp.GradScaler does not support clousure step mode.')
+
+    def train_step(
+            self,
+            models: Mapping[str, torch.nn.Module],
+            optimizers: Mapping[str, torch.optim.Optimizer],
+            batch_idx: int,
+            batch: Any,
+    ) -> Any:
+        """A method invokes the model forward and backward passes and performs an optimization step.
+
+        Args:
+            models (dict of torch.nn.Module):
+                The models.
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of training steps already finished.
+            batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
+                Input tensors feeded to the model of the current step.
+        """
+        def clousure() -> ClousureModelOutput:
+            with torch_autocast(enabled=self._autocast):
+                optimizers[self.model_name].zero_grad()
+                outs = self._forward(models[self.model_name], batch)
+            to_back_outs = _normalize_outputs(outs)
+            if len(to_back_outs) > 1:
+                raise RuntimeError("Clousure step with multiple outputs is not supported.")
+            elif len(to_back_outs) == 0:
+                raise RuntimeError("No backward target found.")
+
+            self._backward(to_back_outs)
+            loss, = to_back_outs.values()
+            return ClousureModelOutput(
+                outs=outs,
+                loss=loss,
+            )
+
+        optimizer = optimizers[self.model_name]
+        clousure_model_output: ClousureModelOutput = optimizer.step(clousure)  # type: ignore
+        if not isinstance(clousure_model_output, ClousureModelOutput):
+            raise RuntimeError(f"{type(clousure_model_output)} type object returned from optimizer.step with clousure. optimizer.step is expected to return ppe.handler.ClousureModelOutput.")
+        return clousure_model_output.outs
+
+    def train_step_optimizers(
+            self,
+            models: Mapping[str, torch.nn.Module],
+            optimizers: Mapping[str, torch.optim.Optimizer],
+            batch_idx: int,
+    ) -> None:
+        """In clousure mode, the stepping of the optimizer cannot be changed.
+
+        If you want to change the stepping of the optimizer, please use the normal Logic class.
+
+        Args:
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of steps already finished.
+        """
+        pass

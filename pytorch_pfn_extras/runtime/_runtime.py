@@ -8,31 +8,10 @@ from typing import (
 import torch
 
 from pytorch_pfn_extras.handler._code_block import CodeBlock
+from pytorch_pfn_extras.runtime import _autocast
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training import Evaluator, Trainer
-
-_amp_enabled = False
-
-
-try:
-    import torch.cuda.amp
-
-    _amp_enabled = torch.cuda.is_available() and hasattr(
-        torch.cuda.amp, "autocast"
-    )
-except ImportError:
-    pass
-
-
-@contextlib.contextmanager
-def _autocast(enabled: bool = True) -> Generator[None, None, None]:
-    if _amp_enabled:
-        with torch.cuda.amp.autocast(enabled):  # type: ignore[no-untyped-call]
-            yield
-    else:
-        yield
-
 
 _RUNTIME_TAG_NAME = "_ppe_runtime"
 
@@ -336,9 +315,14 @@ class PyTorchRuntime(BaseRuntime):
         device_spec (torch.device or str): The device.
         options (dict, optional): The configuration options.
 
-            * ``'autocast'`` (bool):
+            * ``'autocast'`` (bool or dict):
                 If ``True``, ``torch.cuda.amp.autocast`` is enabled.
-                Default is ``False``.
+                using ``{"enabled": True, "device_type": "cuda"}``
+                as autocast options.
+                Default is ``False`` which corresponds to the following options
+                ``{"enabled": False, "device_type": "cuda"}``
+                dict type. If dict, Options to pass to ``torch.autocast``.
+                Includes ``device_type``, ``dtype`` among others.
             * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
                 A gradient scaler that outputs are applied to.
     """
@@ -348,14 +332,12 @@ class PyTorchRuntime(BaseRuntime):
     ) -> None:
         super().__init__(device_spec, options)
         self._grad_scaler = options.get("grad_scaler", None)
-        self._autocast = options.get("autocast", False)
-        if not _amp_enabled:
-            if self._grad_scaler is not None or self._autocast:
-                raise RuntimeError(
-                    "Requested AMP features but torch.cuda.amp"
-                    " is not enabled"
-                )
-
+        autocast_options = options.get("autocast", False)
+        if isinstance(autocast_options, bool):
+            autocast_options = {"enabled": autocast_options, "device_type": "cuda"}
+        self._autocast = _autocast._AutocastManager(
+            autocast_options, self._grad_scaler is not None
+        )
         if self._grad_scaler is not None:
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
                 raise RuntimeError(
@@ -446,7 +428,7 @@ class PyTorchRuntime(BaseRuntime):
             optimizer.zero_grad()
 
         # with autocast
-        with _autocast(enabled=self._autocast):
+        with self._autocast.autocast():
             out = code_block.func(**batch)
 
         # codeblocks return Dicts-per-se so it is not necessary to normalize

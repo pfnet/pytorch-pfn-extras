@@ -20,6 +20,14 @@ jobs:
       with:
         python-version: '3.8'
 
+    - uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py') }}-${{ matrix.torch }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
     - name: Install
       run: |
         pip install -U pip wheel
@@ -41,3 +49,15 @@ jobs:
         pushd example
         mypy . --config-file ../setup.cfg --allow-untyped-defs --allow-untyped-calls
         popd
+
+    - name: Install for pytest
+      run: |
+        pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx pytorch-ignite marko
+        pip install -v -e '.[test]' --extra-index-url https://download.pytorch.org/whl/cpu
+        pip list -v
+        # Test PPE is importable with pytest dependency
+        python -c 'import pytorch_pfn_extras'
+
+    - name: Test CPU only
+      run: |
+        pytest -m "not gpu" tests
