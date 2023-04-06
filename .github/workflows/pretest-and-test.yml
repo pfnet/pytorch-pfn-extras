@@ -53,7 +53,7 @@ jobs:
     - name: Install for pytest
       run: |
         pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx pytorch-ignite
-        pip install -v -e '.[test]'
+        pip install -v -e '.[test]' --extra-index-url https://download.pytorch.org/whl/cpu
         pip list -v
         # Test PPE is importable with pytest dependency
         python -c 'import pytorch_pfn_extras'
