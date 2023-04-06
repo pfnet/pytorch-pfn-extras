@@ -533,8 +533,8 @@ class ClousureLogic(Logic):
     ) -> None:
         """In clousure mode, the stepping of the optimizer cannot be changed.
 
-        If you wish to perform optimizer stepping, please use the normal Logic class.
-
+        If you want to change the stepping of the optimizer, please use the normal Logic class.
+        
         Args:
             optimizers (dict of torch.optim.Optimizer):
                 The optimizers.
