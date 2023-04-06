@@ -490,10 +490,7 @@ class ClousureLogic(Logic):
             batch_idx: int,
             batch: Any,
     ) -> Any:
-        """A method invokes the model forward and backward passes.
-
-        Optimizing is left to `train_step_optimizers` since maybe the user
-        would like to aggregate the gradients of several iterations.
+        """A method invokes the model forward and backward passes and performs an optimization step.
 
         Args:
             models (dict of torch.nn.Module):
@@ -527,3 +524,20 @@ class ClousureLogic(Logic):
         if not isinstance(clousure_model_output, ClousureModelOutput):
             raise RuntimeError(f"{type(clousure_model_output)} type object returned from optimizer.step with clousure. optimizer.step is expected to return ppe.handler.ClousureModelOutput.")
         return clousure_model_output.outs
+
+    def train_step_optimizers(
+            self,
+            models: Mapping[str, torch.nn.Module],
+            optimizers: Mapping[str, torch.optim.Optimizer],
+            batch_idx: int,
+    ) -> None:
+        """In clousure mode, the stepping of the optimizer cannot be changed.
+
+        If you wish to perform optimizer stepping, please use the normal Logic class.
+
+        Args:
+            optimizers (dict of torch.optim.Optimizer):
+                The optimizers.
+            batch_idx (int):
+                Number of steps already finished.
+        """
