@@ -541,3 +541,4 @@ class ClousureLogic(Logic):
             batch_idx (int):
                 Number of steps already finished.
         """
+        pass
