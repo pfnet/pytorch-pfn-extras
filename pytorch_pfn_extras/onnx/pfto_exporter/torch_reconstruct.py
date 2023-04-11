@@ -102,13 +102,14 @@ def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str,
             t = torch.from_numpy(onnx.numpy_helper.to_array(i_u).copy())
             params.append((i.name, t))
 
+    src: str = ""
     if len(outputs) == 1:
-        src: str = f"""graph({", ".join(inputs)}):
+        src = f"""graph({", ".join(inputs)}):
     {body}
     return ({", ".join(outputs)})
 """
     else:
-        src: str = f"""graph({", ".join(inputs)}):
+        src = f"""graph({", ".join(inputs)}):
     {body}
     %__out = prim::TupleConstruct({", ".join(outputs)})
     return (%__out)
