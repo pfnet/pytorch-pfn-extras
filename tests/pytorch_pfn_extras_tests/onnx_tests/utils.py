@@ -30,6 +30,7 @@ def run_model_test(
         assert mode == "eval"
         model.eval()
 
+    dev = "cpu"
     if use_gpu and torch.cuda.is_available():
         dev = "cuda"
         model.to(dev)
@@ -87,7 +88,17 @@ def run_model_test(
             assert len(te_model.graph.input) == len(pfto_model.graph.input)
 
         if check_reconstruct:
-            reconstruct(pfto_model)
+            pt, pt_params = reconstruct(pfto_model)
+            pt_f = torch._C._create_function_from_graph("forward", pt)
+
+            torch.set_rng_state(rng_state)
+            pt_res = pt_f(*args, *[p[1].to(dev) for p in pt_params])
+            if isinstance(pt_res, torch.Tensor):
+                pt_res = pt_res,
+            assert len(pt_res) == len(expected)
+            for a, e in zip(pt_res, expected):
+                cmp = torch.isclose(a.cpu(), e.cpu(), rtol=rtol, atol=atol)
+                assert cmp.all(), f"{cmp.logical_not().count_nonzero()} / {cmp.numel()} values failed"
 
         if skip_oxrt:
             return pfto_model

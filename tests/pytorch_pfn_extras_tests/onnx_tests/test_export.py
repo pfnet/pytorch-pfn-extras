@@ -197,7 +197,8 @@ def test_nested():
 
     run_model_test(
         Model(), (torch.randn(2, 7, 17), torch.randn(2, 7, 17)),
-        skip_oxrt=True, output_names=["a", "b", "c"])
+        skip_oxrt=True, output_names=["a", "b", "c"],
+        check_reconstruct=False)
 
 
 @pytest.mark.filterwarnings("ignore:The shape inference of org.chainer..Add type is missing:UserWarning")

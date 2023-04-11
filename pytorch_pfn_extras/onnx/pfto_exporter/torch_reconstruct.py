@@ -31,7 +31,14 @@ def _process_line(line: str) -> Tuple[str, str]:
     if "prim::Constant" in line:
         line = re.sub(_const_vals_re, lambda m: f"value=[{m[1].replace('  ', ', ')}]", line)
         line = re.sub(_const_typed_val_re, r"value=\1", line)
-        line = re.sub(_const_val_re, r"value=\1", line)
+        if "[] = " in line:
+            line = re.sub(_const_val_re, r"value=[\1]", line)
+        else:
+            line = re.sub(_const_val_re, r"value=\1", line)
+
+    line = line.replace("Bool(device=cpu)", "bool")
+    line = line.replace("Long(device=cpu)", "int")
+    line = line.replace("Double(device=cpu)", "float")
 
     func_match = re.search(_func_re, line)
     if func_match:
@@ -95,9 +102,16 @@ def reconstruct(model: onnx.ModelProto) -> Tuple[torch._C.Graph, List[Tuple[str,
             t = torch.from_numpy(onnx.numpy_helper.to_array(i_u).copy())
             params.append((i.name, t))
 
-    src: str = f"""graph({", ".join(inputs)}):
+    if len(outputs) == 1:
+        src: str = f"""graph({", ".join(inputs)}):
     {body}
     return ({", ".join(outputs)})
+"""
+    else:
+        src: str = f"""graph({", ".join(inputs)}):
+    {body}
+    %__out = prim::TupleConstruct({", ".join(outputs)})
+    return (%__out)
 """
 
     g: torch._C.Graph = torch._C.parse_ir(src)
