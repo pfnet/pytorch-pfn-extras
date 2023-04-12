@@ -1,7 +1,7 @@
 User Guide
 ==========
 
-Trainer (techinical preview)
+Trainer
 ------------------------------------
 
 .. toctree::
