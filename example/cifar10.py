@@ -147,8 +147,8 @@ def main():
         out_dir=args.out,
         stop_trigger=triggers.EarlyStoppingTrigger(
             check_trigger=(1, "epoch"),
-            monitor="val/loss",
-            mode="min",
+            monitor="val/accuracy",
+            mode="max",
             patience=5,
             max_trigger=(args.epoch, "epoch"),
         ),
