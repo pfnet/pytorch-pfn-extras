@@ -2,6 +2,7 @@ import onnx
 import pytest
 import torch
 
+import pytorch_pfn_extras
 from pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
 
 
@@ -166,7 +167,8 @@ def test_norm():
         def forward(self, x):
             return torch.norm(x)
 
-    run_model_test(Net(), (torch.rand(2, 3, 5, 7),), opset_version=13)
+    check_reconstruct = pytorch_pfn_extras.requires("2.0")
+    run_model_test(Net(), (torch.rand(2, 3, 5, 7),), opset_version=13, check_reconstruct=check_reconstruct)
 
 
 def test_rand():

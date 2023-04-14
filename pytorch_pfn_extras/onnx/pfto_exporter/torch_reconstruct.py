@@ -30,15 +30,20 @@ def _process_line(line: str) -> Tuple[str, str]:
     line = line.replace("onnx::SequenceConstruct", "prim::ListConstruct")
     if "prim::Constant" in line:
         line = re.sub(_const_vals_re, lambda m: f"value=[{m[1].replace('  ', ', ')}]", line)
-        line = re.sub(_const_typed_val_re, r"value=\1", line)
         if "[] = " in line:
+            line = re.sub(_const_typed_val_re, r"value=[\1]", line)
             line = re.sub(_const_val_re, r"value=[\1]", line)
         else:
+            line = re.sub(_const_typed_val_re, r"value=\1", line)
             line = re.sub(_const_val_re, r"value=\1", line)
 
     line = line.replace("Bool(device=cpu)", "bool")
     line = line.replace("Long(device=cpu)", "int")
     line = line.replace("Double(device=cpu)", "float")
+
+    line = line.replace("Bool(requires_grad=0, device=cpu)", "bool")
+    line = line.replace("Long(requires_grad=0, device=cpu)", "int")
+    line = line.replace("Double(requires_grad=0, device=cpu)", "float")
 
     func_match = re.search(_func_re, line)
     if func_match:
