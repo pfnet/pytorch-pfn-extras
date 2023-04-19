@@ -252,3 +252,24 @@ def test_complex():
         onnx_scalar_type_analysis=False,
         skip_oxrt=True,  # Add op in ONNX spec doesn't support complex input
     )
+
+
+def test_alias_param():
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = torch.nn.Linear(20, 20)
+            self.linear2 = torch.nn.Linear(20, 20)
+            self.linear2.weight = self.linear.weight
+            self._outputs = []
+
+        def forward(self, x):
+            y = self.linear(x)
+            y = self.linear2(y)
+            self._outputs.clear()
+            self._outputs.append(y)
+            return self._outputs[0]
+
+    m = run_model_test(Model(), (torch.rand((20,)),))
+    params = [i.name for i in m.graph.initializer]
+    assert params == ["linear.weight", "linear.bias", "linear2.bias"]
