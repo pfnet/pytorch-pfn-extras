@@ -898,16 +898,16 @@ class _Exporter(_ExporterOptions):
 
         unique_onnx_vars: Dict[str, onnx.ValueInfoProto] = {}
         identities: List[onnx.NodeProto] = []
-        for k, v in onnx_vars.items():
-            if v.name in unique_onnx_vars:
-                n = onnx.NodeProto()
-                n.name = f"{val_tab[k]}_id"
-                n.op_type = "Identity"
-                n.input.append(v.name)
-                n.output.append(val_tab[k])
-                identities.append(n)
+        for onnx_name, ox_v in onnx_vars.items():
+            if ox_v.name in unique_onnx_vars:
+                ox_n = onnx.NodeProto()
+                ox_n.name = f"{val_tab[onnx_name]}_id"
+                ox_n.op_type = "Identity"
+                ox_n.input.append(ox_v.name)
+                ox_n.output.append(val_tab[onnx_name])
+                identities.append(ox_n)
             else:
-                unique_onnx_vars[v.name] = v
+                unique_onnx_vars[ox_v.name] = ox_v
         onnx_nodes = identities + onnx_nodes
 
         graph = onnx.helper.make_graph(
