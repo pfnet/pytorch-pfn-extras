@@ -298,6 +298,8 @@ class _Exporter(_ExporterOptions):
         # left behind by things like symbolic_override
         run_jit_pass(torch._C._jit_pass_dce, graph)
 
+        run_jit_pass(torch._C._jit_pass_cse, graph)
+
         run_jit_pass(torch._C._jit_pass_canonicalize_graph_fuser_ops, graph)  # type: ignore[attr-defined]
         torch._C._jit_pass_peephole(graph, True)  # type: ignore[attr-defined]
         run_jit_pass(torch._C._jit_pass_fuse_addmm, graph)  # type: ignore[attr-defined]
