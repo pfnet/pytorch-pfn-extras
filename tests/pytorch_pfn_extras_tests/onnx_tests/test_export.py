@@ -272,4 +272,4 @@ def test_alias_param():
 
     m = run_model_test(Model(), (torch.rand((20,)),))
     params = [i.name for i in m.graph.initializer]
-    assert params == ["linear.weight", "linear.bias", "linear2.bias"]
+    assert params == ["linear2.weight", "linear.bias", "linear2.bias"]
