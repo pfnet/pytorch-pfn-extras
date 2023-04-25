@@ -250,7 +250,29 @@ class _Exporter(_ExporterOptions):
         self.original_outputs = self.original_model(*self.inputs)
         self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
         self.g: torch._C.Graph = self.traced.inlined_graph
-        self.vars: Dict[str, torch.IValue] = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
+        """
+        `self.trace` ignores the override of `state_dict` method in `self.original_model`.
+        Thus, the key name may be different between state dict of `self.trace` and `self.original_model`.
+        pfto uses the key name of `self.original_model.state_dict()` as the parameter names in ONNX.
+
+        To implement this behavior, we have to prepare mapping from name of `self.trace` state_dict to
+        the name of `self.original_model` state_dict.
+        """
+        self.name_from_trace: Dict[str, str] = {}
+        vars_in_traced: Dict[str, torch.IValue] = {
+            _remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()
+        }
+        if isinstance(self.original_model, torch.nn.Module):
+            vars_tmp: Dict[str, Any] = {
+                _remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict(keep_vars=True).items()
+            }
+            v_to_name: Dict[Any, str] = {v: k for k, v in self.original_model.state_dict(keep_vars=True).items()}
+            for name, v in vars_tmp.items():
+                self.name_from_trace[name] = v_to_name[v]
+        else:
+            for name in vars_in_traced.keys():
+                self.name_from_trace[name] = name
+        self.vars: Dict[str, torch.IValue] = {self.name_from_trace[name]: v for name, v in vars_in_traced.items()}
         self.torch2onnx_var: Dict[torch._C.Value, torch._C.Value] = {
             i: i for i in self.g.inputs()
         }
@@ -285,6 +307,8 @@ class _Exporter(_ExporterOptions):
         # run dce to eliminate dead parts of the graph that might have been
         # left behind by things like symbolic_override
         run_jit_pass(torch._C._jit_pass_dce, graph)
+
+        run_jit_pass(torch._C._jit_pass_cse, graph)
 
         run_jit_pass(torch._C._jit_pass_canonicalize_graph_fuser_ops, graph)  # type: ignore[attr-defined]
         torch._C._jit_pass_peephole(graph, True)  # type: ignore[attr-defined]
@@ -435,19 +459,15 @@ class _Exporter(_ExporterOptions):
 
     def handle_getattr(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         if self.is_self(n.input()) or self.attrs[_unique_id(n.input())] == _ppe_ignore_scope:
-            self.attrs[_unique_id(n.output())] = ONNXValueID(n.s("name"))
+            var_name = n.s("name")
         else:
-            self.attrs[_unique_id(n.output())] = ONNXValueID(
-                "%s.%s"
-                % (
-                    self.attrs[_unique_id(n.input())],
-                    n.s("name"),
-                )
-            )
-        var_name = self.attrs[_unique_id(n.output())]
+            var_name = "%s.%s" % (self.attrs[_unique_id(n.input())], n.s("name"))
+        if var_name in self.name_from_trace:
+            var_name = self.name_from_trace[var_name]
         if var_name in self.vars:
             assert isinstance(self.vars[var_name], torch.Tensor)
             n.output().inferTypeFrom(cast(torch.Tensor, self.vars[var_name]))
+        self.attrs[_unique_id(n.output())] = ONNXValueID(var_name)
 
     def handle_list_construct(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         # Concat if int type input
