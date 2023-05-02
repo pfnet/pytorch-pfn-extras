@@ -252,3 +252,28 @@ def test_complex():
         onnx_scalar_type_analysis=False,
         skip_oxrt=True,  # Add op in ONNX spec doesn't support complex input
     )
+
+
+def test_op_norm():
+    class Clip(torch.nn.Module):
+        def __init__(self):
+            super(Clip, self).__init__()
+            self.a = torch.rand(32, 32)
+
+        def forward(self, x):
+            return torch.clip(x, -2.0, 4.0) + torch.clip(self.a, 10, 20)
+
+    class Proxy(torch.nn.Module):
+        def __init__(self):
+            super(Proxy, self).__init__()
+            self.c = Clip()
+
+        def forward(self, x):
+            return self.c(x + 1)
+
+    x = torch.rand(32, 32)
+    run_model_test(
+        Proxy(),
+        (x,),
+        do_constant_folding=False,
+    )
