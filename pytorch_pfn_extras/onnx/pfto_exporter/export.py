@@ -29,6 +29,88 @@ torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defi
 _ppe_ignore_scope: str = "_ppe_as_out_module"
 _list_create_ops: List[str] = ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"]
 
+# Original from https://github.com/pytorch/pytorch/blob/52a36a98d9425479f62b6e2d1a59e434b85f7f7e/torch/csrc/jit/passes/normalize_ops.cpp#L85-L162
+_op_normalize_table: Dict[str, str] = {
+    "absolute": "abs",
+    "absolute_": "abs_",
+    "clip": "clamp",
+    "clip_": "clamp_",
+    "det": "linalg_det",
+    "matrix_power": "linalg_matrix_power",
+    "matrix_exp": "linalg_matrix_exp",
+    "ger": "outer",
+    "arccos": "acos",
+    "arccos_": "acos_",
+    "arcsin": "asin",
+    "arcsin_": "asin_",
+    "arctan": "atan",
+    "arctan_": "atan_",
+    "arctan2": "atan2",
+    "arctan2_": "atan2_",
+    "arccosh": "acosh",
+    "arccosh_": "acosh_",
+    "arcsinh": "asinh",
+    "arcsinh_": "asinh_",
+    "arctanh": "atanh",
+    "arctanh_": "atanh_",
+    "fix": "trunc",
+    "fix_": "trunc_",
+    "negative": "neg",
+    "negative_": "neg_",
+    "subtract": "sub",
+    "subtract_": "sub_",
+    "greater_equal": "ge",
+    "greater_equal_": "ge_",
+    "greater": "gt",
+    "greater_": "gt_",
+    "less_equal": "le",
+    "less_equal_": "le_",
+    "less": "lt",
+    "less_": "lt_",
+    "not_equal": "ne",
+    "not_equal_": "ne_",
+    "divide": "div",
+    "divide_": "div_",
+    "multiply": "mul",
+    "multiply_": "mul_",
+    "linalg_matmul": "matmul",
+    "inverse": "linalg_inv",
+    "true_divide": "div",
+    "true_divide_": "div_",
+    "concat": "cat",
+    "concatenate": "cat",
+    "row_stack": "vstack",
+    "swapdims": "transpose",
+    "swapdims_": "transpose_",
+    "swapaxes": "transpose",
+    "swapaxes_": "transpose_",
+    "moveaxis": "movedim",
+    "special_erf": "erf",
+    "special_erfc": "erfc",
+    "special_erfinv": "erfinv",
+    "special_expit": "sigmoid",
+    "special_exp2": "exp2",
+    "special_expm1": "expm1",
+    "special_logit": "logit",
+    "special_logsumexp": "logsumexp",
+    "special_round": "round",
+    "special_log1p": "log1p",
+    "special_sinc": "sinc",
+    "special_digamma": "digamma",
+    "special_psi": "digamma",
+    "special_i0": "i0",
+    "special_xlogy": "xlogy",
+    "special_log_softmax": "log_softmax",
+    "orgqr": "linalg_householder_product",
+    "adjoint": "mH",
+    "special_multigammaln": "mvlgamma",
+    "special_polygamma": "polygamma",
+    "special_softmax": "softmax",
+    "special_gammainc": "igamma",
+    "special_gammaincc": "igammac",
+    "special_gammaln": "lgamma",
+}
+
 if pytorch_pfn_extras.requires("1.13"):
     from torch.onnx._internal import jit_utils
     GraphContext = jit_utils.GraphContext
@@ -538,6 +620,9 @@ class _Exporter(_ExporterOptions):
                     op = f"prim_{op}"
 
             import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
+
+            if not sym_reg.is_registered_op(op, domain, self.opset_version) and op in _op_normalize_table:
+                op = _op_normalize_table[op]
 
             if sym_reg.is_registered_op(op, domain, self.opset_version):  # type: ignore[no-untyped-call]
                 return cast(  # type: ignore[redundant-cast]
