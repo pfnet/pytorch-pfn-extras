@@ -252,3 +252,15 @@ def test_complex():
         onnx_scalar_type_analysis=False,
         skip_oxrt=True,  # Add op in ONNX spec doesn't support complex input
     )
+
+
+def test_is_tracing():
+    class Model(torch.nn.Module):
+        def forward(self, x):
+            if torch.jit.is_tracing():
+                return x * x,
+
+            ret = x * x
+            return {"y": ret}
+
+    run_model_test(Model(), (torch.rand(32, 32),))
