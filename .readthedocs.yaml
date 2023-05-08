@@ -5,7 +5,7 @@ formats: all
 build:
   os: ubuntu-22.04
   tools:
-    python: "3.11"
+    python: "3.8"
 sphinx:
    configuration: docs/source/conf.py
 python:
@@ -13,3 +13,4 @@ python:
    - method: pip
      path: .
    - requirements: docs/requirements.txt
+
