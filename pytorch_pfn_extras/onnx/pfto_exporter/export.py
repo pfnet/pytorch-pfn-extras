@@ -29,6 +29,88 @@ torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defi
 _ppe_ignore_scope: str = "_ppe_as_out_module"
 _list_create_ops: List[str] = ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"]
 
+# Original from https://github.com/pytorch/pytorch/blob/52a36a98d9425479f62b6e2d1a59e434b85f7f7e/torch/csrc/jit/passes/normalize_ops.cpp#L85-L162
+_op_normalize_table: Dict[str, str] = {
+    "absolute": "abs",
+    "absolute_": "abs_",
+    "clip": "clamp",
+    "clip_": "clamp_",
+    "det": "linalg_det",
+    "matrix_power": "linalg_matrix_power",
+    "matrix_exp": "linalg_matrix_exp",
+    "ger": "outer",
+    "arccos": "acos",
+    "arccos_": "acos_",
+    "arcsin": "asin",
+    "arcsin_": "asin_",
+    "arctan": "atan",
+    "arctan_": "atan_",
+    "arctan2": "atan2",
+    "arctan2_": "atan2_",
+    "arccosh": "acosh",
+    "arccosh_": "acosh_",
+    "arcsinh": "asinh",
+    "arcsinh_": "asinh_",
+    "arctanh": "atanh",
+    "arctanh_": "atanh_",
+    "fix": "trunc",
+    "fix_": "trunc_",
+    "negative": "neg",
+    "negative_": "neg_",
+    "subtract": "sub",
+    "subtract_": "sub_",
+    "greater_equal": "ge",
+    "greater_equal_": "ge_",
+    "greater": "gt",
+    "greater_": "gt_",
+    "less_equal": "le",
+    "less_equal_": "le_",
+    "less": "lt",
+    "less_": "lt_",
+    "not_equal": "ne",
+    "not_equal_": "ne_",
+    "divide": "div",
+    "divide_": "div_",
+    "multiply": "mul",
+    "multiply_": "mul_",
+    "linalg_matmul": "matmul",
+    "inverse": "linalg_inv",
+    "true_divide": "div",
+    "true_divide_": "div_",
+    "concat": "cat",
+    "concatenate": "cat",
+    "row_stack": "vstack",
+    "swapdims": "transpose",
+    "swapdims_": "transpose_",
+    "swapaxes": "transpose",
+    "swapaxes_": "transpose_",
+    "moveaxis": "movedim",
+    "special_erf": "erf",
+    "special_erfc": "erfc",
+    "special_erfinv": "erfinv",
+    "special_expit": "sigmoid",
+    "special_exp2": "exp2",
+    "special_expm1": "expm1",
+    "special_logit": "logit",
+    "special_logsumexp": "logsumexp",
+    "special_round": "round",
+    "special_log1p": "log1p",
+    "special_sinc": "sinc",
+    "special_digamma": "digamma",
+    "special_psi": "digamma",
+    "special_i0": "i0",
+    "special_xlogy": "xlogy",
+    "special_log_softmax": "log_softmax",
+    "orgqr": "linalg_householder_product",
+    "adjoint": "mH",
+    "special_multigammaln": "mvlgamma",
+    "special_polygamma": "polygamma",
+    "special_softmax": "softmax",
+    "special_gammainc": "igamma",
+    "special_gammaincc": "igammac",
+    "special_gammaln": "lgamma",
+}
+
 if pytorch_pfn_extras.requires("1.13"):
     from torch.onnx._internal import jit_utils
     GraphContext = jit_utils.GraphContext
@@ -240,7 +322,29 @@ class _Exporter(_ExporterOptions):
         self.original_outputs = self.original_model(*self.inputs)
         self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
         self.g: torch._C.Graph = self.traced.inlined_graph
-        self.vars: Dict[str, torch.IValue] = {_remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()}
+        """
+        `self.trace` ignores the override of `state_dict` method in `self.original_model`.
+        Thus, the key name may be different between state dict of `self.trace` and `self.original_model`.
+        pfto uses the key name of `self.original_model.state_dict()` as the parameter names in ONNX.
+
+        To implement this behavior, we have to prepare mapping from name of `self.trace` state_dict to
+        the name of `self.original_model` state_dict.
+        """
+        self.name_from_trace: Dict[str, str] = {}
+        vars_in_traced: Dict[str, torch.IValue] = {
+            _remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()
+        }
+        if isinstance(self.original_model, torch.nn.Module):
+            vars_tmp: Dict[str, Any] = {
+                _remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict(keep_vars=True).items()
+            }
+            v_to_name: Dict[Any, str] = {v: k for k, v in self.original_model.state_dict(keep_vars=True).items()}
+            for name, v in vars_tmp.items():
+                self.name_from_trace[name] = v_to_name[v]
+        else:
+            for name in vars_in_traced.keys():
+                self.name_from_trace[name] = name
+        self.vars: Dict[str, torch.IValue] = {self.name_from_trace[name]: v for name, v in vars_in_traced.items()}
         self.torch2onnx_var: Dict[torch._C.Value, torch._C.Value] = {
             i: i for i in self.g.inputs()
         }
@@ -275,6 +379,8 @@ class _Exporter(_ExporterOptions):
         # run dce to eliminate dead parts of the graph that might have been
         # left behind by things like symbolic_override
         run_jit_pass(torch._C._jit_pass_dce, graph)
+
+        run_jit_pass(torch._C._jit_pass_cse, graph)
 
         run_jit_pass(torch._C._jit_pass_canonicalize_graph_fuser_ops, graph)  # type: ignore[attr-defined]
         torch._C._jit_pass_peephole(graph, True)  # type: ignore[attr-defined]
@@ -422,19 +528,15 @@ class _Exporter(_ExporterOptions):
 
     def handle_getattr(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         if self.is_self(n.input()) or self.attrs[_unique_id(n.input())] == _ppe_ignore_scope:
-            self.attrs[_unique_id(n.output())] = ONNXValueID(n.s("name"))
+            var_name = n.s("name")
         else:
-            self.attrs[_unique_id(n.output())] = ONNXValueID(
-                "%s.%s"
-                % (
-                    self.attrs[_unique_id(n.input())],
-                    n.s("name"),
-                )
-            )
-        var_name = self.attrs[_unique_id(n.output())]
+            var_name = "%s.%s" % (self.attrs[_unique_id(n.input())], n.s("name"))
+        if var_name in self.name_from_trace:
+            var_name = self.name_from_trace[var_name]
         if var_name in self.vars:
             assert isinstance(self.vars[var_name], torch.Tensor)
             n.output().inferTypeFrom(cast(torch.Tensor, self.vars[var_name]))
+        self.attrs[_unique_id(n.output())] = ONNXValueID(var_name)
 
     def handle_list_construct(self, g: torch._C.Graph, n: torch._C.Node) -> None:
         # Concat if int type input
@@ -518,6 +620,9 @@ class _Exporter(_ExporterOptions):
                     op = f"prim_{op}"
 
             import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
+
+            if not sym_reg.is_registered_op(op, domain, self.opset_version) and op in _op_normalize_table:
+                op = _op_normalize_table[op]
 
             if sym_reg.is_registered_op(op, domain, self.opset_version):  # type: ignore[no-untyped-call]
                 return cast(  # type: ignore[redundant-cast]
