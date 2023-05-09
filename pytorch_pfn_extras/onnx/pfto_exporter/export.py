@@ -302,9 +302,16 @@ class _Exporter(_ExporterOptions):
         if torch.cuda.is_available():
             torch.cuda.set_rng_state_all(self.cuda_rng_state)
 
+    # TODO(twata): Use `self.traced` instead or use traced result outputs
+    def _get_original_outputs(self) -> None:
+        self._restore_state()
+        self.original_outputs = self.original_model(*self.inputs)
+        self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
+
     def _run_trace(self) -> None:
         # TODO(twata): Use `torch._C._craete_graph_by_tracing` instead.
         # So that we don't need to run heavy models multiple times
+        self._restore_state()
         self.traced: torch.jit.RecursiveScriptModule = torch.jit.trace(  # type: ignore
             self.original_model,
             self.inputs,
@@ -317,10 +324,6 @@ class _Exporter(_ExporterOptions):
 # Model: {self.traced.original_name}
 """
 
-        # TODO(twata): Use `self.traced` instead or use traced result outputs
-        self._restore_state()
-        self.original_outputs = self.original_model(*self.inputs)
-        self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
         self.g: torch._C.Graph = self.traced.inlined_graph
         """
         `self.trace` ignores the override of `state_dict` method in `self.original_model`.
@@ -1061,6 +1064,7 @@ class _Exporter(_ExporterOptions):
                     sym_hel._set_onnx_shape_inference(  # type: ignore[no-untyped-call]
                         False  # TODO(twata): Use `self.onnx_shape_inference`
                     )
+                self._get_original_outputs()
                 self._run_trace()
                 self.model: onnx.ModelProto = self.generate_onnx()
         finally:
