@@ -12,6 +12,7 @@ import onnx.numpy_helper
 import onnx.shape_inference
 import pytorch_pfn_extras
 import pytorch_pfn_extras.onnx._constants
+from pytorch_pfn_extras.onnx import _grad as grad
 from pytorch_pfn_extras.onnx._globals import GLOBALS
 from pytorch_pfn_extras.torchscript import run_jit_pass
 import torch
@@ -321,7 +322,7 @@ class _Exporter(_ExporterOptions):
     # TODO(twata): Use `self.traced` instead or use traced result outputs
     def _get_original_outputs(self) -> None:
         self._restore_state()
-        with _force_tracing():
+        with _force_tracing(), grad.init_grad_state():
             self.original_outputs = self.original_model(*self.inputs)
         self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
 
@@ -329,13 +330,14 @@ class _Exporter(_ExporterOptions):
         # TODO(twata): Use `torch._C._craete_graph_by_tracing` instead.
         # So that we don't need to run heavy models multiple times
         self._restore_state()
-        self.traced: torch.jit.RecursiveScriptModule = torch.jit.trace(  # type: ignore
-            self.original_model,
-            self.inputs,
-            check_trace=self.check_trace,
-            strict=self.strict_trace,
-            _force_outplace=self.force_outplace_trace,
-        )
+        with grad.init_grad_state():
+            self.traced: torch.jit.RecursiveScriptModule = torch.jit.trace(  # type: ignore
+                self.original_model,
+                self.inputs,
+                check_trace=self.check_trace,
+                strict=self.strict_trace,
+                _force_outplace=self.force_outplace_trace,
+            )
 
         self.graph_doc_string = f"""
 # Model: {self.traced.original_name}
