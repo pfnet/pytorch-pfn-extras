@@ -3,6 +3,7 @@ import types
 import typing
 import warnings
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
+from contextlib import contextmanager
 
 import onnx
 import onnx.checker
@@ -230,6 +231,20 @@ def _apply_tensor_info_to_value_info(v: onnx.ValueInfoProto, t: torch.Tensor) ->
         a.dim_value = i
 
 
+@contextmanager
+def _force_tracing() -> Any:
+    old_is_tracing = torch.jit.is_tracing
+
+    def is_tracing() -> bool:
+        return True
+
+    try:
+        torch.jit.is_tracing = is_tracing
+        yield
+    finally:
+        torch.jit.is_tracing = old_is_tracing
+
+
 @dataclasses.dataclass
 class _ExporterOptions:
     opset_version: int = 12
@@ -320,7 +335,8 @@ class _Exporter(_ExporterOptions):
 
         # TODO(twata): Use `self.traced` instead or use traced result outputs
         self._restore_state()
-        self.original_outputs = self.original_model(*self.inputs)
+        with _force_tracing():
+            self.original_outputs = self.original_model(*self.inputs)
         self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
         self.g: torch._C.Graph = self.traced.inlined_graph
         """
