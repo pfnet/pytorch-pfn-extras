@@ -4,7 +4,7 @@ from typing import Callable, List, Optional
 import onnx
 import onnxruntime as ort
 import torch
-from pytorch_pfn_extras.onnx.pfto_exporter.export import export as pfto_export
+import pytorch_pfn_extras.onnx.pfto_exporter.export as pfto
 
 
 def run_model_test(
@@ -38,7 +38,8 @@ def run_model_test(
     with tempfile.NamedTemporaryFile() as f:
         f.close()
         rng_state = torch.get_rng_state()
-        expected = model(*args)
+        with pfto._force_tracing():
+            expected = model(*args)
         if not isinstance(expected, tuple):
             expected = (expected,)
 
@@ -62,7 +63,7 @@ def run_model_test(
         if output_names is None:
             output_names = [f"output_{idx}" for idx, _ in enumerate(expected)]
         torch.set_rng_state(rng_state)
-        actual = pfto_export(
+        actual = pfto.export(
             model,
             args,
             f.name,

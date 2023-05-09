@@ -3,6 +3,7 @@ import types
 import typing
 import warnings
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
+from contextlib import contextmanager
 
 import onnx
 import onnx.checker
@@ -28,6 +29,7 @@ torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defi
 
 _ppe_ignore_scope: str = "_ppe_as_out_module"
 _list_create_ops: List[str] = ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"]
+_fix_ir_version = 8
 
 # Original from https://github.com/pytorch/pytorch/blob/52a36a98d9425479f62b6e2d1a59e434b85f7f7e/torch/csrc/jit/passes/normalize_ops.cpp#L85-L162
 _op_normalize_table: Dict[str, str] = {
@@ -229,6 +231,20 @@ def _apply_tensor_info_to_value_info(v: onnx.ValueInfoProto, t: torch.Tensor) ->
         a.dim_value = i
 
 
+@contextmanager
+def _force_tracing() -> Any:
+    old_is_tracing = torch.jit.is_tracing
+
+    def is_tracing() -> bool:
+        return True
+
+    try:
+        torch.jit.is_tracing = is_tracing
+        yield
+    finally:
+        torch.jit.is_tracing = old_is_tracing
+
+
 @dataclasses.dataclass
 class _ExporterOptions:
     opset_version: int = 12
@@ -305,7 +321,8 @@ class _Exporter(_ExporterOptions):
     # TODO(twata): Use `self.traced` instead or use traced result outputs
     def _get_original_outputs(self) -> None:
         self._restore_state()
-        self.original_outputs = self.original_model(*self.inputs)
+        with _force_tracing():
+            self.original_outputs = self.original_model(*self.inputs)
         self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
 
     def _run_trace(self) -> None:
@@ -1029,10 +1046,11 @@ class _Exporter(_ExporterOptions):
                 opset_imports.append(onnx.helper.make_opsetid(domain, version))
             return opset_imports
 
-        model: onnx.ModelProto = onnx.helper.make_model(
+        model: onnx.ModelProto = onnx.helper.make_model_gen_version(
             graph,
             opset_imports=get_model_opset_imports(graph),
             producer_name="pfto",
+            ir_version=_fix_ir_version,
         )
         model = self.check_model(model)
 

@@ -255,6 +255,18 @@ def test_complex():
     )
 
 
+def test_is_tracing():
+    class Model(torch.nn.Module):
+        def forward(self, x):
+            if torch.jit.is_tracing():
+                return x * x,
+
+            ret = x * x
+            return {"y": ret}
+
+    run_model_test(Model(), (torch.rand(32, 32),))
+
+
 def test_op_norm():
     if ppe.requires("1.9.0"):
         import torch.onnx.symbolic_helper as sym_help
