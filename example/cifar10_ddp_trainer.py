@@ -8,11 +8,26 @@ import pytorch_pfn_extras.training.triggers as triggers
 import torch
 import torch.nn as nn
 from pytorch_pfn_extras.engine import create_evaluator, create_trainer
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, DistributedSampler
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
 from torchvision.models.resnet import ResNet, resnet50
+import multiprocessing
+from torch.cuda.amp import GradScaler
 
+
+def run_forkserver():
+    """Change the subprocess launch mode from "fork" to "forkserver"
+
+    In "fork" mode, contexts in the current process such as MPI/CUDA handlers
+    are copied to worker processes launched by DataLoader(0<num_workers),
+    which can cause of double-free like problems. Using a forkserver launched
+    from a fresh process prevents the same resources to be shared to children.
+    """
+    multiprocessing.set_start_method("forkserver", force=True)
+    p = multiprocessing.Process()
+    p.start()
+    p.join()
 
 class TrainerModel(nn.Module):
     def __init__(self, model: ResNet, *args, **kwargs) -> None:
@@ -47,12 +62,9 @@ class EvaluatorModel(nn.Module):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Train a ConvNeXt model on CIFAR-10 dataset "
+        description="Train a ResNet50 model on CIFAR-10 dataset "
         "using PyTorch and pytorch-pfn-extras.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "--gpu", "-g", type=int, default=0, help="GPU ID to use for training"
     )
     parser.add_argument(
         "--epoch", "-e", type=int, default=20, help="Number of training epochs"
@@ -79,9 +91,27 @@ def main():
         default=None,
         help="Directory for CIFAR-10 dataset; downloads dataset if not provided",
     )
+    parser.add_argument(
+        "--no-autoload",
+        action="store_true",
+        help="Specify this option if you don't need automatic "
+        "restart of training from the previous snapshot "
+        "in the output directory.",
+    )
+    parser.add_argument(
+        "--use-mnbn",
+        action="store_true",
+        help="Specify when using Multi-node BatchNorm.",
+    )
+
+
+    parser.add_argument("--mixed-fp16", action="store_true")
     args = parser.parse_args()
 
-    device = "cuda:{}".format(args.gpu)
+    world_size, world_rank, local_rank = ppe.distributed.initialize_ompi_environment(backend="nccl", init_method="tcp")
+    torch.cuda.set_device(torch.device('cuda:{}'.format(local_rank)))
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     if args.cifar_dir is None:
         tmp_dir = tempfile.TemporaryDirectory()
         cifar_dir = tmp_dir.name
@@ -100,64 +130,75 @@ def main():
         cifar_dir, download=True, train=False, transform=transforms.ToTensor()
     )
 
+    train_sampler = DistributedSampler(train)
+    val_sampler = DistributedSampler(val, shuffle=False)
+
     train_loader = DataLoader(
-        train, batch_size=64, num_workers=args.num_worker, shuffle=True
+        train, batch_size=64, num_workers=args.num_worker, sampler=train_sampler,
     )
     val_loader = DataLoader(
-        val, batch_size=64, num_workers=args.num_worker, shuffle=False
+        val, batch_size=64, num_workers=args.num_worker, sampler=val_sampler,
     )
 
     model = resnet50(num_classes=10)
+    if args.use_mnbn:
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
     trainer_model = TrainerModel(model=model)
     evaluator_model = EvaluatorModel(model=model)
-    optimizer = torch.optim.Adam(trainer_model.parameters(), lr=1e-3)
+    trainer_model = ppe.to(trainer_model, device)
+    distributed_trainer_model = ppe.nn.parallel.DistributedDataParallel(trainer_model)
+
+    optimizer = torch.optim.Adam(distributed_trainer_model.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer=optimizer, T_max=args.epoch
     )
 
-    trainer = create_trainer(
-        models=ppe.to(trainer_model, device),
-        optimizers=optimizer,
-        max_epochs=args.epoch,
-        extensions=[
-            ext.LogReport(),
+    default_trigger = (1, "epoch")
+    extensions = [
+        ppe.training.ExtensionEntry(
+            ext.snapshot(
+                n_retains=args.n_retains,
+                autoload=not args.no_autoload,
+                saver_rank=0,
+            ),
+            trigger=default_trigger,
+        ),
+        ppe.training.ExtensionEntry(
+            ext.LRScheduler(scheduler),
+            trigger=(1, "epoch"),
+        ),
+    ]
+    if world_rank == 0:
+        extensions += [
+            ext.LogReport(trigger=default_trigger),
             ext.ProgressBar(),
             ext.PrintReport(
                 ["epoch", "iteration", "train/loss", "val/loss", "val/accuracy", "lr"]
             ),
             ppe.training.ExtensionEntry(
-                ext.snapshot(n_retains=args.n_retains, autoload=True),
-                trigger=(1, "epoch"),
-            ),
-            ppe.training.ExtensionEntry(
-                ext.snapshot(target=model, filename="best_model", n_retains=1),
-                trigger=triggers.MaxValueTrigger(
-                    key="val/accuracy", trigger=(1, "epoch")
-                ),
-            ),
-            ppe.training.ExtensionEntry(
                 ext.observe_lr(optimizer),
-                trigger=(1, "epoch"),
+                trigger=default_trigger,
             ),
-            ppe.training.ExtensionEntry(
-                ext.LRScheduler(scheduler),
-                trigger=(1, "epoch"),
-            ),
-        ],
+        ]
+    trainer = create_trainer(
+        models=distributed_trainer_model,
+        optimizers=optimizer,
+        max_epochs=args.epoch,
+        extensions=extensions,
         out_dir=args.out,
-        stop_trigger=triggers.EarlyStoppingTrigger(
-            check_trigger=(1, "epoch"),
-            monitor="val/accuracy",
-            mode="max",
-            patience=5,
-            max_trigger=(args.epoch, "epoch"),
-        ),
-        evaluator=create_evaluator(
+        evaluator=(create_evaluator(
             ppe.to(evaluator_model, device),
-            progress_bar=True,
+            progress_bar=world_rank==0,
             device=device,
-        ),
+        ), default_trigger),
         device=device,
+        options={
+            "autocast": True,
+            "grad_scaler": GradScaler(),
+        }
+        if args.mixed_fp16
+        else {}
     )
 
     trainer.run(train_loader=train_loader, val_loader=val_loader)
