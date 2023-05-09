@@ -29,6 +29,7 @@ torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defi
 
 _ppe_ignore_scope: str = "_ppe_as_out_module"
 _list_create_ops: List[str] = ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"]
+_fix_ir_version = 8
 
 # Original from https://github.com/pytorch/pytorch/blob/52a36a98d9425479f62b6e2d1a59e434b85f7f7e/torch/csrc/jit/passes/normalize_ops.cpp#L85-L162
 _op_normalize_table: Dict[str, str] = {
@@ -1042,10 +1043,11 @@ class _Exporter(_ExporterOptions):
                 opset_imports.append(onnx.helper.make_opsetid(domain, version))
             return opset_imports
 
-        model: onnx.ModelProto = onnx.helper.make_model(
+        model: onnx.ModelProto = onnx.helper.make_model_gen_version(
             graph,
             opset_imports=get_model_opset_imports(graph),
             producer_name="pfto",
+            ir_version=_fix_ir_version,
         )
         model = self.check_model(model)
 
