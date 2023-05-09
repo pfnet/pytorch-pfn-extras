@@ -1,19 +1,18 @@
 import argparse
+import multiprocessing
 import tempfile
 from typing import Dict
 
 import pytorch_pfn_extras as ppe
 import pytorch_pfn_extras.training.extensions as ext
-import pytorch_pfn_extras.training.triggers as triggers
 import torch
 import torch.nn as nn
 from pytorch_pfn_extras.engine import create_evaluator, create_trainer
+from torch.cuda.amp import GradScaler
 from torch.utils.data import DataLoader, DistributedSampler
 from torchvision import transforms
 from torchvision.datasets import CIFAR10
 from torchvision.models.resnet import ResNet, resnet50
-import multiprocessing
-from torch.cuda.amp import GradScaler
 
 
 def run_forkserver():
@@ -28,6 +27,7 @@ def run_forkserver():
     p = multiprocessing.Process()
     p.start()
     p.join()
+
 
 class TrainerModel(nn.Module):
     def __init__(self, model: ResNet, *args, **kwargs) -> None:
@@ -104,12 +104,17 @@ def main():
         help="Specify when using Multi-node BatchNorm.",
     )
 
-
-    parser.add_argument("--mixed-fp16", action="store_true")
+    parser.add_argument(
+        "--mixed-fp16",
+        action="store_true",
+        help="Use mixed precision (FP16) for training to improve computation speed and reduce memory usage.",
+    )
     args = parser.parse_args()
 
-    world_size, world_rank, local_rank = ppe.distributed.initialize_ompi_environment(backend="nccl", init_method="tcp")
-    torch.cuda.set_device(torch.device('cuda:{}'.format(local_rank)))
+    world_size, world_rank, local_rank = ppe.distributed.initialize_ompi_environment(
+        backend="nccl", init_method="tcp"
+    )
+    torch.cuda.set_device(torch.device("cuda:{}".format(local_rank)))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if args.cifar_dir is None:
@@ -134,10 +139,16 @@ def main():
     val_sampler = DistributedSampler(val, shuffle=False)
 
     train_loader = DataLoader(
-        train, batch_size=64, num_workers=args.num_worker, sampler=train_sampler,
+        train,
+        batch_size=64,
+        num_workers=args.num_worker,
+        sampler=train_sampler,
     )
     val_loader = DataLoader(
-        val, batch_size=64, num_workers=args.num_worker, sampler=val_sampler,
+        val,
+        batch_size=64,
+        num_workers=args.num_worker,
+        sampler=val_sampler,
     )
 
     model = resnet50(num_classes=10)
@@ -187,18 +198,21 @@ def main():
         max_epochs=args.epoch,
         extensions=extensions,
         out_dir=args.out,
-        evaluator=(create_evaluator(
-            ppe.to(evaluator_model, device),
-            progress_bar=world_rank==0,
-            device=device,
-        ), default_trigger),
+        evaluator=(
+            create_evaluator(
+                ppe.to(evaluator_model, device),
+                progress_bar=world_rank == 0,
+                device=device,
+            ),
+            default_trigger,
+        ),
         device=device,
         options={
             "autocast": True,
             "grad_scaler": GradScaler(),
         }
         if args.mixed_fp16
-        else {}
+        else {},
     )
 
     trainer.run(train_loader=train_loader, val_loader=val_loader)

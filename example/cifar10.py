@@ -47,7 +47,7 @@ class EvaluatorModel(nn.Module):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Train a ConvNeXt model on CIFAR-10 dataset "
+        description="Train a ResNet50 model on CIFAR-10 dataset "
         "using PyTorch and pytorch-pfn-extras.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
