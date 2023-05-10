@@ -922,13 +922,31 @@ class _Exporter(_ExporterOptions):
                 if n in self.node_doc_string:
                     new_nd.doc_string = self.node_doc_string[n]
                 for attr_name in n.attributeNames():
-                    if n.kindOf(attr_name) == "t":
+                    attr_kind = n.kindOf(attr_name)
+                    if attr_kind == "t":
                         attr = onnx.helper.make_attribute(attr_name, _tensor_to_proto(n.t(attr_name)))
                     else:
                         if pytorch_pfn_extras.requires('1.13'):
-                            attr = onnx.helper.make_attribute(attr_name, sym_hel._node_get(n, attr_name))  # type: ignore[attr-defined]
+                            attr_val = sym_hel._node_get(n, attr_name)  # type: ignore[attr-defined]
                         else:
-                            attr = onnx.helper.make_attribute(attr_name, n[attr_name])
+                            attr_val = n[attr_name]
+                        # Could not use onnx.helper.make_attribute for
+                        if isinstance(attr_val, list):
+                            attr = onnx.AttributeProto()
+                            attr.name = attr_name
+                            if attr_kind == "ss":
+                                attr.type = onnx.AttributeProto.STRINGS
+                                attr.strings.extend(v.encode("utf-8") for v in attr_val)
+                            elif attr_kind == "is":
+                                attr.type = onnx.AttributeProto.INTS
+                                attr.ints.extend(attr_val)
+                            elif attr_kind == "fs":
+                                attr.type = onnx.AttributeProto.FLOATS
+                                attr.floats.extend(attr_val)
+                            else:
+                                assert False, f"'{attr_kind}' typed attribute not supported"
+                        else:
+                            attr = onnx.helper.make_attribute(attr_name, attr_val)
                     new_nd.attribute.append(attr)
             assign_onnx_values(new_nd.input, new_nd.name, n.inputs())
             assign_onnx_values(new_nd.output, new_nd.name, n.outputs())
