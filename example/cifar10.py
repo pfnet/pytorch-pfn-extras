@@ -1,6 +1,6 @@
 import argparse
 import tempfile
-from typing import Dict
+from typing import Any, Dict
 
 import pytorch_pfn_extras as ppe
 import pytorch_pfn_extras.training.extensions as ext
@@ -15,7 +15,7 @@ from torchvision.models.resnet import ResNet, resnet50
 
 
 class TrainerModel(nn.Module):
-    def __init__(self, model: ResNet, *args, **kwargs) -> None:
+    def __init__(self, model: ResNet, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.model = model
         self.criterion = nn.CrossEntropyLoss()
@@ -28,7 +28,7 @@ class TrainerModel(nn.Module):
 
 
 class EvaluatorModel(nn.Module):
-    def __init__(self, model: ResNet, *args, **kwargs) -> None:
+    def __init__(self, model: ResNet, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.model = model
         self.criterion = nn.CrossEntropyLoss()

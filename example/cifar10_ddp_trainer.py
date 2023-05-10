@@ -1,7 +1,7 @@
 import argparse
 import multiprocessing
 import tempfile
-from typing import Dict
+from typing import Any, Dict
 
 import pytorch_pfn_extras as ppe
 import pytorch_pfn_extras.training.extensions as ext
@@ -30,7 +30,7 @@ def run_forkserver():
 
 
 class TrainerModel(nn.Module):
-    def __init__(self, model: ResNet, *args, **kwargs) -> None:
+    def __init__(self, model: ResNet, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.model = model
         self.criterion = nn.CrossEntropyLoss()
@@ -43,7 +43,7 @@ class TrainerModel(nn.Module):
 
 
 class EvaluatorModel(nn.Module):
-    def __init__(self, model: ResNet, *args, **kwargs) -> None:
+    def __init__(self, model: ResNet, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.model = model
         self.criterion = nn.CrossEntropyLoss()
@@ -135,8 +135,8 @@ def main():
         cifar_dir, download=True, train=False, transform=transforms.ToTensor()
     )
 
-    train_sampler = DistributedSampler(train)
-    val_sampler = DistributedSampler(val, shuffle=False)
+    train_sampler: DistributedSampler[int] = DistributedSampler(train)
+    val_sampler: DistributedSampler[int] = DistributedSampler(val, shuffle=False)
 
     train_loader = DataLoader(
         train,
@@ -157,8 +157,7 @@ def main():
 
     trainer_model = TrainerModel(model=model)
     evaluator_model = EvaluatorModel(model=model)
-    trainer_model = ppe.to(trainer_model, device)
-    distributed_trainer_model = ppe.nn.parallel.DistributedDataParallel(trainer_model)
+    distributed_trainer_model = ppe.nn.parallel.DistributedDataParallel(ppe.to(trainer_model, device))
 
     optimizer = torch.optim.Adam(distributed_trainer_model.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
@@ -182,9 +181,9 @@ def main():
     ]
     if world_rank == 0:
         extensions += [
-            ext.LogReport(trigger=default_trigger),
-            ext.ProgressBar(),
-            ext.PrintReport(
+            ext.LogReport(trigger=default_trigger),  # type: ignore
+            ext.ProgressBar(),  # type: ignore
+            ext.PrintReport(  # type: ignore
                 ["epoch", "iteration", "train/loss", "val/loss", "val/accuracy", "lr"]
             ),
             ppe.training.ExtensionEntry(
