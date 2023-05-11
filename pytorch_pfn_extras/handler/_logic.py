@@ -192,7 +192,7 @@ class Logic(BaseLogic):
         self._grad_scaler = options.pop('grad_scaler', None)
 
         self._backward_fn = options.pop('backward_function', None)
-        autocast_options = options.get("autocast", False)
+        autocast_options = options.pop("autocast", False)
         if isinstance(autocast_options, bool):
             autocast_options = {"enabled": autocast_options, "device_type": "cuda"}
         self._autocast = _autocast._AutocastManager(
