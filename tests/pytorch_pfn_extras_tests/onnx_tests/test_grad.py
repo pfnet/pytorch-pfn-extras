@@ -96,7 +96,7 @@ def test_grad(use_pfto: bool):
     output_dir = _helper(
         model,
         x,
-        'grad',
+        f"grad_{use_pfto}",
         enable_onnx_checker=False,
         use_pfto=use_pfto,
         output_names=["h"],
@@ -169,7 +169,7 @@ def test_grad_multiple_times(use_pfto: bool):
     output_dir = _helper(
         model,
         x,
-        'grad',
+        f"grad_multi_times_{use_pfto}",
         enable_onnx_checker=False,
         use_pfto=use_pfto,
         output_names=["h"],
@@ -244,7 +244,7 @@ def test_grad_with_multiple_inputs(use_pfto: bool):
     output_dir = _helper(
         model,
         x,
-        'grad',
+        f"grad_multi_inputs_{use_pfto}",
         enable_onnx_checker=False,
         use_pfto=use_pfto,
         output_names=["h"],
