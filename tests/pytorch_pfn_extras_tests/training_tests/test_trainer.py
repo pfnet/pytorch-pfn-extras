@@ -531,3 +531,24 @@ def test_trainer_with_clousure_logic(device, progress_bar, path):
         out_dir=path, logic=ppe.handler.ClousureLogic(options={"backward_outputs": ["loss"]})
     )
     trainer.run(data, data)
+
+
+@pytest.mark.gpu
+def test_trainer_with_autocast(path):
+    if not torch.cuda.is_available():
+        pytest.skip()
+    model = MyModel()
+    model_with_loss = MyModelWithLossFn(model)
+    ppe.to(model_with_loss, "cuda")
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    extensions = []
+    autocast_options = {"autocast": True}
+    evaluator = engine.create_evaluator(
+        model_with_loss, device="cuda",
+        options=autocast_options)
+
+    engine.create_trainer(
+        model_with_loss, optimizer, 20,
+        device="cuda", evaluator=evaluator, extensions=extensions,
+        out_dir=path, options=autocast_options
+    )
