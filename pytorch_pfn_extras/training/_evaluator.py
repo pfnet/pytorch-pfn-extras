@@ -1,22 +1,27 @@
 import contextlib
 import queue
 from typing import (
-    Any, Callable, Generator, Iterable, Mapping, Optional, Sequence,
-    Union, TYPE_CHECKING,
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Generator,
+    Iterable,
+    Mapping,
+    Optional,
+    Sequence,
+    Union,
 )
 
 import torch
 import torch.distributed
-
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training.extensions import evaluator
-
 from pytorch_pfn_extras.training.metrics import Batch as DictBatch
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.handler import BaseHandler
-    from pytorch_pfn_extras.training.metrics import MetricType
     from pytorch_pfn_extras.reporting import Observation
+    from pytorch_pfn_extras.training.metrics import MetricType
 
 
 @contextlib.contextmanager
@@ -27,9 +32,9 @@ def _nullcontext() -> Generator[None, None, None]:
 
 @contextlib.contextmanager
 def _progress_bar(
-        name: str,
-        required: bool,
-        size: int,
+    name: str,
+    required: bool,
+    size: int,
 ) -> Generator[Callable[[int], None], None, None]:
     if required:
         progress = evaluator.IterationStatus(size)
@@ -38,6 +43,7 @@ def _progress_bar(
         def update(i: int) -> None:
             progress.current_position = i
             pbar.update()
+
         yield update
 
         pbar.close()
@@ -47,21 +53,22 @@ def _progress_bar(
 
 class Evaluator:
     def __init__(
-            self,
-            handler: 'BaseHandler',
-            models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
-            *,
-            progress_bar: bool = False,
-            metrics: Optional[Sequence['MetricType']] = None,
-            profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
+        self,
+        handler: "BaseHandler",
+        models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
+        *,
+        progress_bar: bool = False,
+        metrics: Optional[Sequence["MetricType"]] = None,
+        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
     ):
         super().__init__()
 
         if not isinstance(models, dict):
             if not isinstance(models, torch.nn.Module):
                 raise ValueError(
-                    'model must be an instance of dict or toch.nn.Module')
-            self.models = {'main': models}
+                    "model must be an instance of dict or toch.nn.Module"
+                )
+            self.models = {"main": models}
         else:
             self.models = models
 
@@ -72,8 +79,7 @@ class Evaluator:
         self._profile = profile
         for name, model in self.models.items():
             self._reporter.add_observer(name, model)
-            self._reporter.add_observers(
-                name, model.named_modules())
+            self._reporter.add_observers(name, model.named_modules())
 
     def _process_metrics(self, ins: DictBatch, outs: DictBatch) -> DictBatch:
         for metric in self._metrics:
@@ -81,15 +87,16 @@ class Evaluator:
         return outs
 
     def _complete_step(
-            self, idx: int, outs: DictBatch, *, is_deferred: bool = False
+        self, idx: int, outs: DictBatch, *, is_deferred: bool = False
     ) -> None:
         c_idx = self._idxs.get()
         # Asure that iterations complete in order
         if c_idx != idx:
             raise RuntimeError(
-                'Completed a not expected iteration. '
-                '{} was expected but completion of {} happened'.format(
-                    c_idx, idx)
+                "Completed a not expected iteration. "
+                "{} was expected but completion of {} happened".format(
+                    c_idx, idx
+                )
             )
         x = self._inputs.get()
         observed = self._observed.get()
@@ -106,10 +113,7 @@ class Evaluator:
         pass
 
     def run(
-            self,
-            loader: Iterable[Any],
-            *,
-            eval_len: Optional[int] = None
+        self, loader: Iterable[Any], *, eval_len: Optional[int] = None
     ) -> None:
         """Executes the evaluation loop.
 
@@ -120,9 +124,9 @@ class Evaluator:
                 The number of iterations per one evaluation epoch.
         """
         # Note: setup_manager is done by the Trainer.
-        self._idxs: 'queue.Queue[int]' = queue.Queue()
-        self._inputs: 'queue.Queue[DictBatch]' = queue.Queue()
-        self._observed: 'queue.Queue[Observation]' = queue.Queue()
+        self._idxs: "queue.Queue[int]" = queue.Queue()
+        self._inputs: "queue.Queue[DictBatch]" = queue.Queue()
+        self._observed: "queue.Queue[Observation]" = queue.Queue()
 
         if eval_len is None:
             eval_len = len(loader)  # type: ignore[arg-type]
@@ -131,7 +135,7 @@ class Evaluator:
         self._summary = reporting.DictSummary()
         observation: Observation = {}
         self.handler.eval_loop_begin(self)
-        self._pbar = _progress_bar('validation', self._progress_bar, eval_len)
+        self._pbar = _progress_bar("validation", self._progress_bar, eval_len)
         self._update = self._pbar.__enter__()
         loader_iter = iter(loader)
         with self._profile or _nullcontext() as prof:
@@ -146,7 +150,8 @@ class Evaluator:
                     self._observed.put(observation)
                     with self._reporter.scope(observation):
                         self.handler.eval_step(
-                            self, idx, x, self._complete_step)
+                            self, idx, x, self._complete_step
+                        )
                     # Some of the DataLoaders might need an explicit break
                     # since they could start cycling on their data
                     if (idx + 1) == eval_len:
@@ -165,14 +170,16 @@ _Evaluator = Evaluator
 
 class DistributedEvaluator(Evaluator):
     def __init__(
-            self,
-            handler: 'BaseHandler',
-            models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
-            *,
-            progress_bar: bool = False,
-            metrics: Optional[Sequence['MetricType']] = None,
+        self,
+        handler: "BaseHandler",
+        models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
+        *,
+        progress_bar: bool = False,
+        metrics: Optional[Sequence["MetricType"]] = None,
     ):
-        super().__init__(handler, models, progress_bar=progress_bar, metrics=metrics)
+        super().__init__(
+            handler, models, progress_bar=progress_bar, metrics=metrics
+        )
         if not torch.distributed.is_initialized():  # type: ignore[no-untyped-call]
             raise RuntimeError("PyTorch distributed module is not initialized.")
 

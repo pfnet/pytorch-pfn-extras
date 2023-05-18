@@ -1,6 +1,6 @@
 import inspect
-from typing import Any, Dict, Optional, Tuple, TYPE_CHECKING
 import warnings
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
 import torch
 
@@ -58,12 +58,14 @@ class LazyInitializationMixin:
         parameters are determined.  Note that this may be called during
         ``__init__``.
         """
-        return self._lazy_ready and all([
-            not isinstance(getattr(self, x), UninitializedParameter)
-            for x in self.lazy_parameter_names])
+        return self._lazy_ready and all(
+            [
+                not isinstance(getattr(self, x), UninitializedParameter)
+                for x in self.lazy_parameter_names
+            ]
+        )
 
-    def state_dict(
-            self: Any, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    def state_dict(self: Any, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """Returns a dictionary containing a whole state of the module.
 
         This function overrides the default behavior to exclude uninitialized
@@ -81,8 +83,15 @@ class LazyInitializationMixin:
         return destination  # type: ignore[no-any-return]
 
     def _lazy_load_hook(  # type: ignore[no-untyped-def]
-            self, state_dict, prefix, local_metadata, strict,
-            missing_keys, unexpected_keys, error_msgs):
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
         """load_state_dict pre-hook function for lazy buffers and parameters.
 
         The purpose of this hook is to check the current state and/or
@@ -98,8 +107,9 @@ class LazyInitializationMixin:
             state_initialized = state_dict[key].shape != (0,)
             if module_initialized and not state_initialized:
                 raise RuntimeError(
-                    'Can\'t load non-initialized buffers in already '
-                    'initialized modules')
+                    "Can't load non-initialized buffers in already "
+                    "initialized modules"
+                )
             elif not module_initialized and state_initialized:
                 # Here we need to avoid a tensor size mismatch
                 # this is a regular tensor without a materialize
@@ -114,12 +124,14 @@ class LazyInitializationMixin:
             # parameters (see comments of ``state_dict``).
             key = prefix + name
             module_initialized = not isinstance(
-                getattr(self, name), UninitializedParameter)
+                getattr(self, name), UninitializedParameter
+            )
             state_initialized = key in state_dict
             if module_initialized and not state_initialized:
                 raise RuntimeError(
-                    'Can\'t load uninitialized parameters in already '
-                    'initialized modules')
+                    "Can't load uninitialized parameters in already "
+                    "initialized modules"
+                )
             elif not module_initialized and state_initialized:
                 getattr(self, name).materialize(state_dict[key].shape)
             elif key not in state_dict and not module_initialized:
@@ -128,15 +140,15 @@ class LazyInitializationMixin:
 
 
 class UninitializedParameter(torch.nn.Parameter):
-
     def __repr__(self) -> str:  # type: ignore[override]
-        return 'Uninitialized lazy parameter'
+        return "Uninitialized lazy parameter"
 
-    def share_memory_(self) -> 'UninitializedParameter':
+    def share_memory_(self) -> "UninitializedParameter":
         raise RuntimeError(
-            'Can\'t share memory on an unitialized parameter. '
-            'Run forward to initialize the network before calling '
-            '`module.share_memory()`.')
+            "Can't share memory on an unitialized parameter. "
+            "Run forward to initialize the network before calling "
+            "`module.share_memory()`."
+        )
 
     @property
     def is_leaf(self) -> bool:  # type: ignore[override]
@@ -145,18 +157,20 @@ class UninitializedParameter(torch.nn.Parameter):
         # for parameters; optimizers check for this attribute and raise an
         # error if non-leaf tensors are detected.
         frame = inspect.currentframe()
-        package_name = frame.f_back.f_globals['__package__']  # type: ignore
-        if package_name.startswith('torch.optim'):
-            warnings.warn('''
+        package_name = frame.f_back.f_globals["__package__"]  # type: ignore
+        if package_name.startswith("torch.optim"):
+            warnings.warn(
+                """
     Use of uninitialized lazy parameter in Optimizer has been detected.
-    Maybe you forgot to run forward before passing `module.parameters()` to the optimizer?''')  # NOQA
+    Maybe you forgot to run forward before passing `module.parameters()` to the optimizer?"""
+            )  # NOQA
         return True
 
     def materialize(
-            self,
-            shape: Tuple[int, ...],
-            device: Optional['DeviceLike'] = None,
-            dtype: Optional[torch.dtype] = None,
+        self,
+        shape: Tuple[int, ...],
+        device: Optional["DeviceLike"] = None,
+        dtype: Optional[torch.dtype] = None,
     ) -> None:
         r"""Create a Parameter with the same properties of the uninitialized
         one. Given a shape, it materializes a parameter in the same device

@@ -18,17 +18,16 @@ class Ensure(torch.nn.Module):
     """
 
     def __init__(
-            self,
-            *,
-            shape: Optional[Tuple[Optional[int], ...]] = None,
-            dtype: Optional[torch.dtype] = None,
-            broadcastable: bool = False,
-            can_cast: bool = False,
+        self,
+        *,
+        shape: Optional[Tuple[Optional[int], ...]] = None,
+        dtype: Optional[torch.dtype] = None,
+        broadcastable: bool = False,
+        can_cast: bool = False,
     ):
         super().__init__()  # type: ignore[no-untyped-call]
         if shape is None and dtype is None:
-            raise ValueError(
-                'shape, dtype or both arguments must be specified')
+            raise ValueError("shape, dtype or both arguments must be specified")
         self._dtype = dtype
         self._broadcastable = broadcastable
         self._can_cast = can_cast
@@ -36,10 +35,7 @@ class Ensure(torch.nn.Module):
         # so we can compare the shapes using broadcast semantics
         c_shape: Optional[Tuple[int, ...]] = None
         if shape is not None:
-            non_none_tuple = tuple(
-                [x if x is not None else 1
-                 for x in shape]
-            )
+            non_none_tuple = tuple([x if x is not None else 1 for x in shape])
             if None in shape:
                 self._broadcastable = True
             c_shape = non_none_tuple
@@ -74,29 +70,33 @@ class Ensure(torch.nn.Module):
             if self._broadcastable:
                 if not self._broadcast(t_shape, self._shape):
                     raise ValueError(
-                        f'Shapes {self._shape} and {input.shape} are non'
-                        ' broadcastable')
+                        f"Shapes {self._shape} and {input.shape} are non"
+                        " broadcastable"
+                    )
             else:
                 raise ValueError(
-                    f'Expected {self._shape}, input shape is {input.shape}')
+                    f"Expected {self._shape}, input shape is {input.shape}"
+                )
         if self._dtype is not None and input.dtype != self._dtype:
             if self._can_cast:
                 if not torch.can_cast(input.dtype, self._dtype):
                     raise ValueError(
-                        f'Input dtype {input.dtype} can\'t be casted to'
-                        f' {self._dtype}')
+                        f"Input dtype {input.dtype} can't be casted to"
+                        f" {self._dtype}"
+                    )
             else:
                 raise ValueError(
-                    f'Expected {self._dtype}, input dtype is {input.dtype}')
+                    f"Expected {self._dtype}, input dtype is {input.dtype}"
+                )
         return input
 
 
 def ensure(
-        tensor: torch.Tensor,
-        shape: Optional[Tuple[Optional[int], ...]] = None,
-        dtype: Optional[torch.dtype] = None,
-        broadcastable: bool = False,
-        can_cast: bool = False
+    tensor: torch.Tensor,
+    shape: Optional[Tuple[Optional[int], ...]] = None,
+    dtype: Optional[torch.dtype] = None,
+    broadcastable: bool = False,
+    can_cast: bool = False,
 ) -> None:
     """Checks the shape and type of a tensor.
 
@@ -111,5 +111,5 @@ def ensure(
        can_cast: Check if the input tensor can be casted to the provided type.
     """
     Ensure(
-        shape=shape, dtype=dtype,
-        broadcastable=broadcastable, can_cast=can_cast)(tensor)
+        shape=shape, dtype=dtype, broadcastable=broadcastable, can_cast=can_cast
+    )(tensor)

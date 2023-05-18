@@ -1,14 +1,13 @@
 import warnings
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 from pytorch_pfn_extras import config
-
 
 if TYPE_CHECKING:
     import optuna
 
 
-def optuna_types(trial: 'optuna.trial.Trial') -> Dict[str, Any]:
+def optuna_types(trial: "optuna.trial.Trial") -> Dict[str, Any]:
     types = {
         "optuna_suggest_categorical": trial.suggest_categorical,
         "optuna_suggest_discrete_uniform": trial.suggest_discrete_uniform,
@@ -21,15 +20,15 @@ def optuna_types(trial: 'optuna.trial.Trial') -> Dict[str, Any]:
 
 
 def load_path_with_optuna_types(
-        path: str,
-        trial: 'optuna.trial.Trial',
-        loader: Optional[config.Loader] = None,
-        types: Optional[Dict[str, Callable[..., Any]]] = None,
+    path: str,
+    trial: "optuna.trial.Trial",
+    loader: Optional[config.Loader] = None,
+    types: Optional[Dict[str, Callable[..., Any]]] = None,
 ) -> config.Config:
     if types is None:
         types = {}
     for key, value in optuna_types(trial).items():
         if key in types:
-            warnings.warn(key + ' is overwritten by optuna suggest.')
+            warnings.warn(key + " is overwritten by optuna suggest.")
         types[key] = value
     return config.Config.load_path(path, loader=loader, types=types)

@@ -2,38 +2,35 @@ from unittest import mock
 
 import numpy
 import pytest
+import pytorch_pfn_extras as ppe
+import pytorch_pfn_extras.training.extensions as ext
 import torch
 import torch.distributed as dist
 
-import pytorch_pfn_extras as ppe
-import pytorch_pfn_extras.training.extensions as ext
-
 
 class DummyModel(torch.nn.Module):
-
     def __init__(self):
         super().__init__()
         self.args = []
 
     def forward(self, x):
         self.args.append(x)
-        ppe.reporting.report({'loss': x.sum()}, self)
+        ppe.reporting.report({"loss": x.sum()}, self)
         return x
 
 
 def custom_metric(batch, out, last_iter):
-    ppe.reporting.report({'custom-metric': out.sum()})
+    ppe.reporting.report({"custom-metric": out.sum()})
 
 
 class DummyModelTwoArgs(torch.nn.Module):
-
     def __init__(self):
         super().__init__()
         self.args = []
 
     def forward(self, x, y):
         self.args.append((x, y))
-        ppe.reporting.report({'loss': x.sum() + y.sum()}, self)
+        ppe.reporting.report({"loss": x.sum() + y.sum()}, self)
 
 
 def _torch_batch_to_numpy(batch):
@@ -43,11 +40,11 @@ def _torch_batch_to_numpy(batch):
     return batch.squeeze(0).numpy()
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def evaluator_dummies():
     data = [
-        numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f')
-        for _ in range(2)]
+        numpy.random.uniform(-1, 1, (2, 3, 4)).astype("f") for _ in range(2)
+    ]
 
     data_loader = torch.utils.data.DataLoader(data)
     target = DummyModel()
@@ -60,7 +57,7 @@ def test_evaluate(evaluator_dummies):
     data, data_loader, target, evaluator, expect_mean = evaluator_dummies
 
     reporter = ppe.reporting.Reporter()
-    reporter.add_observer('target', target)
+    reporter.add_observer("target", target)
     with reporter:
         mean = evaluator.evaluate()
 
@@ -71,10 +68,12 @@ def test_evaluate(evaluator_dummies):
     assert len(target.args) == len(data)
     for i in range(len(data)):
         numpy.testing.assert_array_equal(
-            _torch_batch_to_numpy(target.args[i]), data[i])
+            _torch_batch_to_numpy(target.args[i]), data[i]
+        )
 
     numpy.testing.assert_almost_equal(
-        mean['target/loss'], expect_mean, decimal=4)
+        mean["target/loss"], expect_mean, decimal=4
+    )
 
 
 def test_metric(evaluator_dummies):
@@ -82,9 +81,8 @@ def test_metric(evaluator_dummies):
     evaluator.add_metric(custom_metric)
     mean = evaluator()
     # 'main' is used by default
-    assert 'custom-metric' in mean
-    numpy.testing.assert_almost_equal(
-        mean['main/loss'], expect_mean, decimal=4)
+    assert "custom-metric" in mean
+    numpy.testing.assert_almost_equal(mean["main/loss"], expect_mean, decimal=4)
 
 
 def test_call(evaluator_dummies):
@@ -92,18 +90,18 @@ def test_call(evaluator_dummies):
 
     mean = evaluator()
     # 'main' is used by default
-    numpy.testing.assert_almost_equal(
-        mean['main/loss'], expect_mean, decimal=4)
+    numpy.testing.assert_almost_equal(mean["main/loss"], expect_mean, decimal=4)
 
 
 def test_evaluator_name(evaluator_dummies):
     data, data_loader, target, evaluator, expect_mean = evaluator_dummies
 
-    evaluator.name = 'eval'
+    evaluator.name = "eval"
     mean = evaluator()
     # name is used as a prefix
     numpy.testing.assert_almost_equal(
-        mean['eval/main/loss'], expect_mean, decimal=4)
+        mean["eval/main/loss"], expect_mean, decimal=4
+    )
 
 
 def test_current_report(evaluator_dummies):
@@ -118,16 +116,19 @@ def test_current_report(evaluator_dummies):
 
 def test_evaluator_tuple_data():
     data = [
-        (numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f'),
-         numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f'))
-        for _ in range(2)]
+        (
+            numpy.random.uniform(-1, 1, (2, 3, 4)).astype("f"),
+            numpy.random.uniform(-1, 1, (2, 3, 4)).astype("f"),
+        )
+        for _ in range(2)
+    ]
 
     data_loader = torch.utils.data.DataLoader(data)
     target = DummyModelTwoArgs()
     evaluator = ppe.training.extensions.Evaluator(data_loader, target)
 
     reporter = ppe.reporting.Reporter()
-    reporter.add_observer('target', target)
+    reporter.add_observer("target", target)
     with reporter:
         mean = evaluator.evaluate()
 
@@ -135,72 +136,83 @@ def test_evaluator_tuple_data():
     for i in range(len(data)):
         assert len(target.args[i]) == len(data[i])
         numpy.testing.assert_array_equal(
-            _torch_batch_to_numpy(target.args[i][0]), data[i][0])
+            _torch_batch_to_numpy(target.args[i][0]), data[i][0]
+        )
         numpy.testing.assert_array_equal(
-            _torch_batch_to_numpy(target.args[i][1]), data[i][1])
+            _torch_batch_to_numpy(target.args[i][1]), data[i][1]
+        )
 
     expect_mean = numpy.mean([numpy.sum(x) for x in data])
     numpy.testing.assert_almost_equal(
-        mean['target/loss'], expect_mean, decimal=4)
+        mean["target/loss"], expect_mean, decimal=4
+    )
 
 
 def test_evaluator_dict_data():
     data = [
-        {'x': numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f'),
-         'y': numpy.random.uniform(-1, 1, (2, 3, 4)).astype('f')}
-        for _ in range(2)]
+        {
+            "x": numpy.random.uniform(-1, 1, (2, 3, 4)).astype("f"),
+            "y": numpy.random.uniform(-1, 1, (2, 3, 4)).astype("f"),
+        }
+        for _ in range(2)
+    ]
 
     data_loader = torch.utils.data.DataLoader(data)
     target = DummyModelTwoArgs()
     evaluator = ppe.training.extensions.Evaluator(data_loader, target)
 
     reporter = ppe.reporting.Reporter()
-    reporter.add_observer('target', target)
+    reporter.add_observer("target", target)
     with reporter:
         mean = evaluator.evaluate()
 
     assert len(target.args) == len(data)
     for i in range(len(data)):
         numpy.testing.assert_array_equal(
-            _torch_batch_to_numpy(target.args[i][0]), data[i]['x'])
+            _torch_batch_to_numpy(target.args[i][0]), data[i]["x"]
+        )
         numpy.testing.assert_array_equal(
-            _torch_batch_to_numpy(target.args[i][1]), data[i]['y'])
+            _torch_batch_to_numpy(target.args[i][1]), data[i]["y"]
+        )
 
     expect_mean = numpy.mean(
-        [numpy.sum(x['x']) + numpy.sum(x['y']) for x in data])
+        [numpy.sum(x["x"]) + numpy.sum(x["y"]) for x in data]
+    )
     numpy.testing.assert_almost_equal(
-        mean['target/loss'], expect_mean, decimal=4)
+        mean["target/loss"], expect_mean, decimal=4
+    )
 
 
 def test_evaluator_with_eval_func():
-    data = [
-        numpy.random.uniform(-1, 1, (3, 4)).astype('f') for _ in range(2)]
+    data = [numpy.random.uniform(-1, 1, (3, 4)).astype("f") for _ in range(2)]
 
     data_loader = torch.utils.data.DataLoader(data)
     target = DummyModel()
     evaluator = ppe.training.extensions.Evaluator(
-        data_loader, {}, eval_func=target)
+        data_loader, {}, eval_func=target
+    )
 
     reporter = ppe.reporting.Reporter()
-    reporter.add_observer('target', target)
+    reporter.add_observer("target", target)
     with reporter:
         evaluator.evaluate()
 
     assert len(target.args) == len(data)
     for i in range(len(data)):
         numpy.testing.assert_array_equal(
-            _torch_batch_to_numpy(target.args[i]), data[i])
+            _torch_batch_to_numpy(target.args[i]), data[i]
+        )
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def evaluator_with_progress():
-    data = [
-        numpy.random.uniform(-1, 1, (3, 4)).astype('f') for _ in range(2)]
+    data = [numpy.random.uniform(-1, 1, (3, 4)).astype("f") for _ in range(2)]
 
     data_loader = torch.utils.data.DataLoader(data, batch_size=1)
     target = DummyModel()
     evaluator = ppe.training.extensions.Evaluator(
-        data_loader, {}, eval_func=target, progress_bar=True)
+        data_loader, {}, eval_func=target, progress_bar=True
+    )
     return evaluator, target
 
 
@@ -208,43 +220,43 @@ def test_evaluator_progress_bar(capsys, evaluator_with_progress):
     evaluator, target = evaluator_with_progress
 
     reporter = ppe.reporting.Reporter()
-    reporter.add_observer('target', target)
+    reporter.add_observer("target", target)
     with reporter:
         evaluator.evaluate()
     stdout = capsys.readouterr().out
-    assert 'validation [.........' in stdout
-    assert '         0 iterations' in stdout
-    assert '       inf iters/sec.' in stdout
-    assert 'validation [#########' in stdout
-    assert '         1 iterations' in stdout
+    assert "validation [........." in stdout
+    assert "         0 iterations" in stdout
+    assert "       inf iters/sec." in stdout
+    assert "validation [#########" in stdout
+    assert "         1 iterations" in stdout
 
 
 def test_evaluator_progress_bar_custom_label(capsys, evaluator_with_progress):
     evaluator, target = evaluator_with_progress
-    evaluator.name = 'my_own_evaluator'     # Set a (long) custom name
+    evaluator.name = "my_own_evaluator"  # Set a (long) custom name
 
     reporter = ppe.reporting.Reporter()
-    reporter.add_observer('target', target)
+    reporter.add_observer("target", target)
     with reporter:
         evaluator.evaluate()
     stdout = capsys.readouterr().out
-    assert 'my_own_evaluator [.........' in stdout
-    assert '               0 iterations' in stdout
-    assert '             inf iters/sec.' in stdout
-    assert 'my_own_evaluator [#########' in stdout
-    assert '               1 iterations' in stdout
+    assert "my_own_evaluator [........." in stdout
+    assert "               0 iterations" in stdout
+    assert "             inf iters/sec." in stdout
+    assert "my_own_evaluator [#########" in stdout
+    assert "               1 iterations" in stdout
 
 
 # Code excerpts to test IgniteEvaluator
 class IgniteDummyModel(torch.nn.Module):
     def __init__(self):
         super(IgniteDummyModel, self).__init__()
-        self.count = 0.
+        self.count = 0.0
 
     def forward(self, *args):
-        ppe.reporting.report({'x': self.count}, self)
-        self.count += 1.
-        return 0.
+        ppe.reporting.report({"x": self.count}, self)
+        self.count += 1.0
+        return 0.0
 
 
 def create_dummy_evaluator(model):
@@ -265,7 +277,7 @@ def test_ignite_evaluator_reporting_metrics():
     try:
         from ignite.metrics import MeanSquaredError
     except ImportError:
-        pytest.skip('pytorch-ignite is not installed')
+        pytest.skip("pytorch-ignite is not installed")
 
     # This tests verifies that either, usuer manually reported metrics
     # and ignite calculated ones are correctly reflected in the reporter
@@ -279,7 +291,7 @@ def test_ignite_evaluator_reporting_metrics():
     evaluator = create_dummy_evaluator(model)
     # Attach metrics to the evaluator
     metric = MeanSquaredError()
-    metric.attach(evaluator, 'mse')
+    metric.attach(evaluator, "mse")
     evaluator_ignite_ext = ppe.training.extensions.IgniteEvaluator(
         evaluator, loader, model, progress_bar=False
     )
@@ -287,51 +299,58 @@ def test_ignite_evaluator_reporting_metrics():
     with reporter:
         result = evaluator_ignite_ext()
     # Internally reported metrics
-    assert result['main/x'] == 1.5
+    assert result["main/x"] == 1.5
     # Ignite calculated metric
-    assert result['val/mse'] == 0.0
+    assert result["val/mse"] == 0.0
 
 
 def test_distributed_evaluation():
-    dummy_data = []   # Note: has no effect to the evaluation
+    dummy_data = []  # Note: has no effect to the evaluation
     data_loader = torch.utils.data.DataLoader(dummy_data)
     target = DummyModel()
-    with mock.patch.object(dist, 'is_initialized', return_value=True):
+    with mock.patch.object(dist, "is_initialized", return_value=True):
         evaluator = ext.DistributedEvaluator(data_loader, target)
 
     # Make a (simulated) summary for each rank
     worker_evaluations = [
-        [1., 2., 3.],   # assuming rank=0
-        [4., 5., 6.],   # rank=1
-        [7., 8., 9.],   # ...
-        [10., 11., 12.],
+        [1.0, 2.0, 3.0],  # assuming rank=0
+        [4.0, 5.0, 6.0],  # rank=1
+        [7.0, 8.0, 9.0],  # ...
+        [10.0, 11.0, 12.0],
     ]
     worker_summaries = []
     for accs in worker_evaluations:
         s = ppe.reporting.DictSummary()
         for acc in accs:
-            s.add({'target/score': acc})
+            s.add({"target/score": acc})
         worker_summaries.append(s)
 
     reporter = ppe.reporting.Reporter()
-    reporter.add_observer('target', target)
+    reporter.add_observer("target", target)
     with reporter:
-        with mock.patch.object(ppe.training.extensions.evaluator, '_dist_gather',
-                               return_value=worker_summaries):
+        with mock.patch.object(
+            ppe.training.extensions.evaluator,
+            "_dist_gather",
+            return_value=worker_summaries,
+        ):
             mean = evaluator.evaluate()
-        assert mean['target/score'] == 6.5
+        assert mean["target/score"] == 6.5
 
 
 def test_distributed_evaluator_progress_bar():
-    with mock.patch.object(dist, 'is_initialized', return_value=True):
+    with mock.patch.object(dist, "is_initialized", return_value=True):
         data_loader = torch.utils.data.DataLoader([])
         target = DummyModel()
 
-        with mock.patch.object(dist, 'get_rank', return_value=0):
-            evaluator = ext.DistributedEvaluator(data_loader, target, progress_bar=True)
+        with mock.patch.object(dist, "get_rank", return_value=0):
+            evaluator = ext.DistributedEvaluator(
+                data_loader, target, progress_bar=True
+            )
             assert evaluator._progress_bar
 
         # rank != 0 will forcibly set progress_bar=False
-        with mock.patch.object(dist, 'get_rank', return_value=1):
-            evaluator = ext.DistributedEvaluator(data_loader, target, progress_bar=True)
+        with mock.patch.object(dist, "get_rank", return_value=1):
+            evaluator = ext.DistributedEvaluator(
+                data_loader, target, progress_bar=True
+            )
             assert not evaluator._progress_bar

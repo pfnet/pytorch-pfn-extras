@@ -1,20 +1,22 @@
-import tempfile
 import os
+import tempfile
 
 import pytest
-
 import pytorch_pfn_extras as ppe
 
 
-@pytest.mark.filterwarnings("ignore:`np.bool8` is a deprecated alias for `np.bool_`:DeprecationWarning")
+@pytest.mark.filterwarnings(
+    "ignore:`np.bool8` is a deprecated alias for `np.bool_`:DeprecationWarning"
+)
 def test_tensorboard_writing():
-    pytest.importorskip('tensorboard')
+    pytest.importorskip("tensorboard")
     data = {"a": 1, "iteration": 1}
     with tempfile.TemporaryDirectory() as tempd:
         writer = ppe.writing.TensorBoardWriter(
-            out_dir=tempd, filename_suffix='_test')
+            out_dir=tempd, filename_suffix="_test"
+        )
         writer(None, None, data)
         # Check that the file was generated
         for snap in os.listdir(tempd):
-            assert '_test' in snap
+            assert "_test" in snap
         writer.finalize()

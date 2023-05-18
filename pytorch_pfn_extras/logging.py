@@ -1,22 +1,21 @@
 import logging
 import os
-
-from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL  # NOQA
+from logging import CRITICAL, DEBUG, ERROR, INFO, WARNING  # NOQA
 from typing import Optional
 
-_logger_name = 'ppe'
-_logger_format = '[%(name)s] %(asctime)s: (%(levelname)s) %(message)s'
+_logger_name = "ppe"
+_logger_format = "[%(name)s] %(asctime)s: (%(levelname)s) %(message)s"
 _logger = None
 
 
 def _configure_logging(
-        *,
-        filename: Optional[str] = None,
-        level: str = 'ERROR',
-        format: str = _logger_format
+    *,
+    filename: Optional[str] = None,
+    level: str = "ERROR",
+    format: str = _logger_format,
 ) -> None:
     global _logger
-    filename = os.environ.get('PPE_LOG_FILENAME', filename)
+    filename = os.environ.get("PPE_LOG_FILENAME", filename)
     if filename is None:
         handler: logging.Handler = logging.StreamHandler()
     else:
@@ -25,15 +24,20 @@ def _configure_logging(
     # To dynamically change the level if needed
     # basicConfig does not allow to change the level right after
     _logger = logging.getLogger(_logger_name)
-    level = os.environ.get('PPE_LOG_LEVEL', level)
-    for lvl in (logging.DEBUG, logging.INFO,
-                logging.WARNING, logging.ERROR, logging.CRITICAL):
+    level = os.environ.get("PPE_LOG_LEVEL", level)
+    for lvl in (
+        logging.DEBUG,
+        logging.INFO,
+        logging.WARNING,
+        logging.ERROR,
+        logging.CRITICAL,
+    ):
         if logging.getLevelName(lvl) == level:
             _logger.setLevel(lvl)
             break
     else:
         _logger.setLevel(logging.INFO)
-        _logger.warning('invalid PPE_LOG_LEVEL (%s); using INFO', level)
+        _logger.warning("invalid PPE_LOG_LEVEL (%s); using INFO", level)
     _logger.addHandler(handler)
 
 

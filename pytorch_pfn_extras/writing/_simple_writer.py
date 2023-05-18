@@ -1,9 +1,11 @@
 from typing import Any, Optional
 
 import torch
-
 from pytorch_pfn_extras.writing._writer_base import (
-    Writer, _TargetType, _SaveFun, _FileSystem
+    Writer,
+    _FileSystem,
+    _SaveFun,
+    _TargetType,
 )
 
 
@@ -29,24 +31,24 @@ class SimpleWriter(Writer):
     """
 
     def __init__(
-            self,
-            savefun: _SaveFun = torch.save,
-            fs: _FileSystem = None,
-            out_dir: str = '',
-            **kwds: Any,
+        self,
+        savefun: _SaveFun = torch.save,
+        fs: _FileSystem = None,
+        out_dir: str = "",
+        **kwds: Any,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
         self._savefun = savefun
         self._kwds = kwds
 
     def __call__(
-            self,
-            filename: str,
-            out_dir: str,
-            target: _TargetType,
-            *,
-            savefun: Optional[_SaveFun] = None,
-            append: bool = False
+        self,
+        filename: str,
+        out_dir: str,
+        target: _TargetType,
+        *,
+        savefun: Optional[_SaveFun] = None,
+        append: bool = False,
     ) -> None:
         if savefun is None:
             savefun = self._savefun

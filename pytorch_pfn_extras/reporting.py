@@ -2,16 +2,24 @@ import collections
 import contextlib
 import threading
 import types
-from typing import (
-    Any, Callable, Dict, Generator, List, Mapping, Optional, Sequence,
-    Tuple, Type, Union,
-)
-from typing import overload
 import warnings
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    overload,
+)
 
 import numpy
 import torch
-
 
 Scalar = Union[torch.Tensor, numpy.ndarray, numpy.floating, float]
 FloatLikeValue = Union[Scalar, float]
@@ -33,7 +41,8 @@ def _nograd(value: Value) -> Value:
 
 
 def _nograd(
-        value: Union[FloatLikeValue, Value]) -> Union[FloatLikeValue, Value]:
+    value: Union[FloatLikeValue, Value]
+) -> Union[FloatLikeValue, Value]:
     if isinstance(value, torch.Tensor):
         return value.detach()
     return value
@@ -99,10 +108,10 @@ class Reporter:
         _get_reporters().append(self)
 
     def __exit__(
-            self,
-            exc_type: Optional[Type[BaseException]],
-            exc_value: Optional[BaseException],
-            traceback: Optional[types.TracebackType],
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[types.TracebackType],
     ) -> None:
         """Recovers the previous reporter object to the current."""
         _get_reporters().pop()
@@ -148,9 +157,7 @@ class Reporter:
         self._observer_names[id(observer)] = name
 
     def add_observers(
-            self,
-            prefix: str,
-            observers: Sequence[Tuple[str, torch.nn.Module]]
+        self, prefix: str, observers: Sequence[Tuple[str, torch.nn.Module]]
     ) -> None:
         """Registers multiple observers at once.
 
@@ -165,9 +172,9 @@ class Reporter:
             self._observer_names[id(observer)] = prefix + name
 
     def report(
-            self,
-            values: Mapping[str, Value],
-            observer: Optional[torch.nn.Module] = None,
+        self,
+        values: Mapping[str, Value],
+        observer: Optional[torch.nn.Module] = None,
     ) -> None:
         """Reports observed values.
 
@@ -193,10 +200,11 @@ class Reporter:
             observer_id = id(observer)
             if observer_id not in self._observer_names:
                 raise KeyError(
-                    'Given observer is not registered to the reporter.')
+                    "Given observer is not registered to the reporter."
+                )
             observer_name = self._observer_names[observer_id]
             for key, value in values.items():
-                name = '%s/%s' % (observer_name, key)
+                name = "%s/%s" % (observer_name, key)
                 self.observation[name] = value
         else:
             self.observation.update(values)
@@ -216,8 +224,8 @@ def get_current_reporter() -> Reporter:
 
 
 def report(
-        values: Mapping[str, Value],
-        observer: Optional[torch.nn.Module] = None,
+    values: Mapping[str, Value],
+    observer: Optional[torch.nn.Module] = None,
 ) -> None:
     """Reports observed values with the current reporter object.
 
@@ -352,20 +360,22 @@ class Summary:
         try:
             # Save the stats as python scalars in order to avoid
             # different device errors when loading them back
-            state = {'_x': float(self._x),
-                     '_x2': float(self._x2),
-                     '_n': int(self._n)}
+            state = {
+                "_x": float(self._x),
+                "_x2": float(self._x2),
+                "_n": int(self._n),
+            }
         except KeyError:
-            warnings.warn('The previous statistics are not saved.')
+            warnings.warn("The previous statistics are not saved.")
         return state
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         # Casting here is because of backward compatibility
         # Restore previously taken snapshots with autoload
         self._add_deferred_values()
-        self._x = float(_nograd(to_load['_x']))
-        self._x2 = float(_nograd(to_load['_x2']))
-        self._n = int(_nograd(to_load['_n']))
+        self._x = float(_nograd(to_load["_x"]))
+        self._x2 = float(_nograd(to_load["_x2"]))
+        self._n = int(_nograd(to_load["_n"]))
 
     def __add__(self, other: "Summary") -> "Summary":
         s = Summary()
@@ -404,10 +414,11 @@ class DictSummary:
             w: Scalar = 1
             if isinstance(v, tuple):
                 v, w = v
-                if not numpy.isscalar(w) and not getattr(w, 'ndim', -1) == 0:
+                if not numpy.isscalar(w) and not getattr(w, "ndim", -1) == 0:
                     raise ValueError(
-                        'Given weight to {} was not scalar.'.format(k))
-            if callable(v) or numpy.isscalar(v) or getattr(v, 'ndim', -1) == 0:
+                        "Given weight to {} was not scalar.".format(k)
+                    )
+            if callable(v) or numpy.isscalar(v) or getattr(v, "ndim", -1) == 0:
                 summaries[k].add(v, weight=w)
 
     def compute_mean(self) -> Dict[str, Scalar]:
@@ -420,8 +431,10 @@ class DictSummary:
             dict: Dictionary of mean values.
 
         """
-        return {name: summary.compute_mean()
-                for name, summary in self._summaries.items()}
+        return {
+            name: summary.compute_mean()
+            for name, summary in self._summaries.items()
+        }
 
     def make_statistics(self) -> Dict[str, Scalar]:
         """Creates a dictionary of statistics.
@@ -439,13 +452,14 @@ class DictSummary:
         for name, summary in self._summaries.items():
             mean, std = summary.make_statistics()
             stats[name] = mean
-            stats[name + '.std'] = std
+            stats[name + ".std"] = std
 
         return stats
 
     def state_dict(self) -> Dict[str, Any]:
         return {
-            name: summ.state_dict() for name, summ in self._summaries.items()}
+            name: summ.state_dict() for name, summ in self._summaries.items()
+        }
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         self._summaries.clear()
