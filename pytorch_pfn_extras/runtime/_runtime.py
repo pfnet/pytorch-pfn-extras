@@ -1,9 +1,7 @@
 import contextlib
 import types
-
-from typing import (
-    Any, Dict, Generator, Iterable, Optional, Set, Tuple, Union, TYPE_CHECKING
-)
+from typing import (TYPE_CHECKING, Any, Dict, Generator, Iterable, Optional,
+                    Set, Tuple, Union)
 
 import torch
 
@@ -35,7 +33,9 @@ class BaseRuntime:
     """
 
     def __init__(
-        self, device_spec: DeviceLike, options: Dict[str, Any],
+        self,
+        device_spec: DeviceLike,
+        options: Dict[str, Any],
     ) -> None:
         self.device_spec = device_spec
         self.options = options
@@ -55,14 +55,14 @@ class BaseRuntime:
         # or a model part
         if isinstance(args, tuple) and hasattr(args, "_fields"):
             # namedtuple
-            return args._replace(  # type: ignore[attr-defined]
-                **self._convert_batch_dict(args._asdict()))  # type: ignore
+            return args._replace(
+                **self._convert_batch_dict(args._asdict()) # type: ignore[attr-defined]
+            )  # type: ignore
         if isinstance(args, dict):
             return self._convert_batch_dict(args)
         if isinstance(args, (list, tuple)):
             return [
-                self.move_tensor(v) if isinstance(v, torch.Tensor) else v
-                for v in args
+                self.move_tensor(v) if isinstance(v, torch.Tensor) else v for v in args
             ]
         if isinstance(args, torch.Tensor):
             return self.move_tensor(args)
@@ -142,7 +142,7 @@ class BaseRuntime:
 
     def train_pre_step(
         self,
-        trainer: 'Trainer',
+        trainer: "Trainer",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -165,7 +165,7 @@ class BaseRuntime:
 
     def train_post_step(
         self,
-        trainer: 'Trainer',
+        trainer: "Trainer",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -221,7 +221,7 @@ class BaseRuntime:
 
     def eval_pre_step(
         self,
-        evaluator: 'Evaluator',
+        evaluator: "Evaluator",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -241,7 +241,7 @@ class BaseRuntime:
 
     def eval_post_step(
         self,
-        evaluator: 'Evaluator',
+        evaluator: "Evaluator",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -262,7 +262,11 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def execute(self, code_block: CodeBlock, batch: Any,) -> Any:
+    def execute(
+        self,
+        code_block: CodeBlock,
+        batch: Any,
+    ) -> Any:
         """Method called by the CodeBlocks API to do device dependent execution.
 
         Args:
@@ -328,7 +332,9 @@ class PyTorchRuntime(BaseRuntime):
     """
 
     def __init__(
-        self, device_spec: DeviceLike, options: Dict[str, Any],
+        self,
+        device_spec: DeviceLike,
+        options: Dict[str, Any],
     ) -> None:
         super().__init__(device_spec, options)
         self._grad_scaler = options.get("grad_scaler", None)
@@ -341,8 +347,7 @@ class PyTorchRuntime(BaseRuntime):
         if self._grad_scaler is not None:
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
                 raise RuntimeError(
-                    "grad_scaler should be a "
-                    "torch.cuda.amp.GradScaler object"
+                    "grad_scaler should be a " "torch.cuda.amp.GradScaler object"
                 )
 
     def move_module(self, module: torch.nn.Module) -> torch.nn.Module:
@@ -376,7 +381,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_pre_step(
         self,
-        trainer: 'Trainer',
+        trainer: "Trainer",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -385,7 +390,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_post_step(
         self,
-        trainer: 'Trainer',
+        trainer: "Trainer",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -395,7 +400,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_pre_step(
         self,
-        evaluator: 'Evaluator',
+        evaluator: "Evaluator",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -404,7 +409,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_post_step(
         self,
-        evaluator: 'Evaluator',
+        evaluator: "Evaluator",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -412,7 +417,11 @@ class PyTorchRuntime(BaseRuntime):
     ) -> None:
         pass
 
-    def execute(self, code_block: CodeBlock, batch: Any,) -> Any:
+    def execute(
+        self,
+        code_block: CodeBlock,
+        batch: Any,
+    ) -> Any:
         # Run forward, backward and optimize steps depending on codeblock opts
         if self._grad_scaler is None:
 
@@ -433,20 +442,27 @@ class PyTorchRuntime(BaseRuntime):
 
         # codeblocks return Dicts-per-se so it is not necessary to normalize
         if code_block.backprop:
+            backprop_from_list = []
             if code_block.backprop_from is None:
-                for v in out.values():
+                for k, v in out.items():
                     if (
                         isinstance(v, torch.Tensor)
                         and v.grad_fn is not None
                         and v.numel() == 1
-                        and (
-                            v.dtype.is_floating_point
-                            or v.dtype.is_complex
-                        )
+                        and (v.dtype.is_floating_point or v.dtype.is_complex)
                     ):
+                        backprop_from_list.append(k)
                         _scale(v).backward()  # type: ignore[no-untyped-call]
             else:
-                _scale(out[code_block.backprop_from]).backward()  # type: ignore
+                backprop_from_list.append(code_block.backprop_from)
+
+            if self._grad_scaler is not None:
+                assert (
+                    len(backprop_from_list) == 1
+                ), "loss scaling with multiple loss is not supported"
+
+            for k in backprop_from_list:
+                _scale(out[k]).backward()  # type: ignore
 
         if len(code_block.optimizers) == 0:
             return out
@@ -496,14 +512,10 @@ class PyTorchRuntime(BaseRuntime):
 
 
 def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
-    return getattr(  # type: ignore[no-any-return]
-        module, _RUNTIME_TAG_NAME, None
-    )
+    return getattr(module, _RUNTIME_TAG_NAME, None)  # type: ignore[no-any-return]
 
 
-def _set_module_runtime_tag(
-    module: torch.nn.Module, runtime: BaseRuntime
-) -> None:
+def _set_module_runtime_tag(module: torch.nn.Module, runtime: BaseRuntime) -> None:
     setattr(module, _RUNTIME_TAG_NAME, runtime)
 
     def mk_getstate(orig_getstate):  # type: ignore
@@ -528,6 +540,7 @@ def _set_module_runtime_tag(
                 return state
 
             return _remove_runtime_class(state)  # type: ignore
+
         return _getstate_without_runtime
 
     getstate = None
@@ -537,7 +550,7 @@ def _set_module_runtime_tag(
     setattr(  # NOQA
         module,
         "__getstate__",
-        types.MethodType(mk_getstate(getstate), module)  # type: ignore
+        types.MethodType(mk_getstate(getstate), module),  # type: ignore
     )
 
 
