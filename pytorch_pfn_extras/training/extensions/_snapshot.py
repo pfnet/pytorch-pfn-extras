@@ -349,6 +349,9 @@ class _Snapshot(extension.Extension):
             # manager.
             assert writer is not None
             loaded_fn = _find_latest_snapshot(self.filename, outdir, writer.fs)
+            if not loaded_fn:
+                # Try searching in ``writer.out_dir`` if there is no snapshot in ``outdir``
+                loaded_fn = _find_latest_snapshot(self.filename, writer.out_dir, writer.fs)
             if loaded_fn:
                 snapshot_file = writer.fs.open(os.path.join(outdir, loaded_fn), 'rb')
                 # As described above (at ``autoload`` option),
