@@ -147,8 +147,8 @@ def main():
         ),
         batch_size=args.batch_size,
         shuffle=True,
-        **kwargs,
-    )  # type: ignore[arg-type]
+        **kwargs,  # type: ignore[arg-type]
+    )
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST(
             "../data",
@@ -162,8 +162,8 @@ def main():
         ),
         batch_size=args.test_batch_size,
         shuffle=True,
-        **kwargs,
-    )  # type: ignore[arg-type]
+        **kwargs,  # type: ignore[arg-type]
+    )
 
     model = Net()
     model.to(device)

@@ -155,8 +155,8 @@ def main():
         collate_fn=ppe.dataloaders.utils.CollateAsDict(
             names=["data", "target"]
         ),
-        **kwargs,
-    )  # type: ignore[arg-type]
+        **kwargs,  # type: ignore[arg-type]
+    )
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST(
             "../data",
@@ -173,8 +173,8 @@ def main():
         collate_fn=ppe.dataloaders.utils.CollateAsDict(
             names=["data", "target"]
         ),
-        **kwargs,
-    )  # type: ignore[arg-type]
+        **kwargs,  # type: ignore[arg-type]
+    )
 
     model = Net()
 

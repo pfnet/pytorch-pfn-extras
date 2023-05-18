@@ -190,8 +190,8 @@ def main():
         train_dataset,
         batch_size=args.batch_size,
         sampler=train_sampler,
-        **kwargs,
-    )  # type: ignore[arg-type]
+        **kwargs,  # type: ignore[arg-type]
+    )
 
     test_dataset_indices = list(range(len(test_dataset)))
     local_test_dataset_indices = test_dataset_indices[
@@ -204,8 +204,8 @@ def main():
         local_test_dataset,
         batch_size=args.test_batch_size,
         shuffle=True,
-        **kwargs,
-    )  # type: ignore[arg-type]
+        **kwargs,  # type: ignore[arg-type]
+    )
 
     model = ppe.nn.parallel.DistributedDataParallel(Net().to(device))
 
