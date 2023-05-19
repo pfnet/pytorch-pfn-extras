@@ -90,7 +90,12 @@ def trace(
 ) -> Generator[Tuple[torch.nn.Module, _Outputs], None, None]:
     _outputs.outputs = _Outputs()
     if not isinstance(module, torch.jit.ScriptModule):
+        orig = module
         module = _ModuleWithAdditionalOutputs(module, _outputs.outputs)
+        if orig.training:
+            module.train()
+        else:
+            module.eval()
     try:
         yield module, _outputs.outputs
     finally:
