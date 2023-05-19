@@ -184,6 +184,12 @@ def path():
         yield t_path
 
 
+@pytest.fixture(scope="function")
+def snapshot_path():
+    with tempfile.TemporaryDirectory() as t_path:
+        yield t_path
+
+
 @pytest.mark.parametrize('fmt', [
     'snapshot_iter_{}',
     'snapshot_iter_{}.npz',
@@ -384,3 +390,38 @@ def test_snapshot_autoload_twice(path):
 
     epoch_indices = get_epoch_indices()
     assert len(epoch_indices) == 0
+
+
+def test_snapshot_autoload_initialize_without_writer(path):
+    snapshot_filename = "snapshot_file"
+    trainer = get_trainer(out_dir=path)
+    trainer.models["main"]._state_dict = {"value": 0}
+
+    snapshot = extensions.snapshot(filename=snapshot_filename)
+    snapshot(trainer)
+    assert os.path.isfile(f"{path}/{snapshot_filename}")
+
+    trainer2 = get_trainer(out_dir=path)
+    snapshot2 = extensions.snapshot(filename=snapshot_filename, autoload=True)
+
+    assert trainer2.state_dict() != trainer.state_dict()
+    assert snapshot2.initialize(trainer2) == snapshot_filename
+    assert trainer2.state_dict() == trainer.state_dict()
+
+
+def test_snapshot_autoload_with_writer(path, snapshot_path):
+    snapshot_filename = "snapshot_file"
+    trainer = get_trainer(out_dir=path, epochs=10)
+    trainer.models["main"]._state_dict = {"value": 0}
+
+    snapshot = extensions.snapshot(filename=snapshot_filename, writer=ppe.writing.SimpleWriter(out_dir=snapshot_path))
+    snapshot(trainer)
+    assert os.path.isfile(f"{snapshot_path}/{snapshot_filename}")
+    assert not os.path.isfile(f"{path}/{snapshot_filename}")
+
+    trainer2 = get_trainer(out_dir=path, epochs=0)
+    snapshot2 = extensions.snapshot(filename=snapshot_filename, writer=ppe.writing.SimpleWriter(out_dir=snapshot_path), autoload=True)
+
+    assert trainer2.state_dict() != trainer.state_dict()
+    assert snapshot2.initialize(trainer2) == snapshot_filename
+    assert trainer2.state_dict() == trainer.state_dict()
