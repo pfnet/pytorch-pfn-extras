@@ -45,7 +45,7 @@ jobs:
 
     - name: Code Style (Examples)
       run: |
-        pysen --config ./example/pysen.toml run lint .
+        pysen --config ./example/pysen.toml run lint
 
     - name: Install for pytest
       run: |
