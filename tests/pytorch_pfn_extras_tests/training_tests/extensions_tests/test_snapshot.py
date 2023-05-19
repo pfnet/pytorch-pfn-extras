@@ -399,7 +399,7 @@ def test_snapshot_autoload_initialize_without_writer(path):
 
     snapshot = extensions.snapshot(filename=snapshot_filename)
     snapshot(trainer)
-    assert os.path.isfile(f"{path}/{snapshot_filename}")
+    assert os.path.isfile(os.path.join(path, snapshot_filename))
 
     trainer2 = get_trainer(out_dir=path)
     snapshot2 = extensions.snapshot(filename=snapshot_filename, autoload=True)
@@ -416,8 +416,8 @@ def test_snapshot_autoload_with_writer(path, snapshot_path):
 
     snapshot = extensions.snapshot(filename=snapshot_filename, writer=ppe.writing.SimpleWriter(out_dir=snapshot_path))
     snapshot(trainer)
-    assert os.path.isfile(f"{snapshot_path}/{snapshot_filename}")
-    assert not os.path.isfile(f"{path}/{snapshot_filename}")
+    assert os.path.isfile(os.path.join(snapshot_path, snapshot_filename))
+    assert not os.path.isfile(os.path.join(path, snapshot_filename))
 
     trainer2 = get_trainer(out_dir=path, epochs=0)
     snapshot2 = extensions.snapshot(filename=snapshot_filename, writer=ppe.writing.SimpleWriter(out_dir=snapshot_path), autoload=True)
