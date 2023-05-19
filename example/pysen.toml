@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools<64", "wheel"]
+
+[tool.pysen]
+version = "0.10.1"
+
+[tool.pysen.lint]
+enable_black = false
+enable_flake8 = false
+enable_isort = false
+enable_mypy = true
+mypy_preset = "strict"
+line_length = 80
+
+[[tool.pysen.lint.mypy_targets]]
+  paths = ["."]

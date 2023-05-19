@@ -45,10 +45,7 @@ jobs:
 
     - name: Code Style (Examples)
       run: |
-        pysen generate .
-        pushd example
-        mypy . --config-file ../setup.cfg --allow-untyped-defs --allow-untyped-calls
-        popd
+        pysen --config ./example/pysen.toml run lint .
 
     - name: Install for pytest
       run: |
