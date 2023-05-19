@@ -9,7 +9,7 @@ enable_black = false
 enable_flake8 = false
 enable_isort = false
 enable_mypy = true
-mypy_preset = "strict"
+mypy_preset = "entry"
 line_length = 80
 
 [[tool.pysen.lint.mypy_targets]]
