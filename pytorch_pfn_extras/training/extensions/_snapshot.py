@@ -342,7 +342,7 @@ class _Snapshot(extension.Extension):
         self.writer = writer
         loaded_fn = None
         if self.autoload:
-            # If ``autoload`` is on, this code scans the ``outdir``
+            # If ``autoload`` is on, this code scans the ``writer.out_dir``
             # for potential snapshot files by matching the file names
             # from ``filename`` format, picks up the latest one in
             # terms of mtime, and tries to load it it the target or
