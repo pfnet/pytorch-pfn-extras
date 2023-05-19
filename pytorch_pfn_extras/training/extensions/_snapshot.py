@@ -337,7 +337,6 @@ class _Snapshot(extension.Extension):
     def initialize(  # type: ignore[override]
             self, manager: ExtensionsManagerProtocol) -> Optional[str]:
         target = manager if self._target is None else self._target
-        outdir = manager.out
         writer = manager.writer if self.writer is None else self.writer
         self.writer = writer
         loaded_fn = None
@@ -376,10 +375,10 @@ class _Snapshot(extension.Extension):
             # injected here.
             def _cleanup() -> None:
                 assert writer is not None
-                files = _find_stale_snapshots(self.filename, outdir,
+                files = _find_stale_snapshots(self.filename, writer.out_dir,
                                               self.n_retains, writer.fs)
                 for file in files:
-                    writer.fs.remove(os.path.join(outdir, file))
+                    writer.fs.remove(os.path.join(writer.out_dir, file))
 
             assert writer is not None
             writer._add_cleanup_hook(_cleanup)
