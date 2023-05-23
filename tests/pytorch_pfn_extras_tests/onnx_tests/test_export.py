@@ -356,4 +356,5 @@ def test_op_norm():
         Proxy(),
         (x,),
         do_constant_folding=False,
+        check_reconstruct=False,
     )

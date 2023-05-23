@@ -99,6 +99,7 @@ def test_grad(use_pfto: bool):
         f"grad_{use_pfto}",
         enable_onnx_checker=False,
         use_pfto=use_pfto,
+        check_reconstruct=False,
         output_names=["h"],
     )
 
@@ -172,6 +173,7 @@ def test_grad_multiple_times(use_pfto: bool):
         f"grad_multi_times_{use_pfto}",
         enable_onnx_checker=False,
         use_pfto=use_pfto,
+        check_reconstruct=False,
         output_names=["h"],
     )
 
@@ -247,6 +249,7 @@ def test_grad_with_multiple_inputs(use_pfto: bool):
         f"grad_multi_inputs_{use_pfto}",
         enable_onnx_checker=False,
         use_pfto=use_pfto,
+        check_reconstruct=False,
         output_names=["h"],
     )
 

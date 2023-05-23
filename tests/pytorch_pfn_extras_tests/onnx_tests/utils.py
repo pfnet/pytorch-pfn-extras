@@ -68,6 +68,7 @@ def run_model_test(
         strict_trace=strict_trace,
         return_output=True,
         use_pfto=True,
+        strip_doc_string=False,
         **kwargs,
     )
     if isinstance(actual, torch.Tensor):
