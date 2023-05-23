@@ -3,6 +3,7 @@ import types
 import typing
 import warnings
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
+from contextlib import contextmanager
 
 import onnx
 import onnx.checker
@@ -11,6 +12,7 @@ import onnx.numpy_helper
 import onnx.shape_inference
 import pytorch_pfn_extras
 import pytorch_pfn_extras.onnx._constants
+from pytorch_pfn_extras.onnx import _grad as grad
 from pytorch_pfn_extras.onnx._globals import GLOBALS
 from pytorch_pfn_extras.torchscript import run_jit_pass
 import torch
@@ -28,6 +30,89 @@ torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defi
 
 _ppe_ignore_scope: str = "_ppe_as_out_module"
 _list_create_ops: List[str] = ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"]
+_fix_ir_version = 8
+
+# Original from https://github.com/pytorch/pytorch/blob/52a36a98d9425479f62b6e2d1a59e434b85f7f7e/torch/csrc/jit/passes/normalize_ops.cpp#L85-L162
+_op_normalize_table: Dict[str, str] = {
+    "absolute": "abs",
+    "absolute_": "abs_",
+    "clip": "clamp",
+    "clip_": "clamp_",
+    "det": "linalg_det",
+    "matrix_power": "linalg_matrix_power",
+    "matrix_exp": "linalg_matrix_exp",
+    "ger": "outer",
+    "arccos": "acos",
+    "arccos_": "acos_",
+    "arcsin": "asin",
+    "arcsin_": "asin_",
+    "arctan": "atan",
+    "arctan_": "atan_",
+    "arctan2": "atan2",
+    "arctan2_": "atan2_",
+    "arccosh": "acosh",
+    "arccosh_": "acosh_",
+    "arcsinh": "asinh",
+    "arcsinh_": "asinh_",
+    "arctanh": "atanh",
+    "arctanh_": "atanh_",
+    "fix": "trunc",
+    "fix_": "trunc_",
+    "negative": "neg",
+    "negative_": "neg_",
+    "subtract": "sub",
+    "subtract_": "sub_",
+    "greater_equal": "ge",
+    "greater_equal_": "ge_",
+    "greater": "gt",
+    "greater_": "gt_",
+    "less_equal": "le",
+    "less_equal_": "le_",
+    "less": "lt",
+    "less_": "lt_",
+    "not_equal": "ne",
+    "not_equal_": "ne_",
+    "divide": "div",
+    "divide_": "div_",
+    "multiply": "mul",
+    "multiply_": "mul_",
+    "linalg_matmul": "matmul",
+    "inverse": "linalg_inv",
+    "true_divide": "div",
+    "true_divide_": "div_",
+    "concat": "cat",
+    "concatenate": "cat",
+    "row_stack": "vstack",
+    "swapdims": "transpose",
+    "swapdims_": "transpose_",
+    "swapaxes": "transpose",
+    "swapaxes_": "transpose_",
+    "moveaxis": "movedim",
+    "special_erf": "erf",
+    "special_erfc": "erfc",
+    "special_erfinv": "erfinv",
+    "special_expit": "sigmoid",
+    "special_exp2": "exp2",
+    "special_expm1": "expm1",
+    "special_logit": "logit",
+    "special_logsumexp": "logsumexp",
+    "special_round": "round",
+    "special_log1p": "log1p",
+    "special_sinc": "sinc",
+    "special_digamma": "digamma",
+    "special_psi": "digamma",
+    "special_i0": "i0",
+    "special_xlogy": "xlogy",
+    "special_log_softmax": "log_softmax",
+    "orgqr": "linalg_householder_product",
+    "adjoint": "mH",
+    "special_multigammaln": "mvlgamma",
+    "special_polygamma": "polygamma",
+    "special_softmax": "softmax",
+    "special_gammainc": "igamma",
+    "special_gammaincc": "igammac",
+    "special_gammaln": "lgamma",
+}
 
 if pytorch_pfn_extras.requires("1.13"):
     from torch.onnx._internal import jit_utils
@@ -157,6 +242,20 @@ def _apply_tensor_info_to_value_info(v: onnx.ValueInfoProto, t: torch.Tensor) ->
         a.dim_value = i
 
 
+@contextmanager
+def _force_tracing() -> Any:
+    old_is_tracing = torch.jit.is_tracing
+
+    def is_tracing() -> bool:
+        return True
+
+    try:
+        torch.jit.is_tracing = is_tracing
+        yield
+    finally:
+        torch.jit.is_tracing = old_is_tracing
+
+
 @dataclasses.dataclass
 class _ExporterOptions:
     opset_version: int = 12
@@ -230,25 +329,30 @@ class _Exporter(_ExporterOptions):
         if torch.cuda.is_available():
             torch.cuda.set_rng_state_all(self.cuda_rng_state)
 
+    # TODO(twata): Use `self.traced` instead or use traced result outputs
+    def _get_original_outputs(self) -> None:
+        self._restore_state()
+        with _force_tracing(), grad.init_grad_state():
+            self.original_outputs = self.original_model(*self.inputs)
+        self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
+
     def _run_trace(self) -> None:
         # TODO(twata): Use `torch._C._craete_graph_by_tracing` instead.
         # So that we don't need to run heavy models multiple times
-        self.traced: torch.jit.RecursiveScriptModule = torch.jit.trace(  # type: ignore
-            self.original_model,
-            self.inputs,
-            check_trace=self.check_trace,
-            strict=self.strict_trace,
-            _force_outplace=self.force_outplace_trace,
-        )
+        self._restore_state()
+        with grad.init_grad_state():
+            self.traced: torch.jit.RecursiveScriptModule = torch.jit.trace(  # type: ignore
+                self.original_model,
+                self.inputs,
+                check_trace=self.check_trace,
+                strict=self.strict_trace,
+                _force_outplace=self.force_outplace_trace,
+            )
 
         self.graph_doc_string = f"""
 # Model: {self.traced.original_name}
 """
 
-        # TODO(twata): Use `self.traced` instead or use traced result outputs
-        self._restore_state()
-        self.original_outputs = self.original_model(*self.inputs)
-        self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
         self.g: torch._C.Graph = self.traced.inlined_graph
         """
         `self.trace` ignores the override of `state_dict` method in `self.original_model`.
@@ -553,6 +657,9 @@ class _Exporter(_ExporterOptions):
                     op = f"prim_{op}"
 
             import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
+
+            if not sym_reg.is_registered_op(op, domain, self.opset_version) and op in _op_normalize_table:
+                op = _op_normalize_table[op]
 
             if sym_reg.is_registered_op(op, domain, self.opset_version):  # type: ignore[no-untyped-call]
                 return cast(  # type: ignore[redundant-cast]
@@ -971,10 +1078,11 @@ class _Exporter(_ExporterOptions):
                 opset_imports.append(onnx.helper.make_opsetid(domain, version))
             return opset_imports
 
-        model: onnx.ModelProto = onnx.helper.make_model(
+        model: onnx.ModelProto = onnx.helper.make_model_gen_version(
             graph,
             opset_imports=get_model_opset_imports(graph),
             producer_name="pfto",
+            ir_version=_fix_ir_version,
         )
         model = self.check_model(model)
 
@@ -1006,6 +1114,7 @@ class _Exporter(_ExporterOptions):
                     sym_hel._set_onnx_shape_inference(  # type: ignore[no-untyped-call]
                         False  # TODO(twata): Use `self.onnx_shape_inference`
                     )
+                self._get_original_outputs()
                 self._run_trace()
                 self.model: onnx.ModelProto = self.generate_onnx()
         finally:

@@ -1,11 +1,13 @@
-import tempfile
-from typing import Callable, List, Optional
+import os
+from typing import Callable
 
 import onnx
 import onnxruntime as ort
 import torch
-from pytorch_pfn_extras.onnx.pfto_exporter.export import export as pfto_export
+import pytorch_pfn_extras.onnx.pfto_exporter.export as pfto
+from pytorch_pfn_extras.onnx import export_testcase
 from pytorch_pfn_extras.onnx.pfto_exporter.torch_reconstruct import reconstruct
+from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _get_output_dir
 
 
 def run_model_test(
@@ -14,8 +16,6 @@ def run_model_test(
     check_torch_export=True,
     rtol=1e-05,
     atol=1e-08,
-    input_names: Optional[List[str]] = None,
-    output_names: Optional[List[str]] = None,
     skip_oxrt=False,
     operator_export_type=torch.onnx.OperatorExportTypes.ONNX,
     strict_trace=True,
@@ -38,75 +38,73 @@ def run_model_test(
 
     if operator_export_type == torch.onnx.OperatorExportTypes.ONNX_ATEN:
         skip_oxrt = True
-    with tempfile.NamedTemporaryFile() as f:
-        f.close()
-        rng_state = torch.get_rng_state()
+
+    rng_state = torch.get_rng_state()
+    with pfto._force_tracing():
         expected = model(*args)
-        if not isinstance(expected, tuple):
-            expected = (expected,)
+    if isinstance(expected, torch.Tensor):
+        expected = (expected,)
+    expected = torch._C._jit_flatten(expected)[0]
 
-        te_model = None
-        if check_torch_export:
-            torch.set_rng_state(rng_state)
-            with tempfile.NamedTemporaryFile() as torch_f:
-                torch_f.close()
-                torch.onnx.export(
-                    model,
-                    args,
-                    torch_f.name,
-                    input_names=input_names,
-                    output_names=output_names,
-                    **kwargs,
-                )
-                te_model = onnx.load(torch_f.name)
-
-        if input_names is None:
-            input_names = [f"input_{idx}" for idx, _ in enumerate(args)]
-        if output_names is None:
-            output_names = [f"output_{idx}" for idx, _ in enumerate(expected)]
+    te_model = None
+    if check_torch_export:
         torch.set_rng_state(rng_state)
-        actual = pfto_export(
+        pt_dir = _get_output_dir("pt", **kwargs)
+        export_testcase(
             model,
             args,
-            f.name,
-            input_names=input_names,
-            output_names=output_names,
-            strict_trace=strict_trace,
+            pt_dir,
+            use_pfto=False,
             **kwargs,
         )
-        if not isinstance(actual, tuple):
-            actual = (actual,)
-        assert len(actual) == len(expected)
+        te_model = onnx.load(os.path.join(pt_dir, "model.onnx"))
 
-        for a, e in zip(actual, expected):
-            if isinstance(a, torch.Tensor) and isinstance(e, torch.Tensor):
-                assert torch.isclose(a, e, rtol=rtol, atol=atol).all()
+    torch.set_rng_state(rng_state)
+    pf_dir = _get_output_dir("pf", **kwargs)
+    actual = export_testcase(
+        model,
+        args,
+        pf_dir,
+        strict_trace=strict_trace,
+        return_output=True,
+        use_pfto=True,
+        **kwargs,
+    )
+    if isinstance(actual, torch.Tensor):
+        actual = (actual,)
+    expected = torch._C._jit_flatten(expected)[0]
+    assert len(actual) == len(expected)
 
-        pfto_model = onnx.load(f.name)
-        if te_model is not None:
-            assert len(te_model.graph.output) == len(pfto_model.graph.output)
-            assert len(te_model.graph.input) == len(pfto_model.graph.input)
+    for a, e in zip(actual, expected):
+        if isinstance(a, torch.Tensor) and isinstance(e, torch.Tensor):
+            assert torch.isclose(a, e, rtol=rtol, atol=atol).all()
 
-        if check_reconstruct:
-            pt, pt_params = reconstruct(pfto_model)
-            pt_f = torch._C._create_function_from_graph("forward", pt)
+    pfto_model = onnx.load(os.path.join(pf_dir, "model.onnx"))
+    if te_model is not None:
+        assert len(te_model.graph.output) == len(pfto_model.graph.output)
+        assert len(te_model.graph.input) == len(pfto_model.graph.input)
 
-            torch.set_rng_state(rng_state)
-            pt_res = pt_f(*args, *[p[1].to(dev) for p in pt_params])
-            if isinstance(pt_res, torch.Tensor):
-                pt_res = pt_res,
-            assert len(pt_res) == len(expected)
-            for a, e in zip(pt_res, expected):
-                cmp = torch.isclose(a.cpu(), e.cpu(), rtol=rtol, atol=atol)
-                assert cmp.all(), f"{cmp.logical_not().count_nonzero()} / {cmp.numel()} values failed"
+    if check_reconstruct:
+        pt, pt_params = reconstruct(pfto_model)
+        pt_f = torch._C._create_function_from_graph("forward", pt)
 
-        if skip_oxrt:
-            return pfto_model
-
-        ort_session = ort.InferenceSession(f.name)
-        actual = ort_session.run(None, {k: v.cpu().numpy() for k, v in zip(input_names, args)})
-        for a, e in zip(actual, expected):
-            cmp = torch.isclose(torch.tensor(a), e.cpu(), rtol=rtol, atol=atol)
+        torch.set_rng_state(rng_state)
+        pt_res = pt_f(*args, *[p[1].to(dev) for p in pt_params])
+        if isinstance(pt_res, torch.Tensor):
+            pt_res = pt_res,
+        assert len(pt_res) == len(expected)
+        for a, e in zip(pt_res, expected):
+            cmp = torch.isclose(a.cpu(), e.cpu(), rtol=rtol, atol=atol)
             assert cmp.all(), f"{cmp.logical_not().count_nonzero()} / {cmp.numel()} values failed"
 
+    if skip_oxrt:
         return pfto_model
+
+    ort_session = ort.InferenceSession(os.path.join(pf_dir, "model.onnx"))
+    input_names = [i.name for i in pfto_model.graph.input]
+    actual = ort_session.run(None, {k: v.cpu().numpy() for k, v in zip(input_names, args)})
+    for a, e in zip(actual, expected):
+        cmp = torch.isclose(torch.tensor(a), e.cpu(), rtol=rtol, atol=atol)
+        assert cmp.all(), f"{cmp.logical_not().count_nonzero()} / {cmp.numel()} values failed"
+
+    return pfto_model

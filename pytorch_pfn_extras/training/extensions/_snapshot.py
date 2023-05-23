@@ -337,20 +337,19 @@ class _Snapshot(extension.Extension):
     def initialize(  # type: ignore[override]
             self, manager: ExtensionsManagerProtocol) -> Optional[str]:
         target = manager if self._target is None else self._target
-        outdir = manager.out
         writer = manager.writer if self.writer is None else self.writer
         self.writer = writer
         loaded_fn = None
         if self.autoload:
-            # If ``autoload`` is on, this code scans the ``outdir``
+            # If ``autoload`` is on, this code scans the ``writer.out_dir``
             # for potential snapshot files by matching the file names
             # from ``filename`` format, picks up the latest one in
             # terms of mtime, and tries to load it it the target or
             # manager.
             assert writer is not None
-            loaded_fn = _find_latest_snapshot(self.filename, outdir, writer.fs)
+            loaded_fn = _find_latest_snapshot(self.filename, writer.out_dir, writer.fs)
             if loaded_fn:
-                snapshot_file = writer.fs.open(os.path.join(outdir, loaded_fn), 'rb')
+                snapshot_file = writer.fs.open(os.path.join(writer.out_dir, loaded_fn), 'rb')
                 # As described above (at ``autoload`` option),
                 # snapshot files to be autoloaded must be saved by
                 # ``save_npz`` . In order to support general format,
@@ -376,10 +375,10 @@ class _Snapshot(extension.Extension):
             # injected here.
             def _cleanup() -> None:
                 assert writer is not None
-                files = _find_stale_snapshots(self.filename, outdir,
+                files = _find_stale_snapshots(self.filename, writer.out_dir,
                                               self.n_retains, writer.fs)
                 for file in files:
-                    writer.fs.remove(os.path.join(outdir, file))
+                    writer.fs.remove(os.path.join(writer.out_dir, file))
 
             assert writer is not None
             writer._add_cleanup_hook(_cleanup)

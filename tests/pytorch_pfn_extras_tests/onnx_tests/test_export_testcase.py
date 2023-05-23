@@ -23,6 +23,7 @@ from pytorch_pfn_extras.onnx.pfto_exporter.torch_reconstruct import reconstruct
 
 
 output_dir = 'out'
+output_counter = {}
 
 
 class Net(nn.Module):
@@ -48,14 +49,24 @@ def _get_output_dir(d, **kwargs):
     output_dir_base = 'out'
     opset_ver = kwargs.get('opset_version', pytorch_pfn_extras.onnx._constants.onnx_default_opset)
 
+    test_name = os.getenv("PYTEST_CURRENT_TEST").split(':')[-1].split(' ')[0]
+    if d:
+        test_name = f"{test_name}_{d}"
+    if "model_overwrite" not in kwargs:
+        if test_name in output_counter:
+            output_counter[test_name] += 1
+            test_name = f"{test_name}_{output_counter[test_name]}"
+        else:
+            output_counter[test_name] = 0
+
     output_dir = os.path.join(
-        output_dir_base, 'opset{}'.format(opset_ver), d)
+        output_dir_base, 'opset{}'.format(opset_ver), test_name)
     os.makedirs(output_dir, exist_ok=True)
     return output_dir
 
 
 def _helper(model, args, d, use_pfto=True, check_reconstruct=True, **kwargs):
-    output_dir = _get_output_dir(d)
+    output_dir = _get_output_dir(d, **kwargs)
     if 'training' not in kwargs:
         kwargs['training'] = model.training
     if 'do_constant_folding' not in kwargs:
