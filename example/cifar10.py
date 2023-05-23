@@ -51,6 +51,11 @@ def main():
         "using PyTorch and pytorch-pfn-extras.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+                        help='input batch size for training (default: 64)')
+    parser.add_argument('--test-batch-size', type=int, default=1000,
+                        metavar='N',
+                        help='input batch size for testing (default: 1000)')
     parser.add_argument(
         "--gpu", "-g", type=int, default=0, help="GPU ID to use for training"
     )
@@ -66,6 +71,13 @@ def main():
     )
     parser.add_argument(
         "--n-retains", "-n", type=int, default=5, help="Number of snapshots to retain"
+    )
+    parser.add_argument(
+        "--no-autoload",
+        action="store_true",
+        help="Specify this option if you don't need automatic "
+        "restart of training from the previous snapshot "
+        "in the output directory.",
     )
     parser.add_argument(
         "--num-worker",
@@ -101,10 +113,10 @@ def main():
     )
 
     train_loader = DataLoader(
-        train, batch_size=64, num_workers=args.num_worker, shuffle=True
+        train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True
     )
     val_loader = DataLoader(
-        val, batch_size=64, num_workers=args.num_worker, shuffle=False
+        val, batch_size=args.test_batch_size, num_workers=args.num_worker, shuffle=False
     )
 
     model = resnet50(num_classes=10)
@@ -126,7 +138,7 @@ def main():
                 ["epoch", "iteration", "train/loss", "val/loss", "val/accuracy", "lr"]
             ),
             ppe.training.ExtensionEntry(
-                ext.snapshot(n_retains=args.n_retains, autoload=True),
+                ext.snapshot(n_retains=args.n_retains, autoload=not args.no_autoload),
                 trigger=(1, "epoch"),
             ),
             ppe.training.ExtensionEntry(

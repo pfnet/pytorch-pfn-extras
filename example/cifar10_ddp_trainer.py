@@ -66,6 +66,11 @@ def main():
         "using PyTorch and pytorch-pfn-extras.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
+                        help='input batch size for training (default: 64)')
+    parser.add_argument('--test-batch-size', type=int, default=1000,
+                        metavar='N',
+                        help='input batch size for testing (default: 1000)')
     parser.add_argument(
         "--epoch", "-e", type=int, default=20, help="Number of training epochs"
     )
@@ -140,13 +145,13 @@ def main():
 
     train_loader = DataLoader(
         train,
-        batch_size=64,
+        batch_size=args.batch_size,
         num_workers=args.num_worker,
         sampler=train_sampler,
     )
     val_loader = DataLoader(
         val,
-        batch_size=64,
+        batch_size=args.test_batch_size,
         num_workers=args.num_worker,
         sampler=val_sampler,
     )
