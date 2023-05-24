@@ -354,7 +354,8 @@ class Logic(BaseLogic):
                 Input tensors feeded to the model of the current step.
         """
         model = models[self.model_name]
-        outs = self._forward(model, batch)
+        with self._autocast.autocast():
+            outs = self._forward(model, batch)
         return outs
 
 
