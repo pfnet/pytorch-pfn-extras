@@ -277,6 +277,10 @@ class Logic(BaseLogic):
             # Needed for `torch.utils.data.DistributedSampler`
             loader.sampler.set_epoch(epoch)  # type: ignore[attr-defined]
 
+    def train_epoch_end(self, models: Mapping[str, Any], epoch: int) -> None:
+        model = models[self.model_name]
+        model.eval()
+
     def train_step(
         self,
         models: Mapping[str, torch.nn.Module],
@@ -349,6 +353,10 @@ class Logic(BaseLogic):
         model = models[self.model_name]
         model.eval()
 
+    def train_validation_end(self, models: Mapping[str, Any]) -> None:
+        model = models[self.model_name]
+        model.train()
+
     def eval_step(
         self,
         models: Mapping[str, torch.nn.Module],
@@ -415,6 +423,10 @@ class CodeBlockLogic(BaseLogic):
             # Needed for `torch.utils.data.DistributedSampler`
             loader.sampler.set_epoch(epoch)  # type: ignore[attr-defined]
 
+    def train_epoch_end(self, models: Mapping[str, Any], epoch: int) -> None:
+        model = models[self.model_name]
+        model.eval()
+
     def train_step(
         self,
         models: Mapping[str, torch.nn.Module],
@@ -457,6 +469,10 @@ class CodeBlockLogic(BaseLogic):
         """
         model = models[self.model_name]
         model.eval()
+
+    def train_validation_end(self, models: Mapping[str, Any]) -> None:
+        model = models[self.model_name]
+        model.train()
 
     def eval_step(
         self,
