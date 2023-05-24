@@ -1,8 +1,10 @@
+from typing import Any, Mapping
 import pytest
 
 import torch
 from torch import nn
-from torch.nn import functional as F
+from torch.optim import Optimizer
+from torch.nn import functional as F, Module
 from unittest import mock
 
 import pytorch_pfn_extras as ppe
@@ -59,4 +61,39 @@ def test_trainer(device):
         options={'backward_function': backward_fn}
     )
     trainer.run(data)
+    assert backward_fn.call_count == epochs * iters_per_epoch
+
+@pytest.mark.parametrize("trigger", [(1, "epoch"), (0.5, "epoch"), (10, "iteration"), (5, "iteration"), (1, "iteration")])
+def test_train_step_mode_with_evaluator(trigger):
+    iters_per_epoch = 10
+    epochs = 20
+    model = MyModel()
+    ppe.to(model, "cpu")
+    model_with_loss = MyModelWithLossFn(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [(torch.rand(20,), torch.rand(10,)) for i in range(iters_per_epoch)])
+    backward_fn = mock.Mock(return_value=None)
+
+    class LogicWithTrainStepCheck(ppe.handler.Logic):
+        def train_step(self, models: Mapping[str, Module], optimizers: Mapping[str, Optimizer], batch_idx: int, batch: Any) -> Any:
+            model = models[self.model_name]
+            assert model.training
+            return super().train_step(models, optimizers, batch_idx, batch)
+
+    trainer = ppe.engine.create_trainer(
+        model_with_loss, 
+        optimizer, 
+        epochs, 
+        logic=LogicWithTrainStepCheck(),
+        evaluator=(
+            ppe.engine.create_evaluator(
+                models=model_with_loss,
+                logic=LogicWithTrainStepCheck(),
+            ), 
+            trigger,
+        ),
+        options={'backward_function': backward_fn}
+    )
+    trainer.run(data, data)
     assert backward_fn.call_count == epochs * iters_per_epoch
