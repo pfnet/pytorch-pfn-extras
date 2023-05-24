@@ -19,6 +19,7 @@ from pytorch_pfn_extras.onnx import LARGE_TENSOR_DATA_THRESHOLD
 import pytorch_pfn_extras.onnx._constants
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_large_tensor_tool_impl
 from pytorch_pfn_extras.onnx.unstrip_tensor import unstrip
+from pytorch_pfn_extras.onnx.pfto_exporter.torch_reconstruct import reconstruct
 
 
 output_dir = 'out'
@@ -64,7 +65,7 @@ def _get_output_dir(d, **kwargs):
     return output_dir
 
 
-def _helper(model, args, d, use_pfto=True, **kwargs):
+def _helper(model, args, d, use_pfto=True, check_reconstruct=True, **kwargs):
     output_dir = _get_output_dir(d, **kwargs)
     if 'training' not in kwargs:
         kwargs['training'] = model.training
@@ -72,7 +73,12 @@ def _helper(model, args, d, use_pfto=True, **kwargs):
         kwargs['do_constant_folding'] = False
     if 'metadata' not in kwargs:
         kwargs["metadata"] = False
+    if "strip_doc_string" not in kwargs:
+        kwargs["strip_doc_string"] = False
     export_testcase(model, args, output_dir, use_pfto=use_pfto, **kwargs)
+    if check_reconstruct and use_pfto and not kwargs["strip_doc_string"]:
+        reconstruct(pytorch_pfn_extras.onnx.load_model(
+            os.path.join(output_dir, "model.onnx")))
     return output_dir
 
 
@@ -81,7 +87,9 @@ def test_export_testcase():
     model = Net().to('cpu')
     x = torch.zeros((1, 1, 28, 28))
 
-    output_dir = _helper(model, x, 'mnist', output_grad=True, metadata=True)
+    output_dir = _helper(
+        model, x, 'mnist', output_grad=True, metadata=True,
+        check_reconstruct=True, verbose=False)
 
     assert os.path.isdir(output_dir)
     assert os.path.isfile(os.path.join(output_dir, 'meta.json'))
@@ -168,7 +176,9 @@ def test_model_not_overwrite():
     output_dir = _helper(model, x, dir_name)
     assert os.path.isdir(output_dir)
 
-    output_dir = _helper(model, x + 0.5, dir_name, model_overwrite=False)
+    output_dir = _helper(
+        model, x + 0.5, dir_name,
+        model_overwrite=False)
 
     test_data_set_dir = os.path.join(output_dir, 'test_data_set_1')
     assert os.path.isfile(os.path.join(test_data_set_dir, 'input_0.pb'))
@@ -361,7 +371,8 @@ def test_export_testcase_options():
 
     output_dir = _helper(
         model, x, 'mnist_stripped_tensor_data',
-        opset_version=11, strip_doc_string=False)
+        opset_version=11, strip_doc_string=False,
+        check_reconstruct=False)
 
     onnx_model = onnx.load(os.path.join(
         output_dir, 'model.onnx'), load_external_data=False)

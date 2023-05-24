@@ -6,6 +6,7 @@ import onnxruntime as ort
 import torch
 import pytorch_pfn_extras.onnx.pfto_exporter.export as pfto
 from pytorch_pfn_extras.onnx import export_testcase
+from pytorch_pfn_extras.onnx.pfto_exporter.torch_reconstruct import reconstruct
 from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _get_output_dir
 
 
@@ -20,6 +21,7 @@ def run_model_test(
     strict_trace=True,
     mode="eval",
     use_gpu=False,
+    check_reconstruct=True,
     **kwargs,
 ) -> onnx.ModelProto:
     if mode == "train":
@@ -28,6 +30,7 @@ def run_model_test(
         assert mode == "eval"
         model.eval()
 
+    dev = "cpu"
     if use_gpu and torch.cuda.is_available():
         dev = "cuda"
         model.to(dev)
@@ -65,6 +68,7 @@ def run_model_test(
         strict_trace=strict_trace,
         return_output=True,
         use_pfto=True,
+        strip_doc_string=False,
         **kwargs,
     )
     if isinstance(actual, torch.Tensor):
@@ -80,6 +84,19 @@ def run_model_test(
     if te_model is not None:
         assert len(te_model.graph.output) == len(pfto_model.graph.output)
         assert len(te_model.graph.input) == len(pfto_model.graph.input)
+
+    if check_reconstruct:
+        pt, pt_params = reconstruct(pfto_model)
+        pt_f = torch._C._create_function_from_graph("forward", pt)
+
+        torch.set_rng_state(rng_state)
+        pt_res = pt_f(*args, *[p[1].to(dev) for p in pt_params])
+        if isinstance(pt_res, torch.Tensor):
+            pt_res = pt_res,
+        assert len(pt_res) == len(expected)
+        for a, e in zip(pt_res, expected):
+            cmp = torch.isclose(a.cpu(), e.cpu(), rtol=rtol, atol=atol)
+            assert cmp.all(), f"{cmp.logical_not().count_nonzero()} / {cmp.numel()} values failed"
 
     if skip_oxrt:
         return pfto_model

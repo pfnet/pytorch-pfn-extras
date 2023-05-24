@@ -3,7 +3,7 @@
 TARGET="${1}"
 
 TEST_PIP_PACKAGES="
-matplotlib tensorboard ipython ipywidgets pandas optuna onnxruntime
+matplotlib tensorboard ipython ipywidgets pandas optuna onnxruntime marko
 pytest flake8 pysen[lint] pytest-cov slack_sdk
 "
 

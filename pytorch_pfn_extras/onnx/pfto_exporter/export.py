@@ -195,10 +195,20 @@ def _to_tuple_if_not_sequence(v: Any) -> Tuple:
 
 
 def onnx_node_doc_string(onnx_node: torch._C.Node, torch_node: torch._C.Node) -> str:
+    inputs: List[torch._C.Value] = list(torch_node.inputs())
+    nodes: List[torch._C.Node] = [torch_node]
+    while len(inputs) > 0:
+        n = inputs.pop().node()
+        if n is not None and n.kind() in ["onnx::Constant", "prim::Constant", "prim::ListConstruct", "onnx::SequenceConstruct"]:
+            nodes.insert(0, n)
+            inputs = list(n.inputs()) + inputs
+    nodes_str: str = "".join([repr(n) for n in nodes])
     return f"""## Symbolic node
 {onnx_node}
 ## Original node
-{torch_node}
+```
+{nodes_str}
+```
 ## Scope
 {torch_node.scopeName()}
 ## Source Range
@@ -385,7 +395,7 @@ class _Exporter(_ExporterOptions):
         self.g = self.optimize_torch(self.g)
         self.log("Optimized graph", self.g)
 
-        self.log("Original traced graph", self.traced.graph)
+        self.log("Original traced graph", self.traced.inlined_graph)
         self.log("State dict", lambda: "\n".join([f"- {k}: {v}" for k, v in self.vars.items()]))
 
     def is_self(self, v: torch._C.Value) -> bool:
@@ -462,6 +472,9 @@ class _Exporter(_ExporterOptions):
             inputs = list(graph.inputs())
             for idx, n in enumerate(input_names):
                 inputs[idx].setDebugName(n)
+        if self.output_names is not None:
+            for name, out in zip(self.output_names, graph.outputs()):
+                out.setDebugName(name)
         torch._C._jit_pass_onnx_set_dynamic_input_shape(  # type: ignore[attr-defined]
             graph, self.dynamic_axes or {}, input_names
         )
@@ -591,7 +604,9 @@ class _Exporter(_ExporterOptions):
         # Generated onnx node doc string should be added later since DCE isn't completed yet
         doc_str: str = f"""
 ## Original node
+```
 {n}
+```
 ## Scope
 {n.scopeName()}
 ## Source Range
@@ -709,6 +724,13 @@ class _Exporter(_ExporterOptions):
             return list(ret)
 
         sym_nodes: List[torch._C.Node] = list_added_nodes()
+
+        # Place onnx::Identity node instead node when none is added
+        if len(sym_nodes) == 0:
+            sym_out = g_ctx.op("Identity", sym_outs[0])
+            assert isinstance(sym_out, torch._C.Value)
+            sym_outs = sym_out,
+            sym_nodes = [sym_out.node()]
 
         self.log(f"Converting node {n.kind()}", n)
         if len(sym_nodes) > 0:
@@ -877,6 +899,7 @@ class _Exporter(_ExporterOptions):
                     assert isinstance(self.vars[k], torch.Tensor)
                     t: torch.Tensor = cast(torch.Tensor, self.vars[k])
                     onnx_vars[_unique_id(i)] = _tensor_to_proto(t, name=k)
+                    onnx_vars[_unique_id(i)].doc_string = repr(i.node())
                     register_val_name(_unique_id(i), value_name(i), shadow=True)
                     continue
                 if _unique_id(i) not in val_tab:
@@ -937,8 +960,15 @@ class _Exporter(_ExporterOptions):
         return onnx_nodes, onnx_vars, val_tab
 
     def generate_onnx(self) -> onnx.ModelProto:
-        # Convert prim and aten nodes to ONNX by using symbolic functions
         self.original_g: torch._C.Graph = self.g.copy()
+
+        # Name all values to restore
+        for n in self.g.nodes():
+            for n_o in n.outputs():
+                if n_o.debugName() == str(n_o.unique()):
+                    n_o.setDebugName(f"v{n_o.unique()}")
+
+        # Convert prim and aten nodes to ONNX by using symbolic functions
         target_nodes = list(self.g.nodes())
         for n in target_nodes:
             self.generate_onnx_node(self.g, n)

@@ -17,7 +17,7 @@ setuptools.setup(
     install_requires=['numpy', 'packaging', 'torch', 'typing-extensions>=3.10'],
     extras_require={
         'test': ['pytest', 'onnxruntime', 'torchvision'],
-        'onnx': ['onnx'],
+        'onnx': ['onnx', 'marko'],
     },
     python_requires='>=3.6.0',
     packages=setuptools.find_packages(exclude=['tests', 'tests.*']),

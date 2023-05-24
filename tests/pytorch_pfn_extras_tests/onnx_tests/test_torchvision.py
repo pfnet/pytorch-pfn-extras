@@ -41,5 +41,5 @@ def test_shufflenet():
     run_model_test(
         torchvision.models.shufflenetv2.shufflenet_v2_x1_0(),
         (torch.rand(1, 3, 224, 224),),
-        use_gpu=True,
+        use_gpu=True, check_reconstruct=False
     )

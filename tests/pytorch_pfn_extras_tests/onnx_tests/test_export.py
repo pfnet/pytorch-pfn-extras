@@ -59,7 +59,7 @@ def test_symbolic_function():
             return Func.apply(x) + torch.tensor([10], dtype=torch.float)
 
     assert hasattr(Func, "symbolic")
-    run_model_test(Model(), (torch.rand((20,)),))
+    run_model_test(Model(), (torch.rand((20,)),), check_reconstruct=False)
 
 
 class AnyModel(torch.nn.Module):
@@ -167,7 +167,8 @@ def test_norm():
         def forward(self, x):
             return torch.norm(x)
 
-    run_model_test(Net(), (torch.rand(2, 3, 5, 7),), opset_version=13)
+    check_reconstruct = ppe.requires("2.0")
+    run_model_test(Net(), (torch.rand(2, 3, 5, 7),), opset_version=13, check_reconstruct=check_reconstruct)
 
 
 def test_rand():
@@ -198,7 +199,8 @@ def test_nested():
 
     run_model_test(
         Model(), (torch.randn(2, 7, 17), torch.randn(2, 7, 17)),
-        skip_oxrt=True, output_names=["a", "b", "c"])
+        skip_oxrt=True, output_names=["a", "b", "c"],
+        check_reconstruct=False)
 
 
 @pytest.mark.filterwarnings("ignore:The shape inference of org.chainer..Add type is missing:UserWarning")
@@ -227,7 +229,8 @@ def test_custom_opsets():
     m = run_model_test(
         Model(), (torch.randn(2, 7, 17),),
         skip_oxrt=True,
-        custom_opsets={"org.chainer": ver})
+        custom_opsets={"org.chainer": ver},
+        check_reconstruct=False)
 
     assert len(m.opset_import) == 2
 
@@ -353,4 +356,5 @@ def test_op_norm():
         Proxy(),
         (x,),
         do_constant_folding=False,
+        check_reconstruct=False,
     )
