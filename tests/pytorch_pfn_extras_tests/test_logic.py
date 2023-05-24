@@ -63,6 +63,7 @@ def test_trainer(device):
     trainer.run(data)
     assert backward_fn.call_count == epochs * iters_per_epoch
 
+
 @pytest.mark.parametrize("trigger", [(1, "epoch"), (0.5, "epoch"), (10, "iteration"), (5, "iteration"), (1, "iteration")])
 def test_train_step_mode_with_evaluator(trigger):
     iters_per_epoch = 10
@@ -82,15 +83,15 @@ def test_train_step_mode_with_evaluator(trigger):
             return super().train_step(models, optimizers, batch_idx, batch)
 
     trainer = ppe.engine.create_trainer(
-        model_with_loss, 
-        optimizer, 
-        epochs, 
+        model_with_loss,
+        optimizer,
+        epochs,
         logic=LogicWithTrainStepCheck(),
         evaluator=(
             ppe.engine.create_evaluator(
                 models=model_with_loss,
                 logic=LogicWithTrainStepCheck(),
-            ), 
+            ),
             trigger,
         ),
         options={'backward_function': backward_fn}
