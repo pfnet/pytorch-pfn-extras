@@ -1,20 +1,21 @@
 import json
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 import warnings
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy
-
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 _available = None
 
 
 def matplotlib_savefun(target: Tuple[Any, Any, Any], file_o: Any) -> None:
     fig, leg, plt = target
-    fig.savefig(file_o, bbox_extra_artists=(leg,), bbox_inches='tight')
+    fig.savefig(file_o, bbox_extra_artists=(leg,), bbox_inches="tight")
     fig.clf()
     plt.close(fig)
 
@@ -23,6 +24,7 @@ def _try_import_matplotlib() -> None:
     global matplotlib, _available
     try:
         import matplotlib  # NOQA
+
         _available = True
     except (ImportError, TypeError):
         _available = False
@@ -33,10 +35,12 @@ def _check_available() -> None:
         _try_import_matplotlib()
 
     if not _available:
-        warnings.warn('matplotlib is not installed on your environment, '
-                      'so nothing will be plotted at this time. '
-                      'Please install matplotlib to plot figures.\n\n'
-                      '  $ pip install matplotlib\n')
+        warnings.warn(
+            "matplotlib is not installed on your environment, "
+            "so nothing will be plotted at this time. "
+            "Please install matplotlib to plot figures.\n\n"
+            "  $ pip install matplotlib\n"
+        )
 
 
 class PlotReport(extension.Extension):
@@ -114,18 +118,17 @@ filename='plot.png', marker='x', grid=True)
     """
 
     def __init__(
-            self,
-            y_keys: Union[Iterable[str], str],
-            x_key: str = 'iteration',
-            trigger: trigger_module.TriggerLike = (1, 'epoch'),
-            postprocess: Any = None,
-            filename: Optional[str] = None,
-            marker: str = 'x',
-            grid: bool = True,
-            **kwargs: Any,
+        self,
+        y_keys: Union[Iterable[str], str],
+        x_key: str = "iteration",
+        trigger: trigger_module.TriggerLike = (1, "epoch"),
+        postprocess: Any = None,
+        filename: Optional[str] = None,
+        marker: str = "x",
+        grid: bool = True,
+        **kwargs: Any,
     ):
-
-        file_name = kwargs.get('file_name', 'plot.png')
+        file_name = kwargs.get("file_name", "plot.png")
         if filename is None:
             filename = file_name
         del file_name  # avoid accidental use
@@ -144,7 +147,7 @@ filename='plot.png', marker='x', grid=True)
         self._postprocess = postprocess
         self._init_summary()
         self._data: Dict[str, List[Tuple[Any, Any]]] = {k: [] for k in y_keys}
-        self._writer = kwargs.get('writer', None)
+        self._writer = kwargs.get("writer", None)
 
     @staticmethod
     def available() -> bool:
@@ -173,8 +176,8 @@ filename='plot.png', marker='x', grid=True)
             for name, value in stats.items():
                 stats_cpu[name] = float(value)  # copy to CPU
 
-            stats_cpu['epoch'] = manager.epoch
-            stats_cpu['iteration'] = manager.iteration
+            stats_cpu["epoch"] = manager.epoch
+            stats_cpu["iteration"] = manager.iteration
             x = stats_cpu[self._x_key]
             data = self._data
 
@@ -200,9 +203,14 @@ filename='plot.png', marker='x', grid=True)
                 if self._postprocess is not None:
                     self._postprocess(f, a, summary)
                 leg = a.legend(
-                    bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-                writer(self._file_name, manager.out, (f, leg, plt),  # type: ignore
-                       savefun=matplotlib_savefun)
+                    bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0
+                )
+                writer(
+                    self._file_name,
+                    manager.out,
+                    (f, leg, plt),  # type: ignore
+                    savefun=matplotlib_savefun,
+                )
             else:
                 print(
                     f"[WARNING] No data found for key {self._y_keys}, "
@@ -215,11 +223,11 @@ filename='plot.png', marker='x', grid=True)
             self._init_summary()
 
     def state_dict(self) -> Dict[str, Any]:
-        state = {'_plot_{}'.format(self._file_name): json.dumps(self._data)}
+        state = {"_plot_{}".format(self._file_name): json.dumps(self._data)}
         return state
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
-        key = '_plot_{}'.format(self._file_name)
+        key = "_plot_{}".format(self._file_name)
         self._data = json.loads(to_load[key])
 
     def _init_summary(self) -> None:

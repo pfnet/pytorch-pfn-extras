@@ -1,10 +1,10 @@
-import torch
 import pytorch_pfn_extras.torchscript as ts
+import torch
 
 
 def test_find_inplace():
     def f(v: torch.Tensor) -> None:
-        v += torch.ones((1,2,3))
+        v += torch.ones((1, 2, 3))
 
     def g(v: torch.Tensor):
         f(v)
@@ -17,7 +17,7 @@ def test_find_inplace():
 
 def test_find_inplace_not_found():
     def f(v: torch.Tensor) -> torch.Tensor:
-        return torch.ones((1,2,3))
+        return torch.ones((1, 2, 3))
 
     s = torch.jit.script(f)
 

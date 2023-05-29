@@ -4,11 +4,13 @@ import sys
 import time
 from typing import Deque, Optional, Sequence, TextIO, Tuple
 
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
-
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 try:
     from IPython import get_ipython
+
     _ipython_available = True
 except ImportError:
     _ipython_available = False
@@ -16,11 +18,11 @@ except ImportError:
 
 def _is_notebook() -> bool:
     if _ipython_available and get_ipython() is not None:
-        return 'IPKernelApp' in get_ipython().config
+        return "IPKernelApp" in get_ipython().config
     return False
 
 
-if os.name == 'nt':
+if os.name == "nt":
     import ctypes
     from ctypes import windll  # type: ignore [attr-defined]
 
@@ -29,10 +31,13 @@ if os.name == 'nt':
     _COORD = ctypes.wintypes._COORD
 
     class _CONSOLE_SCREEN_BUFFER_INFO(ctypes.Structure):
-        _fields_ = [('dwSize', _COORD), ('dwCursorPosition', _COORD),
-                    ('wAttributes', ctypes.c_ushort),
-                    ('srWindow', ctypes.wintypes.SMALL_RECT),
-                    ('dwMaximumWindowSize', _COORD)]
+        _fields_ = [
+            ("dwSize", _COORD),
+            ("dwCursorPosition", _COORD),
+            ("wAttributes", ctypes.c_ushort),
+            ("srWindow", ctypes.wintypes.SMALL_RECT),
+            ("dwMaximumWindowSize", _COORD),
+        ]
 
     def set_console_cursor_position(x: int, y: int) -> None:
         """Set relative cursor position from current position to (x,y)"""
@@ -64,29 +69,31 @@ if os.name == 'nt':
         cur_pos = csbi.dwCursorPosition
         wr = ctypes.c_ulong()
         if mode == 0:
-            num = csbi.srWindow.Right * (
-                csbi.srWindow.Bottom - cur_pos.Y) - cur_pos.X
+            num = (
+                csbi.srWindow.Right * (csbi.srWindow.Bottom - cur_pos.Y)
+                - cur_pos.X
+            )
             windll.kernel32.FillConsoleOutputCharacterA(
-                whnd, ord(' '), num, cur_pos, ctypes.byref(wr))
+                whnd, ord(" "), num, cur_pos, ctypes.byref(wr)
+            )
         elif mode == 1:
             num = cur_pos.X
             windll.kernel32.FillConsoleOutputCharacterA(
-                whnd, ord(' '), num, _COORD(0, cur_pos.Y), ctypes.byref(wr))
+                whnd, ord(" "), num, _COORD(0, cur_pos.Y), ctypes.byref(wr)
+            )
         elif mode == 2:
-            os.system('cls')
+            os.system("cls")
 
 
 class ProgressBar:
-
     def __init__(self, out: Optional[TextIO] = None) -> None:
         self._out = sys.stdout if out is None else out
-        self._recent_timing: Deque[Tuple[int, float, float]] = collections.deque(
-            [], maxlen=100)
+        self._recent_timing: Deque[
+            Tuple[int, float, float]
+        ] = collections.deque([], maxlen=100)
 
     def update_speed(
-            self,
-            iteration: int,
-            epoch_detail: float
+        self, iteration: int, epoch_detail: float
     ) -> Tuple[float, float]:
         now = time.time()
         self._recent_timing.append((iteration, epoch_detail, now))
@@ -96,16 +103,15 @@ class ProgressBar:
             speed_t = (iteration - old_t) / span
             speed_e = (epoch_detail - old_e) / span
         else:
-            speed_t = float('inf')
-            speed_e = float('inf')
+            speed_t = float("inf")
+            speed_e = float("inf")
         return speed_t, speed_e
 
     def get_lines(self) -> Sequence[str]:
         raise NotImplementedError
 
     def update(
-            self,
-            manager: Optional[ExtensionsManagerProtocol] = None
+        self, manager: Optional[ExtensionsManagerProtocol] = None
     ) -> None:
         self.erase_console()
 
@@ -121,18 +127,18 @@ class ProgressBar:
         self.flush()
 
     def erase_console(self) -> None:
-        if os.name == 'nt':
+        if os.name == "nt":
             erase_console(0, 0)
         else:
-            self._out.write('\033[J')
+            self._out.write("\033[J")
 
     def move_cursor_up(self, n: int) -> None:
         # move the cursor to the head of the progress bar
-        if os.name == 'nt':
-            set_console_cursor_position(0, - n)
+        if os.name == "nt":
+            set_console_cursor_position(0, -n)
         else:
-            self._out.write('\033[{:d}A'.format(n))
+            self._out.write("\033[{:d}A".format(n))
 
     def flush(self) -> None:
-        if hasattr(self._out, 'flush'):
+        if hasattr(self._out, "flush"):
             self._out.flush()

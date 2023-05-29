@@ -1,14 +1,15 @@
 from typing import Any, Callable
 
 import torch.optim
-
 from pytorch_pfn_extras.training import extension
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 
 def observe_value(
-        observation_key: str,
-        target_func: Callable[[ExtensionsManagerProtocol], Any],
+    observation_key: str,
+    target_func: Callable[[ExtensionsManagerProtocol], Any],
 ) -> Callable[[ExtensionsManagerProtocol], None]:
     """Returns an extension to continuously record a value.
 
@@ -26,17 +27,20 @@ def observe_value(
            .ExtensionsManager>` method.
 
     """
+
     @extension.make_extension(
-        trigger=(1, 'epoch'), priority=extension.PRIORITY_WRITER)
+        trigger=(1, "epoch"), priority=extension.PRIORITY_WRITER
+    )
     def _observe_value(manager: ExtensionsManagerProtocol) -> None:
         manager.observation[observation_key] = target_func(manager)
+
     return _observe_value
 
 
 def observe_lr(
-        optimizer: torch.optim.Optimizer,
-        param_group: int = 0,
-        observation_key: str = 'lr',
+    optimizer: torch.optim.Optimizer,
+    param_group: int = 0,
+    observation_key: str = "lr",
 ) -> Any:
     """Returns an extension to record the learning rate.
 
@@ -57,4 +61,5 @@ def observe_lr(
     """
     return observe_value(
         observation_key,
-        lambda manager: optimizer.param_groups[param_group]['lr'])
+        lambda manager: optimizer.param_groups[param_group]["lr"],
+    )

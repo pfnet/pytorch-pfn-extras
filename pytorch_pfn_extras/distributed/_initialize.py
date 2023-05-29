@@ -12,7 +12,7 @@ def initialize_ompi_environment(
     rank: int = 0,
     local_rank: int = 0,
     addr: str = "localhost",
-    port: str = "1234"
+    port: str = "1234",
 ) -> Tuple[int, int, int]:
     """Initialize `torch.distributed` environments with values taken from
     OpenMPI.
@@ -42,9 +42,10 @@ def initialize_ompi_environment(
     addr = e.get("MASTER_ADDR", addr)
     port = e.get("MASTER_PORT", port)
 
-    if backend not in ("gloo" ,"nccl"):
+    if backend not in ("gloo", "nccl"):
         raise ValueError(
-            "Invalid value for backend, only 'gloo' and 'nccl' are supported")
+            "Invalid value for backend, only 'gloo' and 'nccl' are supported"
+        )
     if init_method == "env":
         init_method = "env://"
         e["MASTER_ADDR"] = addr
@@ -56,12 +57,12 @@ def initialize_ompi_environment(
         init_method = f"tcp://{addr}:{port}"
     else:
         raise ValueError(
-            "Invalid value for init_method, only 'env' and 'tcp' are supported")
+            "Invalid value for init_method, only 'env' and 'tcp' are supported"
+        )
 
     if world_size > 1 and not torch.distributed.is_initialized():  # type: ignore
         torch.distributed.init_process_group(  # type: ignore
-            backend, init_method=init_method,
-            world_size=world_size, rank=rank
+            backend, init_method=init_method, world_size=world_size, rank=rank
         )
         torch.distributed.barrier()  # type: ignore
 

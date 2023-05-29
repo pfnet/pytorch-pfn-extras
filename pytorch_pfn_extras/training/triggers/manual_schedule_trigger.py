@@ -1,8 +1,9 @@
-from typing import Sequence, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence, Union
 
 from pytorch_pfn_extras.training import trigger
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
-
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training._trigger_util import UnitLiteral
@@ -27,12 +28,15 @@ class ManualScheduleTrigger(trigger.Trigger):
 
     """
 
-    def __init__(self, points: Union[float, Sequence[float]], unit: 'UnitLiteral'):
-        if unit not in ('epoch', 'iteration'):
+    def __init__(
+        self, points: Union[float, Sequence[float]], unit: "UnitLiteral"
+    ):
+        if unit not in ("epoch", "iteration"):
             raise ValueError(
-                'Trigger unit must be either \'epoch\' or \'iteration\'.')
+                "Trigger unit must be either 'epoch' or 'iteration'."
+            )
 
-        self.points = (points if isinstance(points, list) else [points])
+        self.points = points if isinstance(points, list) else [points]
         self.unit = unit
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> bool:
@@ -53,9 +57,8 @@ class ManualScheduleTrigger(trigger.Trigger):
         return fire
 
     def may_fire(self, iteration: int, epoch_length: int) -> bool:
-        if self.unit == 'epoch':
-            fire = any(
-                int(p * epoch_length) == iteration for p in self.points)
+        if self.unit == "epoch":
+            fire = any(int(p * epoch_length) == iteration for p in self.points)
         else:
             fire = any(p == iteration for p in self.points)
         return fire

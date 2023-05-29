@@ -1,17 +1,20 @@
-from copy import deepcopy
 import os
 import sys
-from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, Union
+from copy import deepcopy
+from typing import IO, Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from pytorch_pfn_extras.training import extension
-from pytorch_pfn_extras.training.extensions import log_report \
-    as log_report_module
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
+from pytorch_pfn_extras.training.extensions import (
+    log_report as log_report_module,
+)
 from pytorch_pfn_extras.training.extensions import util
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 def create_header_and_templates(
-        entries: Sequence[str],
+    entries: Sequence[str],
 ) -> Tuple[str, List[Tuple[str, str, str]]]:
     """Construct header and templates from `entries`
 
@@ -25,35 +28,36 @@ def create_header_and_templates(
     # format information
     entry_widths = [max(10, len(s)) for s in entries]
 
-    header = '  '.join(('{:%d}' % w for w in entry_widths)).format(
-        *entries) + '\n'
+    header = (
+        "  ".join(("{:%d}" % w for w in entry_widths)).format(*entries) + "\n"
+    )
     templates = []
     for entry, w in zip(entries, entry_widths):
-        templates.append((entry, '{:<%dg}  ' % w, ' ' * (w + 2)))
+        templates.append((entry, "{:<%dg}  " % w, " " * (w + 2)))
     return header, templates
 
 
 def filter_and_sort_entries(
-        all_entries: List[str],
-        unit: str = 'epoch',
+    all_entries: List[str],
+    unit: str = "epoch",
 ) -> List[str]:
     entries = deepcopy(all_entries)
     # TODO(nakago): sort other entries if necessary
 
-    if 'iteration' in entries:
+    if "iteration" in entries:
         # move iteration to head
-        entries.pop(entries.index('iteration'))
-        if unit == 'iteration':
-            entries = ['iteration'] + entries
-    if 'epoch' in entries:
+        entries.pop(entries.index("iteration"))
+        if unit == "iteration":
+            entries = ["iteration"] + entries
+    if "epoch" in entries:
         # move epoch to head
-        entries.pop(entries.index('epoch'))
-        if unit == 'epoch':
-            entries = ['epoch'] + entries
-    if 'elapsed_time' in entries:
+        entries.pop(entries.index("epoch"))
+        if unit == "epoch":
+            entries = ["epoch"] + entries
+    if "elapsed_time" in entries:
         # move elapsed_time to tail
-        entries.pop(entries.index('elapsed_time'))
-        entries.append('elapsed_time')
+        entries.pop(entries.index("elapsed_time"))
+        entries.append("elapsed_time")
     return entries
 
 
@@ -76,10 +80,10 @@ class PrintReport(extension.Extension):
     """
 
     def __init__(
-            self,
-            entries: Optional[Sequence[str]] = None,
-            log_report: Union[str, log_report_module.LogReport] = 'LogReport',
-            out: IO[Any] = sys.stdout,
+        self,
+        entries: Optional[Sequence[str]] = None,
+        log_report: Union[str, log_report_module.LogReport] = "LogReport",
+        out: IO[Any] = sys.stdout,
     ) -> None:
         if entries is None:
             self._infer_entries = True
@@ -98,21 +102,20 @@ class PrintReport(extension.Extension):
         self._all_entries: List[str] = []
 
     def get_log_report(
-            self,
-            manager: ExtensionsManagerProtocol,
+        self,
+        manager: ExtensionsManagerProtocol,
     ) -> log_report_module.LogReport:
         log_report = self._log_report
         if isinstance(log_report, str):
             ext = manager.get_extension(log_report)
             if not isinstance(ext, log_report_module.LogReport):
-                raise TypeError('`log_report` must be LogReport object')
+                raise TypeError("`log_report` must be LogReport object")
             return ext
         elif isinstance(log_report, log_report_module.LogReport):
             log_report(manager)  # update the log report
             return log_report
         else:
-            raise TypeError('log report has a wrong type %s' %
-                            type(log_report))
+            raise TypeError("log report has a wrong type %s" % type(log_report))
 
     @property
     def _log_looker(self) -> log_report_module._LogLooker:
@@ -133,12 +136,13 @@ class PrintReport(extension.Extension):
                     updated_flag = True
 
         if updated_flag:
-            if hasattr(log_report, '_trigger') and hasattr(log_report._trigger,
-                                                           'unit'):
+            if hasattr(log_report, "_trigger") and hasattr(
+                log_report._trigger, "unit"
+            ):
                 unit = log_report._trigger.unit  # type: ignore[attr-defined]
             else:
                 # Failed to infer `unit`, use epoch as default
-                unit = 'epoch'
+                unit = "epoch"
             entries = filter_and_sort_entries(self._all_entries, unit=unit)
             self._entries = entries
             header, templates = create_header_and_templates(entries)
@@ -160,23 +164,23 @@ class PrintReport(extension.Extension):
 
         for line in self._log_looker.get():
             # delete the printed contents from the current cursor
-            if os.name == 'nt':
+            if os.name == "nt":
                 util.erase_console(0, 0)
             else:
-                out.write('\033[J')
+                out.write("\033[J")
             self._print(line)
         self._log_looker.clear()
 
     def state_dict(self) -> Dict[str, Any]:
         log_report = self._log_report
         if isinstance(log_report, log_report_module.LogReport):
-            return {'_log_report': log_report.state_dict()}
+            return {"_log_report": log_report.state_dict()}
         return {}
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
         log_report = self._log_report
         if isinstance(log_report, log_report_module.LogReport):
-            log_report.load_state_dict(to_load['_log_report'])
+            log_report.load_state_dict(to_load["_log_report"])
 
     def _print(self, observation: log_report_module.Observation) -> None:
         out = self._out
@@ -185,6 +189,6 @@ class PrintReport(extension.Extension):
                 out.write(template.format(observation[entry]))
             else:
                 out.write(empty)
-        out.write('\n')
-        if hasattr(out, 'flush'):
+        out.write("\n")
+        if hasattr(out, "flush"):
             out.flush()

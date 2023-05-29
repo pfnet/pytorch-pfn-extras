@@ -5,9 +5,10 @@ from typing import Any, List, Tuple
 
 from IPython.display import display
 from ipywidgets import HTML, FloatProgress, HBox, VBox  # NOQA
-
 from pytorch_pfn_extras.training import extension, trigger  # NOQA
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 
 class ProgressBarNotebook(extension.Extension):
@@ -34,11 +35,11 @@ class ProgressBarNotebook(extension.Extension):
     """
 
     def __init__(
-            self,
-            training_length: Any = None,
-            update_interval: int = 100,
-            bar_length: int = 50,
-            out: Any = sys.stdout,
+        self,
+        training_length: Any = None,
+        update_interval: int = 100,
+        bar_length: int = 50,
+        out: Any = sys.stdout,
     ):
         self._training_length = training_length
         if training_length is not None:
@@ -46,26 +47,31 @@ class ProgressBarNotebook(extension.Extension):
         self._update_interval = update_interval
         self._recent_timing: List[Tuple[float, float, float]] = []
 
-        self._total_bar = FloatProgress(description='total',
-                                        min=0, max=1, value=0,
-                                        bar_style='info')
+        self._total_bar = FloatProgress(
+            description="total", min=0, max=1, value=0, bar_style="info"
+        )
         self._total_html = HTML()
-        self._epoch_bar = FloatProgress(description='this epoch',
-                                        min=0, max=1, value=0,
-                                        bar_style='info')
+        self._epoch_bar = FloatProgress(
+            description="this epoch", min=0, max=1, value=0, bar_style="info"
+        )
         self._epoch_html = HTML()
         self._status_html = HTML()
 
-        self._widget = VBox([HBox([self._total_bar, self._total_html]),
-                             HBox([self._epoch_bar, self._epoch_html]),
-                             self._status_html])
+        self._widget = VBox(
+            [
+                HBox([self._total_bar, self._total_html]),
+                HBox([self._epoch_bar, self._epoch_html]),
+                self._status_html,
+            ]
+        )
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
         if self._training_length is None:
             t = manager._stop_trigger
             if not isinstance(t, trigger.IntervalTrigger):
                 raise TypeError(
-                    'cannot retrieve the training length from %s' % type(t))
+                    "cannot retrieve the training length from %s" % type(t)
+                )
             self._training_length = t.period, t.unit
             self._init_status_template()
 
@@ -77,7 +83,7 @@ class ProgressBarNotebook(extension.Extension):
 
         iteration, epoch_detail = manager.iteration, manager.epoch_detail
 
-        if unit == 'iteration':
+        if unit == "iteration":
             is_finished = iteration == length
         else:
             is_finished = epoch_detail == length
@@ -87,8 +93,8 @@ class ProgressBarNotebook(extension.Extension):
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
         if self._total_bar.value != 1:
-            self._total_bar.bar_style = 'warning'
-            self._epoch_bar.bar_style = 'warning'
+            self._total_bar.bar_style = "warning"
+            self._epoch_bar.bar_style = "warning"
 
     @property
     def widget(self) -> VBox:
@@ -102,7 +108,7 @@ class ProgressBarNotebook(extension.Extension):
 
         recent_timing.append((iteration, epoch_detail, now))
 
-        if unit == 'iteration':
+        if unit == "iteration":
             rate = iteration / length
         else:
             rate = epoch_detail / length
@@ -113,12 +119,13 @@ class ProgressBarNotebook(extension.Extension):
         self._epoch_bar.value = epoch_rate
         self._epoch_html.value = "{:6.2%}".format(epoch_rate)
 
-        status = self._status_template.format(iteration=iteration,
-                                              epoch=int(epoch_detail))
+        status = self._status_template.format(
+            iteration=iteration, epoch=int(epoch_detail)
+        )
 
         if rate == 1:
-            self._total_bar.bar_style = 'success'
-            self._epoch_bar.bar_style = 'success'
+            self._total_bar.bar_style = "success"
+            self._epoch_bar.bar_style = "success"
 
         old_t, old_e, old_sec = recent_timing[0]
         span = now - old_sec
@@ -126,16 +133,16 @@ class ProgressBarNotebook(extension.Extension):
             speed_t = (iteration - old_t) / span
             speed_e = (epoch_detail - old_e) / span
         else:
-            speed_t = float('inf')
-            speed_e = float('inf')
+            speed_t = float("inf")
+            speed_e = float("inf")
 
-        if unit == 'iteration':
+        if unit == "iteration":
             estimated_time = (length - iteration) / speed_t
         else:
             estimated_time = (length - epoch_detail) / speed_e
-        estimate = ('{:10.5g} iters/sec. Estimated time to finish: {}.'
-                    .format(speed_t,
-                            datetime.timedelta(seconds=estimated_time)))
+        estimate = "{:10.5g} iters/sec. Estimated time to finish: {}.".format(
+            speed_t, datetime.timedelta(seconds=estimated_time)
+        )
 
         self._status_html.value = status + estimate
 
@@ -144,5 +151,6 @@ class ProgressBarNotebook(extension.Extension):
 
     def _init_status_template(self) -> None:
         self._status_template = (
-            '{iteration:10} iter, {epoch} epoch / %s %ss<br />' %
-            self._training_length)
+            "{iteration:10} iter, {epoch} epoch / %s %ss<br />"
+            % self._training_length
+        )
