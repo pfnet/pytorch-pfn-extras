@@ -1,23 +1,32 @@
-import multiprocessing
 import io
+import multiprocessing
 import os
 import shutil
 import sys
 import threading
 import types
 from typing import (
-    Any, Callable, Generic, IO, Iterator, List, Mapping, Optional, Sequence,
-    Type, TypeVar, Union,
+    IO,
+    Any,
+    Callable,
+    Generic,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Type,
+    TypeVar,
+    Union,
 )
 
 import torch
-
 
 _TargetType = Union[Sequence[Any], Mapping[str, Any]]
 _SaveFun = Callable[..., None]
 _HookFun = Callable[[], None]
 _TaskFun = Callable[..., None]
-_Worker = TypeVar('_Worker', threading.Thread, multiprocessing.Process)
+_Worker = TypeVar("_Worker", threading.Thread, multiprocessing.Process)
 _FileSystem = Any
 
 
@@ -40,6 +49,7 @@ class _PosixFileSystem(object):
 
     This class currently abstracts POSIX
     """
+
     def __init__(self, root: Optional[str] = None) -> None:
         if root is None:
             self._root = os.getcwd()
@@ -50,10 +60,11 @@ class _PosixFileSystem(object):
         return os.path.join(self.root, path)
 
     def _wrap_fileobject(
-            self,
-            file_obj: IO[Any],
-            file_path: str,
-            *args: Any, **kwargs: Any,
+        self,
+        file_obj: IO[Any],
+        file_path: str,
+        *args: Any,
+        **kwargs: Any,
     ) -> IO[Any]:
         return file_obj
 
@@ -66,35 +77,51 @@ class _PosixFileSystem(object):
         self._root = root
 
     def open(
-            self,
-            file_path: str,
-            mode: str = 'r',
-            buffering: int = -1,
-            encoding: Optional[str] = None,
-            errors: Optional[str] = None,
-            newline: Optional[str] = None,
-            closefd: bool = True,
-            opener: Optional[Callable[[str, int], int]] = None,
+        self,
+        file_path: str,
+        mode: str = "r",
+        buffering: int = -1,
+        encoding: Optional[str] = None,
+        errors: Optional[str] = None,
+        newline: Optional[str] = None,
+        closefd: bool = True,
+        opener: Optional[Callable[[str, int], int]] = None,
     ) -> IO[Any]:
         file_path = self.get_actual_path(file_path)
-        file_obj = io.open(file_path, mode,
-                           buffering, encoding, errors,
-                           newline, closefd, opener)
+        file_obj = io.open(
+            file_path,
+            mode,
+            buffering,
+            encoding,
+            errors,
+            newline,
+            closefd,
+            opener,
+        )
         return self._wrap_fileobject(
-            file_obj, file_path, mode, buffering, encoding,
-            errors, newline, closefd, opener)
+            file_obj,
+            file_path,
+            mode,
+            buffering,
+            encoding,
+            errors,
+            newline,
+            closefd,
+            opener,
+        )
 
     def list(
-            self,
-            path_or_prefix: Optional[str] = None,
-            recursive: bool = False,
+        self,
+        path_or_prefix: Optional[str] = None,
+        recursive: bool = False,
     ) -> Iterator[str]:
         if path_or_prefix is not None:
             path_or_prefix = self.get_actual_path(path_or_prefix)
         if recursive:
             if path_or_prefix is None:
                 raise ValueError(
-                    "'path_or_prefix' must not be none in recursive mode.")
+                    "'path_or_prefix' must not be none in recursive mode."
+                )
             path_or_prefix = path_or_prefix.rstrip("/")
             # plus 1 to include the trailing slash
             prefix_end_index = len(path_or_prefix) + 1
@@ -104,7 +131,9 @@ class _PosixFileSystem(object):
                 yield file.name
 
     def _recursive_list(
-            self, prefix_end_index: int, path: str,
+        self,
+        prefix_end_index: int,
+        path: str,
     ) -> Iterator[str]:
         path = self.get_actual_path(path)
         for file in os.scandir(path):
@@ -119,14 +148,14 @@ class _PosixFileSystem(object):
     def close(self) -> None:
         pass
 
-    def __enter__(self) -> '_PosixFileSystem':
+    def __enter__(self) -> "_PosixFileSystem":
         return self
 
     def __exit__(
-            self,
-            exc_type: Optional[Type[BaseException]],
-            exc_value: Optional[BaseException],
-            traceback: Optional[types.TracebackType],
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[types.TracebackType],
     ) -> None:
         pass
 
@@ -135,20 +164,17 @@ class _PosixFileSystem(object):
         return os.path.isdir(path)
 
     def mkdir(
-            self,
-            file_path: str,
-            mode: int = 0o777,
-            *args: Any,
-            dir_fd: Optional[int] = None
+        self,
+        file_path: str,
+        mode: int = 0o777,
+        *args: Any,
+        dir_fd: Optional[int] = None,
     ) -> None:
         file_path = self.get_actual_path(file_path)
         return os.mkdir(file_path, mode, *args, dir_fd=dir_fd)
 
     def makedirs(
-            self,
-            file_path: str,
-            mode: int = 0o777,
-            exist_ok: bool = False
+        self, file_path: str, mode: int = 0o777, exist_ok: bool = False
     ) -> None:
         file_path = self.get_actual_path(file_path)
         return os.makedirs(file_path, mode, exist_ok)
@@ -160,9 +186,11 @@ class _PosixFileSystem(object):
         try:
             return os.replace(src, dst)
         except OSError:
-            print('Destination {} is a directory '
-                  'but source is not'.format(dst),
-                  file=sys.stderr)
+            print(
+                "Destination {} is a directory "
+                "but source is not".format(dst),
+                file=sys.stderr,
+            )
             raise
 
     def remove(self, file_path: str, recursive: bool = False) -> None:
@@ -195,9 +223,9 @@ class Writer:
     """
 
     def __init__(
-            self,
-            fs: _FileSystem = None,
-            out_dir: str = '',
+        self,
+        fs: _FileSystem = None,
+        out_dir: str = "",
     ) -> None:
         self._post_save_hooks: List[_HookFun] = []
         self.fs = fs or _PosixFileSystem()
@@ -205,13 +233,13 @@ class Writer:
         self._initialized = False
 
     def __call__(
-            self,
-            filename: str,
-            out_dir: str,
-            target: _TargetType,
-            *,
-            savefun: Optional[_SaveFun] = None,
-            append: bool = False
+        self,
+        filename: str,
+        out_dir: str,
+        target: _TargetType,
+        *,
+        savefun: Optional[_SaveFun] = None,
+        append: bool = False,
     ) -> None:
         """Does the actual writing to the file.
 
@@ -250,13 +278,13 @@ class Writer:
         pass
 
     def save(
-            self,
-            filename: str,
-            out_dir: str,
-            target: _TargetType,
-            savefun: _SaveFun,
-            append: bool,
-            **savefun_kwargs: Any,
+        self,
+        filename: str,
+        out_dir: str,
+        target: _TargetType,
+        savefun: _SaveFun,
+        append: bool,
+        **savefun_kwargs: Any,
     ) -> None:
         out_dir = self.out_dir
         if not self._initialized:
@@ -265,19 +293,19 @@ class Writer:
         dest = os.path.join(out_dir, filename)
 
         if append:
-            with self.fs.open(dest, 'ab') as f:
+            with self.fs.open(dest, "ab") as f:
                 # HDFS does not support overwrite
                 savefun(target, f, **savefun_kwargs)
         else:
             # Some filesystems are not compatible with temp folders, etc
             # so we rely on raw temp files
-            prefix = 'tmp_{}'.format(filename)
+            prefix = "tmp_{}".format(filename)
             tmppath = os.path.join(out_dir, prefix)
             make_backup = self.fs.exists(dest)
-            with self.fs.open(tmppath, 'wb') as f:
+            with self.fs.open(tmppath, "wb") as f:
                 savefun(target, f, **savefun_kwargs)
             if make_backup:
-                bak = '{}.bak'.format(dest)
+                bak = "{}.bak".format(dest)
                 # Check if another backup file exists
                 # due to some unexpected termination of an earlier
                 # process
@@ -331,11 +359,11 @@ class StandardWriter(Writer, Generic[_Worker]):
     """
 
     def __init__(
-            self,
-            savefun: _SaveFun = torch.save,
-            fs: _FileSystem = None,
-            out_dir: str = '',
-            **kwds: Any,
+        self,
+        savefun: _SaveFun = torch.save,
+        fs: _FileSystem = None,
+        out_dir: str = "",
+        **kwds: Any,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
         self._savefun = savefun
@@ -345,13 +373,13 @@ class StandardWriter(Writer, Generic[_Worker]):
         self._finalized = False
 
     def __call__(
-            self,
-            filename: str,
-            out_dir: str,
-            target: _TargetType,
-            *,
-            savefun: Optional[_SaveFun] = None,
-            append: bool = False
+        self,
+        filename: str,
+        out_dir: str,
+        target: _TargetType,
+        *,
+        savefun: Optional[_SaveFun] = None,
+        append: bool = False,
     ) -> None:
         assert not self._finalized
         if savefun is None:
@@ -360,21 +388,26 @@ class StandardWriter(Writer, Generic[_Worker]):
             self.finalize()
         self._filename = filename
         self._worker = self.create_worker(
-            filename, out_dir, target,
-            savefun=savefun, append=append, **self._kwds)
+            filename,
+            out_dir,
+            target,
+            savefun=savefun,
+            append=append,
+            **self._kwds,
+        )
         self._worker.start()
         self._started = True
         self._finalized = False
 
     def create_worker(
-            self,
-            filename: str,
-            out_dir: str,
-            target: _TargetType,
-            *,
-            savefun: Optional[_SaveFun] = None,
-            append: bool = False,
-            **savefun_kwargs: Any,
+        self,
+        filename: str,
+        out_dir: str,
+        target: _TargetType,
+        *,
+        savefun: Optional[_SaveFun] = None,
+        append: bool = False,
+        **savefun_kwargs: Any,
     ) -> _Worker:
         """Creates a worker for the snapshot.
 
@@ -390,13 +423,13 @@ class StandardWriter(Writer, Generic[_Worker]):
             return
 
         if self._worker is None:
-            raise RuntimeError('worker is not created')
+            raise RuntimeError("worker is not created")
         try:
             if self._started and not self._finalized:
                 self._worker.join()
-                exitcode = getattr(self._worker, 'exitcode', 0)
+                exitcode = getattr(self._worker, "exitcode", 0)
                 if exitcode != 0:
-                    raise RuntimeError(f'exit code is non-zero: {exitcode}')
+                    raise RuntimeError(f"exit code is non-zero: {exitcode}")
         finally:
             self._started = False
             self._finalized = True

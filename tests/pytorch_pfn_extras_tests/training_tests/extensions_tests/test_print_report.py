@@ -8,7 +8,8 @@ def test_run_print_report():
     max_epochs = 5
     iters_per_epoch = 5
     manager = ppe.training.ExtensionsManager(
-        {}, {}, max_epochs, iters_per_epoch=iters_per_epoch)
+        {}, {}, max_epochs, iters_per_epoch=iters_per_epoch
+    )
 
     out = io.StringIO()
     log_report = extensions.LogReport()

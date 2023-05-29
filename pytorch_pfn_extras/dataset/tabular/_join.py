@@ -4,14 +4,13 @@ from pytorch_pfn_extras.dataset.tabular import tabular_dataset
 
 
 class _Join(tabular_dataset.TabularDataset):
-
     def __init__(self, *datasets):
         keys = set(datasets[0].keys)
         for dataset in datasets[1:]:
             if not len(dataset) == len(datasets[0]):
-                raise ValueError('All datasets must have the same length')
+                raise ValueError("All datasets must have the same length")
             if len(keys.intersection(dataset.keys)) > 0:
-                raise ValueError('All keys must be unique among all datasets')
+                raise ValueError("All keys must be unique among all datasets")
             keys = keys.union(dataset.keys)
 
         self._datasets = datasets
@@ -35,7 +34,8 @@ class _Join(tabular_dataset.TabularDataset):
             return tuple(
                 col
                 for dataset in self._datasets
-                for col in dataset.get_examples(indices, None))
+                for col in dataset.get_examples(indices, None)
+            )
 
         examples = {}
         key_offset = 0
@@ -52,7 +52,8 @@ class _Join(tabular_dataset.TabularDataset):
                 sub_key_indices = tuple(sub_key_indices)
                 sub_examples = dataset.get_examples(indices, sub_key_indices)
                 for sub_key_index, col_example in zip(
-                        sub_key_indices, sub_examples):
+                    sub_key_indices, sub_examples
+                ):
                     examples[key_offset + sub_key_index] = col_example
 
             key_offset += len(dataset.keys)

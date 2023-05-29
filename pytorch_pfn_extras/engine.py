@@ -1,48 +1,62 @@
 from typing import (
-    Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, Type,
-    Union, TYPE_CHECKING,
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
 )
 
-import torch
-
 import pytorch_pfn_extras.handler as handler_module
+import torch
 from pytorch_pfn_extras.runtime import runtime_registry
 from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 if TYPE_CHECKING:
+    from pytorch_pfn_extras import writing
     from pytorch_pfn_extras.runtime._runtime import DeviceLike
     from pytorch_pfn_extras.training import extension
-    from pytorch_pfn_extras.training.trigger import TriggerLike
-    from pytorch_pfn_extras.training._trainer import Trainer
     from pytorch_pfn_extras.training._evaluator import Evaluator
+    from pytorch_pfn_extras.training._trainer import Trainer
     from pytorch_pfn_extras.training.metrics import MetricType
-    from pytorch_pfn_extras import writing
+    from pytorch_pfn_extras.training.trigger import TriggerLike
 
 
 def create_trainer(
-        models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
-        optimizers: Union[torch.optim.Optimizer, Mapping[str, torch.optim.Optimizer]],
-        max_epochs: int,
-        *,
-        extensions: Optional[Sequence[Union['extension.ExtensionLike',
-                                            'extension.ExtensionEntry']]] = None,
-        out_dir: str = 'result',
-        stop_trigger: 'TriggerLike' = None,
-        writer: Optional['writing.Writer'] = None,
-        evaluator: Optional[Union[
-            'Evaluator', Tuple['Evaluator', 'TriggerLike'],
-            Mapping[str, Union['Evaluator', Tuple['Evaluator', 'TriggerLike']]]
-        ]] = None,
-        device: 'DeviceLike' = 'cpu',
-        logic: Optional[handler_module.BaseLogic] = None,
-        transform_model: Callable[
-            [str, torch.nn.Module], torch.nn.Module] = default_transform_model,
-        handler_class: Optional[Type[handler_module.Handler]] = None,
-        options: Optional[Dict[str, Any]] = None,
-        runtime_options: Optional[Mapping[str, Any]] = None,
-        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
-        **kwargs: Any,
-) -> 'Trainer':
+    models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
+    optimizers: Union[
+        torch.optim.Optimizer, Mapping[str, torch.optim.Optimizer]
+    ],
+    max_epochs: int,
+    *,
+    extensions: Optional[
+        Sequence[Union["extension.ExtensionLike", "extension.ExtensionEntry"]]
+    ] = None,
+    out_dir: str = "result",
+    stop_trigger: "TriggerLike" = None,
+    writer: Optional["writing.Writer"] = None,
+    evaluator: Optional[
+        Union[
+            "Evaluator",
+            Tuple["Evaluator", "TriggerLike"],
+            Mapping[str, Union["Evaluator", Tuple["Evaluator", "TriggerLike"]]],
+        ]
+    ] = None,
+    device: "DeviceLike" = "cpu",
+    logic: Optional[handler_module.BaseLogic] = None,
+    transform_model: Callable[
+        [str, torch.nn.Module], torch.nn.Module
+    ] = default_transform_model,
+    handler_class: Optional[Type[handler_module.Handler]] = None,
+    options: Optional[Dict[str, Any]] = None,
+    runtime_options: Optional[Mapping[str, Any]] = None,
+    profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
+    **kwargs: Any,
+) -> "Trainer":
     """Creates a trainer object.
 
     Args:
@@ -94,13 +108,14 @@ def create_trainer(
     options = options.copy() if options else {}
     # TODO(kmaehashi): deprecate specifying 'runtime' key in options
     runtime_options = dict(
-        runtime_options if runtime_options
-        else options.pop('runtime', {}))
+        runtime_options if runtime_options else options.pop("runtime", {})
+    )
     logic = handler_module.Logic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
-        device)
+        device
+    )
     entry_runtime = entry_runtime_cls(device, runtime_options)
     handler = handler_class(logic, entry_runtime, {})
 
@@ -108,14 +123,20 @@ def create_trainer(
     handler.consume_options(options)
     logic.consume_options(options)
     if len(options) > 0:
-        raise ValueError('Unknown options: ', options)
+        raise ValueError("Unknown options: ", options)
 
     from pytorch_pfn_extras.training._trainer import Trainer
+
     return Trainer(
-        handler, evaluator=evaluator,
-        models=models, optimizers=optimizers, max_epochs=max_epochs,
-        extensions=extensions, out_dir=out_dir,
-        stop_trigger=stop_trigger, writer=writer,
+        handler,
+        evaluator=evaluator,
+        models=models,
+        optimizers=optimizers,
+        max_epochs=max_epochs,
+        extensions=extensions,
+        out_dir=out_dir,
+        stop_trigger=stop_trigger,
+        writer=writer,
         transform_model=transform_model,
         profile=profile,
         **kwargs,
@@ -123,17 +144,17 @@ def create_trainer(
 
 
 def create_evaluator(
-        models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
-        *,
-        progress_bar: bool = False,
-        device: 'DeviceLike' = 'cpu',
-        metrics: Optional[Sequence['MetricType']] = None,
-        logic: Optional[handler_module.Logic] = None,
-        handler_class: Optional[Type[handler_module.Handler]] = None,
-        options: Optional[Dict[str, Any]] = None,
-        runtime_options: Optional[Mapping[str, Any]] = None,
-        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
-) -> 'Evaluator':
+    models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
+    *,
+    progress_bar: bool = False,
+    device: "DeviceLike" = "cpu",
+    metrics: Optional[Sequence["MetricType"]] = None,
+    logic: Optional[handler_module.Logic] = None,
+    handler_class: Optional[Type[handler_module.Handler]] = None,
+    options: Optional[Dict[str, Any]] = None,
+    runtime_options: Optional[Mapping[str, Any]] = None,
+    profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
+) -> "Evaluator":
     """Creates an evaluator object. The return value of this function is
     expected to be fed to `ppe.engine.create_trainer` as an argument.
 
@@ -171,13 +192,14 @@ def create_evaluator(
     options = options.copy() if options else {}
     # TODO(kmaehashi): deprecate specifying 'runtime' key in options
     runtime_options = dict(
-        runtime_options if runtime_options
-        else options.pop('runtime', {}))
+        runtime_options if runtime_options else options.pop("runtime", {})
+    )
     logic = handler_module.Logic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 
     entry_runtime_cls = runtime_registry.get_runtime_class_for_device_spec(
-        device)
+        device
+    )
     entry_runtime = entry_runtime_cls(device, runtime_options)
     handler = handler_class(logic, entry_runtime, options)
 
@@ -185,9 +207,10 @@ def create_evaluator(
     handler.consume_options(options)
     logic.consume_options(options)
     if len(options) > 0:
-        raise ValueError('Unknown options: ', options)
+        raise ValueError("Unknown options: ", options)
 
     from pytorch_pfn_extras.training._evaluator import Evaluator
+
     return Evaluator(
         handler,
         models=models,

@@ -4,15 +4,19 @@ import threading
 from typing import Generic, Optional, Tuple
 
 import torch
-
-from pytorch_pfn_extras.writing._writer_base import (
-    Writer, _TargetType, _SaveFun, _TaskFun, _Worker, _FileSystem,
-)
 from pytorch_pfn_extras.writing._simple_writer import SimpleWriter
+from pytorch_pfn_extras.writing._writer_base import (
+    Writer,
+    _FileSystem,
+    _SaveFun,
+    _TargetType,
+    _TaskFun,
+    _Worker,
+)
 
-
-_QueUnit = Optional[Tuple[
-    _TaskFun, str, str, _TargetType, Optional[_SaveFun], bool]]
+_QueUnit = Optional[
+    Tuple[_TaskFun, str, str, _TargetType, Optional[_SaveFun], bool]
+]
 
 
 class QueueWriter(Writer, Generic[_Worker]):
@@ -41,11 +45,11 @@ class QueueWriter(Writer, Generic[_Worker]):
     """
 
     def __init__(
-            self,
-            savefun: _SaveFun = torch.save,
-            fs: _FileSystem = None,
-            out_dir: str = '',
-            task: Optional[_TaskFun] = None,
+        self,
+        savefun: _SaveFun = torch.save,
+        fs: _FileSystem = None,
+        out_dir: str = "",
+        task: Optional[_TaskFun] = None,
     ) -> None:
         super().__init__(fs=fs, out_dir=out_dir)
         self._started = False
@@ -60,28 +64,29 @@ class QueueWriter(Writer, Generic[_Worker]):
         self._started = True
 
     def __call__(
-            self,
-            filename: str,
-            out_dir: str,
-            target: _TargetType,
-            *,
-            savefun: Optional[_SaveFun] = None,
-            append: bool = False
+        self,
+        filename: str,
+        out_dir: str,
+        target: _TargetType,
+        *,
+        savefun: Optional[_SaveFun] = None,
+        append: bool = False,
     ) -> None:
         assert not self._finalized
         self._queue.put(
-            (self._task, filename, out_dir, target, savefun, append))
+            (self._task, filename, out_dir, target, savefun, append)
+        )
 
     def create_task(self, savefun: _SaveFun) -> _TaskFun:
         return SimpleWriter(savefun=savefun)
 
-    def create_queue(self) -> 'queue.Queue[_QueUnit]':
+    def create_queue(self) -> "queue.Queue[_QueUnit]":
         raise NotImplementedError
 
-    def create_consumer(self, q: 'queue.Queue[_QueUnit]') -> _Worker:
+    def create_consumer(self, q: "queue.Queue[_QueUnit]") -> _Worker:
         raise NotImplementedError
 
-    def consume(self, q: 'queue.Queue[_QueUnit]') -> None:
+    def consume(self, q: "queue.Queue[_QueUnit]") -> None:
         while True:
             task = q.get()
             if task is None:
@@ -89,7 +94,8 @@ class QueueWriter(Writer, Generic[_Worker]):
                 return
             else:
                 task[0](
-                    task[1], task[2], task[3], savefun=task[4], append=task[5])
+                    task[1], task[2], task[3], savefun=task[4], append=task[5]
+                )
                 q.task_done()
 
     def finalize(self) -> None:
@@ -116,18 +122,18 @@ class ThreadQueueWriter(QueueWriter[threading.Thread]):
     """
 
     def __init__(
-            self,
-            savefun: _SaveFun = torch.save,
-            fs: _FileSystem = None,
-            out_dir: str = '',
-            task: Optional[_TaskFun] = None
+        self,
+        savefun: _SaveFun = torch.save,
+        fs: _FileSystem = None,
+        out_dir: str = "",
+        task: Optional[_TaskFun] = None,
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, task=task, out_dir=out_dir)
 
-    def create_queue(self) -> 'queue.Queue[_QueUnit]':
+    def create_queue(self) -> "queue.Queue[_QueUnit]":
         return queue.Queue()
 
-    def create_consumer(self, q: 'queue.Queue[_QueUnit]') -> threading.Thread:
+    def create_consumer(self, q: "queue.Queue[_QueUnit]") -> threading.Thread:
         return threading.Thread(target=self.consume, args=(q,))
 
 
@@ -149,16 +155,18 @@ class ProcessQueueWriter(QueueWriter[multiprocessing.Process]):
     """
 
     def __init__(
-            self,
-            savefun: _SaveFun = torch.save,
-            fs: _FileSystem = None,
-            out_dir: str = '',
-            task: Optional[_TaskFun] = None
+        self,
+        savefun: _SaveFun = torch.save,
+        fs: _FileSystem = None,
+        out_dir: str = "",
+        task: Optional[_TaskFun] = None,
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, task=task)
 
-    def create_queue(self) -> 'queue.Queue[_QueUnit]':
+    def create_queue(self) -> "queue.Queue[_QueUnit]":
         return multiprocessing.JoinableQueue()
 
-    def create_consumer(self, q: 'queue.Queue[_QueUnit]') -> multiprocessing.Process:
+    def create_consumer(
+        self, q: "queue.Queue[_QueUnit]"
+    ) -> multiprocessing.Process:
         return multiprocessing.Process(target=self.consume, args=(q,))

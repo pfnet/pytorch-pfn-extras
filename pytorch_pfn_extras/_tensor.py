@@ -1,11 +1,9 @@
+from typing import Any, Dict, Union
+
 import numpy
 import torch
 import torch.utils.dlpack
-from typing import Any, Dict, Union
-
-from pytorch_pfn_extras._cupy import cupy
-from pytorch_pfn_extras._cupy import ensure_cupy
-
+from pytorch_pfn_extras._cupy import cupy, ensure_cupy
 
 _NDArray = Any  # TypeVar("_NDArray", numpy.ndarray, cupy.ndarray)
 _NumpyDtype = Any  # numpy.dtype
@@ -32,8 +30,9 @@ def from_ndarray(ndarray: _NDArray) -> torch.Tensor:
     elif isinstance(ndarray, numpy.ndarray):
         return torch.from_numpy(_copy_if_negative_strides(ndarray))
     raise TypeError(
-        'expected numpy.ndarray or cupy.ndarray '
-        f'(got {type(ndarray).__name__})')
+        "expected numpy.ndarray or cupy.ndarray "
+        f"(got {type(ndarray).__name__})"
+    )
 
 
 def _copy_if_negative_strides(ndarray: _NDArray) -> _NDArray:
@@ -53,18 +52,18 @@ def as_ndarray(tensor: torch.Tensor) -> _NDArray:
     cannot be tracked in the computational graph.
     """
     devtype = tensor.device.type
-    if devtype == 'cpu':
+    if devtype == "cpu":
         return tensor.detach().numpy()
-    elif devtype == 'cuda':
+    elif devtype == "cuda":
         ensure_cupy()
-        if hasattr(cupy, 'from_dlpack'):
+        if hasattr(cupy, "from_dlpack"):
             # TODO: Avoid using ``torch.utils.dlpack.to_dlpack``.
             # => return cupy.from_dlpack(tensor)
             # Blocked by PyTorch 1.10 bug
             # (https://github.com/pytorch/pytorch/pull/67618)
             return cupy.from_dlpack(torch.utils.dlpack.to_dlpack(tensor))
         return cupy.fromDlpack(torch.utils.dlpack.to_dlpack(tensor))
-    raise ValueError(f'Tensor is on unsupported device: {devtype}')
+    raise ValueError(f"Tensor is on unsupported device: {devtype}")
 
 
 def get_xp(obj: Union[_NDArray, torch.Tensor]) -> Any:
@@ -78,21 +77,22 @@ def get_xp(obj: Union[_NDArray, torch.Tensor]) -> Any:
     elif isinstance(obj, torch.device):
         devtype = obj.type
     elif isinstance(obj, numpy.ndarray):
-        devtype = 'cpu'
+        devtype = "cpu"
     elif isinstance(obj, cupy.ndarray):
-        devtype = 'cuda'
+        devtype = "cuda"
     else:
         raise TypeError(
-            'expected torch.Tensor, torch.device, numpy.ndarray, '
-            f'or cupy.ndarray (got {type(obj).__name__})')
+            "expected torch.Tensor, torch.device, numpy.ndarray, "
+            f"or cupy.ndarray (got {type(obj).__name__})"
+        )
 
-    if devtype == 'cpu':
+    if devtype == "cpu":
         return numpy
-    elif devtype == 'cuda':
+    elif devtype == "cuda":
         ensure_cupy()
         return cupy
 
-    raise ValueError(f'unsupported device type: {devtype}')
+    raise ValueError(f"unsupported device type: {devtype}")
 
 
 def as_numpy_dtype(torch_dtype: torch.dtype) -> _NumpyDtype:
@@ -107,7 +107,7 @@ def as_numpy_dtype(torch_dtype: torch.dtype) -> _NumpyDtype:
     """
     numpy_dtype = _torch_dtype_mapping.get(torch_dtype, None)
     if numpy_dtype is None:
-        raise TypeError(f'NumPy does not support {torch_dtype} equivalent')
+        raise TypeError(f"NumPy does not support {torch_dtype} equivalent")
     return numpy_dtype
 
 
@@ -123,27 +123,26 @@ def from_numpy_dtype(numpy_dtype: _NumpyDtype) -> torch.dtype:
     """
     torch_dtype = _numpy_dtype_mapping.get(numpy_dtype, None)
     if torch_dtype is None:
-        raise TypeError(f'PyTorch does not support {numpy_dtype} equivalent')
+        raise TypeError(f"PyTorch does not support {numpy_dtype} equivalent")
     return torch_dtype
 
 
 _torch_dtype_mapping: Dict[torch.dtype, _NumpyDtype] = {
     # https://pytorch.org/docs/stable/tensors.html
     # https://numpy.org/doc/stable/user/basics.types.html
-
-    torch.float32: numpy.dtype('float32'),
-    torch.float64: numpy.dtype('float64'),
-    torch.float16: numpy.dtype('float16'),
+    torch.float32: numpy.dtype("float32"),
+    torch.float64: numpy.dtype("float64"),
+    torch.float16: numpy.dtype("float16"),
     # unsupported: torch.bfloat16
     # unsupported: torch.complex32
-    torch.complex64: numpy.dtype('complex64'),
-    torch.complex128: numpy.dtype('complex128'),
-    torch.uint8: numpy.dtype('uint8'),
-    torch.int8: numpy.dtype('int8'),
-    torch.int16: numpy.dtype('int16'),
-    torch.int32: numpy.dtype('int32'),
-    torch.int64: numpy.dtype('int64'),
-    torch.bool: numpy.dtype('bool'),
+    torch.complex64: numpy.dtype("complex64"),
+    torch.complex128: numpy.dtype("complex128"),
+    torch.uint8: numpy.dtype("uint8"),
+    torch.int8: numpy.dtype("int8"),
+    torch.int16: numpy.dtype("int16"),
+    torch.int32: numpy.dtype("int32"),
+    torch.int64: numpy.dtype("int64"),
+    torch.bool: numpy.dtype("bool"),
 }
 
 _numpy_dtype_mapping: Dict[_NumpyDtype, torch.dtype] = {

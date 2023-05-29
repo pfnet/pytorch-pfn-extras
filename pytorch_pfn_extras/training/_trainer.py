@@ -4,24 +4,33 @@ import queue
 import time
 import warnings
 from typing import (
-    Any, Dict, Generator, Iterable, List, Mapping, Optional, Tuple, Union, TYPE_CHECKING
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
 )
 
+import pytorch_pfn_extras.reporting as reporting
 import torch
-
 from pytorch_pfn_extras import training
+from pytorch_pfn_extras.profiler import record
 from pytorch_pfn_extras.training import extension as extension
 from pytorch_pfn_extras.training import trigger as trigger_module
-import pytorch_pfn_extras.reporting as reporting
-from pytorch_pfn_extras.profiler import record
-
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 from pytorch_pfn_extras.training.trigger import Trigger, TriggerLike
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras import handler as handler_module
-    from pytorch_pfn_extras.training._evaluator import Evaluator
     from pytorch_pfn_extras.profiler._time_summary import _ReportNotification
+    from pytorch_pfn_extras.training._evaluator import Evaluator
 
 
 @contextlib.contextmanager
@@ -32,67 +41,89 @@ def _nullcontext() -> Generator[None, None, None]:
 
 class Trainer:
     def __init__(
-            self,
-            handler: 'handler_module.BaseHandler',
-            *,
-            evaluator: Optional[Union[
-                'Evaluator', Tuple['Evaluator', TriggerLike],
-                Mapping[str, Union['Evaluator', Tuple['Evaluator', TriggerLike]]]]],
-            models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
-            profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
-            **kwargs: Any,
+        self,
+        handler: "handler_module.BaseHandler",
+        *,
+        evaluator: Optional[
+            Union[
+                "Evaluator",
+                Tuple["Evaluator", TriggerLike],
+                Mapping[
+                    str, Union["Evaluator", Tuple["Evaluator", TriggerLike]]
+                ],
+            ]
+        ],
+        models: Union[torch.nn.Module, Mapping[str, torch.nn.Module]],
+        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
+        **kwargs: Any,
     ):
         self.handler = handler
-        self._manager: Optional['training.ExtensionsManager'] = None
+        self._manager: Optional["training.ExtensionsManager"] = None
 
         # The followings are used when setting up a manager instance
         if not isinstance(models, dict):
             if not isinstance(models, torch.nn.Module):
                 raise ValueError(
-                    'model must be an instance of dict or toch.nn.Module')
-            self._models = {'main': models}
+                    "model must be an instance of dict or toch.nn.Module"
+                )
+            self._models = {"main": models}
         else:
             self._models = models
         self._kwargs = kwargs
         self._profile = profile
-        self._enable_profile = kwargs.get('enable_profile', profile is not None)
+        self._enable_profile = kwargs.get("enable_profile", profile is not None)
         self._extensions: List[  # list of (args, kwargs)
-            Tuple[Tuple[
-                Union['extension.ExtensionLike', extension.ExtensionEntry],
-                Optional[str], 'TriggerLike', Optional[int]
-            ], Dict[str, Any]]] = []
+            Tuple[
+                Tuple[
+                    Union["extension.ExtensionLike", extension.ExtensionEntry],
+                    Optional[str],
+                    "TriggerLike",
+                    Optional[int],
+                ],
+                Dict[str, Any],
+            ]
+        ] = []
         self._manager_state: Optional[Dict[str, Any]] = None
 
-        self._evaluators: Dict[str, Tuple['Evaluator', TriggerLike]] = {}
+        self._evaluators: Dict[str, Tuple["Evaluator", TriggerLike]] = {}
         if evaluator is None:
             evaluator = {}
         elif not isinstance(evaluator, collections.abc.Mapping):
             evaluator = {"Evaluator": evaluator}
         if isinstance(evaluator, collections.abc.Mapping):
             for n, e in evaluator.items():
-                self._evaluators[n] = e if isinstance(e, tuple) else (e, (1, 'epoch'))
+                self._evaluators[n] = (
+                    e if isinstance(e, tuple) else (e, (1, "epoch"))
+                )
         self.val_loader = None
 
     def extend(
-            self,
-            extension: Union['extension.ExtensionLike', extension.ExtensionEntry],
-            name: Optional[str] = None,
-            trigger: 'TriggerLike' = None,
-            priority: Optional[int] = None,
-            *,
-            call_before_training: bool = False,
-            **kwargs: Any,
+        self,
+        extension: Union["extension.ExtensionLike", extension.ExtensionEntry],
+        name: Optional[str] = None,
+        trigger: "TriggerLike" = None,
+        priority: Optional[int] = None,
+        *,
+        call_before_training: bool = False,
+        **kwargs: Any,
     ) -> None:
         if self._manager is not None:
-            raise RuntimeError('cannot extend after starting the engine')
+            raise RuntimeError("cannot extend after starting the engine")
         self._extensions.append(
-            ((extension, name, trigger, priority),
-             dict(call_before_training=call_before_training, **kwargs)))
+            (
+                (extension, name, trigger, priority),
+                dict(call_before_training=call_before_training, **kwargs),
+            )
+        )
 
-    def _setup_manager(self, iters_per_epoch: int) -> 'training.ExtensionsManager':
+    def _setup_manager(
+        self, iters_per_epoch: int
+    ) -> "training.ExtensionsManager":
         from pytorch_pfn_extras.training import ExtensionsManager
+
         self._manager = ExtensionsManager(
-            self._models, iters_per_epoch=iters_per_epoch, **self._kwargs)
+            self._models, iters_per_epoch=iters_per_epoch, **self._kwargs
+        )
         for ex_args, ex_kwargs in self._extensions:
             self._manager.extend(*ex_args, **ex_kwargs)
         if self._manager_state is not None:
@@ -100,9 +131,9 @@ class Trainer:
         return self._manager
 
     @property
-    def manager(self) -> 'training.ExtensionsManager':
+    def manager(self) -> "training.ExtensionsManager":
         if self._manager is None:
-            raise RuntimeError('the engine is not started yet')
+            raise RuntimeError("the engine is not started yet")
         return self._manager
 
     @property
@@ -148,34 +179,37 @@ class Trainer:
         self._stop_trigger = trigger
 
     @property
-    def evaluator(self) -> Optional['Evaluator']:
+    def evaluator(self) -> Optional["Evaluator"]:
         if len(self._evaluators) == 0:
             return None
         if len(self._evaluators) == 1:
             return next(iter(self._evaluators.values()))[0]
-        raise ValueError('multiple evaluators are registered.')
+        raise ValueError("multiple evaluators are registered.")
 
     def get_optimizer(self, name: str) -> torch.optim.Optimizer:
         return self.manager.optimizers[name]
 
-    def set_optimizer(self, name: str, optimizer: torch.optim.Optimizer) -> None:
+    def set_optimizer(
+        self, name: str, optimizer: torch.optim.Optimizer
+    ) -> None:
         self.manager.optimizers[name] = optimizer  # type: ignore[index]
 
     def is_epoch_last_iter(self, idx: int) -> bool:
         return (idx + 1) == (self.manager._iters_per_epoch)
 
     def _complete_step(
-            self,
-            idx: int,
-            outs: Any,
+        self,
+        idx: int,
+        outs: Any,
     ) -> None:
         c_idx = self._idxs.get()
         # Asure that iterations complete in order
         if c_idx != idx:
             raise RuntimeError(
-                'Completed a not expected iteration. '
-                '{} was expected but completion of {} happened'.format(
-                    c_idx, idx)
+                "Completed a not expected iteration. "
+                "{} was expected but completion of {} happened".format(
+                    c_idx, idx
+                )
             )
         x = self._inputs.get()
         begin = self._times.get()
@@ -187,12 +221,14 @@ class Trainer:
         self.handler.train_post_step(self, idx, x, outs)
         reporting.report({"elapsed_time": time.time() - begin})
 
-    def run(self,
-            train_loader: Iterable[Any],
-            val_loader: Optional[Iterable[Any]] = None,
-            *,
-            train_len: Optional[int] = None,
-            eval_len: Optional[int] = None) -> None:
+    def run(
+        self,
+        train_loader: Iterable[Any],
+        val_loader: Optional[Iterable[Any]] = None,
+        *,
+        train_len: Optional[int] = None,
+        eval_len: Optional[int] = None,
+    ) -> None:
         """Executes the training loop.
 
         Args:
@@ -222,11 +258,11 @@ class Trainer:
 
         class _EvaluatorExt:
             def __init__(
-                    self,
-                    trainer: 'Trainer',
-                    evaluator: 'Evaluator',
-                    val_loader: Optional[Iterable[Any]],
-                    eval_len: Optional[int],
+                self,
+                trainer: "Trainer",
+                evaluator: "Evaluator",
+                val_loader: Optional[Iterable[Any]],
+                eval_len: Optional[int],
             ) -> None:
                 self.needs_model_state = True
                 self._trainer = trainer
@@ -238,7 +274,9 @@ class Trainer:
                 evaluator = self._evaluator
                 if self._val_loader is None:
                     raise ValueError('"val_loader" is not given.')
-                evaluator.handler.train_validation_begin(self._trainer, evaluator)
+                evaluator.handler.train_validation_begin(
+                    self._trainer, evaluator
+                )
                 evaluator.run(self._val_loader, eval_len=self._eval_len)
                 evaluator.handler.train_validation_end(self._trainer, evaluator)
 
@@ -257,11 +295,12 @@ class Trainer:
             if len(self._evaluators) == 0:
                 if val_loader is not None:
                     warnings.warn(
-                        '`val_loader` is given whereas the evaluator is missing.',
-                        UserWarning)
+                        "`val_loader` is given whereas the evaluator is missing.",
+                        UserWarning,
+                    )
             else:
                 if val_loader is None:
-                    raise ValueError('`val_loader` is required')
+                    raise ValueError("`val_loader` is required")
                 for _, (evaluator, _) in self._evaluators.items():
                     evaluator.handler.eval_setup(evaluator, val_loader)
 
@@ -271,27 +310,30 @@ class Trainer:
 
                 # When iterations are completed in the callback
                 # This is needed to avoid being constantly passing parameters
-                self._idxs: 'queue.Queue[int]' = queue.Queue()
-                self._inputs: 'queue.Queue[Any]' = queue.Queue()
-                self._times: 'queue.Queue[float]' = queue.Queue()
-                self._observed: 'queue.Queue[reporting.Observation]' = queue.Queue()
+                self._idxs: "queue.Queue[int]" = queue.Queue()
+                self._inputs: "queue.Queue[Any]" = queue.Queue()
+                self._times: "queue.Queue[float]" = queue.Queue()
+                self._observed: "queue.Queue[reporting.Observation]" = (
+                    queue.Queue()
+                )
                 # Iterator must be created after `train_epoch_begin` as it may be
                 #  using a DistributedSampler.
                 loader_iter = iter(train_loader)
-                self._profile_records: 'queue.Queue[List[_ReportNotification]]' \
-                    = queue.Queue()
+                self._profile_records: "queue.Queue[List[_ReportNotification]]" = (
+                    queue.Queue()
+                )
                 for idx in range(train_len):
                     with record(
                         "pytorch_pfn_extras.training.Trainer:iteration",
                         use_cuda=torch.cuda.is_available(),
                         enable=self._enable_profile,
-                        device=device
+                        device=device,
                     ) as ntf0:
                         try:
                             with record(
                                 "pytorch_pfn_extras.training.Trainer:get_data",
                                 enable=self._enable_profile,
-                                device=device
+                                device=device,
                             ):
                                 x = next(loader_iter)
                         except StopIteration:
@@ -299,7 +341,7 @@ class Trainer:
                             with record(
                                 "pytorch_pfn_extras.training.Trainer:get_data",
                                 enable=self._enable_profile,
-                                device=device
+                                device=device,
                             ):
                                 x = next(loader_iter)
                         begin = time.time()
@@ -311,19 +353,24 @@ class Trainer:
                                 "pytorch_pfn_extras.training.Trainer:run_iteration",
                                 use_cuda=torch.cuda.is_available(),
                                 enable=self._enable_profile,
-                                device=device
-                            ) as ntf1, \
-                                    self.manager.run_iteration():
+                                device=device,
+                            ) as ntf1, self.manager.run_iteration():
                                 self._observed.put(self.manager.observation)
                                 with record(
                                     "pytorch_pfn_extras.training.Trainer:train_step",
                                     use_cuda=torch.cuda.is_available(),
                                     enable=self._enable_profile,
-                                    device=device
+                                    device=device,
                                 ) as ntf2:
-                                    self._profile_records.put([ntf0, ntf1, ntf2])
+                                    self._profile_records.put(
+                                        [ntf0, ntf1, ntf2]
+                                    )
                                     self.handler.train_step(
-                                        self, idx, x, complete_fn=self._complete_step)
+                                        self,
+                                        idx,
+                                        x,
+                                        complete_fn=self._complete_step,
+                                    )
                                     # Check if the callback was called
                         except Exception:
                             # The manager has errored and called the extensions
@@ -340,7 +387,10 @@ class Trainer:
                     # And will keep yielding results even if the epoch
                     # is completed. We forcefully exit at the end of
                     # every epoch
-                    if self.is_epoch_last_iter(idx) or self.manager.stop_trigger:
+                    if (
+                        self.is_epoch_last_iter(idx)
+                        or self.manager.stop_trigger
+                    ):
                         break
                 # In handlers that support a completely Async model train_epoch_end
                 # Will take care of completing pending work

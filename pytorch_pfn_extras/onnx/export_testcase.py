@@ -328,6 +328,7 @@ def export_testcase(
     if isinstance(outs, torch.Tensor):
         outs = outs,
     assert outs is not None
+    outs = torch._C._jit_flatten(outs)[0]
     # Remove unused inputs
     # - When keep_initializers_as_inputs=True, inputs contains initializers.
     #   So we have to filt initializers.

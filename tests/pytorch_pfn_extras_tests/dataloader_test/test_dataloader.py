@@ -1,6 +1,5 @@
-import torch
-
 import pytorch_pfn_extras as ppe
+import torch
 
 
 class DummyDataset(torch.utils.data.Dataset):

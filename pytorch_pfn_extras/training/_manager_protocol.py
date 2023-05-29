@@ -1,17 +1,15 @@
-from typing import Mapping, Optional, TYPE_CHECKING
-from typing_extensions import Protocol
+from typing import TYPE_CHECKING, Mapping, Optional
 
 import torch
+from typing_extensions import Protocol
 
 if TYPE_CHECKING:
+    from pytorch_pfn_extras import reporting, writing
     from pytorch_pfn_extras.training import trigger as trigger_module
     from pytorch_pfn_extras.training.extension import Extension
-    from pytorch_pfn_extras import writing
-    from pytorch_pfn_extras import reporting
 
 
 class ExtensionsManagerProtocol(Protocol):
-
     @property
     def iteration(self) -> int:
         ...
@@ -53,7 +51,7 @@ class ExtensionsManagerProtocol(Protocol):
         ...
 
     @property
-    def _stop_trigger(self) -> 'trigger_module.Trigger':
+    def _stop_trigger(self) -> "trigger_module.Trigger":
         ...
 
     @property
@@ -61,16 +59,16 @@ class ExtensionsManagerProtocol(Protocol):
         ...
 
     @property
-    def writer(self) -> Optional['writing.Writer']:
+    def writer(self) -> Optional["writing.Writer"]:
         ...
 
     @property
-    def reporter(self) -> 'reporting.Reporter':
+    def reporter(self) -> "reporting.Reporter":
         ...
 
-    def get_extension(self, name: str) -> 'Extension':
+    def get_extension(self, name: str) -> "Extension":
         ...
 
     @property
-    def observation(self) -> 'reporting.Observation':
+    def observation(self) -> "reporting.Observation":
         ...

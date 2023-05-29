@@ -1,28 +1,27 @@
 import atexit
-from contextlib import contextmanager
-import os
-import time
-from typing import Callable, Dict, Generator, Optional, Tuple
-import threading
-import queue
 import multiprocessing as mp
-import torch
+import os
+import queue
+import threading
+import time
 import weakref
+from contextlib import contextmanager
+from typing import Callable, Dict, Generator, Optional, Tuple
 
+import torch
 from pytorch_pfn_extras.reporting import DictSummary
-
 
 Events = Tuple[torch.cuda.Event, torch.cuda.Event]
 
 
 class _ReportNotification:
     def __init__(
-            self,
-            summary: 'TimeSummary',
-            tag: str,
-            use_cuda: bool,
-            begin_event: Optional[torch.cuda.Event],
-            begin: float,
+        self,
+        summary: "TimeSummary",
+        tag: str,
+        use_cuda: bool,
+        begin_event: Optional[torch.cuda.Event],
+        begin: float,
     ) -> None:
         self._is_completed = True
         self._summary = summary
@@ -36,19 +35,22 @@ class _ReportNotification:
 
     def complete(self) -> None:
         self._summary.complete_report(
-            self._tag, self._use_cuda, self._begin_event, self._begin)
+            self._tag, self._use_cuda, self._begin_event, self._begin
+        )
 
 
 class _CPUWorker:
     def __init__(
-            self,
-            add: Callable[[str, float], None],
-            max_queue_size: int,
+        self,
+        add: Callable[[str, float], None],
+        max_queue_size: int,
     ) -> None:
         self._add = add
         self._max_queue_size = max_queue_size
         self._initialized = False
-        self._queue: Optional[mp.JoinableQueue[Optional[Tuple[str, float]]]] = None
+        self._queue: Optional[
+            mp.JoinableQueue[Optional[Tuple[str, float]]]
+        ] = None
         self._thread: Optional[threading.Thread] = None
         self._thread_exited = False
 
@@ -108,17 +110,17 @@ _QueueElem = Tuple[str, Tuple[torch.cuda.Event, torch.cuda.Event]]
 
 class _CUDAWorker:
     def __init__(
-            self,
-            add: Callable[[str, float], None],
-            max_queue_size: int,
+        self,
+        add: Callable[[str, float], None],
+        max_queue_size: int,
     ) -> None:
         self._add = add
         self._max_queue_size = max_queue_size
         self._initialized = False
         self._thread: Optional[threading.Thread] = None
-        self._queue: Optional['queue.Queue[Optional[_QueueElem]]'] = None
+        self._queue: Optional["queue.Queue[Optional[_QueueElem]]"] = None
         self._event_lock = threading.Lock()
-        self._events: Optional['queue.Queue[torch.cuda.Event]'] = None
+        self._events: Optional["queue.Queue[torch.cuda.Event]"] = None
         self._thread_exited = False
 
     def initialize(self) -> None:
@@ -146,9 +148,9 @@ class _CUDAWorker:
         self._queue.join()
 
     def put(
-            self,
-            name: str,
-            events: Tuple[torch.cuda.Event, torch.cuda.Event],
+        self,
+        name: str,
+        events: Tuple[torch.cuda.Event, torch.cuda.Event],
     ) -> None:
         assert self._queue is not None
         assert not self._thread_exited
@@ -181,13 +183,14 @@ class _CUDAWorker:
         with self._event_lock:
             if self._events.empty():
                 event = torch.cuda.Event(  # type: ignore[no-untyped-call]
-                    enable_timing=True)
+                    enable_timing=True
+                )
                 self._events.put(event)
             return self._events.get()
 
 
 class _Finalizer:
-    def __init__(self, ts: 'TimeSummary') -> None:
+    def __init__(self, ts: "TimeSummary") -> None:
         self._ts = weakref.ref(ts)
 
     def __call__(self) -> None:
@@ -209,7 +212,9 @@ class TimeSummary:
             when the instance is created.
     """
 
-    def __init__(self, *, max_queue_size: int = 1000, auto_init: bool = True) -> None:
+    def __init__(
+        self, *, max_queue_size: int = 1000, auto_init: bool = True
+    ) -> None:
         self._summary_lock = threading.Lock()
         self._summary = DictSummary()
         self._additional_stats: Dict[str, float] = {}
@@ -217,7 +222,9 @@ class TimeSummary:
         self._cpu_worker = _CPUWorker(self._add_from_worker, max_queue_size)
         self._cuda_worker: Optional[_CUDAWorker] = None
         if torch.cuda.is_available():
-            self._cuda_worker = _CUDAWorker(self._add_from_worker, max_queue_size)
+            self._cuda_worker = _CUDAWorker(
+                self._add_from_worker, max_queue_size
+            )
 
         self._initialized = False
         self._master_pid = os.getpid()
@@ -242,7 +249,8 @@ class TimeSummary:
             raise RuntimeError(
                 "TimeSummary must be initialized in the same process as the "
                 "one created the instance. Please call initialize() in the "
-                "main process.")
+                "main process."
+            )
         self._cpu_worker.initialize()
         if self._cuda_worker is not None:
             self._cuda_worker.initialize()
@@ -276,8 +284,8 @@ class TimeSummary:
 
     @contextmanager
     def summary(
-            self,
-            clear: bool = False,
+        self,
+        clear: bool = False,
     ) -> Generator[Tuple[DictSummary, Dict[str, float]], None, None]:
         self.initialize()
         try:
@@ -289,11 +297,11 @@ class TimeSummary:
                 self._additional_stats = {}
 
     def complete_report(
-            self,
-            tag: str,
-            use_cuda: bool,
-            begin_event: Optional[torch.cuda.Event],
-            begin: float,
+        self,
+        tag: str,
+        use_cuda: bool,
+        begin_event: Optional[torch.cuda.Event],
+        begin: float,
     ) -> None:
         end = time.time()
         assert self._cpu_worker._queue is not None
@@ -305,13 +313,14 @@ class TimeSummary:
             end_event = self._cuda_worker.get_cuda_event()
             end_event.record()  # type: ignore[no-untyped-call]
             self._cuda_worker._queue.put(
-                (f"{tag}.cuda", (begin_event, end_event)))
+                (f"{tag}.cuda", (begin_event, end_event))
+            )
 
     @contextmanager
     def report(
-            self,
-            tag: str,
-            use_cuda: bool = False,
+        self,
+        tag: str,
+        use_cuda: bool = False,
     ) -> Generator[_ReportNotification, None, None]:
         """Context manager to automatically report execution times.
 
@@ -332,7 +341,8 @@ class TimeSummary:
         try:
             begin = time.time()
             notification = _ReportNotification(
-                self, tag, use_cuda, begin_event, begin)
+                self, tag, use_cuda, begin_event, begin
+            )
             yield notification
         finally:
             if notification._is_completed:
@@ -343,6 +353,6 @@ _thread_local = threading.local()
 
 
 def get_time_summary() -> TimeSummary:
-    if not hasattr(_thread_local, 'time_summary'):
+    if not hasattr(_thread_local, "time_summary"):
         _thread_local.time_summary = TimeSummary(auto_init=False)
     return _thread_local.time_summary  # type: ignore[no-any-return]

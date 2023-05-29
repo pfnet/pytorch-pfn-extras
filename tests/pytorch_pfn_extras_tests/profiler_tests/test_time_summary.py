@@ -4,7 +4,6 @@ import sys
 import time
 
 import pytest
-
 from pytorch_pfn_extras.profiler import TimeSummary, get_time_summary
 
 
@@ -43,8 +42,9 @@ def worker(summary):
 
 
 @pytest.mark.skipif(
-    sys.platform == 'win32',
-    reason='Multiprocessing not fully supported on Windows')
+    sys.platform == "win32",
+    reason="Multiprocessing not fully supported on Windows",
+)
 def test_report_from_other_process():
     summary = TimeSummary()
     p = mp.Process(target=worker, args=(summary,))
@@ -65,8 +65,9 @@ def worker1():
 
 
 @pytest.mark.skipif(
-    sys.platform == 'win32',
-    reason='Multiprocessing not fully supported on Windows')
+    sys.platform == "win32",
+    reason="Multiprocessing not fully supported on Windows",
+)
 def test_global_summary():
     time_summary = get_time_summary()
     time_summary.initialize()
@@ -98,10 +99,14 @@ def test_clear():
 def test_multiprocessing_start_method():
     # Ensure that importing PPE does not initialize multiprocessing context.
     # See #238 for the context.
-    subprocess.check_call([
-        sys.executable,
-        '-c',
-        ('import multiprocessing as mp; '
-         + 'import pytorch_pfn_extras; '
-         + 'mp.set_start_method("spawn"); ')
-    ])
+    subprocess.check_call(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import multiprocessing as mp; "
+                + "import pytorch_pfn_extras; "
+                + 'mp.set_start_method("spawn"); '
+            ),
+        ]
+    )
