@@ -1,21 +1,19 @@
 from typing import Any, Dict, Optional, Type, TypeVar
 
-import torch
-
 import pytorch_pfn_extras as ppe
-from pytorch_pfn_extras.runtime._runtime import DeviceLike, BaseRuntime
+import torch
+from pytorch_pfn_extras.runtime._runtime import BaseRuntime, DeviceLike
 
-
-ModuleOrTensor = TypeVar('ModuleOrTensor', torch.nn.Module, torch.Tensor)
+ModuleOrTensor = TypeVar("ModuleOrTensor", torch.nn.Module, torch.Tensor)
 
 
 def to(
-        module_or_tensor: ModuleOrTensor,
-        device: DeviceLike,
-        *,
-        options: Optional[Dict[str, Any]] = None,
-        runtime_class: Optional[Type[BaseRuntime]] = None,
-        config: Optional[Dict[str, Any]] = None,
+    module_or_tensor: ModuleOrTensor,
+    device: DeviceLike,
+    *,
+    options: Optional[Dict[str, Any]] = None,
+    runtime_class: Optional[Type[BaseRuntime]] = None,
+    config: Optional[Dict[str, Any]] = None,
 ) -> ModuleOrTensor:
     """A function to transfer the given object to the given device.
 
@@ -52,7 +50,7 @@ def to(
         if config is not None:
             options = config
     elif config is not None:
-        raise ValueError('options and config cannot be specified together')
+        raise ValueError("options and config cannot be specified together")
 
     if runtime_class is None:
         registry = ppe.runtime.runtime_registry
@@ -67,4 +65,4 @@ def to(
     elif isinstance(obj, torch.Tensor):
         return runtime.move_tensor(obj)
     else:
-        raise ValueError('Unsupported type for module_or_tensor')
+        raise ValueError("Unsupported type for module_or_tensor")

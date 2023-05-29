@@ -15,9 +15,11 @@ class CollateAsDict:
     """
 
     def __init__(
-        self, names: Sequence[str],
-        collate_fn: Callable[..., Any] =
-            torch.utils.data._utils.collate.default_collate,
+        self,
+        names: Sequence[str],
+        collate_fn: Callable[
+            ..., Any
+        ] = torch.utils.data._utils.collate.default_collate,
     ) -> None:
         self.names = names
         self.collate_fn = collate_fn

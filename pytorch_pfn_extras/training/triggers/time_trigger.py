@@ -1,7 +1,9 @@
 from typing import Any, Dict
 
 from pytorch_pfn_extras.training import trigger
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 
 class TimeTrigger(trigger.Trigger):
@@ -27,8 +29,8 @@ class TimeTrigger(trigger.Trigger):
             return False
 
     def state_dict(self) -> Dict[str, Any]:
-        state = {'next_time': self._next_time}
+        state = {"next_time": self._next_time}
         return state
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
-        self._next_time = to_load['next_time']
+        self._next_time = to_load["next_time"]

@@ -5,9 +5,9 @@ requires = ["setuptools<64", "wheel"]
 version = "0.10.1"
 
 [tool.pysen.lint]
-enable_black = false
+enable_black = true
 enable_flake8 = true
-enable_isort = false
+enable_isort = true
 enable_mypy = true
 mypy_preset = "strict"
 line_length = 80
@@ -15,3 +15,7 @@ py_version = "py38"
 
 [[tool.pysen.lint.mypy_targets]]
   paths = ["pytorch_pfn_extras"]
+
+[tool.pysen.lint.source]
+  includes = ["."]
+  excludes = ["pytorch_pfn_extras/onnx/", "tests/pytorch_pfn_extras_tests/onnx_tests/"]

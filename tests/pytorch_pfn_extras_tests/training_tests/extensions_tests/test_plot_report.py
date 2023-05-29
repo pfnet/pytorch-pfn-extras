@@ -1,7 +1,6 @@
 import warnings
 
 import pytest
-
 from pytorch_pfn_extras.training import extensions
 
 
@@ -9,6 +8,7 @@ from pytorch_pfn_extras.training import extensions
 def matplotlib_or_none():
     try:
         import matplotlib
+
         return matplotlib
     except ImportError:
         return None
@@ -17,7 +17,7 @@ def matplotlib_or_none():
 @pytest.fixture(scope="module")
 def matplotlib(matplotlib_or_none):
     if matplotlib_or_none is None:
-        pytest.skip('matplotlib is not installed')
+        pytest.skip("matplotlib is not installed")
     return matplotlib_or_none
 
 
@@ -36,9 +36,9 @@ def test_lazy_import(matplotlib):
     # has to be called earlier.
 
     with warnings.catch_warnings():
-        warnings.simplefilter('error')
-        matplotlib.use('Agg')
+        warnings.simplefilter("error")
+        matplotlib.use("Agg")
         # Test again with a different backend, because the above does not
         # generate a warning if matplotlib.use('Agg') is called and then
         # matplotlib.pyplot is imported.
-        matplotlib.use('PS')
+        matplotlib.use("PS")

@@ -1,11 +1,19 @@
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Mapping, Optional,
-    Tuple, Union, TYPE_CHECKING,
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
 )
 
-import torch
-
 import pytorch_pfn_extras as ppe
+import torch
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.handler._logic import BaseLogic
 from pytorch_pfn_extras.training import Evaluator, Trainer
@@ -15,13 +23,12 @@ if TYPE_CHECKING:
 
 
 class BaseHandler:
-
     def __init__(
-            self,
-            logic: BaseLogic,
-            options: Dict[str, Any],
-            *args: Any,
-            **kwargs: Any
+        self,
+        logic: BaseLogic,
+        options: Dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         """Base class of Handler.
 
@@ -60,9 +67,7 @@ class BaseHandler:
         pass
 
     def train_epoch_begin(
-            self,
-            trainer: Trainer,
-            loader: Iterable[Any]
+        self, trainer: Trainer, loader: Iterable[Any]
     ) -> None:
         """A method called when starting a new epoch.
 
@@ -94,9 +99,9 @@ class BaseHandler:
         pass
 
     def train_validation_begin(
-            self,
-            trainer: Trainer,
-            evaluator: Evaluator,
+        self,
+        trainer: Trainer,
+        evaluator: Evaluator,
     ) -> None:
         """A method called when starting a validation.
 
@@ -109,9 +114,9 @@ class BaseHandler:
         pass
 
     def train_validation_end(
-            self,
-            trainer: Trainer,
-            evaluator: Evaluator,
+        self,
+        trainer: Trainer,
+        evaluator: Evaluator,
     ) -> None:
         """A method called after validation.
 
@@ -125,11 +130,11 @@ class BaseHandler:
         pass
 
     def train_step(
-            self,
-            trainer: Trainer,
-            batch_idx: int,
-            batch: Any,
-            complete_fn: Callable[[int, Any], None],
+        self,
+        trainer: Trainer,
+        batch_idx: int,
+        batch: Any,
+        complete_fn: Callable[[int, Any], None],
     ) -> None:
         """A training step.
 
@@ -141,11 +146,11 @@ class BaseHandler:
         pass
 
     def train_post_step(
-            self,
-            trainer: Trainer,
-            batch_idx: int,
-            batch: Any,
-            outputs: Any,
+        self,
+        trainer: Trainer,
+        batch_idx: int,
+        batch: Any,
+        outputs: Any,
     ) -> None:
         """A method called after each training step.
 
@@ -156,11 +161,7 @@ class BaseHandler:
         # Called after train_step.
         pass
 
-    def eval_setup(
-            self,
-            evaluator: Evaluator,
-            loader: Iterable[Any]
-    ) -> None:
+    def eval_setup(self, evaluator: Evaluator, loader: Iterable[Any]) -> None:
         """A method called only once when starting a training run.
         When evaluator is not given, this method is not called.
 
@@ -183,11 +184,11 @@ class BaseHandler:
         pass
 
     def eval_step(
-            self,
-            evaluator: Evaluator,
-            batch_idx: int,
-            batch: Any,
-            complete_fn: Callable[[int, Any], None],
+        self,
+        evaluator: Evaluator,
+        batch_idx: int,
+        batch: Any,
+        complete_fn: Callable[[int, Any], None],
     ) -> None:
         """Evaluation iteration.
 
@@ -209,11 +210,11 @@ class BaseHandler:
         pass
 
     def eval_post_step(
-            self,
-            evaluator: Evaluator,
-            batch_idx: int,
-            batch: Any,
-            outputs: Any,
+        self,
+        evaluator: Evaluator,
+        batch_idx: int,
+        batch: Any,
+        outputs: Any,
     ) -> None:
         """A method called after each evaluation step.
 
@@ -225,16 +226,15 @@ class BaseHandler:
         pass
 
 
-ModulesTuple = Tuple[str, torch.nn.Module, 'BaseRuntime']
+ModulesTuple = Tuple[str, torch.nn.Module, "BaseRuntime"]
 
 
 class Handler(BaseHandler):
-
     def __init__(
-            self,
-            logic: BaseLogic,
-            entry_runtime: 'BaseRuntime',
-            options: Dict[str, Any],
+        self,
+        logic: BaseLogic,
+        entry_runtime: "BaseRuntime",
+        options: Dict[str, Any],
     ) -> None:
         """A set of callback functions to perform device-specific operations.
 
@@ -260,14 +260,14 @@ class Handler(BaseHandler):
 
     def consume_options(self, options: Dict[str, Any]) -> None:
         super().consume_options(options)
-        self._eval_report_keys = options.pop('eval_report_keys', [])
-        self._train_report_keys = options.pop('train_report_keys', [])
+        self._eval_report_keys = options.pop("eval_report_keys", [])
+        self._train_report_keys = options.pop("train_report_keys", [])
         # Consume this argument for backward compatibility
-        options.pop('async', False)
+        options.pop("async", False)
 
     def _runtime_iterator(
-            self,
-            models: Mapping[str, torch.nn.Module],
+        self,
+        models: Mapping[str, torch.nn.Module],
     ) -> Generator[ModulesTuple, ModulesTuple, None]:
         if not self._ppe_modules:
             for n, m in models.items():
@@ -281,18 +281,19 @@ class Handler(BaseHandler):
                 yield sn, sm, rt
 
     def _setup(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            loader: Union[Iterable[Any], Mapping[str, Iterable[Any]]],
-            optimizers: Optional[Mapping[str, torch.optim.Optimizer]] = None,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        loader: Union[Iterable[Any], Mapping[str, Iterable[Any]]],
+        optimizers: Optional[Mapping[str, torch.optim.Optimizer]] = None,
     ) -> None:
         # This requires loader to be always a dict
         # should be avoided?
         if not isinstance(loader, dict):
             # The default model always has empty name when obtained from the
             # modules
-            loaders = {sn: loader
-                       for sn, _, _ in self._runtime_iterator(models)}
+            loaders = {
+                sn: loader for sn, _, _ in self._runtime_iterator(models)
+            }
         else:
             loaders = loader
         if optimizers is None:
@@ -310,7 +311,8 @@ class Handler(BaseHandler):
 
         if len(self._ppe_modules) == 0:
             raise RuntimeError(
-                'call `ppe.to(module, device)` before starting the training')
+                "call `ppe.to(module, device)` before starting the training"
+            )
 
     def train_setup(self, trainer: Trainer, loader: Iterable[Any]) -> None:
         """A method called only once when starting a training run.
@@ -334,9 +336,7 @@ class Handler(BaseHandler):
             rt.train_cleanup(sm)
 
     def train_epoch_begin(
-            self,
-            trainer: Trainer,
-            loader: Iterable[Any]
+        self, trainer: Trainer, loader: Iterable[Any]
     ) -> None:
         """A method called when starting a new epoch.
 
@@ -361,9 +361,9 @@ class Handler(BaseHandler):
         self._logic.train_epoch_end(trainer.models, trainer.epoch)
 
     def train_validation_begin(
-            self,
-            trainer: Trainer,
-            evaluator: Evaluator,
+        self,
+        trainer: Trainer,
+        evaluator: Evaluator,
     ) -> None:
         """A method called when starting a validation.
 
@@ -376,9 +376,9 @@ class Handler(BaseHandler):
         self._logic.train_validation_begin(evaluator.models)
 
     def train_validation_end(
-            self,
-            trainer: Trainer,
-            evaluator: Evaluator,
+        self,
+        trainer: Trainer,
+        evaluator: Evaluator,
     ) -> None:
         """A method called after validation.
 
@@ -396,11 +396,11 @@ class Handler(BaseHandler):
         self._logic.train_validation_end(evaluator.models)
 
     def train_step(
-            self,
-            trainer: Trainer,
-            batch_idx: int,
-            batch: Any,
-            complete_fn: Callable[[int, Any], None],
+        self,
+        trainer: Trainer,
+        batch_idx: int,
+        batch: Any,
+        complete_fn: Callable[[int, Any], None],
     ) -> None:
         """A training step.
 
@@ -418,17 +418,15 @@ class Handler(BaseHandler):
         batch = self._entry_runtime.convert_batch(batch)
 
         outs = self._logic.train_step(
-            trainer.models, trainer.optimizers, batch_idx, batch)
+            trainer.models, trainer.optimizers, batch_idx, batch
+        )
 
         self._logic.train_step_optimizers(
-            trainer.models, trainer.optimizers, batch_idx)
+            trainer.models, trainer.optimizers, batch_idx
+        )
         complete_fn(batch_idx, outs)
 
-    def eval_setup(
-            self,
-            evaluator: Evaluator,
-            loader: Iterable[Any]
-    ) -> None:
+    def eval_setup(self, evaluator: Evaluator, loader: Iterable[Any]) -> None:
         """Called only once when starting a training run.
         When evaluator is not given, this method is not called.
 
@@ -441,11 +439,11 @@ class Handler(BaseHandler):
         self._setup(evaluator.models, loader)
 
     def eval_step(
-            self,
-            evaluator: Evaluator,
-            batch_idx: int,
-            batch: Any,
-            complete_fn: Callable[[int, Any], None],
+        self,
+        evaluator: Evaluator,
+        batch_idx: int,
+        batch: Any,
+        complete_fn: Callable[[int, Any], None],
     ) -> None:
         """Evaluation iteration.
 
@@ -466,11 +464,11 @@ class Handler(BaseHandler):
         complete_fn(batch_idx, outs)
 
     def eval_post_step(
-            self,
-            evaluator: Evaluator,
-            batch_idx: int,
-            batch: Any,
-            outputs: Any,
+        self,
+        evaluator: Evaluator,
+        batch_idx: int,
+        batch: Any,
+        outputs: Any,
     ) -> None:
         """A method called after each evaluation step.
 
@@ -497,11 +495,7 @@ class Handler(BaseHandler):
         pass
 
     def train_post_step(
-            self,
-            trainer: Trainer,
-            batch_idx: int,
-            batch: Any,
-            outputs: Any
+        self, trainer: Trainer, batch_idx: int, batch: Any, outputs: Any
     ) -> None:
         """A method called after each training step.
 

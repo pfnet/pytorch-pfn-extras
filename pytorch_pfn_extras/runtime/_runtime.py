@@ -1,12 +1,18 @@
 import contextlib
 import types
-
 from typing import (
-    Any, Dict, Generator, Iterable, Optional, Set, Tuple, Union, TYPE_CHECKING
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    Optional,
+    Set,
+    Tuple,
+    Union,
 )
 
 import torch
-
 from pytorch_pfn_extras.handler._code_block import CodeBlock
 from pytorch_pfn_extras.runtime import _autocast
 
@@ -35,7 +41,9 @@ class BaseRuntime:
     """
 
     def __init__(
-        self, device_spec: DeviceLike, options: Dict[str, Any],
+        self,
+        device_spec: DeviceLike,
+        options: Dict[str, Any],
     ) -> None:
         self.device_spec = device_spec
         self.options = options
@@ -56,7 +64,8 @@ class BaseRuntime:
         if isinstance(args, tuple) and hasattr(args, "_fields"):
             # namedtuple
             return args._replace(  # type: ignore[attr-defined]
-                **self._convert_batch_dict(args._asdict()))  # type: ignore
+                **self._convert_batch_dict(args._asdict())  # type: ignore
+            )
         if isinstance(args, dict):
             return self._convert_batch_dict(args)
         if isinstance(args, (list, tuple)):
@@ -142,7 +151,7 @@ class BaseRuntime:
 
     def train_pre_step(
         self,
-        trainer: 'Trainer',
+        trainer: "Trainer",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -165,7 +174,7 @@ class BaseRuntime:
 
     def train_post_step(
         self,
-        trainer: 'Trainer',
+        trainer: "Trainer",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -221,7 +230,7 @@ class BaseRuntime:
 
     def eval_pre_step(
         self,
-        evaluator: 'Evaluator',
+        evaluator: "Evaluator",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -241,7 +250,7 @@ class BaseRuntime:
 
     def eval_post_step(
         self,
-        evaluator: 'Evaluator',
+        evaluator: "Evaluator",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -262,7 +271,11 @@ class BaseRuntime:
         """
         raise NotImplementedError()
 
-    def execute(self, code_block: CodeBlock, batch: Any,) -> Any:
+    def execute(
+        self,
+        code_block: CodeBlock,
+        batch: Any,
+    ) -> Any:
         """Method called by the CodeBlocks API to do device dependent execution.
 
         Args:
@@ -297,7 +310,9 @@ class BaseRuntime:
 
     @classmethod
     @contextlib.contextmanager
-    def trace(cls, event_name: Optional[str], arg: Any) -> Generator[None, None, None]:
+    def trace(
+        cls, event_name: Optional[str], arg: Any
+    ) -> Generator[None, None, None]:
         """Context manager for tracing PPE events in the custom device tools.
 
         Args:
@@ -328,13 +343,18 @@ class PyTorchRuntime(BaseRuntime):
     """
 
     def __init__(
-        self, device_spec: DeviceLike, options: Dict[str, Any],
+        self,
+        device_spec: DeviceLike,
+        options: Dict[str, Any],
     ) -> None:
         super().__init__(device_spec, options)
         self._grad_scaler = options.get("grad_scaler", None)
         autocast_options = options.get("autocast", False)
         if isinstance(autocast_options, bool):
-            autocast_options = {"enabled": autocast_options, "device_type": "cuda"}
+            autocast_options = {
+                "enabled": autocast_options,
+                "device_type": "cuda",
+            }
         self._autocast = _autocast._AutocastManager(
             autocast_options, self._grad_scaler is not None
         )
@@ -376,7 +396,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_pre_step(
         self,
-        trainer: 'Trainer',
+        trainer: "Trainer",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -385,7 +405,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def train_post_step(
         self,
-        trainer: 'Trainer',
+        trainer: "Trainer",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -395,7 +415,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_pre_step(
         self,
-        evaluator: 'Evaluator',
+        evaluator: "Evaluator",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -404,7 +424,7 @@ class PyTorchRuntime(BaseRuntime):
 
     def eval_post_step(
         self,
-        evaluator: 'Evaluator',
+        evaluator: "Evaluator",
         module: torch.nn.Module,
         batch_idx: int,
         batch: Any,
@@ -412,7 +432,11 @@ class PyTorchRuntime(BaseRuntime):
     ) -> None:
         pass
 
-    def execute(self, code_block: CodeBlock, batch: Any,) -> Any:
+    def execute(
+        self,
+        code_block: CodeBlock,
+        batch: Any,
+    ) -> Any:
         # Run forward, backward and optimize steps depending on codeblock opts
         if self._grad_scaler is None:
 
@@ -439,10 +463,7 @@ class PyTorchRuntime(BaseRuntime):
                         isinstance(v, torch.Tensor)
                         and v.grad_fn is not None
                         and v.numel() == 1
-                        and (
-                            v.dtype.is_floating_point
-                            or v.dtype.is_complex
-                        )
+                        and (v.dtype.is_floating_point or v.dtype.is_complex)
                     ):
                         _scale(v).backward()  # type: ignore[no-untyped-call]
             else:
@@ -483,7 +504,9 @@ class PyTorchRuntime(BaseRuntime):
 
     @classmethod
     @contextlib.contextmanager
-    def trace(cls, event_name: Optional[str], arg: Any) -> Generator[None, None, None]:
+    def trace(
+        cls, event_name: Optional[str], arg: Any
+    ) -> Generator[None, None, None]:
         """Context manager for tracing PPE events in the custom device tools.
 
         Args:
@@ -515,7 +538,9 @@ def _set_module_runtime_tag(
 
             # remove runtime class and getstate
             def _remove_runtime_class(state):  # type: ignore
-                state = {k: v for k, v in state.items() if k != _RUNTIME_TAG_NAME}
+                state = {
+                    k: v for k, v in state.items() if k != _RUNTIME_TAG_NAME
+                }
                 for k, v in state.items():
                     if isinstance(v, dict):
                         state[k] = _remove_runtime_class(v)  # type: ignore
@@ -528,6 +553,7 @@ def _set_module_runtime_tag(
                 return state
 
             return _remove_runtime_class(state)  # type: ignore
+
         return _getstate_without_runtime
 
     getstate = None
@@ -537,7 +563,7 @@ def _set_module_runtime_tag(
     setattr(  # NOQA
         module,
         "__getstate__",
-        types.MethodType(mk_getstate(getstate), module)  # type: ignore
+        types.MethodType(mk_getstate(getstate), module),  # type: ignore
     )
 
 

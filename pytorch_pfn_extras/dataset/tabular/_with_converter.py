@@ -4,7 +4,6 @@ from pytorch_pfn_extras.dataset.tabular import tabular_dataset
 
 
 class _WithConverter(tabular_dataset.TabularDataset):
-
     def __init__(self, dataset, converter):
         self._dataset = dataset
         self._converter = converter
