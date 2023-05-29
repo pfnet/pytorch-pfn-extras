@@ -1,10 +1,18 @@
 import contextlib
 import types
-from typing import (TYPE_CHECKING, Any, Dict, Generator, Iterable, Optional,
-                    Set, Tuple, Union)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 import torch
-
 from pytorch_pfn_extras.handler._code_block import CodeBlock
 from pytorch_pfn_extras.runtime import _autocast
 
@@ -55,9 +63,9 @@ class BaseRuntime:
         # or a model part
         if isinstance(args, tuple) and hasattr(args, "_fields"):
             # namedtuple
-            return args._replace(
-                **self._convert_batch_dict(args._asdict()) # type: ignore[attr-defined]
-            )  # type: ignore
+            return args._replace(  # type: ignore[attr-defined]
+                **self._convert_batch_dict(args._asdict())  # type: ignore
+            )
         if isinstance(args, dict):
             return self._convert_batch_dict(args)
         if isinstance(args, (list, tuple)):
@@ -301,7 +309,9 @@ class BaseRuntime:
 
     @classmethod
     @contextlib.contextmanager
-    def trace(cls, event_name: Optional[str], arg: Any) -> Generator[None, None, None]:
+    def trace(
+        cls, event_name: Optional[str], arg: Any
+    ) -> Generator[None, None, None]:
         """Context manager for tracing PPE events in the custom device tools.
 
         Args:
@@ -340,7 +350,10 @@ class PyTorchRuntime(BaseRuntime):
         self._grad_scaler = options.get("grad_scaler", None)
         autocast_options = options.get("autocast", False)
         if isinstance(autocast_options, bool):
-            autocast_options = {"enabled": autocast_options, "device_type": "cuda"}
+            autocast_options = {
+                "enabled": autocast_options,
+                "device_type": "cuda",
+            }
         self._autocast = _autocast._AutocastManager(
             autocast_options, self._grad_scaler is not None
         )
@@ -499,7 +512,9 @@ class PyTorchRuntime(BaseRuntime):
 
     @classmethod
     @contextlib.contextmanager
-    def trace(cls, event_name: Optional[str], arg: Any) -> Generator[None, None, None]:
+    def trace(
+        cls, event_name: Optional[str], arg: Any
+    ) -> Generator[None, None, None]:
         """Context manager for tracing PPE events in the custom device tools.
 
         Args:
@@ -527,7 +542,9 @@ def _set_module_runtime_tag(module: torch.nn.Module, runtime: BaseRuntime) -> No
 
             # remove runtime class and getstate
             def _remove_runtime_class(state):  # type: ignore
-                state = {k: v for k, v in state.items() if k != _RUNTIME_TAG_NAME}
+                state = {
+                    k: v for k, v in state.items() if k != _RUNTIME_TAG_NAME
+                }
                 for k, v in state.items():
                     if isinstance(v, dict):
                         state[k] = _remove_runtime_class(v)  # type: ignore

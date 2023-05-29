@@ -1,12 +1,10 @@
 import typing
 
 import torch
-from torch.nn.parallel import DistributedDataParallel
-
 from pytorch_pfn_extras.nn.parallel import (
     DistributedDataParallel as PpeDistributedDataParallel,
 )
-
+from torch.nn.parallel import DistributedDataParallel
 
 _TransformModel = typing.Callable[[str, torch.nn.Module], torch.nn.Module]
 

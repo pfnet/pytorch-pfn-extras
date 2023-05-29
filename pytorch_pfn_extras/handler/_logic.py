@@ -4,7 +4,6 @@ import warnings
 from typing import Any, Dict, Generator, Iterable, Mapping, Optional
 
 import torch
-
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
 from pytorch_pfn_extras.runtime import _autocast
 
@@ -117,7 +116,9 @@ class BaseLogic:
         """
         pass
 
-    def train_validation_begin(self, models: Mapping[str, torch.nn.Module]) -> None:
+    def train_validation_begin(
+        self, models: Mapping[str, torch.nn.Module]
+    ) -> None:
         """A method called when starting a validation.
 
         Args:
@@ -190,7 +191,10 @@ class Logic(BaseLogic):
         self._backward_fn = options.pop("backward_function", None)
         autocast_options = options.pop("autocast", False)
         if isinstance(autocast_options, bool):
-            autocast_options = {"enabled": autocast_options, "device_type": "cuda"}
+            autocast_options = {
+                "enabled": autocast_options,
+                "device_type": "cuda",
+            }
         self._autocast = _autocast._AutocastManager(
             autocast_options, self._grad_scaler is not None
         )
@@ -198,7 +202,8 @@ class Logic(BaseLogic):
         if self._grad_scaler is not None:
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
                 raise RuntimeError(
-                    "grad_scaler should be a " "torch.cuda.amp.GradScaler object"
+                    "grad_scaler should be a "
+                    "torch.cuda.amp.GradScaler object"
                 )
 
     def _forward(self, model: torch.nn.Module, batch: Any) -> Any:
@@ -221,7 +226,9 @@ class Logic(BaseLogic):
                     and (
                         (
                             v.numel() == 1
-                            and (v.dtype.is_floating_point or v.dtype.is_complex)
+                            and (
+                                v.dtype.is_floating_point or v.dtype.is_complex
+                            )
                         )
                     )
                 ):
@@ -274,6 +281,10 @@ class Logic(BaseLogic):
             # Needed for `torch.utils.data.DistributedSampler`
             loader.sampler.set_epoch(epoch)  # type: ignore[attr-defined]
 
+    def train_epoch_end(self, models: Mapping[str, Any], epoch: int) -> None:
+        model = models[self.model_name]
+        model.eval()
+
     def train_step(
         self,
         models: Mapping[str, torch.nn.Module],
@@ -300,7 +311,6 @@ class Logic(BaseLogic):
             optimizers[self.model_name].zero_grad()
             outs = self._forward(models[self.model_name], batch)
             to_back_outs = _normalize_outputs(outs)
-
         self._backward(to_back_outs)
         return outs
 
@@ -338,6 +348,10 @@ class Logic(BaseLogic):
         """
         model = models[self.model_name]
         model.eval()
+
+    def train_validation_end(self, models: Mapping[str, Any]) -> None:
+        model = models[self.model_name]
+        model.train()
 
     def eval_step(
         self,
@@ -405,6 +419,10 @@ class CodeBlockLogic(BaseLogic):
             # Needed for `torch.utils.data.DistributedSampler`
             loader.sampler.set_epoch(epoch)  # type: ignore[attr-defined]
 
+    def train_epoch_end(self, models: Mapping[str, Any], epoch: int) -> None:
+        model = models[self.model_name]
+        model.eval()
+
     def train_step(
         self,
         models: Mapping[str, torch.nn.Module],
@@ -447,6 +465,10 @@ class CodeBlockLogic(BaseLogic):
         """
         model = models[self.model_name]
         model.eval()
+
+    def train_validation_end(self, models: Mapping[str, Any]) -> None:
+        model = models[self.model_name]
+        model.train()
 
     def eval_step(
         self,

@@ -1,8 +1,9 @@
-from typing import Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 
 from pytorch_pfn_extras.training import trigger
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
-
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training._trigger_util import UnitLiteral
@@ -30,10 +31,11 @@ class IntervalTrigger(trigger.Trigger):
 
     """
 
-    def __init__(self, period: float, unit: 'UnitLiteral'):
-        if unit not in ('epoch', 'iteration'):
+    def __init__(self, period: float, unit: "UnitLiteral"):
+        if unit not in ("epoch", "iteration"):
             raise ValueError(
-                'Trigger unit must be either \'epoch\' or \'iteration\'.')
+                "Trigger unit must be either 'epoch' or 'iteration'."
+            )
         self.period = period
         self.unit = unit
 
@@ -64,17 +66,17 @@ class IntervalTrigger(trigger.Trigger):
         Returns:
             str: IntervalTrigger(<period>, '<unit>')
         """
-        return '{}({}, \'{}\')'.format(
+        return "{}({}, '{}')".format(
             self.__class__.__name__, self.period, self.unit
         )
 
     def may_fire(self, iteration: int, epoch_length: int) -> bool:
         if iteration == 0:
-            if self.unit == 'epoch':
+            if self.unit == "epoch":
                 return epoch_length == 0
             else:
                 return self.period == 0
-        if self.unit == 'epoch':
+        if self.unit == "epoch":
             fire = (iteration % (epoch_length * self.period)) == 0
         else:
             fire = (iteration % self.period) == 0

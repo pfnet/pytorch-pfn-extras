@@ -5,29 +5,29 @@ import tempfile
 import time
 from unittest import mock
 
-import torch
 import pytest
-
 import pytorch_pfn_extras as ppe
-from pytorch_pfn_extras import training
+import torch
+from pytorch_pfn_extras import training, writing
 from pytorch_pfn_extras.training import extensions
 from pytorch_pfn_extras.training.extensions._snapshot import (
-    _find_latest_snapshot, _find_snapshot_files, _find_stale_snapshots)
-from pytorch_pfn_extras import writing
+    _find_latest_snapshot,
+    _find_snapshot_files,
+    _find_stale_snapshots,
+)
 
 
 def get_trainer(*, out_dir, state_to_load=None, epochs=10):
     model_state_dict = {}
     optimizer_state_dict = {}
-    models = {'main': _StateDictModel(state_dict=model_state_dict)}
-    optimizers = {'main': _StateDictObj(state_dict=optimizer_state_dict)}
+    models = {"main": _StateDictModel(state_dict=model_state_dict)}
+    optimizers = {"main": _StateDictObj(state_dict=optimizer_state_dict)}
     return training.ExtensionsManager(
-        models, optimizers, epochs,
-        iters_per_epoch=10,
-        out_dir=out_dir)
+        models, optimizers, epochs, iters_per_epoch=10, out_dir=out_dir
+    )
 
 
-class _StateDictObj():
+class _StateDictObj:
     def __init__(self, *, state_dict=None):
         super().__init__()
         self.called_load_state_dict = 0
@@ -62,7 +62,8 @@ def test_call():
 def test_savefun_and_writer_exclusive():
     # savefun and writer arguments cannot be specified together.
     def savefun(*args, **kwargs):
-        pytest.fail('never reach')
+        pytest.fail("never reach")
+
     writer = writing.SimpleWriter()
     with pytest.raises(TypeError):
         extensions.snapshot(savefun=savefun, writer=writer)
@@ -72,104 +73,98 @@ def test_savefun_and_writer_exclusive():
         extensions.snapshot_object(trainer, savefun=savefun, writer=writer)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def remover():
     yield
-    if os.path.exists('myfile.dat'):
-        os.remove('myfile.dat')
+    if os.path.exists("myfile.dat"):
+        os.remove("myfile.dat")
 
 
 def test_save_file(remover):
-    trainer = get_trainer(out_dir='.')
+    trainer = get_trainer(out_dir=".")
     trainer._done = True
     w = writing.SimpleWriter()
-    snapshot = extensions.snapshot_object(trainer, 'myfile.dat',
-                                          writer=w)
+    snapshot = extensions.snapshot_object(trainer, "myfile.dat", writer=w)
     snapshot(trainer)
 
-    assert os.path.exists('myfile.dat')
+    assert os.path.exists("myfile.dat")
 
 
 def test_multi_target(remover):
-    trainer = get_trainer(out_dir='.')
+    trainer = get_trainer(out_dir=".")
     trainer._done = True
-    other_state_dict = {'test': True}
+    other_state_dict = {"test": True}
     other = _StateDictObj(state_dict=other_state_dict)
     w = ppe.writing.SimpleWriter()
-    target = {'trainer': trainer, 'other': other}
-    snapshot = extensions.snapshot_object(target, 'myfile.dat',
-                                          writer=w)
+    target = {"trainer": trainer, "other": other}
+    snapshot = extensions.snapshot_object(target, "myfile.dat", writer=w)
     snapshot(trainer)
 
-    assert os.path.exists('myfile.dat')
+    assert os.path.exists("myfile.dat")
     # Load the snapshot and verify it
-    state = torch.load('myfile.dat')
-    new_trainer = get_trainer(out_dir='.')
+    state = torch.load("myfile.dat")
+    new_trainer = get_trainer(out_dir=".")
     new_other = _StateDictObj(state_dict={})
-    new_trainer.load_state_dict(state['trainer'])
-    new_other.load_state_dict(state['other'])
+    new_trainer.load_state_dict(state["trainer"])
+    new_other.load_state_dict(state["other"])
     assert new_trainer.state_dict() == trainer.state_dict()
     assert new_other.state_dict() == other_state_dict
 
 
 def test_multi_target_autoload(remover):
-    trainer = get_trainer(out_dir='.')
+    trainer = get_trainer(out_dir=".")
     trainer._done = True
-    other_state_dict = {'test': True}
+    other_state_dict = {"test": True}
     other = _StateDictObj(state_dict=other_state_dict)
     w = ppe.writing.SimpleWriter()
-    target = {'trainer': trainer, 'other': other}
-    snapshot = extensions.snapshot_object(target, 'myfile.dat',
-                                          writer=w)
+    target = {"trainer": trainer, "other": other}
+    snapshot = extensions.snapshot_object(target, "myfile.dat", writer=w)
     snapshot(trainer)
 
-    assert os.path.exists('myfile.dat')
-    new_trainer = get_trainer(out_dir='.')
+    assert os.path.exists("myfile.dat")
+    new_trainer = get_trainer(out_dir=".")
     new_other = _StateDictObj(state_dict={})
 
-    target = {'trainer': new_trainer, 'other': new_other}
-    snapshot2 = extensions.snapshot_object(target, 'myfile.dat',
-                                           autoload=True)
+    target = {"trainer": new_trainer, "other": new_other}
+    snapshot2 = extensions.snapshot_object(target, "myfile.dat", autoload=True)
     # Load the snapshot and verify it
-    assert snapshot2.initialize(new_trainer) == 'myfile.dat'
+    assert snapshot2.initialize(new_trainer) == "myfile.dat"
     assert new_trainer.state_dict() == trainer.state_dict()
     assert new_other.state_dict() == other_state_dict
 
 
 def test_multi_target_autoload_not_found(remover):
-    trainer = get_trainer(out_dir='.')
-    other = _StateDictObj(state_dict={'original': 'state'})
+    trainer = get_trainer(out_dir=".")
+    other = _StateDictObj(state_dict={"original": "state"})
 
-    target = {'trainer': trainer, 'other': other}
-    snapshot = extensions.snapshot_object(target, 'myfile.dat',
-                                          autoload=True)
+    target = {"trainer": trainer, "other": other}
+    snapshot = extensions.snapshot_object(target, "myfile.dat", autoload=True)
 
     assert snapshot.initialize(trainer) is None
-    assert other.state_dict() == {'original': 'state'}
+    assert other.state_dict() == {"original": "state"}
 
 
 def test_clean_up_tempdir(remover):
-    trainer = get_trainer(out_dir='.')
+    trainer = get_trainer(out_dir=".")
     trainer._done = True
-    snapshot = extensions.snapshot_object(trainer, 'myfile.dat')
+    snapshot = extensions.snapshot_object(trainer, "myfile.dat")
     snapshot(trainer)
 
-    left_tmps = [fn for fn in os.listdir('.')
-                 if fn.startswith('tmpmyfile.dat')]
+    left_tmps = [fn for fn in os.listdir(".") if fn.startswith("tmpmyfile.dat")]
     assert len(left_tmps) == 0
 
 
 def test_on_error():
     # Will fail when accesing the dummy optimizer
-    optimizers = {'main': object()}
+    optimizers = {"main": object()}
     trainer = training.ExtensionsManager(
-        {}, optimizers, 1,
-        iters_per_epoch=1,
-        out_dir='.')
-    filename = 'myfile-deadbeef.dat'
+        {}, optimizers, 1, iters_per_epoch=1, out_dir="."
+    )
+    filename = "myfile-deadbeef.dat"
 
-    snapshot = extensions.snapshot_object(trainer, filename,
-                                          snapshot_on_error=True)
+    snapshot = extensions.snapshot_object(
+        trainer, filename, snapshot_on_error=True
+    )
     trainer.extend(snapshot)
     assert not os.path.exists(filename)
     with pytest.raises(AttributeError):
@@ -178,25 +173,34 @@ def test_on_error():
     assert not os.path.exists(filename)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def path():
     with tempfile.TemporaryDirectory() as t_path:
         yield t_path
 
 
-@pytest.mark.parametrize('fmt', [
-    'snapshot_iter_{}',
-    'snapshot_iter_{}.npz',
-    '{}_snapshot_man_suffix.npz',
-])
+@pytest.fixture(scope="function")
+def snapshot_path():
+    with tempfile.TemporaryDirectory() as t_path:
+        yield t_path
+
+
+@pytest.mark.parametrize(
+    "fmt",
+    [
+        "snapshot_iter_{}",
+        "snapshot_iter_{}.npz",
+        "{}_snapshot_man_suffix.npz",
+    ],
+)
 def test_find_snapshot_files(fmt, path):
     files = (fmt.format(i) for i in range(1, 100))
-    noise = ('dummy-foobar-iter{}'.format(i) for i in range(10, 304))
-    noise2 = ('tmpsnapshot_iter_{}'.format(i) for i in range(10, 304))
+    noise = ("dummy-foobar-iter{}".format(i) for i in range(10, 304))
+    noise2 = ("tmpsnapshot_iter_{}".format(i) for i in range(10, 304))
 
     for file in itertools.chain(noise, files, noise2):
         file = os.path.join(path, file)
-        open(file, 'w').close()
+        open(file, "w").close()
 
     writer = ppe.writing.SimpleWriter()
     snapshot_files = _find_snapshot_files(fmt, path, writer.fs)
@@ -207,18 +211,21 @@ def test_find_snapshot_files(fmt, path):
     assert expected == sorted(list(snapshot_files))
 
 
-@pytest.mark.parametrize('fmt', [
-    'snapshot_iter_{}',
-    'snapshot_iter_{}.npz',
-    '{}_snapshot_man_suffix.npz',
-])
+@pytest.mark.parametrize(
+    "fmt",
+    [
+        "snapshot_iter_{}",
+        "snapshot_iter_{}.npz",
+        "{}_snapshot_man_suffix.npz",
+    ],
+)
 def test_find_latest_snapshot(fmt, path):
     files = [fmt.format(i) for i in range(1, 100)]
     base_timestamp = time.time()
 
     for i, file in enumerate(files):
         file = os.path.join(path, file)
-        open(file, 'w').close()
+        open(file, "w").close()
 
         # mtime resolution of some filesystems e.g. ext3 or HFS+
         # is a second and thus snapshot files such as
@@ -234,27 +241,36 @@ def test_find_latest_snapshot(fmt, path):
     assert fmt.format(99) == _find_latest_snapshot(fmt, path, writer.fs)
 
 
-@pytest.mark.parametrize('fmt', [
-    'snapshot_iter_{}_{}',
-    'snapshot_iter_{}_{}.npz',
-    '{}_snapshot_man_{}-suffix.npz',
-    'snapshot_iter_{}.{}',
-])
+@pytest.mark.parametrize(
+    "fmt",
+    [
+        "snapshot_iter_{}_{}",
+        "snapshot_iter_{}_{}.npz",
+        "{}_snapshot_man_{}-suffix.npz",
+        "snapshot_iter_{}.{}",
+    ],
+)
 def test_find_snapshot_files2(fmt, path):
-    files = (fmt.format(i * 10, j * 10) for i, j
-             in itertools.product(range(0, 10), range(0, 10)))
-    noise = ('tmpsnapshot_iter_{}.{}'.format(i, j)
-             for i, j in zip(range(10, 304), range(10, 200)))
+    files = (
+        fmt.format(i * 10, j * 10)
+        for i, j in itertools.product(range(0, 10), range(0, 10))
+    )
+    noise = (
+        "tmpsnapshot_iter_{}.{}".format(i, j)
+        for i, j in zip(range(10, 304), range(10, 200))
+    )
 
     for file in itertools.chain(noise, files):
         file = os.path.join(path, file)
-        open(file, 'w').close()
+        open(file, "w").close()
 
     writer = ppe.writing.SimpleWriter()
     snapshot_files = _find_snapshot_files(fmt, path, writer.fs)
 
-    expected = [fmt.format(i * 10, j * 10)
-                for i, j in itertools.product(range(0, 10), range(0, 10))]
+    expected = [
+        fmt.format(i * 10, j * 10)
+        for i, j in itertools.product(range(0, 10), range(0, 10))
+    ]
 
     timestamps, snapshot_files = zip(*snapshot_files)
     expected.sort()
@@ -262,19 +278,27 @@ def test_find_snapshot_files2(fmt, path):
     assert expected == snapshot_files
 
 
-@pytest.mark.parametrize('length_retain', [
-    (100, 30), (10, 30), (1, 1000),
-    (1000, 1), (1, 1), (1, 3), (2, 3),
-])
+@pytest.mark.parametrize(
+    "length_retain",
+    [
+        (100, 30),
+        (10, 30),
+        (1, 1000),
+        (1000, 1),
+        (1, 1),
+        (1, 3),
+        (2, 3),
+    ],
+)
 def test_find_stale_snapshot(length_retain, path):
     length, retain = length_retain
-    fmt = 'snapshot_iter_{}'
+    fmt = "snapshot_iter_{}"
     files = [fmt.format(i) for i in range(0, length)]
     base_timestamp = time.time() - length * 2
 
     for i, file in enumerate(files):
         file = os.path.join(path, file)
-        open(file, 'w').close()
+        open(file, "w").close()
 
         # Same comment applies here. See comment in ``TestFindSnapshot``
         t = base_timestamp + i
@@ -288,17 +312,18 @@ def test_find_stale_snapshot(length_retain, path):
 
 
 def test_remove_stale_snapshots(path):
-    fmt = 'snapshot_iter_{.iteration}'
+    fmt = "snapshot_iter_{.iteration}"
     retain = 3
-    snapshot = extensions.snapshot(filename=fmt, n_retains=retain,
-                                   autoload=False)
+    snapshot = extensions.snapshot(
+        filename=fmt, n_retains=retain, autoload=False
+    )
 
     trainer = get_trainer(out_dir=path)
-    trainer.extend(snapshot, trigger=(1, 'iteration'), priority=2)
+    trainer.extend(snapshot, trigger=(1, "iteration"), priority=2)
 
     class TimeStampUpdater(training.Extension):
         t = time.time() - 100
-        name = 'ts_updater'
+        name = "ts_updater"
         priority = 1  # This must be called after snapshot taken
 
         def __call__(self, _trainer):
@@ -307,7 +332,7 @@ def test_remove_stale_snapshots(path):
             # For filesystems that does low timestamp precision
             os.utime(filename, (self.t, self.t))
 
-    trainer.extend(TimeStampUpdater(), trigger=(1, 'iteration'))
+    trainer.extend(TimeStampUpdater(), trigger=(1, "iteration"))
     for _ in range(10):
         with trainer.run_iteration():
             pass
@@ -318,13 +343,65 @@ def test_remove_stale_snapshots(path):
     assert retain == len(found)
     found.sort()
     # snapshot_iter_(8, 9, 10) expected
-    expected = ['snapshot_iter_{}'.format(i) for i in range(8, 11)]
+    expected = ["snapshot_iter_{}".format(i) for i in range(8, 11)]
     expected.sort()
     assert expected == found
 
-    trainer2 = get_trainer(
-        out_dir=path, state_to_load=trainer.state_dict())
+    trainer2 = get_trainer(out_dir=path, state_to_load=trainer.state_dict())
     snapshot2 = extensions.snapshot(filename=fmt, autoload=True)
+    # Just making sure no error occurs
+    snapshot2.initialize(trainer2)
+
+
+def test_remove_stale_snapshots_with_writer(path, snapshot_path):
+    fmt = "snapshot_iter_{.iteration}"
+    retain = 3
+    snapshot = extensions.snapshot(
+        filename=fmt,
+        n_retains=retain,
+        writer=ppe.writing.SimpleWriter(out_dir=snapshot_path),
+        autoload=False,
+    )
+
+    trainer = get_trainer(out_dir=path)
+    trainer.extend(snapshot, trigger=(1, "iteration"), priority=2)
+
+    class TimeStampUpdater(training.Extension):
+        t = time.time() - 100
+        name = "ts_updater"
+        priority = 1  # This must be called after snapshot taken
+
+        def __call__(self, _trainer):
+            filename = os.path.join(snapshot_path, fmt.format(_trainer))
+            self.t += 1
+            # For filesystems that does low timestamp precision
+            os.utime(filename, (self.t, self.t))
+
+    trainer.extend(TimeStampUpdater(), trigger=(1, "iteration"))
+    for _ in range(10):
+        with trainer.run_iteration():
+            pass
+    assert 10 == trainer.iteration
+
+    pattern = os.path.join(path, "snapshot_iter_*")
+    found = [os.path.basename(path) for path in glob.glob(pattern)]
+    assert len(found) == 0
+
+    pattern = os.path.join(snapshot_path, "snapshot_iter_*")
+    found = [os.path.basename(path) for path in glob.glob(pattern)]
+    assert retain == len(found)
+    found.sort()
+    # snapshot_iter_(8, 9, 10) expected
+    expected = ["snapshot_iter_{}".format(i) for i in range(8, 11)]
+    expected.sort()
+    assert expected == found
+
+    trainer2 = get_trainer(out_dir=path, state_to_load=trainer.state_dict())
+    snapshot2 = extensions.snapshot(
+        filename=fmt,
+        autoload=True,
+        writer=ppe.writing.SimpleWriter(out_dir=snapshot_path),
+    )
     # Just making sure no error occurs
     snapshot2.initialize(trainer2)
 
@@ -355,7 +432,7 @@ def test_model_transformations(path):
         transform_model=lambda n, x: x.wrapper_module(),
     )
 
-    snapshot = extensions.snapshot(filename='test')
+    snapshot = extensions.snapshot(filename="test")
     snapshot(manager)
 
     assert model.accessed
@@ -364,7 +441,7 @@ def test_model_transformations(path):
 def test_snapshot_autoload_twice(path):
     max_epochs = 10
     iters_per_epoch = 10
-    fmt = 'snapshot_iter_{.iteration}'
+    fmt = "snapshot_iter_{.iteration}"
 
     def get_epoch_indices():
         manager = get_trainer(out_dir=path, epochs=max_epochs)
@@ -384,3 +461,45 @@ def test_snapshot_autoload_twice(path):
 
     epoch_indices = get_epoch_indices()
     assert len(epoch_indices) == 0
+
+
+def test_snapshot_autoload_initialize_without_writer(path):
+    snapshot_filename = "snapshot_file"
+    trainer = get_trainer(out_dir=path)
+    trainer.models["main"]._state_dict = {"value": 0}
+
+    snapshot = extensions.snapshot(filename=snapshot_filename)
+    snapshot(trainer)
+    assert os.path.isfile(os.path.join(path, snapshot_filename))
+
+    trainer2 = get_trainer(out_dir=path)
+    snapshot2 = extensions.snapshot(filename=snapshot_filename, autoload=True)
+
+    assert trainer2.state_dict() != trainer.state_dict()
+    assert snapshot2.initialize(trainer2) == snapshot_filename
+    assert trainer2.state_dict() == trainer.state_dict()
+
+
+def test_snapshot_autoload_with_writer(path, snapshot_path):
+    snapshot_filename = "snapshot_file"
+    trainer = get_trainer(out_dir=path, epochs=10)
+    trainer.models["main"]._state_dict = {"value": 0}
+
+    snapshot = extensions.snapshot(
+        filename=snapshot_filename,
+        writer=ppe.writing.SimpleWriter(out_dir=snapshot_path),
+    )
+    snapshot(trainer)
+    assert os.path.isfile(os.path.join(snapshot_path, snapshot_filename))
+    assert not os.path.isfile(os.path.join(path, snapshot_filename))
+
+    trainer2 = get_trainer(out_dir=path, epochs=0)
+    snapshot2 = extensions.snapshot(
+        filename=snapshot_filename,
+        writer=ppe.writing.SimpleWriter(out_dir=snapshot_path),
+        autoload=True,
+    )
+
+    assert trainer2.state_dict() != trainer.state_dict()
+    assert snapshot2.initialize(trainer2) == snapshot_filename
+    assert trainer2.state_dict() == trainer.state_dict()

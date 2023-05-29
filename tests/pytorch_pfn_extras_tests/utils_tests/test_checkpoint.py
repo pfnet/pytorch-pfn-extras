@@ -1,7 +1,6 @@
 import pytest
-import torch
-
 import pytorch_pfn_extras as ppe
+import torch
 
 
 class SubNet(torch.nn.Module):
@@ -27,9 +26,9 @@ class Net(torch.nn.Module):
     def forward(self, x):
         x = self.bn1(self.conv1(x)).relu()
 
-        if self.checkpoint_type == 'none':
+        if self.checkpoint_type == "none":
             x = self.part1(x)
-        elif self.checkpoint_type == 'bnaware':
+        elif self.checkpoint_type == "bnaware":
             x = ppe.utils.checkpoint.checkpoint(self.part1, x)
 
         x = self.part2(x)
@@ -58,7 +57,7 @@ def _get_bn_stats_test_checkpoint(cp_type):
 
 @pytest.mark.gpu
 def test_checkpoint():
-    baseline = _get_bn_stats_test_checkpoint('none')
-    ckpt = _get_bn_stats_test_checkpoint('bnaware')
+    baseline = _get_bn_stats_test_checkpoint("none")
+    ckpt = _get_bn_stats_test_checkpoint("bnaware")
     for p_b, p_c in zip(baseline, ckpt):
         assert torch.allclose(p_b, p_c)

@@ -4,7 +4,6 @@ from pytorch_pfn_extras.dataset.tabular import tabular_dataset
 
 
 class _Astuple(tabular_dataset.TabularDataset):
-
     def __init__(self, dataset):
         self._dataset = dataset
 
@@ -27,7 +26,6 @@ class _Astuple(tabular_dataset.TabularDataset):
 
 
 class _Asdict(tabular_dataset.TabularDataset):
-
     def __init__(self, dataset):
         self._dataset = dataset
 
