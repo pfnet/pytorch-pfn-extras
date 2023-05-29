@@ -763,20 +763,52 @@ def test_trainer_with_clousure_logic(device, progress_bar, path):
 
 
 @pytest.mark.gpu
-def test_trainer_with_autocast(path):
+@pytest.mark.parametrize("autocast_train", [True, False])
+@pytest.mark.parametrize("autocast_eval", [True, False])
+def test_trainer_with_autocast(path, autocast_train, autocast_eval):
     if not torch.cuda.is_available():
         pytest.skip()
-    model = MyModel()
+
+    class AutocastCheckModel(MyModel):
+        def __init__(self, autocast_train, autocast_eval):
+            super().__init__()
+            self.autocast_train = autocast_train
+            self.autocast_eval = autocast_eval
+
+        def forward(self, x):
+            if self.training:
+                assert torch.is_autocast_enabled() == self.autocast_train
+            if not self.training:
+                assert torch.is_autocast_enabled() == self.autocast_eval
+
+            return super().forward(x)
+
+    model = AutocastCheckModel(
+        autocast_train=autocast_train, autocast_eval=autocast_eval
+    )
     model_with_loss = MyModelWithLossFn(model)
     ppe.to(model_with_loss, "cuda")
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    data = torch.utils.data.DataLoader(
+        [
+            {
+                "x": torch.rand(
+                    20,
+                ),
+                "t": torch.rand(
+                    10,
+                ),
+            }
+            for i in range(10)
+        ]
+    )
     extensions = []
-    autocast_options = {"autocast": True}
+
     evaluator = engine.create_evaluator(
-        model_with_loss, device="cuda", options=autocast_options
+        model_with_loss, device="cuda", options={"autocast": autocast_eval}
     )
 
-    engine.create_trainer(
+    trainer = engine.create_trainer(
         model_with_loss,
         optimizer,
         20,
@@ -784,5 +816,7 @@ def test_trainer_with_autocast(path):
         evaluator=evaluator,
         extensions=extensions,
         out_dir=path,
-        options=autocast_options,
+        options={"autocast": autocast_train},
     )
+
+    trainer.run(data, data)
