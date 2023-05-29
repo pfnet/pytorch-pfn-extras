@@ -1,9 +1,7 @@
-import pytest
 import numpy
+import pytest
 import torch
-
 from pytorch_pfn_extras import training
-
 from pytorch_pfn_extras.training.extensions import FailOnNonNumber
 
 
@@ -16,8 +14,9 @@ class Dataset(torch.utils.data.Dataset):
         return len(self.values)
 
     def __getitem__(self, idx):
-        return numpy.array(
-            [self.values[idx]], numpy.float32), numpy.int64(idx % 2)
+        return numpy.array([self.values[idx]], numpy.float32), numpy.int64(
+            idx % 2
+        )
 
 
 class Model(torch.nn.Module):
@@ -40,18 +39,18 @@ class ErroneousFunc(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_output):
-        return grad_output + float('nan')
+        return grad_output + float("nan")
 
 
 def get_manager_model_optimizer(*, check_grad=True, grad_error=False):
     epochs = 3
     model = Model(grad_error)
     optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
-    optimizers = {'main': optimizer}
-    models = {'main': model}
+    optimizers = {"main": optimizer}
+    models = {"main": model}
     manager = training.ExtensionsManager(
-        models, optimizers, epochs,
-        iters_per_epoch=4)
+        models, optimizers, epochs, iters_per_epoch=4
+    )
     manager.extend(FailOnNonNumber(check_grad=check_grad))
     return manager, model, optimizer
 
@@ -79,27 +78,29 @@ def test_valid():
 def test_nan():
     manager, model, optimizer = get_manager_model_optimizer()
     with torch.no_grad():
-        model.l1.weight[1, 0] = float('NaN')
-    with pytest.raises(RuntimeError, match='diverge'):
+        model.l1.weight[1, 0] = float("NaN")
+    with pytest.raises(RuntimeError, match="diverge"):
         run_train(manager, model, optimizer)
 
 
 def test_inf():
     manager, model, optimizer = get_manager_model_optimizer()
     with torch.no_grad():
-        model.l1.weight[2, 0] = float('inf')
-    with pytest.raises(RuntimeError, match='diverge'):
+        model.l1.weight[2, 0] = float("inf")
+    with pytest.raises(RuntimeError, match="diverge"):
         run_train(manager, model, optimizer)
 
 
 def test_check_grad():
     manager, model, optimizer = get_manager_model_optimizer(
-        check_grad=True, grad_error=True)
-    with pytest.raises(RuntimeError, match='diverge'):
+        check_grad=True, grad_error=True
+    )
+    with pytest.raises(RuntimeError, match="diverge"):
         run_train(manager, model, optimizer, optimizer_step=False)
 
 
 def test_no_check_grad():
     manager, model, optimizer = get_manager_model_optimizer(
-        check_grad=False, grad_error=True)
+        check_grad=False, grad_error=True
+    )
     run_train(manager, model, optimizer, optimizer_step=False)

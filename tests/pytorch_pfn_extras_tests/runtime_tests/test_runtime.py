@@ -1,22 +1,19 @@
 import contextlib
 
 import pytest
-import torch
-
 import pytorch_pfn_extras as ppe
+import torch
 
 
 @pytest.mark.skipif(
-    not torch.cuda.is_available(),
-    reason='Moving across devices requires CUDA'
+    not torch.cuda.is_available(), reason="Moving across devices requires CUDA"
 )
 class TestPytorchRuntime:
-    @pytest.mark.parametrize('device', ['cpu', 'cuda'])
+    @pytest.mark.parametrize("device", ["cpu", "cuda"])
     @pytest.mark.parametrize(
-        'batch', [{'x': torch.zeros(1)},
-                  [torch.zeros(1)],
-                  torch.zeros(1),
-                  object()])
+        "batch",
+        [{"x": torch.zeros(1)}, [torch.zeros(1)], torch.zeros(1), object()],
+    )
     def test_convert_batch(self, device, batch):
         rt = ppe.runtime.PyTorchRuntime(device, {})
         cbatch = rt.convert_batch(batch)
@@ -31,14 +28,14 @@ class TestPytorchRuntime:
         else:
             assert cbatch is batch
 
-    @pytest.mark.parametrize('device', ['cpu', 'cuda'])
+    @pytest.mark.parametrize("device", ["cpu", "cuda"])
     def test_move_module(self, device):
         rt = ppe.runtime.PyTorchRuntime(device, {})
         module = torch.nn.Linear(1, 1)
         module = rt.move_module(module)
         assert module.weight.device.type == device
 
-    @pytest.mark.parametrize('device', ['cpu', 'cuda'])
+    @pytest.mark.parametrize("device", ["cpu", "cuda"])
     def test_move_tensor(self, device):
         rt = ppe.runtime.PyTorchRuntime(device, {})
         tensor = torch.zeros(10)
@@ -66,20 +63,20 @@ class SplitModule(torch.nn.Module):
         super().__init__()
         self.layer1 = torch.nn.Linear(10, 10)
         self.layer2 = torch.nn.Linear(10, 10)
-        ppe.to(self.layer2, device='dummy', runtime_class=DummyRuntime)
+        ppe.to(self.layer2, device="dummy", runtime_class=DummyRuntime)
 
 
 def test_runtime_container():
     module = MyModule()
     # This is a top module, so it won't show child ones
     for _ in ppe.runtime._runtime.named_runtime_modules(module):
-        pytest.fail('Never reach')
+        pytest.fail("Never reach")
 
 
 def test_split_runtime_container():
     module = SplitModule()
     for name, mod in ppe.runtime._runtime.named_runtime_modules(module):
-        assert name == 'layer2'
+        assert name == "layer2"
         assert mod is module.layer2
 
 
@@ -89,24 +86,29 @@ def test_split_runtime_container_recursive():
             super().__init__()
             self.layer1 = SplitModule()
             self.layer2 = SplitModule()
+
     module = MultiLevelSplitModule()
-    expected = [('layer2', module.layer1.layer2),
-                ('layer2', module.layer2.layer2)]
+    expected = [
+        ("layer2", module.layer1.layer2),
+        ("layer2", module.layer2.layer2),
+    ]
     for expected, (name, mod) in zip(
-            expected, ppe.runtime._runtime.named_runtime_modules(module)):
+        expected, ppe.runtime._runtime.named_runtime_modules(module)
+    ):
         assert name == expected[0]
         assert mod is expected[1]
 
     for _ in zip(
-            expected, ppe.runtime._runtime.named_runtime_modules(
-            module, recursive=False)):
-        pytest.fail('Never reach')
+        expected,
+        ppe.runtime._runtime.named_runtime_modules(module, recursive=False),
+    ):
+        pytest.fail("Never reach")
 
 
 def test_module_change_forward():
     class Module1(torch.nn.Module):
         def forward(self, input):
-            raise RuntimeError('The module forward should never be executed')
+            raise RuntimeError("The module forward should never be executed")
 
     class Module2:
         def __init__(self):
@@ -129,7 +131,7 @@ def test_module_change_forward():
     with pytest.raises(RuntimeError):
         module(None)
 
-    ppe.to(module, device='dummy', runtime_class=ForwardIntercepterRuntime)
+    ppe.to(module, device="dummy", runtime_class=ForwardIntercepterRuntime)
     assert int(module(None)) == 5
 
 
@@ -164,9 +166,9 @@ def test_tracer():
             called = 2
 
     assert called == 0
-    with ppe.runtime.BaseRuntime.trace('dummy', None):
+    with ppe.runtime.BaseRuntime.trace("dummy", None):
         assert called == 0
     assert called == 0
-    with TracerRuntime.trace('dummy', None):
+    with TracerRuntime.trace("dummy", None):
         assert called == 1
     assert called == 2

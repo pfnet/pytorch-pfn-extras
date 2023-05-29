@@ -1,7 +1,9 @@
 from typing import Any, Dict
 
 from pytorch_pfn_extras.training import trigger
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 
 class OnceTrigger(trigger.Trigger):
@@ -38,11 +40,11 @@ class OnceTrigger(trigger.Trigger):
         return fire
 
     def state_dict(self) -> Dict[str, Any]:
-        state = {'_flag_first': self._flag_first}
+        state = {"_flag_first": self._flag_first}
         return state
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
-        self._flag_first = to_load['_flag_first']
+        self._flag_first = to_load["_flag_first"]
 
     def may_fire(self, iteration: int, epoch_length: int) -> bool:
         return not (self._flag_first or self._flag_resumed)

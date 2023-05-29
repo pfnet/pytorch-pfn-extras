@@ -1,14 +1,12 @@
 import multiprocessing
-import threading
 import tempfile
+import threading
 from unittest import mock
 
 import pytest
-
 from pytorch_pfn_extras import writing
 
-
-spshot_writers_path = 'pytorch_pfn_extras.writing'
+spshot_writers_path = "pytorch_pfn_extras.writing"
 
 
 def test_simple_writer():
@@ -16,10 +14,10 @@ def test_simple_writer():
     w = writing.SimpleWriter(foo=True)
     savefun = mock.MagicMock()
     with tempfile.TemporaryDirectory() as tempd:
-        w('myfile.dat', tempd, target, savefun=savefun)
+        w("myfile.dat", tempd, target, savefun=savefun)
     assert savefun.call_count == 1
     assert savefun.call_args[0][0] == target
-    assert savefun.call_args[1]['foo'] is True
+    assert savefun.call_args[1]["foo"] is True
 
 
 def test_standard_writer():
@@ -27,11 +25,11 @@ def test_standard_writer():
     w = writing.StandardWriter()
     worker = mock.MagicMock()
     worker.exitcode = 0
-    name = spshot_writers_path + '.StandardWriter.create_worker'
+    name = spshot_writers_path + ".StandardWriter.create_worker"
     with mock.patch(name, return_value=worker):
         with tempfile.TemporaryDirectory() as tempd:
-            w('myfile.dat', tempd, target)
-            w('myfile.dat', tempd, target)
+            w("myfile.dat", tempd, target)
+            w("myfile.dat", tempd, target)
             w.finalize()
 
         assert worker.start.call_count == 2
@@ -42,16 +40,16 @@ def test_thread_writer_create_worker():
     target = mock.MagicMock()
     w = writing.ThreadWriter()
     with tempfile.TemporaryDirectory() as tempd:
-        worker = w.create_worker('myfile.dat', tempd, target, append=False)
+        worker = w.create_worker("myfile.dat", tempd, target, append=False)
         assert isinstance(worker, threading.Thread)
-        w('myfile2.dat', tempd, 'test')
+        w("myfile2.dat", tempd, "test")
         w.finalize()
 
 
 def test_thread_writer_fail():
     w = writing.ThreadWriter(savefun=None)
     with tempfile.TemporaryDirectory() as tempd:
-        w('myfile2.dat', tempd, 'test')
+        w("myfile2.dat", tempd, "test")
         with pytest.raises(RuntimeError):
             w.finalize()
 
@@ -60,16 +58,16 @@ def test_process_writer_create_worker():
     target = mock.MagicMock()
     w = writing.ProcessWriter()
     with tempfile.TemporaryDirectory() as tempd:
-        worker = w.create_worker('myfile.dat', tempd, target, append=False)
+        worker = w.create_worker("myfile.dat", tempd, target, append=False)
         assert isinstance(worker, multiprocessing.Process)
-        w('myfile2.dat', tempd, 'test')
+        w("myfile2.dat", tempd, "test")
         w.finalize()
 
 
 def test_process_writer_fail():
     w = writing.ProcessWriter(savefun=None)
     with tempfile.TemporaryDirectory() as tempd:
-        w('myfile2.dat', tempd, 'test')
+        w("myfile2.dat", tempd, "test")
         with pytest.raises(RuntimeError):
             w.finalize()
 
@@ -78,15 +76,17 @@ def test_queue_writer():
     target = mock.MagicMock()
     q = mock.MagicMock()
     consumer = mock.MagicMock()
-    names = [spshot_writers_path + '.QueueWriter.create_queue',
-             spshot_writers_path + '.QueueWriter.create_consumer']
+    names = [
+        spshot_writers_path + ".QueueWriter.create_queue",
+        spshot_writers_path + ".QueueWriter.create_consumer",
+    ]
     with mock.patch(names[0], return_value=q):
         with mock.patch(names[1], return_value=consumer):
             w = writing.QueueWriter()
 
             with tempfile.TemporaryDirectory() as tempd:
-                w('myfile.dat', tempd, target)
-                w('myfile.dat', tempd, target)
+                w("myfile.dat", tempd, target)
+                w("myfile.dat", tempd, target)
                 w.finalize()
 
             assert consumer.start.call_count == 1
@@ -96,8 +96,10 @@ def test_queue_writer():
 
 
 def test_queue_writer_consume():
-    names = [spshot_writers_path + '.QueueWriter.create_queue',
-             spshot_writers_path + '.QueueWriter.create_consumer']
+    names = [
+        spshot_writers_path + ".QueueWriter.create_queue",
+        spshot_writers_path + ".QueueWriter.create_consumer",
+    ]
     with mock.patch(names[0]):
         with mock.patch(names[1]):
             task = mock.MagicMock()

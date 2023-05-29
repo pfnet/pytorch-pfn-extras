@@ -12,7 +12,7 @@ def _get_ignite_version(version: str) -> List[int]:
     # major and minor ids can be only integers.
     # Some examples of versions are:
     # 0.1.0, 0.1.1, 0.3.0.dev20191007, 0.3.0.
-    version_regexp = r'^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9a-zA-Z]+)?$'
+    version_regexp = r"^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9a-zA-Z]+)?$"
     if re.search(version_regexp, version):
-        return [int(x) for x in version.split('.')[:2]]
-    raise ValueError('Invalid version format')
+        return [int(x) for x in version.split(".")[:2]]
+    raise ValueError("Invalid version format")

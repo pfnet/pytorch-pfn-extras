@@ -2,10 +2,9 @@ import tempfile
 import typing
 
 import pytest
+import pytorch_pfn_extras as ppe
 import torch
 import torch.nn.functional as F
-
-import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras_tests.runtime_tests.test_jit_runtime import JITRuntime
 
 
@@ -25,18 +24,28 @@ class Model(torch.nn.Module):
 
 
 def _get_trainer(
-        model_class, device, args, loader, *,
-        seed=0, max_epochs=10, stop_trigger=None):
+    model_class,
+    device,
+    args,
+    loader,
+    *,
+    seed=0,
+    max_epochs=10,
+    stop_trigger=None,
+):
     torch.manual_seed(seed)
     model = model_class(device, *args)
     ppe.to(model, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
     trainer = ppe.engine.create_trainer(
-        model, optimizer, max_epochs, device=device, stop_trigger=stop_trigger)
+        model, optimizer, max_epochs, device=device, stop_trigger=stop_trigger
+    )
     return trainer, (loader,)
 
 
-def _get_evaluator(model_class, device, args, loader, *, seed=0, max_epochs=None):
+def _get_evaluator(
+    model_class, device, args, loader, *, seed=0, max_epochs=None
+):
     torch.manual_seed(seed)
     model = model_class(device, *args)
     ppe.to(model, device)
@@ -45,22 +54,35 @@ def _get_evaluator(model_class, device, args, loader, *, seed=0, max_epochs=None
 
 
 def _get_trainer_with_evaluator(
-        model_class, device, args, loader, *,
-        seed=0, max_epochs=10, stop_trigger=None):
+    model_class,
+    device,
+    args,
+    loader,
+    *,
+    seed=0,
+    max_epochs=10,
+    stop_trigger=None,
+):
     torch.manual_seed(seed)
     model = model_class(device, *args)
     ppe.to(model, device)
     optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
     evaluator = ppe.engine.create_evaluator(model, device=device)
     trainer = ppe.engine.create_trainer(
-        model, optimizer, max_epochs, device=device,
-        evaluator=evaluator, stop_trigger=stop_trigger)
+        model,
+        optimizer,
+        max_epochs,
+        device=device,
+        evaluator=evaluator,
+        stop_trigger=stop_trigger,
+    )
     return trainer, (loader, loader)
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_compare_every_epoch(engine_fn):
     loader = list(torch.ones(10) for _ in range(10))
     engine_cpu, loaders_cpu = engine_fn(Model, "cpu", [1.0], loader)
@@ -72,8 +94,9 @@ def test_compare_every_epoch(engine_fn):
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_comparer_wrong(engine_fn):
     loader = list(torch.ones(10) for _ in range(10))
     engine_cpu, loaders_cpu = engine_fn(Model, "cpu", [1.0], loader)
@@ -91,7 +114,10 @@ class _CustomComparer:
         self.n_iters = n_iters
 
     def __call__(self, eng_name_1, eng_name_2, out_name, out_1, out_2):
-        assert out_name in ("output:a", "output:iter",)
+        assert out_name in (
+            "output:a",
+            "output:iter",
+        )
         assert eng_name_1 in ("cpu", "gpu")
         assert eng_name_1 != eng_name_2
         if out_name == "output:iter":
@@ -104,16 +130,22 @@ class _CustomComparer:
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_trainer_with_evaluator]
+)
 def test_comparer_trigger(engine_fn):
     n_iters = 3
     loader = list(torch.ones(10) for _ in range(10))
-    trainer_cpu, loaders_cpu = engine_fn(Model, "cpu", [1.0], loader, max_epochs=1)
-    trainer_gpu, loaders_gpu = engine_fn(Model, "cuda:0", [1.0], loader, max_epochs=1)
+    trainer_cpu, loaders_cpu = engine_fn(
+        Model, "cpu", [1.0], loader, max_epochs=1
+    )
+    trainer_gpu, loaders_gpu = engine_fn(
+        Model, "cuda:0", [1.0], loader, max_epochs=1
+    )
     compare_fn = _CustomComparer(n_iters)
     comp = ppe.utils.comparer.Comparer(
-        trigger=(n_iters, "iteration"), compare_fn=compare_fn)
+        trigger=(n_iters, "iteration"), compare_fn=compare_fn
+    )
     comp.add_engine("cpu", trainer_cpu, *loaders_cpu)
     comp.add_engine("gpu", trainer_gpu, *loaders_gpu)
     comp.compare()
@@ -124,8 +156,9 @@ def test_comparer_trigger(engine_fn):
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_comparer_kwargs(engine_fn):
     loader = list(torch.ones(10) for _ in range(10))
     engine_cpu, loaders_cpu = engine_fn(Model, "cpu", [1.0], loader)
@@ -138,13 +171,15 @@ def test_comparer_kwargs(engine_fn):
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_trainer_with_evaluator]
+)
 def test_comparer_incompat_trigger(engine_fn):
     loader = list(torch.ones(10) for _ in range(10))
     trainer_cpu, loaders_cpu = engine_fn(Model, "cpu", [1.0], loader)
-    trainer_gpu, loaders_gpu = engine_fn(Model, "cuda:0", [1.0], loader,
-                                         stop_trigger=(1, "iteration"))
+    trainer_gpu, loaders_gpu = engine_fn(
+        Model, "cuda:0", [1.0], loader, stop_trigger=(1, "iteration")
+    )
     comp = ppe.utils.comparer.Comparer(outputs=["a"])
     comp.add_engine("cpu", trainer_cpu, *loaders_cpu)
     comp.add_engine("gpu", trainer_gpu, *loaders_gpu)
@@ -153,8 +188,9 @@ def test_comparer_incompat_trigger(engine_fn):
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_compare_concurrency(engine_fn):
     loader = list(torch.ones(10) for _ in range(10))
     engine_cpu, loaders_cpu = engine_fn(Model, "cpu", [1.0], loader)
@@ -166,8 +202,9 @@ def test_compare_concurrency(engine_fn):
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_compare_concurrency_wrong(engine_fn):
     loader = list(torch.ones(10) for _ in range(10))
     engine_cpu, loaders_cpu = engine_fn(Model, "cpu", [1.0], loader)
@@ -195,8 +232,9 @@ class ModelForComparer(torch.nn.Module):
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_model_comparer(engine_fn):
     loader = list(torch.ones(2, 10, 10, 10) for _ in range(10))
     engine_cpu, loaders_cpu = engine_fn(ModelForComparer, "cpu", [], loader)
@@ -210,12 +248,17 @@ def test_model_comparer(engine_fn):
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_model_comparer_invalid(engine_fn):
     loader = list(torch.ones(2, 10, 10, 10) for _ in range(10))
-    engine_cpu, loaders_cpu = engine_fn(ModelForComparer, "cpu", [], loader, seed=0)
-    engine_gpu, loaders_gpu = engine_fn(ModelForComparer, "cuda:0", [], loader, seed=1)
+    engine_cpu, loaders_cpu = engine_fn(
+        ModelForComparer, "cpu", [], loader, seed=0
+    )
+    engine_gpu, loaders_gpu = engine_fn(
+        ModelForComparer, "cuda:0", [], loader, seed=1
+    )
     comp = ppe.utils.comparer.Comparer(outputs=["a"])
     compare_fn = ppe.utils.comparer.get_default_comparer(rtol=1e-2, atol=1e-2)
     comp = ppe.utils.comparer.Comparer(compare_fn=compare_fn, params=True)
@@ -239,8 +282,9 @@ class ModelRetTuple(torch.nn.Module):
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_compare_tuple_output(engine_fn):
     loader = list(torch.ones(10) for _ in range(10))
     engine_cpu, loaders_cpu = engine_fn(ModelRetTuple, "cpu", [1.0], loader)
@@ -270,12 +314,17 @@ class ModelRetNamedTuple(torch.nn.Module):
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_compare_namedtuple_output(engine_fn):
     loader = list(torch.ones(10) for _ in range(10))
-    engine_cpu, loaders_cpu = engine_fn(ModelRetNamedTuple, "cpu", [1.0], loader)
-    engine_gpu, loaders_gpu = engine_fn(ModelRetNamedTuple, "cuda:0", [1.0], loader)
+    engine_cpu, loaders_cpu = engine_fn(
+        ModelRetNamedTuple, "cpu", [1.0], loader
+    )
+    engine_gpu, loaders_gpu = engine_fn(
+        ModelRetNamedTuple, "cuda:0", [1.0], loader
+    )
     comp = ppe.utils.comparer.Comparer()
     comp.add_engine("cpu", engine_cpu, *loaders_cpu)
     comp.add_engine("gpu", engine_gpu, *loaders_gpu)
@@ -290,76 +339,122 @@ class MyModel(torch.nn.Module):
 
     def forward(self, x, t):
         y = self.model(x)
-        prefix = 'train' if self.training else 'val'
+        prefix = "train" if self.training else "val"
         loss = F.l1_loss(y, t)
-        ppe.reporting.report({prefix + '/loss': loss})
+        ppe.reporting.report({prefix + "/loss": loss})
         return loss + self.offset
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_jit_runtime_output_comparer(engine_fn):
     loader = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+        [
+            (
+                torch.rand(
+                    20,
+                ),
+                torch.rand(
+                    10,
+                ),
+            )
+            for i in range(100)
+        ]
+    )
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(MyModel, "cpu", [0.0], loader)
     engine_gpu, loaders_gpu = engine_fn(MyModel, "cuda:0", [0.0], loader)
     engine_jit, loaders_jit = engine_fn(MyModel, "jit-cpu", [0.0], loader)
     comp = ppe.utils.comparer.Comparer()
-    comp.add_engine('cpu', engine_cpu, *loaders_cpu)
-    comp.add_engine('gpu', engine_gpu, *loaders_gpu)
-    comp.add_engine('jit', engine_jit, *loaders_jit)
+    comp.add_engine("cpu", engine_cpu, *loaders_cpu)
+    comp.add_engine("gpu", engine_gpu, *loaders_gpu)
+    comp.add_engine("jit", engine_jit, *loaders_jit)
     comp.compare()
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_jit_runtime_output_comparer_invalid(engine_fn):
     loader = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+        [
+            (
+                torch.rand(
+                    20,
+                ),
+                torch.rand(
+                    10,
+                ),
+            )
+            for i in range(100)
+        ]
+    )
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(MyModel, "cpu", [0.0], loader)
     engine_gpu, loaders_gpu = engine_fn(MyModel, "cuda:0", [0.0], loader)
     engine_jit, loaders_jit = engine_fn(MyModel, "jit-cpu", [0.5], loader)
     comp = ppe.utils.comparer.Comparer()
-    comp.add_engine('cpu', engine_cpu, *loaders_cpu)
-    comp.add_engine('gpu', engine_gpu, *loaders_gpu)
-    comp.add_engine('jit', engine_jit, *loaders_jit)
+    comp.add_engine("cpu", engine_cpu, *loaders_cpu)
+    comp.add_engine("gpu", engine_gpu, *loaders_gpu)
+    comp.add_engine("jit", engine_jit, *loaders_jit)
     with pytest.raises(AssertionError):
         comp.compare()
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_jit_runtime_model_comparer(engine_fn):
-    loader = torch.utils.data.DataLoader([torch.rand(20,) for i in range(100)])
+    loader = torch.utils.data.DataLoader(
+        [
+            torch.rand(
+                20,
+            )
+            for i in range(100)
+        ]
+    )
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(ModelForComparer, "cpu", [], loader)
     engine_gpu, loaders_gpu = engine_fn(ModelForComparer, "cuda:0", [], loader)
     engine_jit, loaders_jit = engine_fn(ModelForComparer, "jit-cpu", [], loader)
     comp = ppe.utils.comparer.Comparer(params=True)
-    comp.add_engine('cpu', engine_cpu, *loaders_cpu)
-    comp.add_engine('gpu', engine_gpu, *loaders_gpu)
-    comp.add_engine('jit', engine_jit, *loaders_jit)
+    comp.add_engine("cpu", engine_cpu, *loaders_cpu)
+    comp.add_engine("gpu", engine_gpu, *loaders_gpu)
+    comp.add_engine("jit", engine_jit, *loaders_jit)
     comp.compare()
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_jit_runtime_model_comparer_invalid(engine_fn):
-    loader = torch.utils.data.DataLoader([torch.rand(20,) for i in range(100)])
+    loader = torch.utils.data.DataLoader(
+        [
+            torch.rand(
+                20,
+            )
+            for i in range(100)
+        ]
+    )
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
-    engine_cpu, loaders_cpu = engine_fn(ModelForComparer, "cpu", [], loader, seed=0)
-    engine_gpu, loaders_gpu = engine_fn(ModelForComparer, "cuda:0", [], loader, seed=0)
-    engine_jit, loaders_jit = engine_fn(ModelForComparer, "jit-cpu", [], loader, seed=1)
+    engine_cpu, loaders_cpu = engine_fn(
+        ModelForComparer, "cpu", [], loader, seed=0
+    )
+    engine_gpu, loaders_gpu = engine_fn(
+        ModelForComparer, "cuda:0", [], loader, seed=0
+    )
+    engine_jit, loaders_jit = engine_fn(
+        ModelForComparer, "jit-cpu", [], loader, seed=1
+    )
     comp = ppe.utils.comparer.Comparer(params=True)
-    comp.add_engine('cpu', engine_cpu, *loaders_cpu)
-    comp.add_engine('gpu', engine_gpu, *loaders_gpu)
-    comp.add_engine('jit', engine_jit, *loaders_jit)
+    comp.add_engine("cpu", engine_cpu, *loaders_cpu)
+    comp.add_engine("gpu", engine_gpu, *loaders_gpu)
+    comp.add_engine("jit", engine_jit, *loaders_jit)
     with pytest.raises(AssertionError):
         comp.compare()
 
@@ -373,104 +468,156 @@ class ModelForIntermediateValue(torch.nn.Module):
     def forward(self, x, t):
         y = self.model(x)
         for i in range(5):
-            ppe.utils.comparer.intermediate_value('y', y + self.hidden + i)
+            ppe.utils.comparer.intermediate_value("y", y + self.hidden + i)
         loss = F.l1_loss(y, t)
         return loss
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_compare_intermediate(engine_fn):
     loader = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+        [
+            (
+                torch.rand(
+                    20,
+                ),
+                torch.rand(
+                    10,
+                ),
+            )
+            for i in range(100)
+        ]
+    )
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(
-        ModelForIntermediateValue, "cpu", [10.0], loader)
+        ModelForIntermediateValue, "cpu", [10.0], loader
+    )
     engine_gpu, loaders_gpu = engine_fn(
-        ModelForIntermediateValue, "cuda:0", [10.0], loader)
+        ModelForIntermediateValue, "cuda:0", [10.0], loader
+    )
     engine_jit, loaders_jit = engine_fn(
-        ModelForIntermediateValue, "jit-cpu", [10.0], loader)
+        ModelForIntermediateValue, "jit-cpu", [10.0], loader
+    )
     comp = ppe.utils.comparer.Comparer()
-    comp.add_engine('cpu', engine_cpu, *loaders_cpu)
-    comp.add_engine('gpu', engine_gpu, *loaders_gpu)
-    comp.add_engine('jit', engine_jit, *loaders_jit)
+    comp.add_engine("cpu", engine_cpu, *loaders_cpu)
+    comp.add_engine("gpu", engine_gpu, *loaders_gpu)
+    comp.add_engine("jit", engine_jit, *loaders_jit)
     comp.compare()
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_compare_intermediate_invalid(engine_fn):
     loader = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(100)])
+        [
+            (
+                torch.rand(
+                    20,
+                ),
+                torch.rand(
+                    10,
+                ),
+            )
+            for i in range(100)
+        ]
+    )
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(
-        ModelForIntermediateValue, "cpu", [10.0], loader)
+        ModelForIntermediateValue, "cpu", [10.0], loader
+    )
     engine_gpu, loaders_gpu = engine_fn(
-        ModelForIntermediateValue, "cuda:0", [10.0], loader)
+        ModelForIntermediateValue, "cuda:0", [10.0], loader
+    )
     engine_jit, loaders_jit = engine_fn(
-        ModelForIntermediateValue, "jit-cpu", [11.1], loader)
+        ModelForIntermediateValue, "jit-cpu", [11.1], loader
+    )
     comp = ppe.utils.comparer.Comparer()
-    comp.add_engine('cpu', engine_cpu, *loaders_cpu)
-    comp.add_engine('gpu', engine_gpu, *loaders_gpu)
-    comp.add_engine('jit', engine_jit, *loaders_jit)
+    comp.add_engine("cpu", engine_cpu, *loaders_cpu)
+    comp.add_engine("gpu", engine_gpu, *loaders_gpu)
+    comp.add_engine("jit", engine_jit, *loaders_jit)
     with pytest.raises(AssertionError):
         comp.compare()
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 @pytest.mark.parametrize("model_class", [MyModel, ModelForIntermediateValue])
 @pytest.mark.parametrize("params", [False, True])
 def test_dump(engine_fn, model_class, params):
     loader = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(5)])
+        [
+            (
+                torch.rand(
+                    20,
+                ),
+                torch.rand(
+                    10,
+                ),
+            )
+            for i in range(5)
+        ]
+    )
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(model_class, "cpu", [1.0], loader)
     engine_gpu, loaders_gpu = engine_fn(model_class, "cuda:0", [1.0], loader)
     engine_jit, loaders_jit = engine_fn(model_class, "jit-cpu", [1.0], loader)
     comp = ppe.utils.comparer.Comparer(params=params)
     with tempfile.TemporaryDirectory() as tmpdir:
-        comp.dump(engine_cpu, f'{tmpdir}/cpu', *loaders_cpu)
-        comp.dump(engine_gpu, f'{tmpdir}/gpu', *loaders_gpu)
-        comp.dump(engine_jit, f'{tmpdir}/jit', *loaders_jit)
-        comp.add_dump('cpu', f'{tmpdir}/cpu')
-        comp.add_dump('gpu', f'{tmpdir}/gpu')
-        comp.add_dump('jit', f'{tmpdir}/jit')
+        comp.dump(engine_cpu, f"{tmpdir}/cpu", *loaders_cpu)
+        comp.dump(engine_gpu, f"{tmpdir}/gpu", *loaders_gpu)
+        comp.dump(engine_jit, f"{tmpdir}/jit", *loaders_jit)
+        comp.add_dump("cpu", f"{tmpdir}/cpu")
+        comp.add_dump("gpu", f"{tmpdir}/gpu")
+        comp.add_dump("jit", f"{tmpdir}/jit")
         comp.compare()
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
-@pytest.mark.parametrize("model_class", [
-    MyModel, ModelForIntermediateValue])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
+@pytest.mark.parametrize("model_class", [MyModel, ModelForIntermediateValue])
 def test_dump_invalid(engine_fn, model_class):
     loader = torch.utils.data.DataLoader(
-        [(torch.rand(20,), torch.rand(10,)) for i in range(5)])
+        [
+            (
+                torch.rand(
+                    20,
+                ),
+                torch.rand(
+                    10,
+                ),
+            )
+            for i in range(5)
+        ]
+    )
     ppe.runtime.runtime_registry.register("jit-cpu", JITRuntime)
     engine_cpu, loaders_cpu = engine_fn(model_class, "cpu", [1.0], loader)
     engine_gpu, loaders_gpu = engine_fn(model_class, "cuda:0", [1.0], loader)
     engine_jit, loaders_jit = engine_fn(model_class, "jit-cpu", [2.0], loader)
     comp = ppe.utils.comparer.Comparer()
-    with tempfile.TemporaryDirectory() as tmpdir1, \
-         tempfile.TemporaryDirectory() as tmpdir2, \
-         tempfile.TemporaryDirectory() as tmpdir3:
+    with tempfile.TemporaryDirectory() as tmpdir1, tempfile.TemporaryDirectory() as tmpdir2, tempfile.TemporaryDirectory() as tmpdir3:
         comp.dump(engine_cpu, tmpdir1, *loaders_cpu)
         comp.dump(engine_gpu, tmpdir2, *loaders_gpu)
         comp.dump(engine_jit, tmpdir3, *loaders_jit)
-        comp.add_dump('cpu', tmpdir1)
-        comp.add_dump('gpu', tmpdir2)
-        comp.add_dump('jit', tmpdir3)
+        comp.add_dump("cpu", tmpdir1)
+        comp.add_dump("gpu", tmpdir2)
+        comp.add_dump("jit", tmpdir3)
         with pytest.raises(AssertionError):
             comp.compare()
 
 
 @pytest.mark.gpu
-@pytest.mark.parametrize("engine_fn", [
-    _get_trainer, _get_evaluator, _get_trainer_with_evaluator])
+@pytest.mark.parametrize(
+    "engine_fn", [_get_trainer, _get_evaluator, _get_trainer_with_evaluator]
+)
 def test_compare_baseline(engine_fn):
     loader = list(torch.ones(10) for _ in range(10))
     engine_cpu, loaders_cpu = engine_fn(Model, "cpu", [1.0], loader)

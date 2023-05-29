@@ -1,11 +1,14 @@
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
 import types
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 from pytorch_pfn_extras.training import _trigger_util
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training._trigger_util import TriggerLike
+
     ExtensionLike = Callable[[ExtensionsManagerProtocol], Any]
 
 
@@ -46,7 +49,8 @@ class Extension:
             :meth:`pytorch_pfn_extras.ExtensionsManager.extend` for details.
 
     """
-    trigger: 'TriggerLike' = (1, 'iteration')
+
+    trigger: "TriggerLike" = (1, "iteration")
     priority: int = PRIORITY_READER
     name: Optional[str] = None
     needs_model_state = False
@@ -77,15 +81,18 @@ class Extension:
 
         """
         raise NotImplementedError(
-            'Extension implementation must override __call__.')
+            "Extension implementation must override __call__."
+        )
 
     def __getattr__(self, name: str) -> Any:
-        if name == 'invoke_before_training':
+        if name == "invoke_before_training":
             raise AttributeError(
-                'invoke_before_training has been removed since Chainer '
-                'v2.0.0. Use Extension.initialize instead.')
-        raise AttributeError('{} object has no attribute {}'.format(
-            type(self).__name__, name))
+                "invoke_before_training has been removed since Chainer "
+                "v2.0.0. Use Extension.initialize instead."
+            )
+        raise AttributeError(
+            "{} object has no attribute {}".format(type(self).__name__, name)
+        )
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
         """Finalizes the extension.
@@ -113,10 +120,10 @@ class Extension:
         pass
 
     def on_error(
-            self,
-            manager: ExtensionsManagerProtocol,
-            exc: Exception,
-            tb: types.TracebackType,
+        self,
+        manager: ExtensionsManagerProtocol,
+        exc: Exception,
+        tb: types.TracebackType,
     ) -> None:
         """Handles the error raised during training before finalization.
 
@@ -148,47 +155,47 @@ class Extension:
 
 
 class _WrappedExtension(Extension):
-
-    def __init__(self, ext: 'ExtensionLike') -> None:
+    def __init__(self, ext: "ExtensionLike") -> None:
         self._ext = ext
-        self.trigger = getattr(self._ext, 'trigger', Extension.trigger)
-        self.priority = getattr(self._ext, 'priority', Extension.priority)
+        self.trigger = getattr(self._ext, "trigger", Extension.trigger)
+        self.priority = getattr(self._ext, "priority", Extension.priority)
         super().__init__()
 
     @property
     def default_name(self) -> str:
-        return getattr(self._ext, 'default_name', None) or super().default_name
+        return getattr(self._ext, "default_name", None) or super().default_name
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         self._ext(manager)
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
-        getattr(self._ext, 'finalize', super().finalize)(manager)
+        getattr(self._ext, "finalize", super().finalize)(manager)
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
-        getattr(self._ext, 'initialize', super().initialize)(manager)
+        getattr(self._ext, "initialize", super().initialize)(manager)
 
     def on_error(
-            self,
-            manager: ExtensionsManagerProtocol,
-            exc: Exception,
-            tb: types.TracebackType,
+        self,
+        manager: ExtensionsManagerProtocol,
+        exc: Exception,
+        tb: types.TracebackType,
     ) -> None:
-        getattr(self._ext, 'on_error', super().on_error)(manager, exc, tb)
+        getattr(self._ext, "on_error", super().on_error)(manager, exc, tb)
 
 
 _OnErrorType = Callable[
-    [ExtensionsManagerProtocol, Exception, types.TracebackType], None]
+    [ExtensionsManagerProtocol, Exception, types.TracebackType], None
+]
 
 
 def make_extension(
-        trigger: 'TriggerLike' = Extension.trigger,
-        default_name: Optional[str] = None,
-        priority: int = Extension.priority,
-        finalizer: 'ExtensionLike' = lambda manager: None,
-        initializer: 'ExtensionLike' = lambda manager: None,
-        on_error: _OnErrorType = lambda manager, exc, tb: None,
-) -> Callable[['ExtensionLike'], 'ExtensionLike']:
+    trigger: "TriggerLike" = Extension.trigger,
+    default_name: Optional[str] = None,
+    priority: int = Extension.priority,
+    finalizer: "ExtensionLike" = lambda manager: None,
+    initializer: "ExtensionLike" = lambda manager: None,
+    on_error: _OnErrorType = lambda manager, exc, tb: None,
+) -> Callable[["ExtensionLike"], "ExtensionLike"]:
     """Decorator to make given function into an extension.
 
     This decorator just adds some attributes to a given function. The value of
@@ -210,7 +217,8 @@ def make_extension(
             called after an error is raised during the training loop.
 
     """
-    def decorator(ext: 'ExtensionLike') -> 'ExtensionLike':
+
+    def decorator(ext: "ExtensionLike") -> "ExtensionLike":
         ext.trigger = trigger  # type: ignore
         ext.default_name = default_name or ext.__name__  # type: ignore
         ext.priority = priority  # type: ignore
@@ -222,7 +230,7 @@ def make_extension(
     return decorator
 
 
-def _as_extension(ext: 'ExtensionLike') -> Extension:
+def _as_extension(ext: "ExtensionLike") -> Extension:
     return ext if isinstance(ext, Extension) else _WrappedExtension(ext)
 
 
@@ -243,39 +251,42 @@ class ExtensionEntry:
     """
 
     def __init__(
-            self,
-            extension: 'ExtensionLike',
-            *,
-            name: Optional[str] = None,
-            priority: Optional[int] = None,
-            trigger: Optional['TriggerLike'] = None,
-            call_before_training: bool = False,
+        self,
+        extension: "ExtensionLike",
+        *,
+        name: Optional[str] = None,
+        priority: Optional[int] = None,
+        trigger: Optional["TriggerLike"] = None,
+        call_before_training: bool = False,
     ) -> None:
         self.extension = _as_extension(extension)
         self.priority = priority or self.extension.priority
         self.call_before_training = call_before_training
 
         self._update_trigger(trigger or self.extension.trigger)
-        self._update_name(name or self.extension.name or self.extension.default_name)
+        self._update_name(
+            name or self.extension.name or self.extension.default_name
+        )
 
-    def _update_trigger(self, trigger: 'TriggerLike') -> None:
+    def _update_trigger(self, trigger: "TriggerLike") -> None:
         self.trigger = _trigger_util.get_trigger(trigger)
 
     def _update_name(self, name: str) -> None:
-        if name == 'training':
+        if name == "training":
             raise ValueError(
-                'the name "training" is prohibited as an extension name')
+                'the name "training" is prohibited as an extension name'
+            )
         self.name = name
         self.extension.name = name
 
     def state_dict(self) -> Dict[str, Any]:
         state = {}
-        state['extension'] = self.extension.state_dict()
-        state['trigger'] = self.trigger.state_dict()
+        state["extension"] = self.extension.state_dict()
+        state["trigger"] = self.trigger.state_dict()
         return state
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
-        if 'extension' in to_load:
-            self.extension.load_state_dict(to_load['extension'])
-        if 'trigger' in to_load:
-            self.trigger.load_state_dict(to_load['trigger'])
+        if "extension" in to_load:
+            self.extension.load_state_dict(to_load["extension"])
+        if "trigger" in to_load:
+            self.trigger.load_state_dict(to_load["trigger"])

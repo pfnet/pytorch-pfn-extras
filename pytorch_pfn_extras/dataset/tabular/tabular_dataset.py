@@ -1,9 +1,8 @@
 # mypy: ignore-errors
 
 import numpy
-import torch
-
 import pytorch_pfn_extras as ppe
+import torch
 from torch.utils.data import Dataset
 
 
@@ -201,8 +200,7 @@ class TabularDataset(Dataset):
         Returns:
             A concatenated dataset.
         """
-        return ppe.dataset.tabular._concat._Concat(
-            self, *datasets)
+        return ppe.dataset.tabular._concat._Concat(self, *datasets)
 
     def join(self, *datasets):
         """Stack datasets along columns.
@@ -243,8 +241,7 @@ class TabularDataset(Dataset):
         Returns:
             A transfromed dataset.
         """
-        return ppe.dataset.tabular._transform._Transform(
-            self, keys, transform)
+        return ppe.dataset.tabular._transform._Transform(self, keys, transform)
 
     def transform_batch(self, keys, transform_batch):
         """Apply a transform to examples.
@@ -274,7 +271,8 @@ class TabularDataset(Dataset):
             A transfromed dataset.
         """
         return ppe.dataset.tabular._transform._TransformBatch(
-            self, keys, transform_batch)
+            self, keys, transform_batch
+        )
 
     def with_converter(self, converter):
         """Override the behaviour of :meth:`convert`.
@@ -289,7 +287,8 @@ class TabularDataset(Dataset):
         """
 
         return ppe.dataset.tabular._with_converter._WithConverter(
-            self, converter)
+            self, converter
+        )
 
     def get_example(self, i):
         example = self.get_examples([i], None)
@@ -320,8 +319,7 @@ class TabularDataset(Dataset):
         """
         if isinstance(index, slice):
             current, stop, step = index.indices(len(self))
-            return [self.get_example(i) for i in
-                    range(current, stop, step)]
+            return [self.get_example(i) for i in range(current, stop, step)]
         elif isinstance(index, list) or isinstance(index, numpy.ndarray):
             return [self.get_example(i) for i in index]
         else:

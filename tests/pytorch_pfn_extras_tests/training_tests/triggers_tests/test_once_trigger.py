@@ -1,17 +1,17 @@
 import random
-import pytest
 
+import pytest
 import pytorch_pfn_extras as ppe
 
-
 _parametrize = pytest.mark.parametrize(
-    'iters_per_epoch,call_on_resume,resume',
+    "iters_per_epoch,call_on_resume,resume",
     [
         # basic
         (5, False, 4),
         # call on resume
         (5, True, 4),
-    ])
+    ],
+)
 
 
 @_parametrize
@@ -20,8 +20,8 @@ def test_trigger(iters_per_epoch, call_on_resume, resume):
     expected = [True] + [False] * 6
     finished = [False] + [True] * 6
     manager = ppe.training.ExtensionsManager(
-        {}, [], 100,
-        iters_per_epoch=iters_per_epoch)
+        {}, [], 100, iters_per_epoch=iters_per_epoch
+    )
     trigger = ppe.training.triggers.OnceTrigger(call_on_resume)
     for e, f in zip(expected, finished):
         assert trigger.finished == f
@@ -38,8 +38,8 @@ def test_resumed_trigger(iters_per_epoch, call_on_resume, resume):
         expected[resume] = True
         finished[resume] = False
     manager = ppe.training.ExtensionsManager(
-        {}, [], 100,
-        iters_per_epoch=iters_per_epoch)
+        {}, [], 100, iters_per_epoch=iters_per_epoch
+    )
     trigger = ppe.training.triggers.OnceTrigger(call_on_resume)
     for e, f in zip(expected[:resume], finished[:resume]):
         with manager.run_iteration():
@@ -64,8 +64,8 @@ def test_trigger_sparse_call(iters_per_epoch, call_on_resume, resume):
     finished = [False] + [True] * 6
     for _ in range(10):
         manager = ppe.training.ExtensionsManager(
-            {}, [], 100,
-            iters_per_epoch=iters_per_epoch)
+            {}, [], 100, iters_per_epoch=iters_per_epoch
+        )
         trigger = ppe.training.triggers.OnceTrigger(call_on_resume)
         accumulated = False
         accumulated_finished = True

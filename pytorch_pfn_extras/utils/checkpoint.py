@@ -16,20 +16,22 @@ class _CheckpointFunction(torch.utils.checkpoint.CheckpointFunction):
     can help deal with incorrect values in the BatchNormalization
     persistent parameters.
     """
+
     @staticmethod
     def forward(  # type: ignore[override]
-            ctx: Any,
-            run_function: Any,
-            preserve_rng_state: bool,
-            *args: Any,
+        ctx: Any,
+        run_function: Any,
+        preserve_rng_state: bool,
+        *args: Any,
     ) -> Any:
         _patch_bn_momentum(run_function)
         return super(_CheckpointFunction, _CheckpointFunction).forward(
-            ctx, run_function, preserve_rng_state, *args)
+            ctx, run_function, preserve_rng_state, *args
+        )
 
 
 def _patch_bn_momentum(module: torch.nn.Module) -> None:
-    if not hasattr(module, '_bn_momentum_patched'):
+    if not hasattr(module, "_bn_momentum_patched"):
         if isinstance(module, torch.nn.modules.instancenorm._InstanceNorm):
             return
         if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
@@ -43,8 +45,9 @@ def _patch_bn_momentum(module: torch.nn.Module) -> None:
 
 def checkpoint(function: torch.nn.Module, *args: Any, **kwargs: Any) -> Any:
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
-    preserve = kwargs.pop('preserve_rng_state', True)
+    preserve = kwargs.pop("preserve_rng_state", True)
     if kwargs:
         raise ValueError(
-            'Unexpected keyword arguments: ' + ','.join(arg for arg in kwargs))
+            "Unexpected keyword arguments: " + ",".join(arg for arg in kwargs)
+        )
     return _CheckpointFunction.apply(function, preserve, *args)  # type: ignore[no-untyped-call]
