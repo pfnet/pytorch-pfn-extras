@@ -70,7 +70,8 @@ class BaseRuntime:
             return self._convert_batch_dict(args)
         if isinstance(args, (list, tuple)):
             return [
-                self.move_tensor(v) if isinstance(v, torch.Tensor) else v for v in args
+                self.move_tensor(v) if isinstance(v, torch.Tensor) else v
+                for v in args
             ]
         if isinstance(args, torch.Tensor):
             return self.move_tensor(args)
@@ -360,7 +361,8 @@ class PyTorchRuntime(BaseRuntime):
         if self._grad_scaler is not None:
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
                 raise RuntimeError(
-                    "grad_scaler should be a " "torch.cuda.amp.GradScaler object"
+                    "grad_scaler should be a "
+                    "torch.cuda.amp.GradScaler object"
                 )
 
     def move_module(self, module: torch.nn.Module) -> torch.nn.Module:
@@ -530,7 +532,9 @@ def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
     return getattr(module, _RUNTIME_TAG_NAME, None)  # type: ignore[no-any-return]
 
 
-def _set_module_runtime_tag(module: torch.nn.Module, runtime: BaseRuntime) -> None:
+def _set_module_runtime_tag(
+    module: torch.nn.Module, runtime: BaseRuntime
+) -> None:
     setattr(module, _RUNTIME_TAG_NAME, runtime)
 
     def mk_getstate(orig_getstate):  # type: ignore
