@@ -783,7 +783,9 @@ def test_trainer_with_autocast(path, autocast_train, autocast_eval):
 
             return super().forward(x)
 
-    model = AutocastCheckModel(autocast_train=autocast_train, autocast_eval=autocast_eval)
+    model = AutocastCheckModel(
+        autocast_train=autocast_train, autocast_eval=autocast_eval
+    )
     model_with_loss = MyModelWithLossFn(model)
     ppe.to(model_with_loss, "cuda")
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
