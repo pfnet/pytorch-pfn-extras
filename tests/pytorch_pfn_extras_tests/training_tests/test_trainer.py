@@ -788,12 +788,22 @@ def test_trainer_with_autocast(path, autocast_train, autocast_eval):
     ppe.to(model_with_loss, "cuda")
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
     data = torch.utils.data.DataLoader(
-        [{'x': torch.rand(20,), 't': torch.rand(10,)} for i in range(10)])
+        [
+            {
+                "x": torch.rand(
+                    20,
+                ),
+                "t": torch.rand(
+                    10,
+                ),
+            }
+            for i in range(10)
+        ]
+    )
     extensions = []
 
     evaluator = engine.create_evaluator(
-        model_with_loss, device="cuda",
-        options={"autocast": autocast_eval}
+        model_with_loss, device="cuda", options={"autocast": autocast_eval}
     )
 
     trainer = engine.create_trainer(
