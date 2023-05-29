@@ -522,13 +522,18 @@ class TestLogic:
     @pytest.mark.gpu
     @pytest.mark.parametrize(
         "to_backprop",
-        [("0",), ("1", ), ("2", )],
+        [("0",), ("1",), ("2",)],
     )
     def test_train_grad_scaler_with_single_step_backward(self, to_backprop):
         assert len(to_backprop) == 1
         scaler = torch.cuda.amp.GradScaler()
-        grad_scale_logic = ppe.handler.Logic(options={"grad_scaler": scaler, "backward_outputs": to_backprop})
-        expected_logic = ppe.handler.Logic(options={"backward_outputs": to_backprop})
+        grad_scale_logic = ppe.handler.Logic(
+            options={"grad_scaler": scaler, "backward_outputs": to_backprop}
+        )
+        expected_logic = ppe.handler.Logic(
+            options={"backward_outputs": to_backprop}
+        )
+
         class _MultiOutModel(torch.nn.Module):
             def __init__(self):
                 super().__init__()
@@ -544,29 +549,50 @@ class TestLogic:
             models = {"main": model}
             optimizers = {"main": torch.optim.SGD(model.parameters(), 1.0)}
             return models, optimizers
+
         input = torch.rand(1, 1).cuda()
         input.requires_grad = True
         assert input.grad is None
-        
+
         grad_scale_models, grad_scale_optimizer = _train_step_objects()
         expected_models, expected_optimizer = _train_step_objects()
-        grad_scale_models["main"].load_state_dict(expected_models["main"].state_dict())
+        grad_scale_models["main"].load_state_dict(
+            expected_models["main"].state_dict()
+        )
 
-        grad_scale_outs = grad_scale_logic.train_step(grad_scale_models, grad_scale_optimizer, 0, input)
-        expected_outs = expected_logic.train_step(expected_models, expected_optimizer, 0, input)
+        grad_scale_outs = grad_scale_logic.train_step(
+            grad_scale_models, grad_scale_optimizer, 0, input
+        )
+        expected_outs = expected_logic.train_step(
+            expected_models, expected_optimizer, 0, input
+        )
 
         torch_testing_assert_close(grad_scale_outs, expected_outs)
-        for grad_scale_params, expected_params in zip(grad_scale_models["main"].parameters(), expected_models["main"].parameters()):
-            assert (grad_scale_params.grad is None) == (expected_params.grad is None)
+        for grad_scale_params, expected_params in zip(
+            grad_scale_models["main"].parameters(),
+            expected_models["main"].parameters(),
+        ):
+            assert (grad_scale_params.grad is None) == (
+                expected_params.grad is None
+            )
             if grad_scale_params.grad is not None:
-                torch_testing_assert_close(grad_scale_params.grad, scaler.scale(expected_params.grad))
+                torch_testing_assert_close(
+                    grad_scale_params.grad, scaler.scale(expected_params.grad)
+                )
 
-        grad_scale_logic.train_step_optimizers(grad_scale_models, grad_scale_optimizer, 0)
-        expected_logic.train_step_optimizers(expected_models, expected_optimizer, 0)
-        for grad_scale_params, expected_params in zip(grad_scale_models["main"].parameters(), expected_models["main"].parameters()):
-            torch_testing_assert_close(grad_scale_params.data, expected_params.data)
-
-
+        grad_scale_logic.train_step_optimizers(
+            grad_scale_models, grad_scale_optimizer, 0
+        )
+        expected_logic.train_step_optimizers(
+            expected_models, expected_optimizer, 0
+        )
+        for grad_scale_params, expected_params in zip(
+            grad_scale_models["main"].parameters(),
+            expected_models["main"].parameters(),
+        ):
+            torch_testing_assert_close(
+                grad_scale_params.data, expected_params.data
+            )
 
     @pytest.mark.gpu
     def test_invalid_grad_scaler(self):
