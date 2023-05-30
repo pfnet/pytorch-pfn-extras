@@ -467,7 +467,6 @@ class PyTorchRuntime(BaseRuntime):
                         and (v.dtype.is_floating_point or v.dtype.is_complex)
                     ):
                         backprop_from_list.append(k)
-                        _scale(v).backward()  # type: ignore[no-untyped-call]
             else:
                 backprop_from_list.append(code_block.backprop_from)
 
