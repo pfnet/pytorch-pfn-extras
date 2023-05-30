@@ -1,4 +1,4 @@
-import collections
+import collections.abc
 import contextlib
 import copy
 import time
@@ -111,6 +111,11 @@ class _BaseExtensionsManager:
             torch.optim.Optimizer, Mapping[str, torch.optim.Optimizer]
         ],
         max_epochs: int,
+        grad_scalers: Union[
+            torch.cuda.amp.grad_scaler.GradScaler,
+            Mapping[str, torch.cuda.amp.grad_scaler.GradScaler],
+            None,
+        ],
         extensions: Optional[Sequence["extension_module.ExtensionLike"]],
         out_dir: str,
         writer: Optional[writing.Writer],
@@ -158,6 +163,14 @@ class _BaseExtensionsManager:
             # TODO(ecastill) Optimizer type is not checked because of tests
             # using mocks and other classes
             self._optimizers = {"main": optimizers}
+        if grad_scalers is None:
+            self._grad_scalers: Mapping[
+                str, torch.cuda.amp.grad_scaler.GradScaler
+            ] = {}
+        elif isinstance(grad_scalers, collections.abc.Mapping):
+            self._grad_scalers = grad_scalers
+        else:
+            self._grad_scalers = {"main": grad_scalers}
 
         for name, model in self._models.items():
             # TODO we should not initialize extensions at this point
@@ -221,6 +234,13 @@ class _BaseExtensionsManager:
     def optimizers(self) -> Mapping[str, torch.optim.Optimizer]:
         self.start_extensions()
         return self._optimizers
+
+    @property
+    def grad_scalers(
+        self,
+    ) -> Mapping[str, torch.cuda.amp.grad_scaler.GradScaler]:
+        self.start_extensions()
+        return self._grad_scalers
 
     @property
     def elapsed_time(self) -> float:
@@ -493,6 +513,10 @@ class _BaseExtensionsManager:
             name: self._optimizers[name].state_dict()
             for name in self._optimizers
         }
+        to_save["grad_scalers"] = {
+            name: self._grad_scalers[name].state_dict()  # type: ignore[no-untyped-call]
+            for name in self._grad_scalers
+        }
         to_save["extensions"] = {
             name: self._extensions[name].state_dict()
             for name in self._extensions
@@ -538,6 +562,11 @@ class _BaseExtensionsManager:
         for name in self._optimizers:
             self._optimizers[name].load_state_dict(to_load["optimizers"][name])
 
+        for name in self._grad_scalers:
+            self._grad_scalers[name].load_state_dict(  # type: ignore[no-untyped-call]
+                to_load["grad_scalers"][name]
+            )
+
         for name in self._extensions:
             self._extensions[name].load_state_dict(to_load["extensions"][name])
 
@@ -573,6 +602,11 @@ class ExtensionsManager(_BaseExtensionsManager):
         max_epochs: int,
         *,
         iters_per_epoch: int,
+        grad_scalers: Union[
+            torch.cuda.amp.grad_scaler.GradScaler,
+            Mapping[str, torch.cuda.amp.grad_scaler.GradScaler],
+            None,
+        ] = None,
         extensions: Optional[Sequence["extension_module.ExtensionLike"]] = None,
         out_dir: str = "result",
         stop_trigger: "trigger_module.TriggerLike" = None,
@@ -584,6 +618,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             models,
             optimizers,
             max_epochs,
+            grad_scalers,
             extensions,
             out_dir,
             writer,
@@ -617,6 +652,8 @@ class ExtensionsManager(_BaseExtensionsManager):
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
+        if self._grad_scalers is not None:
+            warnings.warn("run_iteration does not support grad_scaler.")
 
         step_optimizers_names: Sequence[str] = []
         if step_optimizers is not None:
@@ -679,6 +716,11 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
         ],
         max_epochs: int,
         *,
+        grad_scalers: Union[
+            torch.cuda.amp.grad_scaler.GradScaler,
+            Mapping[str, torch.cuda.amp.grad_scaler.GradScaler],
+            None,
+        ] = None,
         extensions: Optional[Sequence["extension_module.ExtensionLike"]] = None,
         out_dir: str = "result",
         writer: Optional[writing.Writer] = None,
@@ -699,6 +741,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             models,
             optimizers,
             max_epochs,
+            grad_scalers,
             extensions,
             out_dir,
             writer,

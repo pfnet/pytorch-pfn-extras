@@ -24,6 +24,7 @@ class CodeBlock:
 
     func: Callable
     optimizers: List[torch.optim.Optimizer]
+    grad_scaler: Optional[torch.cuda.amp.grad_scaler.GradScaler]
     backprop: bool
     backprop_from: Optional[str]
     backprop_to: Optional[Set[str]]
@@ -55,6 +56,7 @@ class CodeBlock:
 def update_parameters(
     block: Callable,
     optimizers: List[torch.optim.Optimizer],
+    grad_scaler: Optional[torch.cuda.amp.grad_scaler.GradScaler] = None,
     backprop_from: Optional[str] = None,
     backprop_to: Optional[Set[str]] = None,
 ) -> CodeBlock:
@@ -78,6 +80,7 @@ def update_parameters(
     return CodeBlock(
         func=codeblock.func,
         optimizers=optimizers,
+        grad_scaler=grad_scaler,
         backprop=True,
         backprop_from=backprop_from,
         backprop_to=backprop_to,
@@ -115,6 +118,7 @@ def forward(block: Callable) -> CodeBlock:
     return CodeBlock(
         func=func,
         optimizers=[],
+        grad_scaler=None,
         backprop=False,
         backprop_from=None,
         backprop_to=None,

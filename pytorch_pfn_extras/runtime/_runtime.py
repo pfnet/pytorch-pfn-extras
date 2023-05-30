@@ -1,5 +1,6 @@
 import contextlib
 import types
+import warnings
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -364,6 +365,10 @@ class PyTorchRuntime(BaseRuntime):
                     "grad_scaler should be a "
                     "torch.cuda.amp.GradScaler object"
                 )
+            warnings.warn(
+                "The 'grad_sacler' option is deprecated. The GradScaler object cannot take snapshots.",
+                DeprecationWarning,
+            )
 
     def move_module(self, module: torch.nn.Module) -> torch.nn.Module:
         return module.to(self.device_spec)
@@ -438,15 +443,26 @@ class PyTorchRuntime(BaseRuntime):
         batch: Any,
     ) -> Any:
         # Run forward, backward and optimize steps depending on codeblock opts
-        if self._grad_scaler is None:
-
-            def _scale(x: torch.Tensor) -> torch.Tensor:
-                return x
-
+        if code_block.grad_scaler is not None:
+            grad_scaler = code_block.grad_scaler
+            if self._grad_scaler is not None:
+                raise RuntimeError(
+                    "The 'grad_scaler' option of PyTorchRuntime and "
+                    "the 'grad_scaler' option of ExtensionManager are specified at the same time."
+                )
+        elif self._grad_scaler is not None:
+            assert isinstance(
+                self._grad_scaler, torch.cuda.amp.grad_scaler.GradScaler
+            )
+            grad_scaler = self._grad_scaler
         else:
+            grad_scaler = None
 
-            def _scale(x: torch.Tensor) -> torch.Tensor:
-                return self._grad_scaler.scale(x)  # type: ignore[no-any-return]
+        def _scale(x: torch.Tensor) -> torch.Tensor:
+            if grad_scaler is not None:
+                return grad_scaler.scale(x)  # type: ignore[no-any-return, no-untyped-call, union-attr]
+            else:
+                return x
 
         for optimizer in code_block.optimizers:
             optimizer.zero_grad()
@@ -472,11 +488,11 @@ class PyTorchRuntime(BaseRuntime):
         if len(code_block.optimizers) == 0:
             return out
 
-        if self._grad_scaler is not None:
+        if grad_scaler is not None:
             # TODO support multiple optimizers with grad scaler
             assert len(code_block.optimizers) == 1
-            self._grad_scaler.step(code_block.optimizers[0])
-            self._grad_scaler.update()
+            grad_scaler.step(code_block.optimizers[0])  # type: ignore[no-untyped-call]
+            grad_scaler.update()  # type: ignore[no-untyped-call]
         else:
             for optimizer in code_block.optimizers:
                 optimizer.step()

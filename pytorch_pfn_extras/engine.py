@@ -33,6 +33,10 @@ def create_trainer(
     ],
     max_epochs: int,
     *,
+    grad_scalers: Union[
+        Optional[torch.cuda.amp.grad_scaler.GradScaler],
+        Mapping[str, Optional[torch.cuda.amp.grad_scaler.GradScaler]],
+    ] = None,
     extensions: Optional[
         Sequence[Union["extension.ExtensionLike", "extension.ExtensionEntry"]]
     ] = None,
@@ -132,6 +136,7 @@ def create_trainer(
         evaluator=evaluator,
         models=models,
         optimizers=optimizers,
+        grad_scalers=grad_scalers,
         max_epochs=max_epochs,
         extensions=extensions,
         out_dir=out_dir,

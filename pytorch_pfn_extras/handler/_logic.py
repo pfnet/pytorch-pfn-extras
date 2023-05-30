@@ -80,6 +80,7 @@ class BaseLogic:
         self,
         models: Mapping[str, torch.nn.Module],
         optimizers: Mapping[str, torch.optim.Optimizer],
+        grad_scalers: Mapping[str, torch.cuda.amp.grad_scaler.GradScaler],
         batch_idx: int,
         batch: Any,
     ) -> Any:
@@ -104,6 +105,7 @@ class BaseLogic:
         self,
         models: Mapping[str, torch.nn.Module],
         optimizers: Mapping[str, torch.optim.Optimizer],
+        grad_scalers: Mapping[str, torch.cuda.amp.grad_scaler.GradScaler],
         batch_idx: int,
     ) -> None:
         """A method in charge of stepping the provided optimizers.
@@ -205,6 +207,10 @@ class Logic(BaseLogic):
                     "grad_scaler should be a "
                     "torch.cuda.amp.GradScaler object"
                 )
+            warnings.warn(
+                "The 'grad_sacler' option is deprecated. The GradScaler object cannot take snapshots.",
+                DeprecationWarning,
+            )
 
     def _forward(self, model: torch.nn.Module, batch: Any) -> Any:
         if isinstance(batch, tuple) and hasattr(batch, "_fields"):
@@ -281,10 +287,27 @@ class Logic(BaseLogic):
         model = models[self.model_name]
         model.eval()
 
+    def _get_grad_scaler(
+        self, grad_scalers: Mapping[str, torch.cuda.amp.grad_scaler.GradScaler]
+    ) -> Optional[torch.cuda.amp.grad_scaler.GradScaler]:
+        if self.model_name in grad_scalers:
+            grad_scaler = grad_scalers[self.model_name]
+            if self._grad_scaler is not None:
+                raise RuntimeError(
+                    "The 'grad_scaler' option of Logic and "
+                    "the 'grad_scaler' option of ExtensionManager are specified at the same time."
+                )
+        elif self._grad_scaler is not None:
+            grad_scaler = self._grad_scaler
+        else:
+            grad_scaler = None
+        return grad_scaler
+
     def train_step(
         self,
         models: Mapping[str, torch.nn.Module],
         optimizers: Mapping[str, torch.optim.Optimizer],
+        grad_scalers: Mapping[str, torch.cuda.amp.grad_scaler.GradScaler],
         batch_idx: int,
         batch: Any,
     ) -> Any:
@@ -307,13 +330,13 @@ class Logic(BaseLogic):
             optimizers[self.model_name].zero_grad()
             outs = self._forward(models[self.model_name], batch)
             to_back_outs = _normalize_outputs(outs)
-            if self._grad_scaler is not None:
+            grad_scaler = self._get_grad_scaler(grad_scalers)
+            if grad_scaler is not None:
                 assert (
                     len(to_back_outs) == 1
                 ), "loss scaling with multiple outputs is not supported"
                 to_back_outs = {
-                    k: self._grad_scaler.scale(v)
-                    for k, v in to_back_outs.items()
+                    k: grad_scaler.scale(v) for k, v in to_back_outs.items()  # type: ignore[no-untyped-call]
                 }
         self._backward(to_back_outs)
         return outs
@@ -322,6 +345,7 @@ class Logic(BaseLogic):
         self,
         models: Mapping[str, torch.nn.Module],
         optimizers: Mapping[str, torch.optim.Optimizer],
+        grad_scalers: Mapping[str, torch.cuda.amp.grad_scaler.GradScaler],
         batch_idx: int,
     ) -> None:
         """A method in charge of stepping the provided optimizers.
@@ -335,9 +359,10 @@ class Logic(BaseLogic):
                 Number of steps already finished.
         """
         optimizer = optimizers[self.model_name]
-        if self._grad_scaler is not None:
-            self._grad_scaler.step(optimizer)
-            self._grad_scaler.update()
+        grad_scaler = self._get_grad_scaler(grad_scalers)
+        if grad_scaler is not None:
+            grad_scaler.step(optimizer)  # type: ignore[no-untyped-call]
+            grad_scaler.update()  # type: ignore[no-untyped-call]
         else:
             optimizer.step()
 
@@ -432,6 +457,7 @@ class CodeBlockLogic(BaseLogic):
         self,
         models: Mapping[str, torch.nn.Module],
         optimizers: Mapping[str, torch.optim.Optimizer],
+        grad_scalers: Mapping[str, torch.cuda.amp.grad_scaler.GradScaler],
         batch_idx: int,
         batch: Any,
     ) -> Any:
@@ -451,10 +477,12 @@ class CodeBlockLogic(BaseLogic):
                 Input tensors feeded to the model of the current step.
         """
         module = models[self.model_name]
+        grad_scaler = grad_scalers.get(self.model_name)
 
         return update_parameters(
             module,
             list(optimizers.values()),
+            grad_scaler,
             self.backward_outputs,
             None,
         )(batch)
@@ -515,6 +543,7 @@ class ClousureLogic(Logic):
         self,
         models: Mapping[str, torch.nn.Module],
         optimizers: Mapping[str, torch.optim.Optimizer],
+        grad_scalers: Mapping[str, torch.cuda.amp.grad_scaler.GradScaler],
         batch_idx: int,
         batch: Any,
     ) -> Any:
@@ -551,6 +580,11 @@ class ClousureLogic(Logic):
             )
 
         optimizer = optimizers[self.model_name]
+        grad_scaler = self._get_grad_scaler(grad_scalers)
+        if grad_scaler is not None:
+            raise RuntimeError(
+                "torch.cuda.amp.GradScaler does not support clousure step mode."
+            )
         clousure_model_output: ClousureModelOutput = optimizer.step(clousure)  # type: ignore
         if not isinstance(clousure_model_output, ClousureModelOutput):
             raise RuntimeError(
@@ -562,6 +596,7 @@ class ClousureLogic(Logic):
         self,
         models: Mapping[str, torch.nn.Module],
         optimizers: Mapping[str, torch.optim.Optimizer],
+        grad_scalers: Mapping[str, torch.cuda.amp.grad_scaler.GradScaler],
         batch_idx: int,
     ) -> None:
         """In clousure mode, the stepping of the optimizer cannot be changed.

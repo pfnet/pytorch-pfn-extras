@@ -418,11 +418,15 @@ class Handler(BaseHandler):
         batch = self._entry_runtime.convert_batch(batch)
 
         outs = self._logic.train_step(
-            trainer.models, trainer.optimizers, batch_idx, batch
+            trainer.models,
+            trainer.optimizers,
+            trainer.grad_scalers,
+            batch_idx,
+            batch,
         )
 
         self._logic.train_step_optimizers(
-            trainer.models, trainer.optimizers, batch_idx
+            trainer.models, trainer.optimizers, trainer.grad_scalers, batch_idx
         )
         complete_fn(batch_idx, outs)
 

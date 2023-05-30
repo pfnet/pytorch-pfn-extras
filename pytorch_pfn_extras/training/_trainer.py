@@ -145,6 +145,12 @@ class Trainer:
     def optimizers(self) -> Mapping[str, torch.optim.Optimizer]:
         return self.manager.optimizers
 
+    @property
+    def grad_scalers(
+        self,
+    ) -> Mapping[str, torch.cuda.amp.grad_scaler.GradScaler]:
+        return self.manager.grad_scalers
+
     def state_dict(self) -> Dict[str, Any]:
         return self.manager.state_dict()
 
