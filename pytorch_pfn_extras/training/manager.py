@@ -652,7 +652,7 @@ class ExtensionsManager(_BaseExtensionsManager):
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
-        if self._grad_scalers is not None:
+        if len(self._grad_scalers) > 0:
             warnings.warn("run_iteration does not support grad_scaler.")
 
         step_optimizers_names: Sequence[str] = []

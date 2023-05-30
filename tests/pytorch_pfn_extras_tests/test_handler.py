@@ -4,6 +4,7 @@ import unittest.mock
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
+import warnings
 
 
 def torch_testing_assert_close(*args, **kwargs):
@@ -92,6 +93,7 @@ class MockTrainer:
     def __init__(self):
         self.models = {"main": MockModule()}
         self.optimizers = {}
+        self.grad_scalers = {}
         self.epoch = 0
 
 
@@ -109,11 +111,11 @@ class MockLogic(ppe.handler.BaseLogic):
     def train_epoch_end(self, epoch, models):
         self._train_epoch_end_called = True
 
-    def train_step(self, models, optimizers, batch_idx, batch):
+    def train_step(self, models, optimizers, grad_scalers, batch_idx, batch):
         assert batch.converted
         return models["main"](batch)
 
-    def train_step_optimizers(self, models, optimizers, batch_idx):
+    def train_step_optimizers(self, models, optimizers, grad_scalers, batch_idx):
         self._train_step_optimizers_called = True
 
     def train_validation_begin(self, models):
@@ -372,7 +374,7 @@ class TestLogic:
         assert models["main"].training
         assert loader.sampler.epoch == 10
 
-    def _run_step(self, logic, device):
+    def _run_step(self, logic: ppe.handler.BaseLogic, device):
         input = torch.rand(1, 1).to(device)
         input.requires_grad = True
 
@@ -386,7 +388,8 @@ class TestLogic:
         model = _Module().to(device)
         models = {"main": model}
         optimizers = {"main": torch.optim.SGD(model.parameters(), 1.0, 0)}
-        out = logic.train_step(models, optimizers, 0, input)
+        grad_scalers = {}
+        out = logic.train_step(models, optimizers, grad_scalers, 0, input)
         return models, optimizers, input, out
 
     def test_train_step(self):
@@ -432,7 +435,7 @@ class TestLogic:
                 getattr(model, f"l{val}").weight.detach().clone()
             )
 
-        outs = logic.train_step(models, optimizers, 0, input)
+        outs = logic.train_step(models, optimizers, {}, 0, input)
 
         assert isinstance(outs, dict)
         assert len(outs.keys()) == 3
@@ -465,7 +468,7 @@ class TestLogic:
         optimizers = {"main": torch.optim.SGD(model.parameters(), 1.0)}
         assert input.grad is None
 
-        outs = logic.train_step(models, optimizers, 0, input)
+        outs = logic.train_step(models, optimizers, {}, 0, input)
 
         assert outs["0"].grad is None
 
@@ -488,7 +491,7 @@ class TestLogic:
         assert input.grad is None
 
         with pytest.warns(UserWarning, match="backward value: abcd"):
-            logic.train_step(models, optimizers, 0, input)
+            logic.train_step(models, optimizers, {}, 0, input)
 
     def test_train_step_optimizers(self):
         logic = ppe.handler.Logic()
@@ -496,7 +499,7 @@ class TestLogic:
         model = models["main"]
         m_weight = model.weight.clone().detach()
         w_grad = model.weight.grad.clone().detach()
-        logic.train_step_optimizers(model, optimizers, 0)
+        logic.train_step_optimizers(model, optimizers, {}, 0)
         # Checks that the value was correctly updated
         torch_testing_assert_close(m_weight - w_grad, model.weight.T)
 
@@ -504,7 +507,8 @@ class TestLogic:
     def test_grad_scaler(self):
         scaler = torch.cuda.amp.GradScaler()
         options = {"grad_scaler": scaler}
-        logic = ppe.handler.Logic(options=options)
+        with pytest.warns(DeprecationWarning):
+            logic = ppe.handler.Logic(options=options)
         models, optimizers, input, out = self._run_step(logic, "cuda")
         model = models["main"]
         m_weight = model.weight.clone().detach()
@@ -512,7 +516,7 @@ class TestLogic:
         # The gradient of a linear layer is its transposed weight
         torch_testing_assert_close(input.grad, scaler.scale(model.weight.T))
         torch_testing_assert_close(out, model(input))
-        logic.train_step_optimizers(model, optimizers, 0)
+        logic.train_step_optimizers(model, optimizers, {}, 0)
         # Checks that the value was correctly updated and gradients deescaled
         # before the update
         torch_testing_assert_close(
@@ -557,4 +561,5 @@ class TestLogic:
     def test_use_grad_scaler_with_clousure(self):
         options = {"grad_scaler": torch.cuda.amp.GradScaler()}
         with pytest.raises(RuntimeError):
-            ppe.handler.ClousureLogic(options=options)
+            with pytest.warns(DeprecationWarning):
+                ppe.handler.ClousureLogic(options=options)

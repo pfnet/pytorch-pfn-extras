@@ -557,14 +557,15 @@ class TestTrainerState:
         grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
             init_scale=2**29, growth_interval=2
         )
-        trainer = self._get_trainer(
-            training_epoch,
-            path,
-            options={
-                "grad_scaler": grad_scaler,
-            },
-            device="cuda",
-        )
+        with pytest.warns(DeprecationWarning):
+            trainer = self._get_trainer(
+                training_epoch,
+                path,
+                options={
+                    "grad_scaler": grad_scaler,
+                },
+                device="cuda",
+            )
         data = torch.utils.data.DataLoader(
             [
                 (
@@ -588,14 +589,15 @@ class TestTrainerState:
         new_grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
             init_scale=2**29, growth_interval=2
         )
-        new_trainer = self._get_trainer(
-            training_epoch,
-            path,
-            options={
-                "grad_scaler": new_grad_scaler,
-            },
-            device="cuda",
-        )
+        with pytest.warns(DeprecationWarning):
+            new_trainer = self._get_trainer(
+                training_epoch,
+                path,
+                options={
+                    "grad_scaler": new_grad_scaler,
+                },
+                device="cuda",
+            )
         new_trainer.extend(ppe.training.extensions.snapshot(autoload=True))
         new_trainer._setup_manager(len(data))
         assert new_trainer.epoch == snapshot_epoch
