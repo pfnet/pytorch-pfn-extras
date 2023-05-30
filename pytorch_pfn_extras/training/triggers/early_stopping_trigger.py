@@ -1,15 +1,18 @@
 import operator
-from typing import Tuple, TYPE_CHECKING
 import warnings
+from typing import TYPE_CHECKING, Tuple
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import trigger
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
-
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 if TYPE_CHECKING:
-    from pytorch_pfn_extras.training._trigger_util import TriggerLike
-    from pytorch_pfn_extras.training._trigger_util import UnitLiteral
+    from pytorch_pfn_extras.training._trigger_util import (
+        TriggerLike,
+        UnitLiteral,
+    )
 
 
 class EarlyStoppingTrigger(trigger.Trigger):
@@ -46,13 +49,13 @@ class EarlyStoppingTrigger(trigger.Trigger):
     """
 
     def __init__(
-            self,
-            check_trigger: 'TriggerLike' = (1, 'epoch'),
-            monitor: str = 'main/loss',
-            patience: int = 3,
-            mode: str = 'auto',
-            verbose: bool = False,
-            max_trigger: Tuple[int, 'UnitLiteral'] = (100, 'epoch'),
+        self,
+        check_trigger: "TriggerLike" = (1, "epoch"),
+        monitor: str = "main/loss",
+        patience: int = 3,
+        mode: str = "auto",
+        verbose: bool = False,
+        max_trigger: Tuple[int, "UnitLiteral"] = (100, "epoch"),
     ) -> None:
         self.count = 0
         self.patience = patience
@@ -64,14 +67,14 @@ class EarlyStoppingTrigger(trigger.Trigger):
 
         self._init_summary()
 
-        if mode == 'max':
+        if mode == "max":
             self._compare = operator.gt
 
-        elif mode == 'min':
+        elif mode == "min":
             self._compare = operator.lt
 
         else:
-            if 'accuracy' in monitor:
+            if "accuracy" in monitor:
                 self._compare = operator.gt
 
             else:
@@ -79,13 +82,13 @@ class EarlyStoppingTrigger(trigger.Trigger):
 
         if self._compare == operator.gt:
             if verbose:
-                print('early stopping: operator is greater')
-            self.best = float('-inf')
+                print("early stopping: operator is greater")
+            self.best = float("-inf")
 
         else:
             if verbose:
-                print('early stopping: operator is less')
-            self.best = float('inf')
+                print("early stopping: operator is less")
+            self.best = float("inf")
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> bool:
         """Decides whether the training loop should be stopped.
@@ -114,7 +117,7 @@ class EarlyStoppingTrigger(trigger.Trigger):
             return False
 
         if self.monitor not in observation.keys():
-            warnings.warn('{} is not in observation'.format(self.monitor))
+            warnings.warn("{} is not in observation".format(self.monitor))
             return False
 
         stat = self._summary.compute_mean()
@@ -130,7 +133,7 @@ class EarlyStoppingTrigger(trigger.Trigger):
 
         if self._stop_condition():
             if self.verbose:
-                print('Epoch {}: early stopping'.format(manager.epoch))
+                print("Epoch {}: early stopping".format(manager.epoch))
             return True
 
         return False

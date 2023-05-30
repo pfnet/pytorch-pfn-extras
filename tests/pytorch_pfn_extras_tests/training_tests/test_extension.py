@@ -1,15 +1,14 @@
-import pytest
-import torch
-
 from unittest import mock
 
+import pytest
 import pytorch_pfn_extras as ppe
+import torch
 
 
 def _get_dummy_manager():
     model = torch.nn.Module()
     return ppe.training.ExtensionsManager(
-        {'main': model},
+        {"main": model},
         [],  # optimizers
         10,  # max_epochs
         iters_per_epoch=1,
@@ -31,7 +30,7 @@ def test_default_name():
         pass
 
     ext = MyExtension()
-    assert ext.default_name == 'MyExtension'
+    assert ext.default_name == "MyExtension"
 
 
 def test_deleted_invoke_before_training():
@@ -46,13 +45,17 @@ def test_deleted_invoke_before_training():
 def test_make_extension():
     initialize = mock.Mock()
 
-    @ppe.training.make_extension(trigger=(2, 'epoch'), default_name='my_ext',
-                                 priority=50, initializer=initialize)
+    @ppe.training.make_extension(
+        trigger=(2, "epoch"),
+        default_name="my_ext",
+        priority=50,
+        initializer=initialize,
+    )
     def my_extension(trainer):
         pass
 
-    assert my_extension.trigger == (2, 'epoch')
-    assert my_extension.default_name == 'my_ext'
+    assert my_extension.trigger == (2, "epoch")
+    assert my_extension.default_name == "my_ext"
     assert my_extension.priority == 50
 
     trainer = object()
@@ -66,8 +69,8 @@ def test_make_extension_default_values():
     def my_extension(trainer):
         pass
 
-    assert my_extension.trigger == (1, 'iteration')
-    assert my_extension.default_name == 'my_extension'
+    assert my_extension.trigger == (1, "iteration")
+    assert my_extension.default_name == "my_extension"
     assert my_extension.priority == ppe.training.PRIORITY_READER
     manager = object()
     my_extension.initialize(manager)
@@ -75,6 +78,7 @@ def test_make_extension_default_values():
 
 def test_make_extension_unexpected_kwargs():
     with pytest.raises(TypeError):
+
         @ppe.training.make_extension(foo=1)
         def my_extension(_):
             pass
@@ -92,9 +96,10 @@ def test_on_error():
             assert isinstance(exc, RuntimeError)
             self.call_cnt += 1
 
-    optimizers = {'main': object()}
+    optimizers = {"main": object()}
     manager = ppe.training.ExtensionsManager(
-        {}, optimizers, 1, iters_per_epoch=2)
+        {}, optimizers, 1, iters_per_epoch=2
+    )
     ext = DummyExt()
     manager.extend(ext)
 

@@ -1,13 +1,13 @@
 import io
-import pytest
-import torch
 
+import pytest
 import pytorch_pfn_extras as ppe
+import torch
 
 
 @pytest.mark.gpu
 def test_tensor_ppe_to():
-    device = 'cuda:0'
+    device = "cuda:0"
     tensor = torch.zeros(10)
     out = ppe.to(tensor, device)
     assert str(out.device) == device
@@ -22,7 +22,7 @@ class MyModule(torch.nn.Module):
 
 @pytest.mark.gpu
 def test_module_ppe_to():
-    device = 'cuda:0'
+    device = "cuda:0"
     module = MyModule()
     ppe.to(module, device)
     assert all([str(p.device) == device for p in module.parameters()])
@@ -30,7 +30,7 @@ def test_module_ppe_to():
 
 
 def test_invalid_ppe_to():
-    device = 'cpu'
+    device = "cpu"
     with pytest.raises(ValueError):
         ppe.to(object(), device)
 
@@ -46,24 +46,23 @@ class MyRuntime(ppe.runtime.BaseRuntime):
 
 def test_module_split_ppe_to():
     module = MyModule()
-    ppe.to(module.layer2, 'dummy', runtime_class=MyRuntime,
-           options={'opt': 1})
+    ppe.to(module.layer2, "dummy", runtime_class=MyRuntime, options={"opt": 1})
     rt_layer1 = ppe.runtime._runtime._module_runtime_tag(module.layer1)
     rt_layer2 = ppe.runtime._runtime._module_runtime_tag(module.layer2)
     assert str(next(iter(module.layer1.parameters())).device) == "cpu"
     assert rt_layer1 is None
     assert isinstance(rt_layer2, MyRuntime)
-    assert rt_layer2.device_spec == 'dummy'
-    assert rt_layer2.options['opt'] == 1
+    assert rt_layer2.device_spec == "dummy"
+    assert rt_layer2.options["opt"] == 1
 
 
 def test_module_split_ppe_to_config():
     # Deprecated "config" option.
     module = MyModule()
-    ppe.to(module, 'dummy', runtime_class=MyRuntime, config={'opt': 1})
+    ppe.to(module, "dummy", runtime_class=MyRuntime, config={"opt": 1})
     rt_layer1 = ppe.runtime._runtime._module_runtime_tag(module)
     assert isinstance(rt_layer1, MyRuntime)
-    assert rt_layer1.options['opt'] == 1
+    assert rt_layer1.options["opt"] == 1
 
 
 class NonPicklableRuntime(ppe.runtime.BaseRuntime):

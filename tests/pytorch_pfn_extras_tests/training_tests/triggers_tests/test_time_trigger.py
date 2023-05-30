@@ -2,7 +2,6 @@ import pytorch_pfn_extras as ppe
 
 
 class DummyTrainer:
-
     def __init__(self):
         self.elapsed_time = 0
 

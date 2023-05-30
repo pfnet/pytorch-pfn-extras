@@ -1,12 +1,14 @@
 import multiprocessing
-import threading
 import sys
+import threading
 from typing import Any, Optional
 
 import torch
-
 from pytorch_pfn_extras.writing._writer_base import (
-    StandardWriter, _TargetType, _SaveFun, _FileSystem,
+    StandardWriter,
+    _FileSystem,
+    _SaveFun,
+    _TargetType,
 )
 
 
@@ -21,47 +23,51 @@ class ThreadWriter(StandardWriter[threading.Thread]):
     """
 
     def __init__(
-            self,
-            savefun: _SaveFun = torch.save,
-            fs: _FileSystem = None,
-            out_dir: str = '',
-            **kwds: Any
+        self,
+        savefun: _SaveFun = torch.save,
+        fs: _FileSystem = None,
+        out_dir: str = "",
+        **kwds: Any,
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
     def _save_with_exitcode(
-            self,
-            filename: str,
-            out_dir: str,
-            target: _TargetType,
-            savefun: _SaveFun,
-            append: bool,
-            **savefun_kwargs: Any,
+        self,
+        filename: str,
+        out_dir: str,
+        target: _TargetType,
+        savefun: _SaveFun,
+        append: bool,
+        **savefun_kwargs: Any,
     ) -> None:
         try:
             self.save(
-                filename, out_dir, target, savefun, append, **savefun_kwargs)
+                filename, out_dir, target, savefun, append, **savefun_kwargs
+            )
         except Exception as e:
             thread = threading.current_thread()
             thread.exitcode = -1  # type: ignore[attr-defined]
             print(
                 f'Error: ThreadWriter failed in thread "{thread.name}": '
-                f'{type(e).__name__}: {str(e)}', file=sys.stderr)
+                f"{type(e).__name__}: {str(e)}",
+                file=sys.stderr,
+            )
 
     def create_worker(
-            self,
-            filename: str,
-            out_dir: str,
-            target: _TargetType,
-            *,
-            savefun: Optional[_SaveFun] = None,
-            append: bool = False,
-            **savefun_kwargs: Any,
+        self,
+        filename: str,
+        out_dir: str,
+        target: _TargetType,
+        *,
+        savefun: Optional[_SaveFun] = None,
+        append: bool = False,
+        **savefun_kwargs: Any,
     ) -> threading.Thread:
         return threading.Thread(
             target=self._save_with_exitcode,
             args=(filename, out_dir, target, savefun, append),
-            kwargs=savefun_kwargs)
+            kwargs=savefun_kwargs,
+        )
 
 
 class ProcessWriter(StandardWriter[multiprocessing.Process]):
@@ -80,25 +86,26 @@ class ProcessWriter(StandardWriter[multiprocessing.Process]):
     """
 
     def __init__(
-            self,
-            savefun: _SaveFun = torch.save,
-            fs: _FileSystem = None,
-            out_dir: str = '',
-            **kwds: Any,
+        self,
+        savefun: _SaveFun = torch.save,
+        fs: _FileSystem = None,
+        out_dir: str = "",
+        **kwds: Any,
     ) -> None:
         super().__init__(savefun=savefun, fs=fs, out_dir=out_dir, **kwds)
 
     def create_worker(
-            self,
-            filename: str,
-            out_dir: str,
-            target: _TargetType,
-            *,
-            savefun: Optional[_SaveFun] = None,
-            append: bool = False,
-            **savefun_kwargs: Any,
+        self,
+        filename: str,
+        out_dir: str,
+        target: _TargetType,
+        *,
+        savefun: Optional[_SaveFun] = None,
+        append: bool = False,
+        **savefun_kwargs: Any,
     ) -> multiprocessing.Process:
         return multiprocessing.Process(
             target=self.save,
             args=(filename, out_dir, target, savefun, append),
-            kwargs=savefun_kwargs)
+            kwargs=savefun_kwargs,
+        )

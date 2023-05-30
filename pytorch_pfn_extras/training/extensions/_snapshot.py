@@ -4,18 +4,19 @@ from typing import Any, Generator, List, Optional, Tuple
 
 import torch
 import torch.distributed
-
-from pytorch_pfn_extras import logging
+from pytorch_pfn_extras import logging, writing
 from pytorch_pfn_extras.training import extension
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
-from pytorch_pfn_extras import writing
-
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 logger = logging._get_root_logger()
 
 
-def _find_snapshot_files(fmt: str, path: str, fs: Any) -> List[Tuple[float, str]]:
-    '''Only prefix and suffix match
+def _find_snapshot_files(
+    fmt: str, path: str, fs: Any
+) -> List[Tuple[float, str]]:
+    """Only prefix and suffix match
 
     TODO(kuenishi): currently clean format string such as
     "snapshot{.iteration}.npz" can only be parsed, but tricky (or
@@ -33,16 +34,20 @@ def _find_snapshot_files(fmt: str, path: str, fs: Any) -> List[Tuple[float, str]
         A sorted list of pair of ``mtime, filename``, whose file
         name that matched the format ``fmt`` directly under ``path``.
 
-    '''
-    prefix = fmt.split('{')[0]
-    suffix = fmt.split('}')[-1]
+    """
+    prefix = fmt.split("{")[0]
+    suffix = fmt.split("}")[-1]
 
-    matched_files = (file for file in fs.list(path)
-                     if file.startswith(prefix) and file.endswith(suffix))
+    matched_files = (
+        file
+        for file in fs.list(path)
+        if file.startswith(prefix) and file.endswith(suffix)
+    )
 
     def _prepend_mtime(f: str) -> Any:
         t = fs.stat(os.path.join(path, f)).last_modified
         return (t, f)
+
     return sorted(_prepend_mtime(file) for file in matched_files)
 
 
@@ -63,7 +68,7 @@ def _find_latest_snapshot(fmt: str, path: str, fs: Any) -> Optional[str]:
 
     """
     snapshot_files = _find_snapshot_files(fmt, path, fs)
-    logger.debug('found snapshot files {}'.format(snapshot_files))
+    logger.debug("found snapshot files {}".format(snapshot_files))
     if len(snapshot_files) > 0:
         _, filename = snapshot_files[-1]
         return filename
@@ -71,7 +76,7 @@ def _find_latest_snapshot(fmt: str, path: str, fs: Any) -> Optional[str]:
 
 
 def _find_stale_snapshots(
-        fmt: str, path: str, n_retains: int, fs: Any
+    fmt: str, path: str, n_retains: int, fs: Any
 ) -> Generator[str, None, None]:
     """Finds stale snapshots in a directory, retaining several files
 
@@ -100,7 +105,8 @@ def _find_stale_snapshots(
 
 
 def snapshot_object(
-        target: Any, filename: str, savefun: Any = None, **kwargs: Any) -> '_Snapshot':
+    target: Any, filename: str, savefun: Any = None, **kwargs: Any
+) -> "_Snapshot":
     """snapshot_object(target, filename, savefun=None, \
 *, condition=None, writer=None, snapshot_on_error=False, \
 n_retains=-1, autoload=False)
@@ -160,22 +166,21 @@ n_retains=-1, autoload=False)
         - :meth:`pytorch_pfn_extras.training.extensions.snapshot`
     """
 
-    return snapshot(target=target, filename=filename, savefun=savefun,
-                    **kwargs)
+    return snapshot(target=target, filename=filename, savefun=savefun, **kwargs)
 
 
 def snapshot(
-        savefun: Any = None,
-        filename: str = 'snapshot_iter_{.iteration}',
-        *,
-        target: Any = None,
-        condition: Any = None,
-        writer: Optional[writing.Writer] = None,
-        snapshot_on_error: bool = False,
-        n_retains: int = -1,
-        autoload: bool = False,
-        saver_rank: Optional[int] = None,
-) -> '_Snapshot':
+    savefun: Any = None,
+    filename: str = "snapshot_iter_{.iteration}",
+    *,
+    target: Any = None,
+    condition: Any = None,
+    writer: Optional[writing.Writer] = None,
+    snapshot_on_error: bool = False,
+    n_retains: int = -1,
+    autoload: bool = False,
+    saver_rank: Optional[int] = None,
+) -> "_Snapshot":
     """
     Returns a trainer extension to take snapshots of the trainer.
 
@@ -277,17 +282,31 @@ trigger=(1, 'epoch'))
     """
     if savefun is not None and writer is not None:
         raise TypeError(
-            'savefun and writer arguments cannot be specified together.')
+            "savefun and writer arguments cannot be specified together."
+        )
 
     if saver_rank is None:
         return _Snapshot(
-            target=target, condition=condition, writer=writer,
-            filename=filename, snapshot_on_error=snapshot_on_error,
-            n_retains=n_retains, autoload=autoload, savefun=savefun)
+            target=target,
+            condition=condition,
+            writer=writer,
+            filename=filename,
+            snapshot_on_error=snapshot_on_error,
+            n_retains=n_retains,
+            autoload=autoload,
+            savefun=savefun,
+        )
     return _DistributedSnapshot(
-        target=target, condition=condition, writer=writer, filename=filename,
-        snapshot_on_error=snapshot_on_error, n_retains=n_retains,
-        autoload=autoload, saver_rank=saver_rank, savefun=savefun)
+        target=target,
+        condition=condition,
+        writer=writer,
+        filename=filename,
+        snapshot_on_error=snapshot_on_error,
+        n_retains=n_retains,
+        autoload=autoload,
+        saver_rank=saver_rank,
+        savefun=savefun,
+    )
 
 
 def _always_true() -> bool:
@@ -308,20 +327,21 @@ class _Snapshot(extension.Extension):
     The default priority is -100, which is lower than that of most
     built-in extensions.
     """
-    trigger = 1, 'epoch'
+
+    trigger = 1, "epoch"
     priority = extension.PRIORITY_SNAPSHOT
     needs_model_state = True
 
     def __init__(
-            self,
-            target: Any = None,
-            condition: Any = None,
-            writer: Optional[writing.Writer] = None,
-            filename: str = 'snapshot_iter_{.iteration}',
-            snapshot_on_error: bool = False,
-            n_retains: int = -1,
-            autoload: bool = False,
-            savefun: Any = None,
+        self,
+        target: Any = None,
+        condition: Any = None,
+        writer: Optional[writing.Writer] = None,
+        filename: str = "snapshot_iter_{.iteration}",
+        snapshot_on_error: bool = False,
+        n_retains: int = -1,
+        autoload: bool = False,
+        savefun: Any = None,
     ) -> None:
         if condition is None:
             condition = _always_true
@@ -335,7 +355,8 @@ class _Snapshot(extension.Extension):
         self._savefun = savefun
 
     def initialize(  # type: ignore[override]
-            self, manager: ExtensionsManagerProtocol) -> Optional[str]:
+        self, manager: ExtensionsManagerProtocol
+    ) -> Optional[str]:
         target = manager if self._target is None else self._target
         writer = manager.writer if self.writer is None else self.writer
         self.writer = writer
@@ -347,16 +368,22 @@ class _Snapshot(extension.Extension):
             # terms of mtime, and tries to load it it the target or
             # manager.
             assert writer is not None
-            loaded_fn = _find_latest_snapshot(self.filename, writer.out_dir, writer.fs)
+            loaded_fn = _find_latest_snapshot(
+                self.filename, writer.out_dir, writer.fs
+            )
             if loaded_fn:
-                snapshot_file = writer.fs.open(os.path.join(writer.out_dir, loaded_fn), 'rb')
+                snapshot_file = writer.fs.open(
+                    os.path.join(writer.out_dir, loaded_fn), "rb"
+                )
                 # As described above (at ``autoload`` option),
                 # snapshot files to be autoloaded must be saved by
                 # ``save_npz`` . In order to support general format,
                 # we nned to first reconstruct the design of savefun
                 # and loadfun.
-                state = torch.load(snapshot_file,  # type: ignore[no-untyped-call]
-                                   map_location=torch.device("cpu"))
+                state = torch.load(
+                    snapshot_file,  # type: ignore[no-untyped-call]
+                    map_location=torch.device("cpu"),
+                )
                 if type(target) is dict:
                     for k in target:
                         target[k].load_state_dict(state[k])
@@ -364,9 +391,11 @@ class _Snapshot(extension.Extension):
                     target.load_state_dict(state)
                 snapshot_file.close()
 
-        if (hasattr(writer, '_add_cleanup_hook')
-                and self.n_retains > 0
-                and isinstance(self.filename, str)):
+        if (
+            hasattr(writer, "_add_cleanup_hook")
+            and self.n_retains > 0
+            and isinstance(self.filename, str)
+        ):
             # This block sets a method to automatic cleanup of stale
             # snapshots, when ``n_retains`` argument is positive
             # number. When the given snapshot writer is Chainer's
@@ -375,8 +404,9 @@ class _Snapshot(extension.Extension):
             # injected here.
             def _cleanup() -> None:
                 assert writer is not None
-                files = _find_stale_snapshots(self.filename, writer.out_dir,
-                                              self.n_retains, writer.fs)
+                files = _find_stale_snapshots(
+                    self.filename, writer.out_dir, self.n_retains, writer.fs
+                )
                 for file in files:
                     writer.fs.remove(os.path.join(writer.out_dir, file))
 
@@ -386,10 +416,10 @@ class _Snapshot(extension.Extension):
         return loaded_fn
 
     def on_error(
-            self,
-            manager: ExtensionsManagerProtocol,
-            exc: Exception,
-            tb: types.TracebackType,
+        self,
+        manager: ExtensionsManagerProtocol,
+        exc: Exception,
+        tb: types.TracebackType,
     ) -> None:
         super().on_error(manager, exc, tb)
         if self._snapshot_on_error:
@@ -406,8 +436,7 @@ class _Snapshot(extension.Extension):
         # We need to get a dictionary with the state here
 
         if type(target) is dict:
-            serialized_target = {
-                k: v.state_dict() for k, v in target.items()}
+            serialized_target = {k: v.state_dict() for k, v in target.items()}
         else:
             serialized_target = target.state_dict()
         filename = self.filename
@@ -417,7 +446,8 @@ class _Snapshot(extension.Extension):
             filename = filename.format(manager)
         outdir = manager.out
         writer(  # type: ignore
-            filename, outdir, serialized_target, savefun=self._savefun)
+            filename, outdir, serialized_target, savefun=self._savefun
+        )
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:
         self.writer.finalize()  # type: ignore
@@ -437,34 +467,46 @@ class _DistributedSnapshot(_Snapshot):
     The default priority is lower than that of most
     built-in extensions.
     """
-    trigger = 1, 'epoch'
+
+    trigger = 1, "epoch"
     priority = extension.PRIORITY_SNAPSHOT
 
     def __init__(
-            self,
-            target: Any = None,
-            condition: Any = None,
-            writer: Optional[writing.Writer] = None,
-            filename: str = 'snapshot_iter_{.iteration}',
-            snapshot_on_error: bool = False,
-            n_retains: int = -1,
-            autoload: bool = False,
-            saver_rank: int = 0,
-            savefun: Any = None,
+        self,
+        target: Any = None,
+        condition: Any = None,
+        writer: Optional[writing.Writer] = None,
+        filename: str = "snapshot_iter_{.iteration}",
+        snapshot_on_error: bool = False,
+        n_retains: int = -1,
+        autoload: bool = False,
+        saver_rank: int = 0,
+        savefun: Any = None,
     ):
-        super().__init__(target, condition, writer, filename,
-                         snapshot_on_error, n_retains,
-                         autoload, savefun)
+        super().__init__(
+            target,
+            condition,
+            writer,
+            filename,
+            snapshot_on_error,
+            n_retains,
+            autoload,
+            savefun,
+        )
         # To support distributed snapshots
         if not torch.distributed.is_initialized():  # type: ignore[no-untyped-call]
-            raise RuntimeError('The Distributed Snapshot extension',
-                               ' requires torch.distributed to be initialized')
+            raise RuntimeError(
+                "The Distributed Snapshot extension",
+                " requires torch.distributed to be initialized",
+            )
         self._saver_rank = saver_rank
         self._size = torch.distributed.get_world_size()  # type: ignore[no-untyped-call]
         self._rank = torch.distributed.get_rank()  # type: ignore[no-untyped-call]
         if not (0 <= saver_rank < self._size):
-            raise ValueError('Distributed snapshot requires a saver rank'
-                             ' in the range [0-{})'.format(self._size))
+            raise ValueError(
+                "Distributed snapshot requires a saver rank"
+                " in the range [0-{})".format(self._size)
+            )
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if self.condition():

@@ -3,7 +3,9 @@ from typing import Any, Dict
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 
 class MicroAverage(extension.Extension):
@@ -64,24 +66,26 @@ class MicroAverage(extension.Extension):
     priority = extension.PRIORITY_EDITOR
 
     def __init__(
-            self,
-            numerator_key: str,
-            denominator_key: str,
-            result_key: str,
-            trigger: trigger_module.TriggerLike = (1, 'epoch'),
+        self,
+        numerator_key: str,
+        denominator_key: str,
+        result_key: str,
+        trigger: trigger_module.TriggerLike = (1, "epoch"),
     ) -> None:
         self._trigger = trigger_module.get_trigger(trigger)
 
         self._numerator_key = numerator_key
         self._denominator_key = denominator_key
         self._result_key = result_key
-        self._numerator = 0.
-        self._denominator = 0.
+        self._numerator = 0.0
+        self._denominator = 0.0
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         observation: Any = manager.observation
-        if not (self._numerator_key in observation
-                and self._denominator_key in observation):
+        if not (
+            self._numerator_key in observation
+            and self._denominator_key in observation
+        ):
             return
 
         self._numerator += observation[self._numerator_key]
@@ -94,10 +98,12 @@ class MicroAverage(extension.Extension):
             reporting.report({self._result_key: result})
 
     def state_dict(self) -> Dict[str, Any]:
-        state = {'_numerator': self._numerator,
-                 '_denominator': self._denominator}
+        state = {
+            "_numerator": self._numerator,
+            "_denominator": self._denominator,
+        }
         return state
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
-        self._numerator = to_load['_numerator']
-        self._denominator = to_load['_denominator']
+        self._numerator = to_load["_numerator"]
+        self._denominator = to_load["_denominator"]

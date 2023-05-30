@@ -1,13 +1,15 @@
-from collections import OrderedDict
 import json
+from collections import OrderedDict
 from typing import Any, Dict, Iterable, List, Optional
 
 from pytorch_pfn_extras import reporting
-from pytorch_pfn_extras.training import extension
-from pytorch_pfn_extras.training.extensions import log_report
-from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 from pytorch_pfn_extras.profiler._time_summary import get_time_summary
+from pytorch_pfn_extras.training import extension
+from pytorch_pfn_extras.training import trigger as trigger_module
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
+from pytorch_pfn_extras.training.extensions import log_report
 
 
 class ProfileReport(extension.Extension):
@@ -44,15 +46,16 @@ class ProfileReport(extension.Extension):
         header (str): header string
         templates (str): template string for print values.
     """
+
     def __init__(
-            self,
-            store_keys: Optional[Iterable[str]] = None,
-            report_keys: Optional[Iterable[str]] = None,
-            trigger: trigger_module.TriggerLike = (1, "epoch"),
-            filename: Optional[str] = None,
-            append: bool = False,
-            format: Optional[str] = None,
-            **kwargs: Any,
+        self,
+        store_keys: Optional[Iterable[str]] = None,
+        report_keys: Optional[Iterable[str]] = None,
+        trigger: trigger_module.TriggerLike = (1, "epoch"),
+        filename: Optional[str] = None,
+        append: bool = False,
+        format: Optional[str] = None,
+        **kwargs: Any,
     ):
         self.time_summary = get_time_summary()
         # Initializes global TimeSummary.
@@ -73,15 +76,15 @@ class ProfileReport(extension.Extension):
             filename = log_name
         del log_name  # avoid accidental use
         self._log_name = filename
-        self._writer = kwargs.get('writer', None)
+        self._writer = kwargs.get("writer", None)
 
         if format is None and filename is not None:
-            if filename.endswith('.jsonl'):
-                format = 'json-lines'
-            elif filename.endswith('.yaml'):
-                format = 'yaml'
+            if filename.endswith(".jsonl"):
+                format = "json-lines"
+            elif filename.endswith(".yaml"):
+                format = "yaml"
             else:
-                format = 'json'
+                format = "json"
 
         self._append = append
         self._format = format
@@ -114,7 +117,8 @@ class ProfileReport(extension.Extension):
             stats_cpu["elapsed_time"] = manager.elapsed_time
             # Recreate dict to fix order of logs
             out = OrderedDict(
-                [(k, stats_cpu[k]) for k in sorted(stats_cpu.keys())])
+                [(k, stats_cpu[k]) for k in sorted(stats_cpu.keys())]
+            )
 
             self._log.append(out)
 
@@ -123,9 +127,15 @@ class ProfileReport(extension.Extension):
                 log_name = self._log_name.format(**out)
                 assert self._format is not None
                 savefun = log_report.LogWriterSaveFunc(
-                    self._format, self._append)
-                writer(log_name, out, self._log,  # type: ignore
-                       savefun=savefun, append=self._append)
+                    self._format, self._append
+                )
+                writer(
+                    log_name,
+                    out,
+                    self._log,  # type: ignore
+                    savefun=savefun,
+                    append=self._append,
+                )
                 if self._append:
                     self._log = []
 

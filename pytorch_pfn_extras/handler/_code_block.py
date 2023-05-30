@@ -21,6 +21,7 @@ class CodeBlock:
        backprop_to: Name of the values where backpropagation will be stopped.
        state: Data that can be used during the CodeBlock execution.
     """
+
     func: Callable
     optimizers: List[torch.optim.Optimizer]
     backprop: bool
@@ -104,11 +105,11 @@ def forward(block: Callable) -> CodeBlock:
         if isinstance(block, torch.nn.Module):
             module = block
         else:
-            module = getattr(block, '__self__', None)
+            module = getattr(block, "__self__", None)
             assert module is not None
         func = block
         state = {}
-        runtime = getattr(module, '_ppe_runtime', None)
+        runtime = getattr(module, "_ppe_runtime", None)
         assert runtime is not None
 
     return CodeBlock(
