@@ -398,7 +398,7 @@ def _compare_states(s1, s2, strict=False):
 
 class TestTrainerState:
     def _get_trainer(
-        self, epochs, out_dir, extensions=None, options=None, device="cpu"
+        self, epochs, out_dir, extensions=None, options=None, device="cpu", grad_scaler=None,
     ):
         model = MyModel()
         ppe.to(model, device)
@@ -409,6 +409,7 @@ class TestTrainerState:
             model_with_loss,
             optimizer,
             epochs,
+            grad_scalers=grad_scaler,
             device=device,
             extensions=extensions,
             out_dir=out_dir,
@@ -547,7 +548,7 @@ class TestTrainerState:
         )
 
     @pytest.mark.gpu
-    def test_trainer_autoload_training_results_consistency_with_gradscaler(
+    def test_trainer_autoload_training_results_no_consistency_with_gradscaler(
         self, path
     ):
         if not torch.cuda.is_available():
@@ -555,7 +556,7 @@ class TestTrainerState:
         snapshot_epoch = 10
         training_epoch = 20
         grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
-            init_scale=2**29, growth_interval=2
+            init_scale=2**48, growth_interval=2
         )
         with pytest.warns(DeprecationWarning):
             trainer = self._get_trainer(
@@ -587,7 +588,7 @@ class TestTrainerState:
         trainer.run(data)
 
         new_grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
-            init_scale=2**29, growth_interval=2
+            init_scale=2**48, growth_interval=2
         )
         with pytest.warns(DeprecationWarning):
             new_trainer = self._get_trainer(
@@ -610,6 +611,68 @@ class TestTrainerState:
 
         # grad_scaler does not store state_dict, so the behavior may change.
         assert not _compare_states(
+            trainer_state_dict["models"],
+            new_trainer_state_dict["models"],
+            strict=True,
+        )
+
+    @pytest.mark.gpu
+    def test_trainer_autoload_training_results_consistency_with_gradscaler(
+        self, path
+    ):
+        if not torch.cuda.is_available():
+            pytest.skip()
+        snapshot_epoch = 10
+        training_epoch = 20
+        grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
+            init_scale=2**48, growth_interval=2
+        )
+        trainer = self._get_trainer(
+            training_epoch,
+            path,
+            device="cuda",
+            grad_scaler=grad_scaler,
+        )
+        data = torch.utils.data.DataLoader(
+            [
+                (
+                    torch.rand(
+                        20,
+                    ),
+                    torch.rand(
+                        10,
+                    ),
+                )
+                for i in range(10)
+            ]
+        )
+        trainer.extend(
+            ppe.training.extensions.snapshot(),
+            trigger=triggers.ManualScheduleTrigger([snapshot_epoch], "epoch"),
+        )
+
+        trainer.run(data)
+
+        new_grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
+            init_scale=2**48, growth_interval=2
+        )
+        new_trainer = self._get_trainer(
+            training_epoch,
+            path,
+            device="cuda",
+            grad_scaler=new_grad_scaler,
+        )
+        new_trainer.extend(ppe.training.extensions.snapshot(autoload=True))
+        new_trainer._setup_manager(len(data))
+        assert new_trainer.epoch == snapshot_epoch
+
+        new_trainer.run(data)
+        assert new_trainer.epoch == training_epoch
+
+        trainer_state_dict = trainer.state_dict()
+        new_trainer_state_dict = new_trainer.state_dict()
+
+        assert _compare_states(
             trainer_state_dict["models"],
             new_trainer_state_dict["models"],
             strict=True,

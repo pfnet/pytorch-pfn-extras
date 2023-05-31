@@ -652,12 +652,14 @@ class ExtensionsManager(_BaseExtensionsManager):
         if self._start_time is None:
             self._start_time = _get_time()
             self.start_extensions()
-        if len(self._grad_scalers) > 0:
-            warnings.warn("run_iteration does not support grad_scaler.")
 
         step_optimizers_names: Sequence[str] = []
         if step_optimizers is not None:
             step_optimizers_names = step_optimizers
+
+        if len(step_optimizers_names) > 0 and len(self._grad_scalers) > 0:
+            warnings.warn("run_iteration does not support grad_scaler.")
+
         self.observation = {}
         with self.reporter.scope(self.observation):
             try:
