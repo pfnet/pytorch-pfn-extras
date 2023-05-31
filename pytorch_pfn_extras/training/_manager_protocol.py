@@ -1,4 +1,11 @@
-from typing import TYPE_CHECKING, Mapping, Optional
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Mapping,
+    Optional,
+    runtime_checkable,
+)
 
 import torch
 from typing_extensions import Protocol
@@ -71,4 +78,13 @@ class ExtensionsManagerProtocol(Protocol):
 
     @property
     def observation(self) -> "reporting.Observation":
+        ...
+
+
+@runtime_checkable
+class StateObjectProtocol(Protocol):
+    def state_dict(self) -> Dict[str, Any]:
+        ...
+
+    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
         ...

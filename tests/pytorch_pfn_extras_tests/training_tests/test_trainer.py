@@ -7,6 +7,7 @@ import pytest
 import pytorch_pfn_extras as ppe
 import torch
 from pytorch_pfn_extras import engine, training
+from pytorch_pfn_extras.training import triggers
 from torch import nn
 from torch.nn import functional as F
 
@@ -360,7 +361,13 @@ def test_train_result_equal(device, path):
         assert torch.equal(a, e)
 
 
-def _compare_states(s1, s2):
+def _compare_states(s1, s2, strict=False):
+    def allclose(a, b):
+        if strict:
+            return (a == b).all()
+        else:
+            return torch.allclose(a, b)
+
     if isinstance(s1, dict):
         keys = s1.keys()
         if set(keys) != set(s2.keys()):
@@ -381,7 +388,7 @@ def _compare_states(s1, s2):
                 return False
             all_equal = all_equal and _compare_states(s1[k], s2[k])
         elif isinstance(s1[k], torch.Tensor):
-            all_equal = all_equal and torch.allclose(s1[k], s2[k])
+            all_equal = all_equal and allclose(s1[k], s2[k])
         else:
             all_equal = all_equal and s1[k] == s2[k]
         if not all_equal:
@@ -390,19 +397,27 @@ def _compare_states(s1, s2):
 
 
 class TestTrainerState:
-    def _get_trainer(self, epochs, out_dir):
+    def _get_trainer(
+        self,
+        epochs,
+        out_dir,
+        extensions=None,
+        options=None,
+        device="cpu",
+    ):
         model = MyModel()
-        ppe.to(model, "cpu")
+        ppe.to(model, device)
         model_with_loss = MyModelWithLossFn(model)
         optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-        extensions = _make_extensions()
+        extensions = extensions or _make_extensions()
         trainer = engine.create_trainer(
             model_with_loss,
             optimizer,
-            20,
-            device="cpu",
+            epochs,
+            device=device,
             extensions=extensions,
             out_dir=out_dir,
+            options=options,
         )
         return trainer
 
@@ -458,6 +473,149 @@ class TestTrainerState:
         new_trainer._setup_manager(len(data))
         assert new_trainer.epoch == 20
         assert _compare_states(trainer.state_dict(), new_trainer.state_dict())
+
+    def test_trainer_autoload_training_results_consistency(self, path):
+        snapshot_epoch = 10
+        training_epoch = 20
+        trainer = self._get_trainer(training_epoch, path)
+        data = torch.utils.data.DataLoader(
+            [
+                (
+                    torch.rand(
+                        20,
+                    ),
+                    torch.rand(
+                        10,
+                    ),
+                )
+                for i in range(10)
+            ]
+        )
+        trainer.extend(
+            ppe.training.extensions.snapshot(),
+            trigger=triggers.ManualScheduleTrigger([snapshot_epoch], "epoch"),
+        )
+        trainer.run(data)
+        new_trainer = self._get_trainer(training_epoch, path)
+        new_trainer.extend(ppe.training.extensions.snapshot(autoload=True))
+        new_trainer._setup_manager(len(data))
+        assert new_trainer.epoch == snapshot_epoch
+        new_trainer.run(data)
+        assert new_trainer.epoch == training_epoch
+        print(trainer.state_dict().keys())
+        trainer_state_dict = trainer.state_dict()
+        new_trainer_state_dict = new_trainer.state_dict()
+        assert _compare_states(
+            trainer_state_dict["models"],
+            new_trainer_state_dict["models"],
+            strict=True,
+        )
+
+    @pytest.mark.gpu
+    def test_trainer_autoload_training_results_consistency_with_gpu(self, path):
+        if not torch.cuda.is_available():
+            pytest.skip()
+        snapshot_epoch = 10
+        training_epoch = 20
+        trainer = self._get_trainer(training_epoch, path, device="cuda")
+        data = torch.utils.data.DataLoader(
+            [
+                (
+                    torch.rand(
+                        20,
+                    ),
+                    torch.rand(
+                        10,
+                    ),
+                )
+                for i in range(10)
+            ]
+        )
+        trainer.extend(
+            ppe.training.extensions.snapshot(),
+            trigger=triggers.ManualScheduleTrigger([snapshot_epoch], "epoch"),
+        )
+        trainer.run(data)
+        new_trainer = self._get_trainer(training_epoch, path, device="cuda")
+        new_trainer.extend(ppe.training.extensions.snapshot(autoload=True))
+        new_trainer._setup_manager(len(data))
+        assert new_trainer.epoch == snapshot_epoch
+        new_trainer.run(data)
+        assert new_trainer.epoch == training_epoch
+        print(trainer.state_dict().keys())
+        trainer_state_dict = trainer.state_dict()
+        new_trainer_state_dict = new_trainer.state_dict()
+        assert _compare_states(
+            trainer_state_dict["models"],
+            new_trainer_state_dict["models"],
+            strict=True,
+        )
+
+    @pytest.mark.gpu
+    def test_trainer_autoload_training_results_consistency_with_gradscaler(
+        self, path
+    ):
+        if not torch.cuda.is_available():
+            pytest.skip()
+        snapshot_epoch = 10
+        training_epoch = 20
+        grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
+            init_scale=2**48, growth_interval=2
+        )
+        trainer = self._get_trainer(
+            training_epoch,
+            path,
+            options={
+                "grad_scaler": grad_scaler,
+            },
+            device="cuda",
+        )
+        data = torch.utils.data.DataLoader(
+            [
+                (
+                    torch.rand(
+                        20,
+                    ),
+                    torch.rand(
+                        10,
+                    ),
+                )
+                for i in range(10)
+            ]
+        )
+        trainer.extend(
+            ppe.training.extensions.snapshot(),
+            trigger=triggers.ManualScheduleTrigger([snapshot_epoch], "epoch"),
+        )
+
+        trainer.run(data)
+
+        new_grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
+            init_scale=2**48, growth_interval=2
+        )
+        new_trainer = self._get_trainer(
+            training_epoch,
+            path,
+            options={
+                "grad_scaler": new_grad_scaler,
+            },
+            device="cuda",
+        )
+        new_trainer.extend(ppe.training.extensions.snapshot(autoload=True))
+        new_trainer._setup_manager(len(data))
+        assert new_trainer.epoch == snapshot_epoch
+
+        new_trainer.run(data)
+        assert new_trainer.epoch == training_epoch
+
+        trainer_state_dict = trainer.state_dict()
+        new_trainer_state_dict = new_trainer.state_dict()
+
+        assert _compare_states(
+            trainer_state_dict["models"],
+            new_trainer_state_dict["models"],
+            strict=True,
+        )
 
 
 class MyModelWithLossDictOutput(torch.nn.Module):

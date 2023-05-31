@@ -14,6 +14,7 @@ from typing import (
 import pytorch_pfn_extras.handler as handler_module
 import torch
 from pytorch_pfn_extras.runtime import runtime_registry
+from pytorch_pfn_extras.training import StateObjectProtocol
 from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 if TYPE_CHECKING:
@@ -106,10 +107,21 @@ def create_trainer(
     """
 
     options = options.copy() if options else {}
+
+    state_objects: Dict[str, StateObjectProtocol] = {}
+    for key, value in options.items():
+        if isinstance(value, StateObjectProtocol):
+            state_objects[f"options_{key}"] = value
+
     # TODO(kmaehashi): deprecate specifying 'runtime' key in options
     runtime_options = dict(
         runtime_options if runtime_options else options.pop("runtime", {})
     )
+
+    for key, value in runtime_options.items():
+        if isinstance(value, StateObjectProtocol):
+            state_objects[f"runtime_options_{key}"] = value
+
     logic = handler_module.Logic() if logic is None else logic
     handler_class = handler_class if handler_class else handler_module.Handler
 
@@ -139,6 +151,7 @@ def create_trainer(
         writer=writer,
         transform_model=transform_model,
         profile=profile,
+        state_objects=state_objects,
         **kwargs,
     )
 

@@ -1,4 +1,4 @@
-import collections
+import collections.abc
 import contextlib
 import copy
 import time
@@ -18,6 +18,7 @@ import pytorch_pfn_extras
 import torch
 from pytorch_pfn_extras import reporting, writing
 from pytorch_pfn_extras.profiler import record
+from pytorch_pfn_extras.training import StateObjectProtocol
 from pytorch_pfn_extras.training import _util as util_module
 from pytorch_pfn_extras.training import extension as extension_module
 from pytorch_pfn_extras.training import trigger as trigger_module
@@ -99,6 +100,9 @@ class _ManagerProxy:
         return self._manager.observation
 
 
+_default_state_objects: Dict[str, StateObjectProtocol] = {}
+
+
 class _BaseExtensionsManager:
     """
     Keeps track of the extensions and the current status
@@ -117,6 +121,7 @@ class _BaseExtensionsManager:
         stop_trigger: "trigger_module.TriggerLike" = None,
         transform_model: _TransformModel = default_transform_model,
         enable_profile: bool = False,
+        state_objects: Dict[str, StateObjectProtocol] = _default_state_objects,
     ) -> None:
         if extensions is None:
             extensions = []
@@ -178,6 +183,7 @@ class _BaseExtensionsManager:
             self.extend(ext)
 
         self._enable_profile = enable_profile
+        self._state_objects = state_objects
         # Initialize the writer
         self.writer.initialize(self.out)
 
@@ -493,6 +499,10 @@ class _BaseExtensionsManager:
             name: self._optimizers[name].state_dict()
             for name in self._optimizers
         }
+        to_save["state_objects"] = {
+            name: self._state_objects[name].state_dict()
+            for name in self._state_objects
+        }
         to_save["extensions"] = {
             name: self._extensions[name].state_dict()
             for name in self._extensions
@@ -538,6 +548,12 @@ class _BaseExtensionsManager:
         for name in self._optimizers:
             self._optimizers[name].load_state_dict(to_load["optimizers"][name])
 
+        if "state_objects" in to_load:
+            for name in self._state_objects:
+                self._state_objects[name].load_state_dict(  # type: ignore[no-untyped-call]
+                    to_load["state_objects"][name]
+                )
+
         for name in self._extensions:
             self._extensions[name].load_state_dict(to_load["extensions"][name])
 
@@ -579,6 +595,7 @@ class ExtensionsManager(_BaseExtensionsManager):
         writer: Optional[writing.Writer] = None,
         transform_model: _TransformModel = lambda n, x: x,
         enable_profile: bool = False,
+        state_objects: Dict[str, StateObjectProtocol] = _default_state_objects,
     ) -> None:
         super().__init__(
             models,
@@ -590,6 +607,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             stop_trigger,
             transform_model,
             enable_profile,
+            state_objects,
         )
         if iters_per_epoch < 1:
             raise ValueError(
@@ -683,6 +701,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
         out_dir: str = "result",
         writer: Optional[writing.Writer] = None,
         enable_profile: bool = False,
+        state_objects: Dict[str, StateObjectProtocol] = _default_state_objects,
     ) -> None:
         import ignite
 
@@ -703,6 +722,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             out_dir,
             writer,
             enable_profile=enable_profile,
+            state_objects=state_objects,
         )
         self.engine = engine
         self._start_epoch = 0  # Used to correctly restore snapshots
