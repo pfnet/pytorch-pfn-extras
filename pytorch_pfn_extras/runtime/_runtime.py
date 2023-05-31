@@ -457,17 +457,26 @@ class PyTorchRuntime(BaseRuntime):
 
         # codeblocks return Dicts-per-se so it is not necessary to normalize
         if code_block.backprop:
+            backprop_from_list = []
             if code_block.backprop_from is None:
-                for v in out.values():
+                for k, v in out.items():
                     if (
                         isinstance(v, torch.Tensor)
                         and v.grad_fn is not None
                         and v.numel() == 1
                         and (v.dtype.is_floating_point or v.dtype.is_complex)
                     ):
-                        _scale(v).backward()  # type: ignore[no-untyped-call]
+                        backprop_from_list.append(k)
             else:
-                _scale(out[code_block.backprop_from]).backward()  # type: ignore
+                backprop_from_list.append(code_block.backprop_from)
+
+            if self._grad_scaler is not None:
+                assert (
+                    len(backprop_from_list) == 1
+                ), "loss scaling with multiple loss is not supported"
+
+            for k in backprop_from_list:
+                _scale(out[k]).backward()  # type: ignore
 
         if len(code_block.optimizers) == 0:
             return out
@@ -519,9 +528,7 @@ class PyTorchRuntime(BaseRuntime):
 
 
 def _module_runtime_tag(module: torch.nn.Module) -> Optional[BaseRuntime]:
-    return getattr(  # type: ignore[no-any-return]
-        module, _RUNTIME_TAG_NAME, None
-    )
+    return getattr(module, _RUNTIME_TAG_NAME, None)  # type: ignore[no-any-return]
 
 
 def _set_module_runtime_tag(
