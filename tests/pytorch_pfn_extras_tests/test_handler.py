@@ -566,8 +566,8 @@ class TestLogic:
         expected_outs = expected_logic.train_step(
             expected_models, expected_optimizer, 0, input
         )
-
-        torch_testing_assert_close(grad_scale_outs, expected_outs)
+        for key in grad_scale_outs.keys():
+            torch_testing_assert_close(grad_scale_outs[key], expected_outs[key])
         for grad_scale_params, expected_params in zip(
             grad_scale_models["main"].parameters(),
             expected_models["main"].parameters(),
