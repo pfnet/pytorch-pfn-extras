@@ -118,7 +118,9 @@ def test_extensions_manager_extensions():
 
 
 class _StateDictObj:
-    def __init__(self, *, state_dict=None, state_dict_to_be_loaded=None, **kwargs):
+    def __init__(
+        self, *, state_dict=None, state_dict_to_be_loaded=None, **kwargs
+    ):
         super().__init__(**kwargs)
         self.called_load_state_dict = 0
         self._state_dict = state_dict
