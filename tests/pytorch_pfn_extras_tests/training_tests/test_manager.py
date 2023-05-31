@@ -187,11 +187,8 @@ def test_extensions_manager_state_dict():
     )
 
     for _ in range(passed_iteration):
-        with pytest.warns(
-            Warning, match="run_iteration does not support grad_scaler."
-        ):
-            with manager.run_iteration():
-                pass
+        with manager.run_iteration():
+            pass
 
     state_dict = manager.state_dict()
 
