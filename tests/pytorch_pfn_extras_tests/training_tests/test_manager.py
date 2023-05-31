@@ -118,8 +118,8 @@ def test_extensions_manager_extensions():
 
 
 class _StateDictObj:
-    def __init__(self, *, state_dict=None, state_dict_to_be_loaded=None):
-        super().__init__()
+    def __init__(self, *, state_dict=None, state_dict_to_be_loaded=None, **kwargs):
+        super().__init__(**kwargs)
         self.called_load_state_dict = 0
         self._state_dict = state_dict
         self._state_dict_to_be_loaded = state_dict_to_be_loaded
@@ -175,7 +175,8 @@ def test_extensions_manager_state_dict():
         max_epochs,
         grad_scalers={
             "grad_scaler_name": _StateDictGradScaler(
-                state_dict=grad_scaler_state_dict
+                state_dict=grad_scaler_state_dict,
+                enabled=False,  # In environments where CUDA is not enabled, GradScaler cannot be enabled and warnings will be given, so disable it.
             )
         },
         iters_per_epoch=iters_per_epoch,
