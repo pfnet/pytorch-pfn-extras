@@ -5,10 +5,10 @@ import pytest
 import pytorch_pfn_extras as ppe
 import torch
 from torch import nn
+from torch.cuda.amp.grad_scaler import GradScaler
 from torch.nn import Module
 from torch.nn import functional as F
 from torch.optim import Optimizer
-from torch.cuda.amp.grad_scaler import GradScaler
 
 
 class MyModel(torch.nn.Module):
@@ -111,11 +111,19 @@ def test_train_step_mode_with_evaluator(trigger):
     backward_fn = mock.Mock(return_value=None)
 
     class LogicWithTrainStepCheck(ppe.handler.Logic):
-
-        def train_step(self, models: Mapping[str, Module], optimizers: Mapping[str, Optimizer], grad_scalers: Mapping[str, GradScaler], batch_idx: int, batch: Any) -> Any:
+        def train_step(
+            self,
+            models: Mapping[str, Module],
+            optimizers: Mapping[str, Optimizer],
+            grad_scalers: Mapping[str, GradScaler],
+            batch_idx: int,
+            batch: Any,
+        ) -> Any:
             model = models[self.model_name]
             assert model.training
-            return super().train_step(models, optimizers, grad_scalers, batch_idx, batch)
+            return super().train_step(
+                models, optimizers, grad_scalers, batch_idx, batch
+            )
 
     trainer = ppe.engine.create_trainer(
         model_with_loss,

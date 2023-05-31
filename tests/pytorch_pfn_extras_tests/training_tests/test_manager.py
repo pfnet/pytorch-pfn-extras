@@ -144,7 +144,10 @@ class _StateDictOptimizer(_StateDictObj):
     def step(self):
         pass
 
-class _StateDictGradScaler(_StateDictObj, torch.cuda.amp.grad_scaler.GradScaler):
+
+class _StateDictGradScaler(
+    _StateDictObj, torch.cuda.amp.grad_scaler.GradScaler
+):
     pass
 
 
@@ -170,7 +173,11 @@ def test_extensions_manager_state_dict():
         {"model_name": _StateDictModel(state_dict=model_state_dict)},
         {"optimizer_name": _StateDictObj(state_dict=optimizer_state_dict)},
         max_epochs,
-        grad_scalers={"grad_scaler_name": _StateDictGradScaler(state_dict=grad_scaler_state_dict)},
+        grad_scalers={
+            "grad_scaler_name": _StateDictGradScaler(
+                state_dict=grad_scaler_state_dict
+            )
+        },
         iters_per_epoch=iters_per_epoch,
     )
 
@@ -180,7 +187,9 @@ def test_extensions_manager_state_dict():
     )
 
     for _ in range(passed_iteration):
-        with pytest.warns(Warning, match="run_iteration does not support grad_scaler."):
+        with pytest.warns(
+            Warning, match="run_iteration does not support grad_scaler."
+        ):
             with manager.run_iteration():
                 pass
 

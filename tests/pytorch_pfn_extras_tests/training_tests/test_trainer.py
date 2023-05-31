@@ -398,7 +398,13 @@ def _compare_states(s1, s2, strict=False):
 
 class TestTrainerState:
     def _get_trainer(
-        self, epochs, out_dir, extensions=None, options=None, device="cpu", grad_scaler=None,
+        self,
+        epochs,
+        out_dir,
+        extensions=None,
+        options=None,
+        device="cpu",
+        grad_scaler=None,
     ):
         model = MyModel()
         ppe.to(model, device)

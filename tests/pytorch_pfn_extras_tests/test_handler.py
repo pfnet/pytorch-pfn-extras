@@ -4,7 +4,6 @@ import unittest.mock
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
-import warnings
 
 
 def torch_testing_assert_close(*args, **kwargs):
@@ -115,7 +114,9 @@ class MockLogic(ppe.handler.BaseLogic):
         assert batch.converted
         return models["main"](batch)
 
-    def train_step_optimizers(self, models, optimizers, grad_scalers, batch_idx):
+    def train_step_optimizers(
+        self, models, optimizers, grad_scalers, batch_idx
+    ):
         self._train_step_optimizers_called = True
 
     def train_validation_begin(self, models):
