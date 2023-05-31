@@ -78,6 +78,48 @@ def test_trainer(device):
     assert backward_fn.call_count == epochs * iters_per_epoch
 
 
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_trainer_with_grad_scaler(device):
+    if not torch.cuda.is_available() and device == "cuda":
+        pytest.skip()
+    iters_per_epoch = 10
+    epochs = 20
+    model = MyModel()
+    ppe.to(model, device)
+    model_with_loss = MyModelWithLossFn(model)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    grad_scalers = mock.MagicMock()
+    grad_scalers.scale.side_effect = lambda x: x
+    data = torch.utils.data.DataLoader(
+        [
+            (
+                torch.rand(
+                    20,
+                ),
+                torch.rand(
+                    10,
+                ),
+            )
+            for i in range(iters_per_epoch)
+        ]
+    )
+    backward_fn = mock.Mock(return_value=None)
+
+    trainer = ppe.engine.create_trainer(
+        model_with_loss,
+        optimizer,
+        epochs,
+        grad_scalers=grad_scalers,
+        device=device,
+        options={"backward_function": backward_fn},
+    )
+    trainer.run(data)
+    assert backward_fn.call_count == epochs * iters_per_epoch
+    assert grad_scalers.scale.call_count == epochs * iters_per_epoch
+    assert grad_scalers.step.call_count == epochs * iters_per_epoch
+    assert grad_scalers.update.call_count == epochs * iters_per_epoch
+
+
 @pytest.mark.parametrize(
     "trigger",
     [
