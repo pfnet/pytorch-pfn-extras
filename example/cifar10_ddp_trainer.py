@@ -35,7 +35,9 @@ class TrainerModel(nn.Module):
         self.model = model
         self.criterion = nn.CrossEntropyLoss()
 
-    def forward(self, x: torch.Tensor, y: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, x: torch.Tensor, y: torch.Tensor
+    ) -> Dict[str, torch.Tensor]:
         out = self.model.forward(x)
         loss = self.criterion.forward(out, y)
         ppe.reporting.report({"train/loss": loss.item()})
@@ -66,11 +68,20 @@ def main():
         "using PyTorch and pytorch-pfn-extras.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
-                        help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000,
-                        metavar='N',
-                        help='input batch size for testing (default: 1000)')
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=64,
+        metavar="N",
+        help="input batch size for training (default: 64)",
+    )
+    parser.add_argument(
+        "--test-batch-size",
+        type=int,
+        default=1000,
+        metavar="N",
+        help="input batch size for testing (default: 1000)",
+    )
     parser.add_argument(
         "--epoch", "-e", type=int, default=20, help="Number of training epochs"
     )
@@ -82,7 +93,11 @@ def main():
         help="Output directory to save the results",
     )
     parser.add_argument(
-        "--n-retains", "-n", type=int, default=5, help="Number of snapshots to retain"
+        "--n-retains",
+        "-n",
+        type=int,
+        default=5,
+        help="Number of snapshots to retain",
     )
     parser.add_argument(
         "--num-worker",
@@ -116,7 +131,11 @@ def main():
     )
     args = parser.parse_args()
 
-    world_size, world_rank, local_rank = ppe.distributed.initialize_ompi_environment(
+    (
+        world_size,
+        world_rank,
+        local_rank,
+    ) = ppe.distributed.initialize_ompi_environment(
         backend="nccl", init_method="tcp"
     )
     torch.cuda.set_device(torch.device("cuda:{}".format(local_rank)))
@@ -141,7 +160,9 @@ def main():
     )
 
     train_sampler: DistributedSampler[int] = DistributedSampler(train)
-    val_sampler: DistributedSampler[int] = DistributedSampler(val, shuffle=False)
+    val_sampler: DistributedSampler[int] = DistributedSampler(
+        val, shuffle=False
+    )
 
     train_loader = DataLoader(
         train,
@@ -162,9 +183,13 @@ def main():
 
     trainer_model = TrainerModel(model=model)
     evaluator_model = EvaluatorModel(model=model)
-    distributed_trainer_model = ppe.nn.parallel.DistributedDataParallel(ppe.to(trainer_model, device))
+    distributed_trainer_model = ppe.nn.parallel.DistributedDataParallel(
+        ppe.to(trainer_model, device)
+    )
 
-    optimizer = torch.optim.Adam(distributed_trainer_model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(
+        distributed_trainer_model.parameters(), lr=1e-3
+    )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer=optimizer, T_max=args.epoch
     )
@@ -189,7 +214,14 @@ def main():
             ext.LogReport(trigger=default_trigger),  # type: ignore
             ext.ProgressBar(),  # type: ignore
             ext.PrintReport(  # type: ignore
-                ["epoch", "iteration", "train/loss", "val/loss", "val/accuracy", "lr"]
+                [
+                    "epoch",
+                    "iteration",
+                    "train/loss",
+                    "val/loss",
+                    "val/accuracy",
+                    "lr",
+                ]
             ),
             ppe.training.ExtensionEntry(
                 ext.observe_lr(optimizer),

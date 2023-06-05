@@ -20,7 +20,9 @@ class TrainerModel(nn.Module):
         self.model = model
         self.criterion = nn.CrossEntropyLoss()
 
-    def forward(self, x: torch.Tensor, y: torch.Tensor) -> Dict[str, torch.Tensor]:
+    def forward(
+        self, x: torch.Tensor, y: torch.Tensor
+    ) -> Dict[str, torch.Tensor]:
         out = self.model.forward(x)
         loss = self.criterion.forward(out, y)
         ppe.reporting.report({"train/loss": loss.item()})
@@ -51,11 +53,20 @@ def main():
         "using PyTorch and pytorch-pfn-extras.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('--batch-size', type=int, default=64, metavar='N',
-                        help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000,
-                        metavar='N',
-                        help='input batch size for testing (default: 1000)')
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=64,
+        metavar="N",
+        help="input batch size for training (default: 64)",
+    )
+    parser.add_argument(
+        "--test-batch-size",
+        type=int,
+        default=1000,
+        metavar="N",
+        help="input batch size for testing (default: 1000)",
+    )
     parser.add_argument(
         "--gpu", "-g", type=int, default=0, help="GPU ID to use for training"
     )
@@ -70,7 +81,11 @@ def main():
         help="Output directory to save the results",
     )
     parser.add_argument(
-        "--n-retains", "-n", type=int, default=5, help="Number of snapshots to retain"
+        "--n-retains",
+        "-n",
+        type=int,
+        default=5,
+        help="Number of snapshots to retain",
     )
     parser.add_argument(
         "--no-autoload",
@@ -113,10 +128,16 @@ def main():
     )
 
     train_loader = DataLoader(
-        train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True
+        train,
+        batch_size=args.batch_size,
+        num_workers=args.num_worker,
+        shuffle=True,
     )
     val_loader = DataLoader(
-        val, batch_size=args.test_batch_size, num_workers=args.num_worker, shuffle=False
+        val,
+        batch_size=args.test_batch_size,
+        num_workers=args.num_worker,
+        shuffle=False,
     )
 
     model = resnet50(num_classes=10)
@@ -135,10 +156,19 @@ def main():
             ext.LogReport(),
             ext.ProgressBar(),
             ext.PrintReport(
-                ["epoch", "iteration", "train/loss", "val/loss", "val/accuracy", "lr"]
+                [
+                    "epoch",
+                    "iteration",
+                    "train/loss",
+                    "val/loss",
+                    "val/accuracy",
+                    "lr",
+                ]
             ),
             ppe.training.ExtensionEntry(
-                ext.snapshot(n_retains=args.n_retains, autoload=not args.no_autoload),
+                ext.snapshot(
+                    n_retains=args.n_retains, autoload=not args.no_autoload
+                ),
                 trigger=(1, "epoch"),
             ),
             ppe.training.ExtensionEntry(
