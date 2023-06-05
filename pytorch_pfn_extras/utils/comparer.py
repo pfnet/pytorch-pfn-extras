@@ -207,9 +207,9 @@ def get_default_comparer(
         if isinstance(val2, torch.Tensor):
             val2 = val2.cpu().detach()
 
-        assert_close = torch.testing.assert_allclose  # type: ignore[assignment]
-
-        assert_close(val1, val2, rtol=rtol, atol=atol, equal_nan=equal_nan)
+        torch.testing.assert_close(
+            val1, val2, rtol=rtol, atol=atol, equal_nan=equal_nan
+        )
 
     return compare_fn
 

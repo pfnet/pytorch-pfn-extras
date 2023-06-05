@@ -471,7 +471,7 @@ class _Exporter(_ExporterOptions):
     # ONNX level graph optimizer
     def optimize_onnx(self, graph: torch._C.Graph) -> torch._C.Graph:
         if self.onnx_scalar_type_analysis:
-            run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
+            run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
 
         if self.do_constant_folding and self.opset_version in pytorch_pfn_extras.onnx._constants.onnx_constant_folding_opsets:
             folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]
