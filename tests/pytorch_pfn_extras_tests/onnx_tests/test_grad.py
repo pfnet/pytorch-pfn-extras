@@ -124,6 +124,16 @@ def test_grad(use_pfto: bool):
         assert named_nodes["Conv_2"].input[0] == "Gradient_x_0_0"
         assert named_nodes["Conv_2"].output[0] == y_in
 
+    # Test make_attribute workaround for pfto
+    has_zs = False
+    for n in actual_onnx.graph.node:
+        if n.op_type == "Gradient":
+            for a in n.attribute:
+                if a.name == "zs":
+                    assert a.type == onnx.AttributeProto.STRINGS
+                    has_zs = True
+    assert has_zs
+
 
 @pytest.mark.parametrize("use_pfto", [False, True])
 @pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
