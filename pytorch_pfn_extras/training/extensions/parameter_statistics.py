@@ -1,19 +1,19 @@
 from typing import Any, Optional
 
 import torch
-
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
-
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 _default_statistics = {
-    'mean': lambda x: torch.mean(x),
-    'std': lambda x: torch.std(x),
-    'min': lambda x: torch.min(x),
-    'max': lambda x: torch.max(x),
-    'zeros': lambda x: (x == 0).sum(),
+    "mean": lambda x: torch.mean(x),
+    "std": lambda x: torch.std(x),
+    "min": lambda x: torch.min(x),
+    "max": lambda x: torch.max(x),
+    "zeros": lambda x: (x == 0).sum(),
     # 'percentile': lambda x: backend.get_array_module(x).percentile(
     #     x, (0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87))
 }
@@ -72,41 +72,40 @@ class ParameterStatistics(extension.Extension):
 (0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87))``)
 
     """
-    default_name = 'parameter_statistics'
+
+    default_name = "parameter_statistics"
     priority = extension.PRIORITY_WRITER
 
     # prefix ends with a '/' and param_name is preceded by a '/'
-    report_key_template = ('{prefix}{param_name}/{attr_name}/'
-                           '{function_name}')
+    report_key_template = "{prefix}{param_name}/{attr_name}/" "{function_name}"
 
     default_statistics = _default_statistics
 
     def __init__(
-            self,
-            links: Any,
-            statistics: Any = 'default',
-            report_params: bool = True,
-            report_grads: bool = True,
-            prefix: Optional[str] = None,
-            trigger: trigger_module.TriggerLike = (1, 'epoch'),
-            skip_nan_params: bool = False,
+        self,
+        links: Any,
+        statistics: Any = "default",
+        report_params: bool = True,
+        report_grads: bool = True,
+        prefix: Optional[str] = None,
+        trigger: trigger_module.TriggerLike = (1, "epoch"),
+        skip_nan_params: bool = False,
     ):
-
         if not isinstance(links, (list, tuple)):
-            links = links,
+            links = (links,)
         self._links = links
 
         if statistics is None:
             statistics = {}
-        elif statistics == 'default':
+        elif statistics == "default":
             statistics = self.default_statistics
         self._statistics = dict(statistics)
 
         attrs = []
         if report_params:
-            attrs.append('data')
+            attrs.append("data")
         if report_grads:
-            attrs.append('grad')
+            attrs.append("grad")
         self._attrs = attrs
 
         self._prefix = prefix
@@ -137,24 +136,30 @@ class ParameterStatistics(extension.Extension):
                         # since the statistics function should make no
                         # assumption about the axes
                         params = getattr(param, attr_name).flatten()
-                        if (self._skip_nan_params
-                            and (
-                                torch.isnan(params).any())):
-                            value: Any = float('nan')
+                        if self._skip_nan_params and (
+                            torch.isnan(params).any()
+                        ):
+                            value: Any = float("nan")
                         else:
                             value = function(params)
                         key = self.report_key_template.format(
-                            prefix=self._prefix + '/' if self._prefix else '',
+                            prefix=self._prefix + "/" if self._prefix else "",
                             param_name=param_name,
                             attr_name=attr_name,
-                            function_name=function_name
+                            function_name=function_name,
                         )
-                        if (isinstance(value, torch.Tensor)
-                                and value.numel() > 1):
+                        if (
+                            isinstance(value, torch.Tensor)
+                            and value.numel() > 1
+                        ):
                             # Append integer indices to the keys if the
                             # statistic function return multiple values
-                            statistics.update({'{}/{}'.format(key, i): v for
-                                               i, v in enumerate(value)})
+                            statistics.update(
+                                {
+                                    "{}/{}".format(key, i): v
+                                    for i, v in enumerate(value)
+                                }
+                            )
                         else:
                             statistics[key] = value
 

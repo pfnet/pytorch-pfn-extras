@@ -61,9 +61,11 @@ def test_grad_no_export():
     assert y.shape == (1, 1, 32, 20)
 
 
+@pytest.mark.parametrize("use_pfto", [False, True])
 @pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
+@pytest.mark.filterwarnings("ignore:Specified output_names .*:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
-def test_grad():
+def test_grad(use_pfto: bool):
     if not pytorch_pfn_extras.requires('1.8.0'):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
@@ -94,14 +96,15 @@ def test_grad():
     output_dir = _helper(
         model,
         x,
-        'grad',
+        f"grad_{use_pfto}",
         enable_onnx_checker=False,
-        use_pfto=False,
+        use_pfto=use_pfto,
+        output_names=["h"],
     )
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    if pytorch_pfn_extras.requires("1.13"):
+    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
         assert '/_ppe_as_out_module/conv/Conv' in named_nodes
         assert '/_ppe_as_out_module/Gradient' in named_nodes
         assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
@@ -111,20 +114,32 @@ def test_grad():
         assert 'MatMul_6' in named_nodes
 
     assert list([v.name for v in actual_onnx.graph.output]) == [
-        "v10_MatMul", "Gradient_y_0", "Gradient_x_0_0"
+        "h", "Gradient_y_0", "Gradient_x_0_0"
     ]
     y_in, _ = _get_name(actual_onnx.graph, "Gradient_y_0")
-    if pytorch_pfn_extras.requires("1.13"):
+    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
         assert named_nodes["/_ppe_as_out_module/conv/Conv"].input[0] == "Gradient_x_0_0"
         assert named_nodes["/_ppe_as_out_module/conv/Conv"].output[0] == y_in
     else:
         assert named_nodes["Conv_2"].input[0] == "Gradient_x_0_0"
         assert named_nodes["Conv_2"].output[0] == y_in
 
+    # Test make_attribute workaround for pfto
+    has_zs = False
+    for n in actual_onnx.graph.node:
+        if n.op_type == "Gradient":
+            for a in n.attribute:
+                if a.name == "zs":
+                    assert a.type == onnx.AttributeProto.STRINGS
+                    has_zs = True
+    assert has_zs
 
+
+@pytest.mark.parametrize("use_pfto", [False, True])
 @pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
+@pytest.mark.filterwarnings("ignore:Specified output_names .*:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
-def test_grad_multiple_times():
+def test_grad_multiple_times(use_pfto: bool):
     if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
@@ -164,14 +179,15 @@ def test_grad_multiple_times():
     output_dir = _helper(
         model,
         x,
-        'grad',
+        f"grad_multi_times_{use_pfto}",
         enable_onnx_checker=False,
-        use_pfto=False,
+        use_pfto=use_pfto,
+        output_names=["h"],
     )
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    if pytorch_pfn_extras.requires("1.13"):
+    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
         assert '/_ppe_as_out_module/conv/Conv' in named_nodes
         assert '/_ppe_as_out_module/conv_1/Conv' in named_nodes
         assert '/_ppe_as_out_module/Gradient' in named_nodes
@@ -185,11 +201,11 @@ def test_grad_multiple_times():
         assert 'MatMul_12' in named_nodes
 
     assert list([v.name for v in actual_onnx.graph.output]) == [
-        "v16_MatMul", "Gradient_y_0", "Gradient_x_0_0", "Gradient_y_1", "Gradient_x_0_1"
+        "h", "Gradient_y_0", "Gradient_x_0_0", "Gradient_y_1", "Gradient_x_0_1"
     ]
     y0_in, _ = _get_name(actual_onnx.graph, "Gradient_y_0")
     y1_in, _ = _get_name(actual_onnx.graph, "Gradient_y_1")
-    if pytorch_pfn_extras.requires("1.13"):
+    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
         assert named_nodes["/_ppe_as_out_module/conv/Conv"].input[0] == "Gradient_x_0_0"
         assert named_nodes["/_ppe_as_out_module/conv/Conv"].output[0] == y0_in
         assert named_nodes["/_ppe_as_out_module/conv_1/Conv"].input[0] == "Gradient_x_0_1"
@@ -201,9 +217,11 @@ def test_grad_multiple_times():
         assert named_nodes["Conv_7"].output[0] == y1_in
 
 
+@pytest.mark.parametrize("use_pfto", [False, True])
 @pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
+@pytest.mark.filterwarnings("ignore:Specified output_names .*:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
-def test_grad_with_multiple_inputs():
+def test_grad_with_multiple_inputs(use_pfto: bool):
     if not pytorch_pfn_extras.requires("1.8.0"):
         pytest.skip('skip for PyTorch 1.7 or earlier')
 
@@ -236,14 +254,15 @@ def test_grad_with_multiple_inputs():
     output_dir = _helper(
         model,
         x,
-        'grad',
+        f"grad_multi_inputs_{use_pfto}",
         enable_onnx_checker=False,
-        use_pfto=False,
+        use_pfto=use_pfto,
+        output_names=["h"],
     )
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    if pytorch_pfn_extras.requires("1.13"):
+    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
         assert '/_ppe_as_out_module/conv/Conv' in named_nodes
         assert '/_ppe_as_out_module/Gradient' in named_nodes
         assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
@@ -253,10 +272,10 @@ def test_grad_with_multiple_inputs():
         assert 'MatMul_9' in named_nodes
 
     assert list([v.name for v in actual_onnx.graph.output]) == [
-        "v14_MatMul", "Gradient_y_0", "Gradient_x_0_0", "Gradient_x_1_0"
+        "h", "Gradient_y_0", "Gradient_x_0_0", "Gradient_x_1_0"
     ]
     y_in, _ = _get_name(actual_onnx.graph, "Gradient_y_0")
-    if pytorch_pfn_extras.requires("1.13"):
+    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
         assert named_nodes["/_ppe_as_out_module/Concat"].input[0] == "Gradient_x_0_0"
         assert named_nodes["/_ppe_as_out_module/Concat"].input[1] == "Gradient_x_1_0"
         assert named_nodes["/_ppe_as_out_module/conv/Conv"].output[0] == y_in

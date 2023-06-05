@@ -1,14 +1,15 @@
 import sys
-from typing import Any, IO, List, Optional, Union
+from typing import IO, Any, List, Optional, Union
 
 from IPython.display import display
 from ipywidgets import HTML
-
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
+from pytorch_pfn_extras.training.extensions import (
+    log_report as log_report_module,
+)
 from pytorch_pfn_extras.training.extensions.print_report import PrintReport
-
-from pytorch_pfn_extras.training.extensions import log_report \
-    as log_report_module
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
 
 
 class PrintReportNotebook(PrintReport):
@@ -32,10 +33,10 @@ class PrintReportNotebook(PrintReport):
     """
 
     def __init__(
-            self,
-            entries: Optional[List[str]] = None,
-            log_report: Union[str, log_report_module.LogReport] = 'LogReport',
-            out: IO[Any] = sys.stdout,
+        self,
+        entries: Optional[List[str]] = None,
+        log_report: Union[str, log_report_module.LogReport] = "LogReport",
+        out: IO[Any] = sys.stdout,
     ) -> None:
         super(PrintReportNotebook, self).__init__(
             entries=entries, log_report=log_report, out=out
@@ -56,4 +57,4 @@ class PrintReportNotebook(PrintReport):
         if self._infer_entries:
             # --- update entries ---
             self._update_entries(log_report)
-        self._widget.value = df[self._entries].to_html(index=False, na_rep='')
+        self._widget.value = df[self._entries].to_html(index=False, na_rep="")

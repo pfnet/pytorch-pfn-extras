@@ -1,9 +1,10 @@
-from typing import Any, Callable, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 from pytorch_pfn_extras import reporting
 from pytorch_pfn_extras.training import trigger as trigger_module
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
-
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras.training._trigger_util import TriggerLike
@@ -26,10 +27,10 @@ class BestValueTrigger(trigger_module.Trigger):
     """
 
     def __init__(
-            self,
-            key: str,
-            compare: Callable[[float, float], bool],
-            trigger: 'TriggerLike' = (1, 'epoch'),
+        self,
+        key: str,
+        compare: Callable[[float, float], bool],
+        trigger: "TriggerLike" = (1, "epoch"),
     ) -> None:
         self._key = key
         self._best_value: Optional[float] = None
@@ -63,9 +64,12 @@ class BestValueTrigger(trigger_module.Trigger):
 
         stats = summary.compute_mean()
         if key not in stats:
-            raise KeyError('Key "{}" not found in the observation '
-                           '(current available keys are {})'
-                           .format(key, list(stats.keys())))
+            raise KeyError(
+                'Key "{}" not found in the observation '
+                "(current available keys are {})".format(
+                    key, list(stats.keys())
+                )
+            )
 
         value = float(stats[key])  # copy to CPU
         self._init_summary()
@@ -79,15 +83,17 @@ class BestValueTrigger(trigger_module.Trigger):
         self._summary = reporting.DictSummary()
 
     def state_dict(self) -> Dict[str, Any]:
-        state = {'interval_trigger': self._interval_trigger.state_dict(),
-                 '_summary': self._summary.state_dict(),
-                 '_best_value': self._best_value}
+        state = {
+            "interval_trigger": self._interval_trigger.state_dict(),
+            "_summary": self._summary.state_dict(),
+            "_best_value": self._best_value,
+        }
         return state
 
     def load_state_dict(self, to_load: Dict[str, Any]) -> None:
-        self._interval_trigger.load_state_dict(to_load['interval_trigger'])
-        self._summary.load_state_dict(to_load['_summary'])
-        self._best_value = to_load['_best_value']
+        self._interval_trigger.load_state_dict(to_load["interval_trigger"])
+        self._summary.load_state_dict(to_load["_summary"])
+        self._best_value = to_load["_best_value"]
 
     def may_fire(self, iteration: int, epoch_length: int) -> bool:
         return self._interval_trigger.may_fire(iteration, epoch_length)
@@ -110,9 +116,10 @@ class MaxValueTrigger(BestValueTrigger):
 
     """
 
-    def __init__(self, key: str, trigger: 'TriggerLike' = (1, 'epoch')):
+    def __init__(self, key: str, trigger: "TriggerLike" = (1, "epoch")):
         super().__init__(
-            key, lambda max_value, new_value: new_value > max_value, trigger)
+            key, lambda max_value, new_value: new_value > max_value, trigger
+        )
 
 
 class MinValueTrigger(BestValueTrigger):
@@ -132,6 +139,7 @@ class MinValueTrigger(BestValueTrigger):
 
     """
 
-    def __init__(self, key: str, trigger: 'TriggerLike' = (1, 'epoch')):
+    def __init__(self, key: str, trigger: "TriggerLike" = (1, "epoch")):
         super().__init__(
-            key, lambda min_value, new_value: new_value < min_value, trigger)
+            key, lambda min_value, new_value: new_value < min_value, trigger
+        )

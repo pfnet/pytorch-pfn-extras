@@ -1,10 +1,9 @@
 import contextlib
 import dataclasses
-from typing import Any, Dict, Generator, Iterable, Mapping, Optional
 import warnings
+from typing import Any, Dict, Generator, Iterable, Mapping, Optional
 
 import torch
-
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
 from pytorch_pfn_extras.runtime import _autocast
 
@@ -21,7 +20,7 @@ def torch_autocast(enabled: bool = True) -> Generator[None, None, None]:
 
 def _normalize_outputs(outputs: Any) -> Dict[str, Any]:
     target: Dict[str, Any]
-    if isinstance(outputs, tuple) and hasattr(outputs, '_fields'):
+    if isinstance(outputs, tuple) and hasattr(outputs, "_fields"):
         # namedtuple
         target = outputs._asdict()  # type: ignore[attr-defined]
     elif isinstance(outputs, dict):
@@ -50,10 +49,10 @@ class BaseLogic:
         pass
 
     def train_epoch_begin(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            epoch: int,
-            loader: Iterable[Any],
+        self,
+        models: Mapping[str, torch.nn.Module],
+        epoch: int,
+        loader: Iterable[Any],
     ) -> None:
         """A method called when starting a new epoch of training.
 
@@ -65,9 +64,9 @@ class BaseLogic:
         pass
 
     def train_epoch_end(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            epoch: int,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        epoch: int,
     ) -> None:
         """A method called when completing an epoch of training.
 
@@ -78,11 +77,11 @@ class BaseLogic:
         pass
 
     def train_step(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            optimizers: Mapping[str, torch.optim.Optimizer],
-            batch_idx: int,
-            batch: Any,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        optimizers: Mapping[str, torch.optim.Optimizer],
+        batch_idx: int,
+        batch: Any,
     ) -> Any:
         """A method invokes the models forward and backward passes.
 
@@ -102,10 +101,10 @@ class BaseLogic:
         pass
 
     def train_step_optimizers(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            optimizers: Mapping[str, torch.optim.Optimizer],
-            batch_idx: int,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        optimizers: Mapping[str, torch.optim.Optimizer],
+        batch_idx: int,
     ) -> None:
         """A method in charge of stepping the provided optimizers.
 
@@ -118,8 +117,7 @@ class BaseLogic:
         pass
 
     def train_validation_begin(
-            self,
-            models: Mapping[str, torch.nn.Module]
+        self, models: Mapping[str, torch.nn.Module]
     ) -> None:
         """A method called when starting a validation.
 
@@ -129,8 +127,8 @@ class BaseLogic:
         pass
 
     def train_validation_end(
-            self,
-            models: Mapping[str, torch.nn.Module],
+        self,
+        models: Mapping[str, torch.nn.Module],
     ) -> None:
         """A method called when the validation completes.
 
@@ -140,10 +138,10 @@ class BaseLogic:
         pass
 
     def eval_step(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            batch_idx: int,
-            batch: Any,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        batch_idx: int,
+        batch: Any,
     ) -> Any:
         """A method for an evaluation step.
 
@@ -157,11 +155,10 @@ class BaseLogic:
 
 
 class Logic(BaseLogic):
-
     def __init__(
-            self,
-            model_name: str = 'main',
-            options: Optional[Dict[str, Any]] = None,
+        self,
+        model_name: str = "main",
+        options: Optional[Dict[str, Any]] = None,
     ) -> None:
         """A set of methods that defines the training logic.
 
@@ -188,24 +185,29 @@ class Logic(BaseLogic):
     def consume_options(self, options: Dict[str, Any]) -> None:
         super().consume_options(options)
 
-        self.backward_outputs = options.pop('backward_outputs', None)
-        self._grad_scaler = options.pop('grad_scaler', None)
+        self.backward_outputs = options.pop("backward_outputs", None)
+        self._grad_scaler = options.pop("grad_scaler", None)
 
-        self._backward_fn = options.pop('backward_function', None)
-        autocast_options = options.get("autocast", False)
+        self._backward_fn = options.pop("backward_function", None)
+        autocast_options = options.pop("autocast", False)
         if isinstance(autocast_options, bool):
-            autocast_options = {"enabled": autocast_options, "device_type": "cuda"}
+            autocast_options = {
+                "enabled": autocast_options,
+                "device_type": "cuda",
+            }
         self._autocast = _autocast._AutocastManager(
             autocast_options, self._grad_scaler is not None
         )
 
         if self._grad_scaler is not None:
             if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
-                raise RuntimeError('grad_scaler should be a '
-                                   'torch.cuda.amp.GradScaler object')
+                raise RuntimeError(
+                    "grad_scaler should be a "
+                    "torch.cuda.amp.GradScaler object"
+                )
 
     def _forward(self, model: torch.nn.Module, batch: Any) -> Any:
-        if isinstance(batch, tuple) and hasattr(batch, '_fields'):
+        if isinstance(batch, tuple) and hasattr(batch, "_fields"):
             # namedtuple
             return model(batch)
         if isinstance(batch, dict):
@@ -218,10 +220,16 @@ class Logic(BaseLogic):
         to_backward = set()
         if self.backward_outputs is None:
             for _, v in outputs.items():
-                if isinstance(v, torch.Tensor) and v.grad_fn is not None and (
-                    (
-                        v.numel() == 1
-                        and (v.dtype.is_floating_point or v.dtype.is_complex)
+                if (
+                    isinstance(v, torch.Tensor)
+                    and v.grad_fn is not None
+                    and (
+                        (
+                            v.numel() == 1
+                            and (
+                                v.dtype.is_floating_point or v.dtype.is_complex
+                            )
+                        )
                     )
                 ):
                     to_backward.add(v)
@@ -238,10 +246,14 @@ class Logic(BaseLogic):
                         to_backward.add(v)
                 except KeyError:
                     warnings.warn(
-                        'Couldn\'t find requested backward value: '
-                        f'{k} in {outputs.keys()}'
+                        "Couldn't find requested backward value: "
+                        f"{k} in {outputs.keys()}"
                     )
-
+        if self._grad_scaler is not None:
+            assert (
+                len(to_backward) == 1
+            ), "loss scaling with multiple loss is not supported"
+            to_backward = {self._grad_scaler.scale(v) for v in to_backward}
         for v in to_backward:
             if self._backward_fn is None:
                 v.backward()  # type: ignore[no-untyped-call]
@@ -249,10 +261,10 @@ class Logic(BaseLogic):
                 self._backward_fn(v)
 
     def train_epoch_begin(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            epoch: int,
-            loader: Iterable[Any],
+        self,
+        models: Mapping[str, torch.nn.Module],
+        epoch: int,
+        loader: Iterable[Any],
     ) -> None:
         """A method called when starting a new epoch of training.
 
@@ -263,17 +275,22 @@ class Logic(BaseLogic):
         """
         model = models[self.model_name]
         model.train()
-        if hasattr(loader, 'sampler') and hasattr(
-                loader.sampler, 'set_epoch'):  # type: ignore[attr-defined]
+        if hasattr(loader, "sampler") and hasattr(
+            loader.sampler, "set_epoch"
+        ):  # type: ignore[attr-defined]
             # Needed for `torch.utils.data.DistributedSampler`
             loader.sampler.set_epoch(epoch)  # type: ignore[attr-defined]
 
+    def train_epoch_end(self, models: Mapping[str, Any], epoch: int) -> None:
+        model = models[self.model_name]
+        model.eval()
+
     def train_step(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            optimizers: Mapping[str, torch.optim.Optimizer],
-            batch_idx: int,
-            batch: Any,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        optimizers: Mapping[str, torch.optim.Optimizer],
+        batch_idx: int,
+        batch: Any,
     ) -> Any:
         """A method invokes the model forward and backward passes.
 
@@ -294,21 +311,14 @@ class Logic(BaseLogic):
             optimizers[self.model_name].zero_grad()
             outs = self._forward(models[self.model_name], batch)
             to_back_outs = _normalize_outputs(outs)
-            if self._grad_scaler is not None:
-                assert (
-                    len(to_back_outs) == 1
-                ), "loss scaling with multiple outputs is not supported"
-                to_back_outs = {
-                    k: self._grad_scaler.scale(v)
-                    for k, v in to_back_outs.items()}
         self._backward(to_back_outs)
         return outs
 
     def train_step_optimizers(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            optimizers: Mapping[str, torch.optim.Optimizer],
-            batch_idx: int,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        optimizers: Mapping[str, torch.optim.Optimizer],
+        batch_idx: int,
     ) -> None:
         """A method in charge of stepping the provided optimizers.
 
@@ -328,8 +338,8 @@ class Logic(BaseLogic):
             optimizer.step()
 
     def train_validation_begin(
-            self,
-            models: Mapping[str, torch.nn.Module],
+        self,
+        models: Mapping[str, torch.nn.Module],
     ) -> None:
         """A method called when starting a validation.
 
@@ -339,11 +349,15 @@ class Logic(BaseLogic):
         model = models[self.model_name]
         model.eval()
 
+    def train_validation_end(self, models: Mapping[str, Any]) -> None:
+        model = models[self.model_name]
+        model.train()
+
     def eval_step(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            batch_idx: int,
-            batch: Any,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        batch_idx: int,
+        batch: Any,
     ) -> Any:
         """A method for an evaluation step.
 
@@ -354,15 +368,16 @@ class Logic(BaseLogic):
                 Input tensors feeded to the model of the current step.
         """
         model = models[self.model_name]
-        outs = self._forward(model, batch)
+        with self._autocast.autocast():
+            outs = self._forward(model, batch)
         return outs
 
 
 class CodeBlockLogic(BaseLogic):
     def __init__(
-            self,
-            model_name: str = 'main',
-            options: Optional[Dict[str, Any]] = None,
+        self,
+        model_name: str = "main",
+        options: Optional[Dict[str, Any]] = None,
     ) -> None:
         """A set of methods that defines the training logic.
 
@@ -380,15 +395,15 @@ class CodeBlockLogic(BaseLogic):
     def consume_options(self, options: Dict[str, Any]) -> None:
         super().consume_options(options)
 
-        self.backward_outputs = options.pop('backward_outputs', None)
+        self.backward_outputs = options.pop("backward_outputs", None)
         if self.backward_outputs is not None:
             assert isinstance(self.backward_outputs, str)
 
     def train_epoch_begin(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            epoch: int,
-            loader: Iterable[Any],
+        self,
+        models: Mapping[str, torch.nn.Module],
+        epoch: int,
+        loader: Iterable[Any],
     ) -> None:
         """A method called when starting a new epoch of training.
 
@@ -399,17 +414,22 @@ class CodeBlockLogic(BaseLogic):
         """
         model = models[self.model_name]
         model.train()
-        if hasattr(loader, 'sampler') and hasattr(
-                loader.sampler, 'set_epoch'):  # type: ignore[attr-defined]
+        if hasattr(loader, "sampler") and hasattr(
+            loader.sampler, "set_epoch"
+        ):  # type: ignore[attr-defined]
             # Needed for `torch.utils.data.DistributedSampler`
             loader.sampler.set_epoch(epoch)  # type: ignore[attr-defined]
 
+    def train_epoch_end(self, models: Mapping[str, Any], epoch: int) -> None:
+        model = models[self.model_name]
+        model.eval()
+
     def train_step(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            optimizers: Mapping[str, torch.optim.Optimizer],
-            batch_idx: int,
-            batch: Any,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        optimizers: Mapping[str, torch.optim.Optimizer],
+        batch_idx: int,
+        batch: Any,
     ) -> Any:
         """A method invokes the model forward and backward passes.
 
@@ -436,8 +456,8 @@ class CodeBlockLogic(BaseLogic):
         )(batch)
 
     def train_validation_begin(
-            self,
-            models: Mapping[str, torch.nn.Module],
+        self,
+        models: Mapping[str, torch.nn.Module],
     ) -> None:
         """A method called when starting a validation.
 
@@ -447,11 +467,15 @@ class CodeBlockLogic(BaseLogic):
         model = models[self.model_name]
         model.eval()
 
+    def train_validation_end(self, models: Mapping[str, Any]) -> None:
+        model = models[self.model_name]
+        model.train()
+
     def eval_step(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            batch_idx: int,
-            batch: Any,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        batch_idx: int,
+        batch: Any,
     ) -> Any:
         """A method for an evaluation step.
 
@@ -476,18 +500,19 @@ class ClousureModelOutput:
 
 
 class ClousureLogic(Logic):
-
     def consume_options(self, options: Dict[str, Any]) -> None:
         super().consume_options(options)
         if self._grad_scaler is not None:
-            raise RuntimeError('torch.cuda.amp.GradScaler does not support clousure step mode.')
+            raise RuntimeError(
+                "torch.cuda.amp.GradScaler does not support clousure step mode."
+            )
 
     def train_step(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            optimizers: Mapping[str, torch.optim.Optimizer],
-            batch_idx: int,
-            batch: Any,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        optimizers: Mapping[str, torch.optim.Optimizer],
+        batch_idx: int,
+        batch: Any,
     ) -> Any:
         """A method invokes the model forward and backward passes and performs an optimization step.
 
@@ -501,18 +526,21 @@ class ClousureLogic(Logic):
             batch (torch.Tensor, list of torch.Tensor, dict of torch.Tensor):
                 Input tensors feeded to the model of the current step.
         """
+
         def clousure() -> ClousureModelOutput:
             with self._autocast.autocast():
                 optimizers[self.model_name].zero_grad()
                 outs = self._forward(models[self.model_name], batch)
             to_back_outs = _normalize_outputs(outs)
             if len(to_back_outs) > 1:
-                raise RuntimeError("Clousure step with multiple outputs is not supported.")
+                raise RuntimeError(
+                    "Clousure step with multiple outputs is not supported."
+                )
             elif len(to_back_outs) == 0:
                 raise RuntimeError("No backward target found.")
 
             self._backward(to_back_outs)
-            loss, = to_back_outs.values()
+            (loss,) = to_back_outs.values()
             return ClousureModelOutput(
                 outs=outs,
                 loss=loss,
@@ -521,14 +549,16 @@ class ClousureLogic(Logic):
         optimizer = optimizers[self.model_name]
         clousure_model_output: ClousureModelOutput = optimizer.step(clousure)  # type: ignore
         if not isinstance(clousure_model_output, ClousureModelOutput):
-            raise RuntimeError(f"{type(clousure_model_output)} type object returned from optimizer.step with clousure. optimizer.step is expected to return ppe.handler.ClousureModelOutput.")
+            raise RuntimeError(
+                f"{type(clousure_model_output)} type object returned from optimizer.step with clousure. optimizer.step is expected to return ppe.handler.ClousureModelOutput."
+            )
         return clousure_model_output.outs
 
     def train_step_optimizers(
-            self,
-            models: Mapping[str, torch.nn.Module],
-            optimizers: Mapping[str, torch.optim.Optimizer],
-            batch_idx: int,
+        self,
+        models: Mapping[str, torch.nn.Module],
+        optimizers: Mapping[str, torch.optim.Optimizer],
+        batch_idx: int,
     ) -> None:
         """In clousure mode, the stepping of the optimizer cannot be changed.
 

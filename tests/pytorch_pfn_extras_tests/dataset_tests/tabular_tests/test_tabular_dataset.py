@@ -2,10 +2,9 @@ import itertools
 
 import numpy as np
 import pytest
-
-from pytorch_pfn_extras_tests.dataset_tests.tabular_tests import (
+from pytorch_pfn_extras_tests.dataset_tests.tabular_tests import (  # NOQA
     dummy_dataset,
-)  # NOQA
+)
 
 
 @pytest.mark.parametrize(
@@ -42,7 +41,8 @@ class TestTabularDataset:
 
     def test_convert(self, mode, return_array):
         dataset = dummy_dataset.DummyDataset(
-            mode=mode, return_array=return_array)
+            mode=mode, return_array=return_array
+        )
         output = dataset.convert(dataset.fetch())
 
         if mode is tuple:
@@ -80,7 +80,8 @@ class TestTabularDataset:
 
     def test_iter(self, mode, return_array):
         dataset = dummy_dataset.DummyDataset(
-            mode=mode, return_array=return_array)
+            mode=mode, return_array=return_array
+        )
         it = iter(dataset)
         for i in range(10):
             if mode is tuple:

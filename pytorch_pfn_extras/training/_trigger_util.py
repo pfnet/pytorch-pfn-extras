@@ -1,10 +1,13 @@
-from typing import Any, Callable, Dict, Union, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
-from pytorch_pfn_extras.training._manager_protocol import ExtensionsManagerProtocol
+from pytorch_pfn_extras.training._manager_protocol import (
+    ExtensionsManagerProtocol,
+)
 
 
 class Trigger:
     """Base class for triggers."""
+
     def may_fire(self, iteration: int, epoch_len: int) -> bool:
         """Flags if the trigger may fire at the current iteration
 
@@ -24,7 +27,9 @@ class Trigger:
 
 
 class _CallableTrigger(Trigger):
-    def __init__(self, func: Callable[[ExtensionsManagerProtocol], bool]) -> None:
+    def __init__(
+        self, func: Callable[[ExtensionsManagerProtocol], bool]
+    ) -> None:
         self.func = func
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> bool:

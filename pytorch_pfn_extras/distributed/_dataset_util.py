@@ -5,7 +5,7 @@ import torch
 
 
 def _shared_random_seed() -> int:
-    seed = torch.randint(0, 2 ** 31, size=())
+    seed = torch.randint(0, 2**31, size=())
     if torch.distributed.is_initialized():  # type: ignore
         if torch.distributed.get_backend() == "nccl":  # type: ignore
             seed = seed.cuda()

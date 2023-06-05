@@ -2,10 +2,7 @@ import contextlib
 from typing import Any, Generator, Optional
 
 import torch
-
-from pytorch_pfn_extras._cupy import cupy
-from pytorch_pfn_extras._cupy import is_available, ensure_cupy
-
+from pytorch_pfn_extras._cupy import cupy, ensure_cupy, is_available
 
 _allocator = None
 
@@ -49,7 +46,8 @@ def use_torch_mempool_in_cupy() -> None:
 
     ensure_cupy()
     _allocator = cupy.cuda.memory.PythonFunctionAllocator(
-        _torch_alloc, _torch_free)
+        _torch_alloc, _torch_free
+    )
     cupy.cuda.set_allocator(_allocator.malloc)
 
 
@@ -58,11 +56,11 @@ def _torch_alloc(size: int, device_id: int) -> Any:
     cupy_stream_ptr = cupy.cuda.get_current_stream().ptr
     if torch_stream_ptr != cupy_stream_ptr:
         raise RuntimeError(
-            'The current stream set in PyTorch and CuPy must be same.'
-            ' Use `pytorch_pfn_extras.cuda.stream` instead of'
-            ' `torch.cuda.stream`.')
-    return torch.cuda.caching_allocator_alloc(
-        size, device_id, torch_stream_ptr)
+            "The current stream set in PyTorch and CuPy must be same."
+            " Use `pytorch_pfn_extras.cuda.stream` instead of"
+            " `torch.cuda.stream`."
+        )
+    return torch.cuda.caching_allocator_alloc(size, device_id, torch_stream_ptr)
 
 
 def _torch_free(mem_ptr: int, device_id: int) -> None:

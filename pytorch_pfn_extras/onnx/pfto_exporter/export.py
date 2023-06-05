@@ -3,6 +3,7 @@ import types
 import typing
 import warnings
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
+from contextlib import contextmanager
 
 import onnx
 import onnx.checker
@@ -11,6 +12,7 @@ import onnx.numpy_helper
 import onnx.shape_inference
 import pytorch_pfn_extras
 import pytorch_pfn_extras.onnx._constants
+from pytorch_pfn_extras.onnx import _grad as grad
 from pytorch_pfn_extras.onnx._globals import GLOBALS
 from pytorch_pfn_extras.torchscript import run_jit_pass
 import torch
@@ -28,6 +30,7 @@ torch._C.Block.return_node = torch._C.Block.returnNode  # type: ignore[attr-defi
 
 _ppe_ignore_scope: str = "_ppe_as_out_module"
 _list_create_ops: List[str] = ["prim::ListConstruct", "onnx::SequenceConstruct", "onnx::SequenceEmpty"]
+_fix_ir_version = 8
 
 # Original from https://github.com/pytorch/pytorch/blob/52a36a98d9425479f62b6e2d1a59e434b85f7f7e/torch/csrc/jit/passes/normalize_ops.cpp#L85-L162
 _op_normalize_table: Dict[str, str] = {
@@ -229,6 +232,20 @@ def _apply_tensor_info_to_value_info(v: onnx.ValueInfoProto, t: torch.Tensor) ->
         a.dim_value = i
 
 
+@contextmanager
+def _force_tracing() -> Any:
+    old_is_tracing = torch.jit.is_tracing
+
+    def is_tracing() -> bool:
+        return True
+
+    try:
+        torch.jit.is_tracing = is_tracing
+        yield
+    finally:
+        torch.jit.is_tracing = old_is_tracing
+
+
 @dataclasses.dataclass
 class _ExporterOptions:
     opset_version: int = 12
@@ -302,25 +319,30 @@ class _Exporter(_ExporterOptions):
         if torch.cuda.is_available():
             torch.cuda.set_rng_state_all(self.cuda_rng_state)
 
+    # TODO(twata): Use `self.traced` instead or use traced result outputs
+    def _get_original_outputs(self) -> None:
+        self._restore_state()
+        with _force_tracing(), grad.init_grad_state():
+            self.original_outputs = self.original_model(*self.inputs)
+        self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
+
     def _run_trace(self) -> None:
         # TODO(twata): Use `torch._C._craete_graph_by_tracing` instead.
         # So that we don't need to run heavy models multiple times
-        self.traced: torch.jit.RecursiveScriptModule = torch.jit.trace(  # type: ignore
-            self.original_model,
-            self.inputs,
-            check_trace=self.check_trace,
-            strict=self.strict_trace,
-            _force_outplace=self.force_outplace_trace,
-        )
+        self._restore_state()
+        with grad.init_grad_state():
+            self.traced: torch.jit.RecursiveScriptModule = torch.jit.trace(  # type: ignore
+                self.original_model,
+                self.inputs,
+                check_trace=self.check_trace,
+                strict=self.strict_trace,
+                _force_outplace=self.force_outplace_trace,
+            )
 
         self.graph_doc_string = f"""
 # Model: {self.traced.original_name}
 """
 
-        # TODO(twata): Use `self.traced` instead or use traced result outputs
-        self._restore_state()
-        self.original_outputs = self.original_model(*self.inputs)
-        self.flat_outputs = _to_tuple_if_not_sequence(torch._C._jit_flatten(self.original_outputs)[0])
         self.g: torch._C.Graph = self.traced.inlined_graph
         """
         `self.trace` ignores the override of `state_dict` method in `self.original_model`.
@@ -900,13 +922,31 @@ class _Exporter(_ExporterOptions):
                 if n in self.node_doc_string:
                     new_nd.doc_string = self.node_doc_string[n]
                 for attr_name in n.attributeNames():
-                    if n.kindOf(attr_name) == "t":
+                    attr_kind = n.kindOf(attr_name)
+                    if attr_kind == "t":
                         attr = onnx.helper.make_attribute(attr_name, _tensor_to_proto(n.t(attr_name)))
                     else:
                         if pytorch_pfn_extras.requires('1.13'):
-                            attr = onnx.helper.make_attribute(attr_name, sym_hel._node_get(n, attr_name))  # type: ignore[attr-defined]
+                            attr_val = sym_hel._node_get(n, attr_name)  # type: ignore[attr-defined]
                         else:
-                            attr = onnx.helper.make_attribute(attr_name, n[attr_name])
+                            attr_val = n[attr_name]
+                        # Could not use onnx.helper.make_attribute for
+                        if isinstance(attr_val, list):
+                            attr = onnx.AttributeProto()
+                            attr.name = attr_name
+                            if attr_kind == "ss":
+                                attr.type = onnx.AttributeProto.STRINGS
+                                attr.strings.extend(v.encode("utf-8") for v in attr_val)
+                            elif attr_kind == "is":
+                                attr.type = onnx.AttributeProto.INTS
+                                attr.ints.extend(attr_val)
+                            elif attr_kind == "fs":
+                                attr.type = onnx.AttributeProto.FLOATS
+                                attr.floats.extend(attr_val)
+                            else:
+                                assert False, f"'{attr_kind}' typed attribute not supported"
+                        else:
+                            attr = onnx.helper.make_attribute(attr_name, attr_val)
                     new_nd.attribute.append(attr)
             assign_onnx_values(new_nd.input, new_nd.name, n.inputs())
             assign_onnx_values(new_nd.output, new_nd.name, n.outputs())
@@ -1001,12 +1041,26 @@ class _Exporter(_ExporterOptions):
                 _apply_tensor_info_to_value_info(onnx_outputs[-1], self.flat_outputs[idx])
                 apply_dynamic_axes_info(onnx_outputs[-1], k)
 
+        unique_onnx_vars: Dict[str, onnx.ValueInfoProto] = {}
+        identities: List[onnx.NodeProto] = []
+        for onnx_name, ox_v in onnx_vars.items():
+            if ox_v.name in unique_onnx_vars:
+                ox_n = onnx.NodeProto()
+                ox_n.name = f"{val_tab[onnx_name]}_id"
+                ox_n.op_type = "Identity"
+                ox_n.input.append(ox_v.name)
+                ox_n.output.append(val_tab[onnx_name])
+                identities.append(ox_n)
+            else:
+                unique_onnx_vars[ox_v.name] = ox_v
+        onnx_nodes = identities + onnx_nodes
+
         graph = onnx.helper.make_graph(
             nodes=onnx_nodes,
             name=self.traced.original_name,
             inputs=onnx_inputs,
             outputs=onnx_outputs,
-            initializer=[v for k, v in onnx_vars.items()],
+            initializer=[v for k, v in unique_onnx_vars.items()],
             doc_string=None if self.strip_doc_string else self.graph_doc_string,
             # TODO(twata): Use torch IR's value type info
             # value_info=[
@@ -1026,10 +1080,11 @@ class _Exporter(_ExporterOptions):
                 opset_imports.append(onnx.helper.make_opsetid(domain, version))
             return opset_imports
 
-        model: onnx.ModelProto = onnx.helper.make_model(
+        model: onnx.ModelProto = onnx.helper.make_model_gen_version(
             graph,
             opset_imports=get_model_opset_imports(graph),
             producer_name="pfto",
+            ir_version=_fix_ir_version,
         )
         model = self.check_model(model)
 
@@ -1061,6 +1116,7 @@ class _Exporter(_ExporterOptions):
                     sym_hel._set_onnx_shape_inference(  # type: ignore[no-untyped-call]
                         False  # TODO(twata): Use `self.onnx_shape_inference`
                     )
+                self._get_original_outputs()
                 self._run_trace()
                 self.model: onnx.ModelProto = self.generate_onnx()
         finally:

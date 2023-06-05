@@ -1,11 +1,10 @@
-from typing import TypeVar, Optional, Iterator, Sized
+from typing import Iterator, Optional, Sized, TypeVar
 
 import numpy as np
 import torch
 import torch.distributed as dist
 
-
-T_co = TypeVar('T_co', covariant=True)
+T_co = TypeVar("T_co", covariant=True)
 
 
 class DistributedValidationSampler(torch.utils.data.Sampler):
@@ -18,23 +17,31 @@ class DistributedValidationSampler(torch.utils.data.Sampler):
     so for training do not use this sampler (use PyTorch DistributedSampler instead).
     """
 
-    def __init__(self,
-                 dataset: Sized,
-                 num_replicas: Optional[int] = None,
-                 rank: Optional[int] = None, shuffle: bool = True,
-                 seed: int = 0) -> None:
+    def __init__(
+        self,
+        dataset: Sized,
+        num_replicas: Optional[int] = None,
+        rank: Optional[int] = None,
+        shuffle: bool = True,
+        seed: int = 0,
+    ) -> None:
         if num_replicas is None:
             if not dist.is_available():  # type: ignore[no-untyped-call]
-                raise RuntimeError("Requires distributed package to be available")
+                raise RuntimeError(
+                    "Requires distributed package to be available"
+                )
             num_replicas = dist.get_world_size()  # type: ignore[no-untyped-call]
         if rank is None:
             if not dist.is_available():  # type: ignore[no-untyped-call]
-                raise RuntimeError("Requires distributed package to be available")
+                raise RuntimeError(
+                    "Requires distributed package to be available"
+                )
             rank = dist.get_rank()  # type: ignore[no-untyped-call]
         if rank >= num_replicas or rank < 0:
             raise ValueError(
                 "Invalid rank {}, rank should be in the interval"
-                " [0, {}]".format(rank, num_replicas - 1))
+                " [0, {}]".format(rank, num_replicas - 1)
+            )
         self.dataset = dataset
         self.num_replicas = num_replicas
         self.rank = rank
@@ -42,7 +49,9 @@ class DistributedValidationSampler(torch.utils.data.Sampler):
         self.seed = seed
 
         self.dataset_len = len(dataset)
-        self.num_samples = len(np.array_split(range(self.dataset_len), num_replicas)[rank])
+        self.num_samples = len(
+            np.array_split(range(self.dataset_len), num_replicas)[rank]
+        )
 
     def __iter__(self) -> Iterator[T_co]:
         if self.shuffle:
