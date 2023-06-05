@@ -1,4 +1,3 @@
-import os
 import tempfile
 import typing
 from unittest import mock
@@ -670,10 +669,6 @@ def test_trainer_with_code_block_with_multiple_optimizers(
     trainer.run(data, data)
 
 
-@pytest.mark.skipif(
-    os.name == "nt" and not ppe.requires("1.9"),
-    reason="torch.profiler.profile is not supported.",
-)
 def test_trainer_profile():
     device = "cpu"
     model = MyModel()
