@@ -1041,12 +1041,26 @@ class _Exporter(_ExporterOptions):
                 _apply_tensor_info_to_value_info(onnx_outputs[-1], self.flat_outputs[idx])
                 apply_dynamic_axes_info(onnx_outputs[-1], k)
 
+        unique_onnx_vars: Dict[str, onnx.ValueInfoProto] = {}
+        identities: List[onnx.NodeProto] = []
+        for onnx_name, ox_v in onnx_vars.items():
+            if ox_v.name in unique_onnx_vars:
+                ox_n = onnx.NodeProto()
+                ox_n.name = f"{val_tab[onnx_name]}_id"
+                ox_n.op_type = "Identity"
+                ox_n.input.append(ox_v.name)
+                ox_n.output.append(val_tab[onnx_name])
+                identities.append(ox_n)
+            else:
+                unique_onnx_vars[ox_v.name] = ox_v
+        onnx_nodes = identities + onnx_nodes
+
         graph = onnx.helper.make_graph(
             nodes=onnx_nodes,
             name=self.traced.original_name,
             inputs=onnx_inputs,
             outputs=onnx_outputs,
-            initializer=[v for k, v in onnx_vars.items()],
+            initializer=[v for k, v in unique_onnx_vars.items()],
             doc_string=None if self.strip_doc_string else self.graph_doc_string,
             # TODO(twata): Use torch IR's value type info
             # value_info=[
