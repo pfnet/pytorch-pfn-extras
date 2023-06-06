@@ -170,7 +170,7 @@ class Logic(BaseLogic):
                     A list of names of outputs that require compution of
                     the gradient.
                 * ``'autocast'`` (bool or dict):
-                    If ``True``, ``torch.autocast`` (or ``torch.cuda.amp.autocast`` for PyTorch 1.9 or earlier) is enabled,
+                    If ``True``, ``torch.autocast`` is enabled,
                     using ``{"enabled": True, "device_type": "cuda"}``
                     as autocast options.
                     The default is ``False`` which corresponds to the following options
