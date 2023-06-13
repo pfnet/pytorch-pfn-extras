@@ -388,4 +388,4 @@ def test_persistent(persistent):
     model: onnx.ModelProto = run_model_test(Model(), (torch.rand((10,)),), keep_initializers_as_inputs=False)
     assert len(model.graph.input) == 1
     model = run_model_test(Model(), (torch.rand((1,)),), keep_initializers_as_inputs=True)
-    assert len(model.graph.input) == 2
+    assert len(model.graph.input) == (2 if persistent else 1)

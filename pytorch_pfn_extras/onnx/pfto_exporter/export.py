@@ -1024,6 +1024,8 @@ class _Exporter(_ExporterOptions):
             apply_dynamic_axes_info(onnx_inputs[-1], k)
         if self.keep_initializers_as_inputs:
             for _, t_p in onnx_vars.items():
+                if t_p.name in self.constant_vars:
+                    continue
                 i_t: onnx.TypeProto = onnx.TypeProto()
                 i_t.tensor_type.elem_type = t_p.data_type
                 for d in t_p.dims:
