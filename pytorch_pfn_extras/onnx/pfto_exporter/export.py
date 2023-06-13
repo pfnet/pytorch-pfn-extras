@@ -356,13 +356,18 @@ class _Exporter(_ExporterOptions):
         vars_in_traced: Dict[str, torch.IValue] = {
             _remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()
         }
+        self.constant_vars: List[str] = []
         if isinstance(self.original_model, torch.nn.Module):
             vars_tmp: Dict[str, Any] = {
                 _remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict(keep_vars=True).items()
             }
             v_to_name: Dict[Any, str] = {v: k for k, v in self.original_model.state_dict(keep_vars=True).items()}
             for name, v in vars_tmp.items():
-                self.name_from_trace[name] = v_to_name[v]
+                if v in v_to_name:
+                    self.name_from_trace[name] = v_to_name[v]
+                else:
+                    self.name_from_trace[name] = name
+                    self.constant_vars.append(name)
         else:
             for name in vars_in_traced.keys():
                 self.name_from_trace[name] = name
