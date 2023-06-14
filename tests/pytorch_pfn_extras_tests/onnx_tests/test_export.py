@@ -373,3 +373,19 @@ def test_op_norm():
         (x,),
         do_constant_folding=False,
     )
+
+
+@pytest.mark.parametrize("persistent", [True, False])
+def test_persistent(persistent):
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.register_buffer("var", torch.rand(10, 10), persistent=persistent)
+
+        def forward(self, x):
+            return self.var + x
+
+    model: onnx.ModelProto = run_model_test(Model(), (torch.rand((10,)),), keep_initializers_as_inputs=False)
+    assert len(model.graph.input) == 1
+    model = run_model_test(Model(), (torch.rand((1,)),), keep_initializers_as_inputs=True)
+    assert len(model.graph.input) == (2 if persistent else 1)
