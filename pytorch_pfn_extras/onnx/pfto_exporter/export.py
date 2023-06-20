@@ -737,6 +737,10 @@ class _Exporter(_ExporterOptions):
             self.handler[node_kind](self, g, n)
             return
 
+        # Skip already converted onnx node
+        if node_kind.split("::")[0] == "onnx":
+            return
+
         f: Optional[Callable] = self.symbolic_function(n)
         if self.operator_export_type in [OperatorExportTypes.ONNX_ATEN, OperatorExportTypes.ONNX_FALLTHROUGH] or (
             self.operator_export_type == OperatorExportTypes.ONNX_ATEN_FALLBACK and f is None
