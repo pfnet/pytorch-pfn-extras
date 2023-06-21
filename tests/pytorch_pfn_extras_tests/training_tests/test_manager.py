@@ -158,6 +158,7 @@ def test_extensions_manager_state_dict():
     model_state_dict = object()
     optimizer_state_dict = object()
     extension_state_dict = object()
+    misc_state_dict = object()
     max_epochs = 5
     iters_per_epoch = 4
     passed_iteration = 11
@@ -167,6 +168,7 @@ def test_extensions_manager_state_dict():
         {"optimizer_name": _StateDictObj(state_dict=optimizer_state_dict)},
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        state_objects={"misc": _StateDictObj(state_dict=misc_state_dict)},
     )
 
     manager.extend(
@@ -186,6 +188,7 @@ def test_extensions_manager_state_dict():
         "_start_iteration": passed_iteration,
         "models": {"model_name": model_state_dict},
         "optimizers": {"optimizer_name": optimizer_state_dict},
+        "state_objects": {"misc": misc_state_dict},
         "extensions": {
             "extension_name": {
                 "extension": extension_state_dict,
@@ -354,6 +357,7 @@ def test_ignite_extensions_manager_state_dict():
         "_epoch_length": iters_per_epoch,
         "models": {"model_name": model_state_dict},
         "optimizers": {"optimizer_name": optimizer_state_dict},
+        "state_objects": {},
         "extensions": {
             "extension_name": {
                 "extension": extension_state_dict,
@@ -404,6 +408,7 @@ def test_extensions_manager_with_plain_model_and_optimizer():
         "_start_iteration": 0,
         "models": {"main": model_state_dict},
         "optimizers": {"main": optimizer_state_dict},
+        "state_objects": {},
         "extensions": {},
     }
 

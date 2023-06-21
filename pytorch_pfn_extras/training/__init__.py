@@ -3,6 +3,7 @@ from pytorch_pfn_extras.training._evaluator import DistributedEvaluator  # NOQA
 from pytorch_pfn_extras.training._evaluator import Evaluator  # NOQA
 from pytorch_pfn_extras.training._manager_protocol import (  # NOQA
     ExtensionsManagerProtocol,
+    StateObjectProtocol,
 )
 from pytorch_pfn_extras.training._trainer import Trainer  # NOQA
 from pytorch_pfn_extras.training.extension import PRIORITY_EDITOR  # NOQA
