@@ -26,3 +26,6 @@ from pytorch_pfn_extras._torch_version import requires  # NOQA
 from pytorch_pfn_extras._version import __version__  # NOQA
 from pytorch_pfn_extras.runtime._map import map  # NOQA
 from pytorch_pfn_extras.runtime._to import to  # NOQA
+
+if requires("2.0.0"):
+    from pytorch_pfn_extras._dynamo import compile  # NOQA
