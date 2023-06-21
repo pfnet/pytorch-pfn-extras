@@ -697,13 +697,13 @@ class _Exporter(_ExporterOptions):
             ret: Set[torch._C.Node] = set()
             target_vals: List[torch._C.Value] = list(sym_outs)
             for i in sym_outs:
-                if i in start_vals:
+                if i is None or i in start_vals:
                     continue
                 ret.add(i.node())
                 target_vals.extend(list(i.node().inputs()))
             while len(target_vals) > 0:
                 i = target_vals.pop()
-                if i in start_vals:
+                if i is None or i in start_vals:
                     continue
                 ret.add(i.node())
                 start_vals.add(i)
@@ -735,6 +735,9 @@ class _Exporter(_ExporterOptions):
         node_kind: str = n.kind()
         if node_kind in self.handler:
             self.handler[node_kind](self, g, n)
+            return
+        
+        if node_kind.split("::")[0] == "onnx":
             return
 
         f: Optional[Callable] = self.symbolic_function(n)

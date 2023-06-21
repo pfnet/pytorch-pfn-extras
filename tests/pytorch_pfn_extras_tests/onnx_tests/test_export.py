@@ -389,3 +389,24 @@ def test_persistent(persistent):
     assert len(model.graph.input) == 1
     model = run_model_test(Model(), (torch.rand((1,)),), keep_initializers_as_inputs=True)
     assert len(model.graph.input) == (2 if persistent else 1)
+
+def test_script_device():
+    @torch.jit.script
+    def _select_by_mask_values(
+        masks: torch.Tensor, mask_values: torch.Tensor
+    ) -> torch.Tensor:
+        H, W = masks.shape
+        N, n_mask_value = mask_values.shape
+        out = torch.zeros(N, W, device=masks.device, dtype=torch.bool)
+        return out
+    
+    class Model(torch.nn.Module):
+        def forward(self, x, y):
+            return _select_by_mask_values(x, y).sum()
+
+    run_model_test(
+        Model(),
+        (torch.rand(32, 32), torch.rand(32, 32)),
+        input_names=["x", "y"],
+        output_names=["out"],    
+    )
