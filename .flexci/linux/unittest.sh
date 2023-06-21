@@ -25,7 +25,9 @@ pushd example
 python mnist.py --batch-size 2048 --test-batch-size 2048 --epochs 1 --save-model
 python mnist_trainer.py --batch-size 2048 --test-batch-size 2048 --epochs 1
 python ignite-mnist.py --batch_size 2048 --val_batch_size 2048 --epochs 1
+python cifar10.py --batch-size 2048 --test-batch-size 2048 --epoch 1 --no-autoload
 MASTER_ADDR=127.0.0.1 MASTER_PORT=1236 mpirun -n 2 --allow-run-as-root python mnist_ddp.py --batch-size 2048 --test-batch-size 2048 --epochs 1
+MASTER_ADDR=127.0.0.1 MASTER_PORT=1236 mpirun -n 2 --allow-run-as-root python cifar10_ddp_trainer.py --batch-size 2048 --test-batch-size 2048 --epoch 1 --no-autoload
 popd
 
 # Trainer

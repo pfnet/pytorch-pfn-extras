@@ -180,9 +180,6 @@ def test_no_as_output():
 
 
 @pytest.mark.xfail
-@pytest.mark.skipif(
-    not pytorch_pfn_extras.requires("1.10.0"),
-    reason='skip for PyTorch 1.9 or earlier')
 def test_as_output_in_scripting():
 
     class Net(nn.Module):

@@ -356,13 +356,18 @@ class _Exporter(_ExporterOptions):
         vars_in_traced: Dict[str, torch.IValue] = {
             _remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict().items()
         }
+        self.constant_vars: List[str] = []
         if isinstance(self.original_model, torch.nn.Module):
             vars_tmp: Dict[str, Any] = {
                 _remove_prefix(k, f"{_ppe_ignore_scope}."): v for k, v in self.traced.state_dict(keep_vars=True).items()
             }
             v_to_name: Dict[Any, str] = {v: k for k, v in self.original_model.state_dict(keep_vars=True).items()}
             for name, v in vars_tmp.items():
-                self.name_from_trace[name] = v_to_name[v]
+                if v in v_to_name:
+                    self.name_from_trace[name] = v_to_name[v]
+                else:
+                    self.name_from_trace[name] = name
+                    self.constant_vars.append(name)
         else:
             for name in vars_in_traced.keys():
                 self.name_from_trace[name] = name
@@ -471,10 +476,7 @@ class _Exporter(_ExporterOptions):
     # ONNX level graph optimizer
     def optimize_onnx(self, graph: torch._C.Graph) -> torch._C.Graph:
         if self.onnx_scalar_type_analysis:
-            if pytorch_pfn_extras.requires("1.9.0"):
-                run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
-            else:
-                run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph)
+            run_jit_pass(torch._C._jit_pass_onnx_scalar_type_analysis, graph, self.onnx_lowprecision_cast, self.opset_version)
 
         if self.do_constant_folding and self.opset_version in pytorch_pfn_extras.onnx._constants.onnx_constant_folding_opsets:
             folded: Dict[str, torch.IValue] = torch._C._jit_pass_onnx_constant_fold(  # type: ignore[attr-defined]
@@ -922,13 +924,31 @@ class _Exporter(_ExporterOptions):
                 if n in self.node_doc_string:
                     new_nd.doc_string = self.node_doc_string[n]
                 for attr_name in n.attributeNames():
-                    if n.kindOf(attr_name) == "t":
+                    attr_kind = n.kindOf(attr_name)
+                    if attr_kind == "t":
                         attr = onnx.helper.make_attribute(attr_name, _tensor_to_proto(n.t(attr_name)))
                     else:
                         if pytorch_pfn_extras.requires('1.13'):
-                            attr = onnx.helper.make_attribute(attr_name, sym_hel._node_get(n, attr_name))  # type: ignore[attr-defined]
+                            attr_val = sym_hel._node_get(n, attr_name)  # type: ignore[attr-defined]
                         else:
-                            attr = onnx.helper.make_attribute(attr_name, n[attr_name])
+                            attr_val = n[attr_name]
+                        # Could not use onnx.helper.make_attribute for
+                        if isinstance(attr_val, list):
+                            attr = onnx.AttributeProto()
+                            attr.name = attr_name
+                            if attr_kind == "ss":
+                                attr.type = onnx.AttributeProto.STRINGS
+                                attr.strings.extend(v.encode("utf-8") for v in attr_val)
+                            elif attr_kind == "is":
+                                attr.type = onnx.AttributeProto.INTS
+                                attr.ints.extend(attr_val)
+                            elif attr_kind == "fs":
+                                attr.type = onnx.AttributeProto.FLOATS
+                                attr.floats.extend(attr_val)
+                            else:
+                                assert False, f"'{attr_kind}' typed attribute not supported"
+                        else:
+                            attr = onnx.helper.make_attribute(attr_name, attr_val)
                     new_nd.attribute.append(attr)
             assign_onnx_values(new_nd.input, new_nd.name, n.inputs())
             assign_onnx_values(new_nd.output, new_nd.name, n.outputs())
@@ -1004,6 +1024,8 @@ class _Exporter(_ExporterOptions):
             apply_dynamic_axes_info(onnx_inputs[-1], k)
         if self.keep_initializers_as_inputs:
             for _, t_p in onnx_vars.items():
+                if t_p.name in self.constant_vars:
+                    continue
                 i_t: onnx.TypeProto = onnx.TypeProto()
                 i_t.tensor_type.elem_type = t_p.data_type
                 for d in t_p.dims:
@@ -1023,12 +1045,26 @@ class _Exporter(_ExporterOptions):
                 _apply_tensor_info_to_value_info(onnx_outputs[-1], self.flat_outputs[idx])
                 apply_dynamic_axes_info(onnx_outputs[-1], k)
 
+        unique_onnx_vars: Dict[str, onnx.ValueInfoProto] = {}
+        identities: List[onnx.NodeProto] = []
+        for onnx_name, ox_v in onnx_vars.items():
+            if ox_v.name in unique_onnx_vars:
+                ox_n = onnx.NodeProto()
+                ox_n.name = f"{val_tab[onnx_name]}_id"
+                ox_n.op_type = "Identity"
+                ox_n.input.append(ox_v.name)
+                ox_n.output.append(val_tab[onnx_name])
+                identities.append(ox_n)
+            else:
+                unique_onnx_vars[ox_v.name] = ox_v
+        onnx_nodes = identities + onnx_nodes
+
         graph = onnx.helper.make_graph(
             nodes=onnx_nodes,
             name=self.traced.original_name,
             inputs=onnx_inputs,
             outputs=onnx_outputs,
-            initializer=[v for k, v in onnx_vars.items()],
+            initializer=[v for k, v in unique_onnx_vars.items()],
             doc_string=None if self.strip_doc_string else self.graph_doc_string,
             # TODO(twata): Use torch IR's value type info
             # value_info=[

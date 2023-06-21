@@ -18,7 +18,6 @@ from typing import (
     Union,
 )
 
-import pytorch_pfn_extras
 import torch.nn
 import torch.testing
 from pytorch_pfn_extras import handler as _handler_module
@@ -208,12 +207,9 @@ def get_default_comparer(
         if isinstance(val2, torch.Tensor):
             val2 = val2.cpu().detach()
 
-        if pytorch_pfn_extras.requires("1.9.0"):
-            assert_close = torch.testing.assert_close  # type: ignore[attr-defined]
-        else:
-            assert_close = torch.testing.assert_allclose  # type: ignore[assignment]
-
-        assert_close(val1, val2, rtol=rtol, atol=atol, equal_nan=equal_nan)
+        torch.testing.assert_close(
+            val1, val2, rtol=rtol, atol=atol, equal_nan=equal_nan
+        )
 
     return compare_fn
 

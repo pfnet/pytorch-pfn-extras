@@ -2,7 +2,6 @@ import onnx
 import pytest
 import torch
 
-import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
 
 
@@ -255,6 +254,27 @@ def test_complex():
     )
 
 
+def test_alias_param():
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = torch.nn.Linear(20, 20)
+            self.linear2 = torch.nn.Linear(20, 20)
+            self.linear2.weight = self.linear.weight
+            self._outputs = []
+
+        def forward(self, x):
+            y = self.linear(x)
+            y = self.linear2(y)
+            self._outputs.clear()
+            self._outputs.append(y)
+            return self._outputs[0]
+
+    m = run_model_test(Model(), (torch.rand((20,)),))
+    params = [i.name for i in m.graph.initializer]
+    assert params == ["linear2.weight", "linear.bias", "linear2.bias"]
+
+
 def test_is_tracing():
     class Model(torch.nn.Module):
         def forward(self, x):
@@ -268,69 +288,68 @@ def test_is_tracing():
 
 
 def test_op_norm():
-    if ppe.requires("1.9.0"):
-        import torch.onnx.symbolic_helper as sym_help
+    import torch.onnx.symbolic_helper as sym_help
 
-        @torch.onnx.symbolic_helper.parse_args("v", "v")
-        def clamp_min(g, self, min):
-            # dtype = self.type().scalarType()
-            # Type info may be lost here.
-            # https://github.com/pfnet/pytorch-pfn-extras/issues/578
-            # min = g.op("Cast", min, to_i=sym_help.cast_pytorch_to_onnx[dtype])
-            if sym_help._get_tensor_rank(min) == 0:
-                max = torch.onnx.symbolic_opset9.unused(g)
+    @torch.onnx.symbolic_helper.parse_args("v", "v")
+    def clamp_min(g, self, min):
+        # dtype = self.type().scalarType()
+        # Type info may be lost here.
+        # https://github.com/pfnet/pytorch-pfn-extras/issues/578
+        # min = g.op("Cast", min, to_i=sym_help.cast_pytorch_to_onnx[dtype])
+        if sym_help._get_tensor_rank(min) == 0:
+            max = torch.onnx.symbolic_opset9.unused(g)
+            return g.op("Clip", self, min, max)
+        else:
+            return g.op("Max", self, min)
+
+    @torch.onnx.symbolic_helper.parse_args("v", "v")
+    def clamp_max(g, self, max):
+        # dtype = self.type().scalarType()
+        # Type info may be lost here.
+        # https://github.com/pfnet/pytorch-pfn-extras/issues/578
+        # max = g.op("Cast", max, to_i=sym_help.cast_pytorch_to_onnx[dtype])
+        if sym_help._get_tensor_rank(max) == 0:
+            min = torch.onnx.symbolic_opset9.unused(g)
+            return g.op("Clip", self, min, max)
+        else:
+            return g.op("Min", self, max)
+
+    torch.onnx.symbolic_opset11.clamp_min = clamp_min
+    torch.onnx.symbolic_opset11.clamp_max = clamp_max
+
+    @torch.onnx.symbolic_helper.parse_args("v", "v", "v")
+    def clamp(g, self, min, max):
+        dtype = self.type().scalarType()
+
+        def _cast_if_not_none(tensor, dtype):
+            if tensor is not None and not sym_help._is_none(tensor):
+                return g.op(
+                    "Cast", tensor, to_i=sym_help.cast_pytorch_to_onnx[dtype]
+                )
+            else:
+                return tensor
+
+        # pfto loses type info after Cast.
+        # https://github.com/pfnet/pytorch-pfn-extras/issues/578
+        orig_min = min
+        orig_max = max
+
+        if dtype is not None:
+            min = _cast_if_not_none(min, dtype)
+            max = _cast_if_not_none(max, dtype)
+
+        if sym_help._is_none(min):
+            return clamp_max(g, self, max)
+        elif sym_help._is_none(max):
+            return clamp_min(g, self, min)
+        else:
+            if (
+                sym_help._get_tensor_rank(orig_min) == 0
+                and sym_help._get_tensor_rank(orig_max) == 0
+            ):
                 return g.op("Clip", self, min, max)
             else:
-                return g.op("Max", self, min)
-
-        @torch.onnx.symbolic_helper.parse_args("v", "v")
-        def clamp_max(g, self, max):
-            # dtype = self.type().scalarType()
-            # Type info may be lost here.
-            # https://github.com/pfnet/pytorch-pfn-extras/issues/578
-            # max = g.op("Cast", max, to_i=sym_help.cast_pytorch_to_onnx[dtype])
-            if sym_help._get_tensor_rank(max) == 0:
-                min = torch.onnx.symbolic_opset9.unused(g)
-                return g.op("Clip", self, min, max)
-            else:
-                return g.op("Min", self, max)
-
-        torch.onnx.symbolic_opset11.clamp_min = clamp_min
-        torch.onnx.symbolic_opset11.clamp_max = clamp_max
-
-        @torch.onnx.symbolic_helper.parse_args("v", "v", "v")
-        def clamp(g, self, min, max):
-            dtype = self.type().scalarType()
-
-            def _cast_if_not_none(tensor, dtype):
-                if tensor is not None and not sym_help._is_none(tensor):
-                    return g.op(
-                        "Cast", tensor, to_i=sym_help.cast_pytorch_to_onnx[dtype]
-                    )
-                else:
-                    return tensor
-
-            # pfto loses type info after Cast.
-            # https://github.com/pfnet/pytorch-pfn-extras/issues/578
-            orig_min = min
-            orig_max = max
-
-            if dtype is not None:
-                min = _cast_if_not_none(min, dtype)
-                max = _cast_if_not_none(max, dtype)
-
-            if sym_help._is_none(min):
-                return clamp_max(g, self, max)
-            elif sym_help._is_none(max):
-                return clamp_min(g, self, min)
-            else:
-                if (
-                    sym_help._get_tensor_rank(orig_min) == 0
-                    and sym_help._get_tensor_rank(orig_max) == 0
-                ):
-                    return g.op("Clip", self, min, max)
-                else:
-                    return clamp_max(g, clamp_min(g, self, min), max)
+                return clamp_max(g, clamp_min(g, self, min), max)
 
     class Clip(torch.nn.Module):
         def __init__(self):
@@ -354,3 +373,19 @@ def test_op_norm():
         (x,),
         do_constant_folding=False,
     )
+
+
+@pytest.mark.parametrize("persistent", [True, False])
+def test_persistent(persistent):
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.register_buffer("var", torch.rand(10, 10), persistent=persistent)
+
+        def forward(self, x):
+            return self.var + x
+
+    model: onnx.ModelProto = run_model_test(Model(), (torch.rand((10,)),), keep_initializers_as_inputs=False)
+    assert len(model.graph.input) == 1
+    model = run_model_test(Model(), (torch.rand((1,)),), keep_initializers_as_inputs=True)
+    assert len(model.graph.input) == (2 if persistent else 1)

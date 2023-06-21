@@ -4,7 +4,7 @@ import pytest
 import pytorch_pfn_extras as ppe
 import torch
 
-_profiler_available = os.name != "nt" or ppe.requires("1.9")
+_profiler_available = os.name != "nt"
 
 
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
