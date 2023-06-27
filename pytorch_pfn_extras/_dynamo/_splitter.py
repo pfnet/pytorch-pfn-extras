@@ -2,7 +2,6 @@ from typing import Any, List, Optional, Tuple
 
 import torch
 import torch.fx
-import torch.fx.GraphModule
 import torch.utils._pytree as pytree
 from torch._functorch.partitioners import _is_primal, _is_tangent
 
