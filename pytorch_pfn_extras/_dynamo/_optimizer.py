@@ -4,7 +4,6 @@ from typing import Any, Dict, Generator, List, Tuple
 
 import torch
 import torch.fx
-import torch.fx.GraphModule
 
 
 # patch the torch.optim.SGD._init_group function to avoid the
