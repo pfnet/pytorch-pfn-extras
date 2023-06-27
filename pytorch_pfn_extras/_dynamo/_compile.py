@@ -2,7 +2,6 @@ from typing import Any, Callable, List, Optional, cast
 
 import torch
 import torch.fx
-import torch.fx.GraphModule
 import torch.utils._pytree as pytree
 from functorch.compile import make_boxed_func
 from pytorch_pfn_extras._dynamo import _optimizer, _splitter
