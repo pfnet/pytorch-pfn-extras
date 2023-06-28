@@ -570,7 +570,7 @@ class _Exporter(_ExporterOptions):
             def gen_concat(g: torch._C.Graph, *args: Any) -> torch._C.Value:
                 seq: List[torch._C.Value] = []
                 for i in args:
-                    if i.type().kind() == "IntType" or len(i.type().sizes()) == 0:
+                    if i.type().kind() == "IntType" or i.type().sizes() is None or len(i.type().sizes()) == 0:
                         seq.append(
                             sym_hel._unsqueeze_helper(g, i, axes_i=[0])  # type: ignore[no-untyped-call,call-arg]
                         )
@@ -724,6 +724,8 @@ class _Exporter(_ExporterOptions):
 
         # Replace uses of old node output with symbolic outputs
         for old_out, new_out in zip(n.outputs(), sym_outs):
+            if new_out is None:
+                continue
             old_out.replaceAllUsesWith(new_out)
             assert len(old_out.uses()) == 0
             new_out.copyMetadata(old_out)
@@ -738,6 +740,13 @@ class _Exporter(_ExporterOptions):
             return
         
         if node_kind.split("::")[0] == "onnx":
+            def copy_onnx_node(g: torch._C.Graph, *inputs: Any, **_attrs) -> Any:
+                ret = g.op(n.kind(), *inputs, outputs=len(list(n.outputs())))
+                v: torch._C.Value = cast(torch._C.Value, ret) if n.outputsSize() == 1 else cast(Sequence[torch._C.Value], ret)[-1]
+                v.node().copyAttributes(n)
+                return ret
+
+            self.run_symbolic_function(g, n, copy_onnx_node)
             return
 
         f: Optional[Callable] = self.symbolic_function(n)
