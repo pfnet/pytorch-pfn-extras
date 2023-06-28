@@ -3,12 +3,15 @@ from typing import (
     Any,
     Callable,
     Dict,
+    List,
     Mapping,
+    NamedTuple,
     Optional,
     Sequence,
     Tuple,
     Type,
     Union,
+    cast,
 )
 
 import pytorch_pfn_extras.handler as handler_module
@@ -25,6 +28,41 @@ if TYPE_CHECKING:
     from pytorch_pfn_extras.training._trainer import Trainer
     from pytorch_pfn_extras.training.metrics import MetricType
     from pytorch_pfn_extras.training.trigger import TriggerLike
+
+
+def filter_state_objects(
+    args: Any, key_name: str = ""
+) -> List[Tuple[str, StateObjectProtocol]]:
+    if isinstance(args, tuple) and hasattr(args, "_fields"):
+        # namedtuple
+        return filter_state_objects_dict(
+            cast(NamedTuple, args)._asdict(), key_name=key_name
+        )
+    if isinstance(args, dict):
+        return filter_state_objects_dict(args, key_name=key_name)
+    if isinstance(args, (list, tuple)):
+        return sum(
+            [
+                filter_state_objects(v, key_name=f"{key_name}.__{i}__")
+                for i, v in enumerate(args)
+            ],
+            [],
+        )
+    if isinstance(args, StateObjectProtocol):
+        return [(key_name, args)]
+    return []
+
+
+def filter_state_objects_dict(
+    args: Dict[str, Any], key_name: str = "option"
+) -> List[Tuple[str, StateObjectProtocol]]:
+    return sum(
+        [
+            filter_state_objects(v, key_name=f"{key_name}__::__{k}")
+            for k, v in sorted(args.items())
+        ],
+        [],
+    )
 
 
 def create_trainer(
@@ -109,9 +147,13 @@ def create_trainer(
     options = options.copy() if options else {}
 
     state_objects: Dict[str, StateObjectProtocol] = {}
-    for key, value in options.items():
-        if isinstance(value, StateObjectProtocol):
-            state_objects[f"options_{key}"] = value
+    state_objects_list = filter_state_objects(options)
+    for key, value in state_objects_list:
+        state_objects[f"options_{key}"] = value
+
+    assert len(state_objects_list) == len(
+        state_objects
+    ), "There was a duplicate key name in the flattened options dictionary object."
 
     # TODO(kmaehashi): deprecate specifying 'runtime' key in options
     runtime_options = dict(

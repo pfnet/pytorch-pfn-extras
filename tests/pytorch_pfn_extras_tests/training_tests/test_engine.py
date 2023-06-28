@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 import pytest
 import pytorch_pfn_extras as ppe
 
@@ -75,3 +77,35 @@ class TestEngineInvalid:
         extension = ppe.training.extensions.LogReport()
         with pytest.raises(RuntimeError, match="cannot extend after"):
             engine.extend(extension)
+
+
+class DummyStateObjects:
+    def __init__(self) -> None:
+        pass
+
+    def state_dict(self) -> Dict[str, Any]:
+        return {}
+
+    def load_state_dict(self, state_dict: Dict[str, Any]) -> None:
+        return
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        {"a.b": DummyStateObjects(), "a": {"b": DummyStateObjects()}},
+        {"a": DummyStateObjects(), "b": DummyStateObjects()},
+        {
+            "a__.__b": DummyStateObjects(),
+            "__a__": {"__b__": DummyStateObjects()},
+        },
+        {"a::b": DummyStateObjects(), "a": {"b": DummyStateObjects()}},
+        {"a:b": DummyStateObjects(), "a": {"b": DummyStateObjects()}},
+    ],
+)
+def test_filter_state_objects(args) -> None:
+    out = ppe.engine.filter_state_objects(args)
+    key_set = set()
+    for key, _ in out:
+        assert key not in key_set
+        key_set.add(key)
