@@ -537,6 +537,8 @@ def test_export_kwargs():
         (x, {"labels": l}),
         output_dir,
         input_names=["x", "labels"],
+        training=model.training,
+        do_constant_folding=False,
     )
 
     check_inputs(output_dir, ["x", "labels"])
@@ -548,6 +550,8 @@ def test_export_kwargs():
         (x,),
         output_dir,
         input_names=["x"],
+        training=model.training,
+        do_constant_folding=False,
     )
 
     check_inputs(output_dir, ["x"])
@@ -586,6 +590,8 @@ def test_export_default_kwargs():
         (x, {"labels": l, "bias": torch.zeros(10)}),
         output_dir,
         input_names=["x", "labels", "bias"],
+        training=model.training,
+        do_constant_folding=False,
     )
 
     check_inputs(output_dir, ["x", "labels", "bias"])
@@ -597,6 +603,8 @@ def test_export_default_kwargs():
         (x, {"bias": torch.ones(10)}),
         output_dir,
         input_names=["x", "bias"],
+        training=model.training,
+        do_constant_folding=False,
     )
 
     check_inputs(output_dir, ["x", "bias"])
