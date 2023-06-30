@@ -740,7 +740,7 @@ class _Exporter(_ExporterOptions):
             return
         
         if node_kind.split("::")[0] == "onnx":
-            def copy_onnx_node(g: torch._C.Graph, *inputs: Any, **_attrs) -> Any:
+            def copy_onnx_node(g: torch._C.Graph, *inputs: Any, **_attrs: Any) -> Any:
                 ret = g.op(n.kind(), *inputs, outputs=len(list(n.outputs())))
                 v: torch._C.Value = cast(torch._C.Value, ret) if n.outputsSize() == 1 else cast(Sequence[torch._C.Value], ret)[-1]
                 v.node().copyAttributes(n)
