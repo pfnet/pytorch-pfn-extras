@@ -397,7 +397,8 @@ def test_script_device():
     ) -> torch.Tensor:
         H, W = masks.shape
         N, n_mask_value = mask_values.shape
-        out = torch.zeros(N, W, device=masks.device, dtype=torch.bool)
+        # TODO(take-cheeze): Using dtype=int64 instead of bool since shape inference fails
+        out = torch.zeros(N, W, device=masks.device, dtype=torch.int64)
         return out
     
     class Model(torch.nn.Module):
@@ -408,5 +409,6 @@ def test_script_device():
         Model(),
         (torch.rand(32, 32), torch.rand(32, 32)),
         input_names=["x", "y"],
-        output_names=["out"],    
+        output_names=["out"],
+        dynamic_axes={"x": {1: "A"}, "y": {0: "B"}},
     )
