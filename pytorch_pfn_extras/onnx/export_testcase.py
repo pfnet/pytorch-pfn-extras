@@ -16,7 +16,7 @@ import torch
 import torch.autograd
 from torch.onnx import OperatorExportTypes
 from torch.onnx.utils import \
-    _export as torch_export, _model_to_graph as torch_model_to_graph
+    _export as torch_export, _model_to_graph as torch_model_to_graph, _decide_input_format
 
 from pytorch_pfn_extras.onnx import _as_output as as_output
 from pytorch_pfn_extras.onnx import _grad as grad
@@ -191,6 +191,8 @@ def _export(
 
                 torch.onnx.log = no_op  # type: ignore[attr-defined]
         kwargs['verbose'] = True
+    # Exted args with kwargs (including default values)
+    args = _decide_input_format(model, args)  # type: ignore[no-untyped-call]
     with init_annotate(model, opset_ver) as ann, \
             as_output.trace(model) as (model, outputs), \
             grad.init_grad_state(), \
@@ -305,6 +307,13 @@ def export_testcase(
 
     .. warning:: This function is not thread safe.
 
+    .. note:: 
+        When exporting a model whose forward takes keyword arguments of ``torch.Tensor`` type,
+        you can pass them by putting a dict as the last element of ``args``.
+        When the keyword arguments have default values, you need to explicitly include
+        them into the dict.
+        Also, you must explicitly specify ``input_names`` that are the names of both positional
+        and keyword arguments.
     """
 
     if user_meta is None:
@@ -313,10 +322,24 @@ def export_testcase(
     os.makedirs(out_dir, exist_ok=True)
     if isinstance(args, torch.Tensor):
         args = args,
+        
+    def has_kwargs_in_args(args: tuple) -> bool:
+        return len(args) >= 1 and isinstance(args[-1], dict)
+
+    if has_kwargs_in_args(args):
+        assert "input_names" in kwargs, 'export_testcase needs explicit "input_names" when exporting with kwargs'
+        named_args_list = list(args[:-1])
+        for key, tensor in args[-1].items():
+            assert isinstance(tensor, torch.Tensor)
+            named_args_list.append(tensor)
+        named_args = tuple(named_args_list)
+    else:
+        named_args = args
+
     input_names = kwargs.pop(
         'input_names',
         ['input_{}'.format(i) for i in range(len(args))])
-    assert len(input_names) == len(args)
+    assert len(input_names) == len(named_args)
     assert not isinstance(args, torch.Tensor)
 
     onnx_graph, outs = _export(
@@ -339,7 +362,7 @@ def export_testcase(
         if used_input.name not in initializer_names:
             used_input_index_list.append(input_names.index(used_input.name))
     input_names = [input_names[i] for i in used_input_index_list]
-    args = [args[i] for i in used_input_index_list]
+    args = [named_args[i] for i in used_input_index_list]
 
     output_path = os.path.join(out_dir, 'model.onnx')
     is_on_memory = True
@@ -378,7 +401,7 @@ def export_testcase(
     os.makedirs(data_set_path, exist_ok=True)
     for pb_name in glob.glob(os.path.join(data_set_path, "*.pb")):
         os.remove(pb_name)
-    for i, (arg, name) in enumerate(zip(args, input_names)):
+    for i, (arg, name) in enumerate(zip(named_args, input_names)):
         f = os.path.join(data_set_path, 'input_{}.pb'.format(i))
         write_to_pb(f, arg, name)
 
