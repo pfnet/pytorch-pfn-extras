@@ -539,6 +539,7 @@ def test_export_kwargs():
         input_names=["x", "labels"],
         training=model.training,
         do_constant_folding=False,
+        opset_version=12,
     )
 
     check_inputs(output_dir, ["x", "labels"])
@@ -552,6 +553,7 @@ def test_export_kwargs():
         input_names=["x"],
         training=model.training,
         do_constant_folding=False,
+        opset_version=12,
     )
 
     check_inputs(output_dir, ["x"])
@@ -592,6 +594,7 @@ def test_export_default_kwargs():
         input_names=["x", "labels", "bias"],
         training=model.training,
         do_constant_folding=False,
+        opset_version=12,
     )
 
     check_inputs(output_dir, ["x", "labels", "bias"])
@@ -605,6 +608,7 @@ def test_export_default_kwargs():
         input_names=["x", "bias"],
         training=model.training,
         do_constant_folding=False,
+        opset_version=12,
     )
 
     check_inputs(output_dir, ["x", "bias"])
