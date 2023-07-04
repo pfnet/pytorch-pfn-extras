@@ -416,3 +416,18 @@ def test_script_device():
         output_names=["out"],
         dynamic_axes={"x": {1: "A"}, "y": {0: "B"}},
     )
+
+
+def test_ppe_map():
+    torch.manual_seed(100)
+
+    class Net(torch.nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.conv = torch.nn.Conv2d(1, 1, 3)
+
+        def forward(self, x):
+            y = self.conv(x)
+            return list(ppe.map(lambda u: u + 1, y))[0]
+
+    run_model_test(Net(), (torch.rand(1, 1, 112, 112),), rtol=1e-03)
