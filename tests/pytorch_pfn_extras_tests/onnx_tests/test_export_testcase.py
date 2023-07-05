@@ -494,3 +494,121 @@ def test_export_scripted():
     expected_out = torch.zeros((2, 10))  # check only shape size
     np.testing.assert_allclose(
         out.detach().cpu().numpy(), expected_out.detach().cpu().numpy())
+
+
+def check_inputs(output_dir, input_names):
+    num_inputs = len(input_names)
+
+    onnx_model = onnx.load_model(os.path.join(output_dir, 'model.onnx'))
+    assert len(onnx_model.graph.input) == num_inputs, f"Unexpected input length: {onnx_model.graph.input}, expected: {input_names}"
+    for i in range(num_inputs):
+        assert onnx_model.graph.input[i].name == input_names[i]
+    
+    assert len(list(Path(output_dir).glob('test_data_set_0/input_*.pb'))) == num_inputs
+    for i in range(num_inputs):
+        pb = onnx.load_tensor(f"{output_dir}/test_data_set_0/input_{i}.pb")
+        assert pb.name == input_names[i]
+
+
+def test_export_kwargs():
+    class Net(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = nn.Linear(5, 10, bias=False)
+            self.loss_fn = nn.CrossEntropyLoss()
+
+        def forward(self, x, labels=None):
+            y = self.linear(x)
+
+            if labels is not None:
+                loss = self.loss_fn(y, labels)
+                return loss
+            else:
+                return y
+
+    model = Net()
+    x = torch.rand(2, 5)
+    l = torch.randint(0, 10, size=(2,))
+
+    # Test with labels
+    output_dir = _get_output_dir('export_kwargs')
+    export_testcase(
+        model,
+        (x, {"labels": l}),
+        output_dir,
+        input_names=["x", "labels"],
+        training=model.training,
+        do_constant_folding=False,
+        opset_version=12,
+    )
+
+    check_inputs(output_dir, ["x", "labels"])
+
+    # Test without labels
+    output_dir = _get_output_dir('export_kwargs2')
+    export_testcase(
+        model,
+        (x,),
+        output_dir,
+        input_names=["x"],
+        training=model.training,
+        do_constant_folding=False,
+        opset_version=12,
+    )
+
+    check_inputs(output_dir, ["x"])
+
+
+def test_export_default_kwargs():
+    # Currently, export_testcase requires the values of all torch.Tensor typed keyword arguments
+    # (including those have default values) to be provided in the last dict of the args.
+
+    class Net(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = nn.Linear(5, 10, bias=False)
+            self.loss_fn = nn.CrossEntropyLoss()
+
+        def forward(self, x, labels=None, bias=torch.zeros(10)):
+            y = self.linear(x)
+
+            if bias is not None:
+                y = y + bias
+
+            if labels is not None:
+                loss = self.loss_fn(y, labels)
+                return loss
+            else:
+                return y
+
+    model = Net()
+    x = torch.rand(2, 5)
+    l = torch.randint(0, 10, size=(2,))
+
+    # Test with labels
+    output_dir = _get_output_dir('export_default_kwargs')
+    export_testcase(
+        model,
+        (x, {"labels": l, "bias": torch.zeros(10)}),
+        output_dir,
+        input_names=["x", "labels", "bias"],
+        training=model.training,
+        do_constant_folding=False,
+        opset_version=12,
+    )
+
+    check_inputs(output_dir, ["x", "labels", "bias"])
+
+    # Test without labels
+    output_dir = _get_output_dir('export_default_kwargs2')
+    export_testcase(
+        model,
+        (x, {"bias": torch.ones(10)}),
+        output_dir,
+        input_names=["x", "bias"],
+        training=model.training,
+        do_constant_folding=False,
+        opset_version=12,
+    )
+
+    check_inputs(output_dir, ["x", "bias"])
