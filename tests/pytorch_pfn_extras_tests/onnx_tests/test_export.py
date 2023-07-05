@@ -2,6 +2,7 @@ import onnx
 import pytest
 import torch
 
+import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
 
 
@@ -389,3 +390,29 @@ def test_persistent(persistent):
     assert len(model.graph.input) == 1
     model = run_model_test(Model(), (torch.rand((1,)),), keep_initializers_as_inputs=True)
     assert len(model.graph.input) == (2 if persistent else 1)
+
+def test_script_device():
+    if not ppe.requires("1.12"):
+        pytest.skip("prim::device not supported before torch 1.12")
+
+    @torch.jit.script
+    def _select_by_mask_values(
+        masks: torch.Tensor, mask_values: torch.Tensor
+    ) -> torch.Tensor:
+        H, W = masks.shape
+        N, n_mask_value = mask_values.shape
+        # TODO(take-cheeze): Using dtype=int64 instead of bool since shape inference fails
+        out = torch.zeros(N, W, device=masks.device, dtype=torch.int64)
+        return out
+    
+    class Model(torch.nn.Module):
+        def forward(self, x, y):
+            return _select_by_mask_values(x, y).sum()
+
+    run_model_test(
+        Model(),
+        (torch.rand(32, 32), torch.rand(32, 32)),
+        input_names=["x", "y"],
+        output_names=["out"],
+        dynamic_axes={"x": {1: "A"}, "y": {0: "B"}},
+    )
