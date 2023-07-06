@@ -318,10 +318,10 @@ def export_testcase(
 
     training_mode = kwargs.get("training", torch.onnx.TrainingMode.EVAL)
 
-    if output_grad and training_mode is torch.onnx.TrainingMode.EVAL:
+    if (not isinstance(output_grad, bool) or output_grad) and training_mode is torch.onnx.TrainingMode.EVAL:
         warnings.warn(
             "You are exporting testcase with gradients but `training` is set to "
-            "torch.onnx.TrainingMode.EVAL. This will constant fold your paramters "
+            "torch.onnx.TrainingMode.EVAL. This will constant fold your parameters "
             "and affect the backpropagation. Please set the `training` to "
             "torch.onnx.TrainingMode.TRAINING."
         )
