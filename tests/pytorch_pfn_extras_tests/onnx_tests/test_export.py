@@ -416,3 +416,20 @@ def test_script_device():
         output_names=["out"],
         dynamic_axes={"x": {1: "A"}, "y": {0: "B"}},
     )
+
+
+def test_loop():
+    @torch.jit.script
+    def f(x: torch.Tensor):
+        for _ in range(10):
+            x = x + 5
+        return x
+
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+
+        def forward(self, x: torch.Tensor):
+            return f(x)
+
+    run_model_test(Model(), (torch.randn(2, 7, 17),))
