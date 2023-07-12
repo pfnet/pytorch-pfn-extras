@@ -15,7 +15,7 @@ def _dummy_bwd_backend(
 ) -> Any:
     # The bwd pass is dummy, so we just return the inputs as they are
     def run_graph(*args, **kwargs):  # type: ignore[no-untyped-def]
-        return gm(*args, **kwargs)
+        return gm(*args, **kwargs)  # type: ignore[operator]
 
     return make_boxed_func(run_graph)
 
