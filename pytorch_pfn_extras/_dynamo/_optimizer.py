@@ -276,7 +276,7 @@ def _compile_optimizer(
         opt_graph.output(outputs)
 
         with torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode():  # type: ignore[attr-defined,no-untyped-call]
-            opt_module = torch.fx.GraphModule(module, opt_graph)
+            opt_module = torch.fx.GraphModule(torch.nn.Module(), opt_graph)
             torch.fx.passes.shape_prop.ShapeProp(opt_module).propagate(*inputs)  # type: ignore[attr-defined, no-untyped-call]
 
     return opt_graph, outputs
