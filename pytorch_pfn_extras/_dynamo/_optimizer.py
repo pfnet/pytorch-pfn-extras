@@ -60,7 +60,6 @@ def _initialize_optimizer(
             for i, param in enumerate(p_group["params"]):
                 dummy = torch.zeros_like(param)
                 dummy.grad = torch.zeros_like(param)
-                # param_to_dummy[dummy] = param
                 param_groups[-1].append(param)
                 names[dummy] = names[param]
                 param_to_dummy[param] = dummy
@@ -75,7 +74,6 @@ def _initialize_optimizer(
         # Reset the optimizer original parameters
         for i, p_group in enumerate(optimizer.param_groups):
             for j, _ in enumerate(p_group["params"]):
-                # param = param_to_dummy[dummy]
                 param = param_groups[i][j]
                 p_group["params"][j] = param
                 dummy = param_to_dummy[param]
@@ -105,16 +103,16 @@ def _get_shape_inference_inputs_and_metadata(
 
     with torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode():  # type: ignore[attr-defined,no-untyped-call]
         for p_group in optimizer.param_groups:
-            for i in range(len(p_group["params"])):
-                param_tensor = p_group["params"][i]
+            for param in p_group["params"]:
+                param_tensor = param
                 params_meta[param_tensor] = _create_meta(param_tensor)
                 inputs.append(param_tensor)
 
         for p_group in optimizer.param_groups:
-            for i in range(len(p_group["params"])):
-                param_tensor = p_group["params"][i]
-                for p_n in optimizer.state[param_tensor]:
-                    state_tensor = optimizer.state[param_tensor][p_n]
+            for param in p_group["params"]:
+                param_tensor = param
+                optimizer_state: Dict[Any, Any] = optimizer.state[param_tensor]
+                for state_tensor in optimizer_state.values():
                     if state_tensor is not None:
                         params_meta[state_tensor] = _create_meta(state_tensor)
                         inputs.append(state_tensor)
@@ -134,10 +132,14 @@ def _create_placeholders_for_parameters_and_state(
 
     params_to_proxy = {}
     for p_group in optimizer.param_groups:
-        for i in range(len(p_group["params"])):
+        for i, param in enumerate(p_group["params"]):
             # Find param in list
-            # May need to replace `.` with `@`
-            param_tensor = p_group["params"][i]
+            param_tensor = param
+            # Dynamo uses the parameters names to create a python function
+            # if special symbols in the parameter names are not replaced
+            # the definition will be ill-formed and look like:
+            # def forward(self, linear.weight, ...)
+            # causing a syntax error
             p_name = names[param_tensor].replace(".", "__dot__")
             placeholders.append(opt_graph.placeholder(p_name))
             placeholders[-1].meta = params_meta[param_tensor]
@@ -146,10 +148,10 @@ def _create_placeholders_for_parameters_and_state(
             params_to_proxy[param_tensor] = proxy
 
     for p_group in optimizer.param_groups:
-        for i in range(len(p_group["params"])):
+        for i, param in enumerate(p_group["params"]):
             # Find param in list
             # May need to replace `.` with `@`
-            param_tensor = p_group["params"][i]
+            param_tensor = param
             p_name = names[param_tensor].replace(".", "__dot__")
             proxy = params_to_proxy[param_tensor]
             for p in optimizer.state[proxy]:  # type: ignore[index]
@@ -166,6 +168,8 @@ def _create_placeholders_for_parameters_and_state(
 
 
 def _is_inplace(node: torch.fx.Node, arg: torch.fx.Node) -> bool:
+    # There is no easy way to detect inplace ops in torch, but they are
+    # defined as tensor methods with a "_" suffix. ("add_", "mul_")
     return (
         node.op == "call_method"  # type: ignore[return-value]
         and node.args[0] == arg
@@ -191,6 +195,11 @@ def _get_last_inplace_update(
 def _adjust_inplace_ops(
     opt_graph: torch.fx.Graph, last_inplace: Dict[torch.fx.Node, torch.fx.Node]
 ) -> None:
+    # This is to avoid cases such as:
+    # b = a.add_()  # a is modified in place and returns the value
+    #               # a=b with dynamo, but it is possible to be a!=b in other backends
+    # c = torch.exp(a)  # if in-place is supported this is correct, but if not we want to be torch.exp(b)
+    # This behavior is seen in momentum update for SGD
     for node in opt_graph.nodes:
         args = list(node.args)
         modified = False
@@ -262,7 +271,7 @@ def _compile_optimizer(
         # b = a.inplace_op()
         # c = b.inplace_op()
         # d = a + x   # Here we use a, but since the value is updated it is equivalent
-        #             # to use c
+        #             # to use c, and c should be used to ensure correctness.
         _adjust_inplace_ops(opt_graph, last_inplace)
         opt_graph.output(outputs)
 

@@ -22,6 +22,21 @@ class JointGraph:
         *,
         num_fwd_outputs: int,
     ) -> Tuple[torch.fx.GraphModule, torch.fx.GraphModule]:
+        """The calculation graph, traced in an end-to-end manner,
+        of the forward-backward computation is divided into the forward graph and
+        the backward graph. The forward graph includes the whole calculation process
+        up until the computation of gradients. The backward graph is split as
+        an identity function concerning the gradients.
+
+        Args:
+            joint_module: The end-to-end calculation graph.
+            _joint_inputs: Example inputs.
+            num_fwd_outputs: Number of forward outputs.
+        Returns:
+            The two returned GraphModule objects must adhere to the following interface:
+            - forward_graph_module: ((*primal_inputs) -> any_outputs)
+            - backward_graph_module: ((subset_of_forward_outputs, *tangent_inputs) -> parameter_grads)
+        """
         primal_inputs: List[torch.fx.Node] = list(
             filter(_is_primal, joint_module.graph.nodes)
         )
