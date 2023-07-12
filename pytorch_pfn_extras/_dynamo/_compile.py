@@ -203,7 +203,7 @@ def _compile_module(
         partition_fn=partitioner._no_partition,
         decompositions=core_aten_decompositions(),
     )
-    module_opt = torch.compile(module, backend=aot_backend)  # type: ignore[attr-defined]
+    module_opt = torch.compile(module, fullgraph=True, backend=aot_backend)  # type: ignore[attr-defined]
     return cast(Callable[..., Any], module_opt)  # type: ignore[redundant-cast]
 
 
@@ -218,6 +218,10 @@ def compile(
         The backend object needs to be a callable accepting a ``torch.fx.GraphModule``
         and a list of ``torch.Tensor`` and return a ``Callable`` as specified by
         https://pytorch.org/docs/2.0/dynamo/custom-backends.html#custom-backends
+
+    .. note::
+        Modules that are split in multiple graphs are not supported. ``torch.compiled``
+        is called with the ``fullgraph=True`` argument.
 
     Args:
         module:
