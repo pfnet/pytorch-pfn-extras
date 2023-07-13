@@ -5,7 +5,7 @@ from unittest import mock
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
-from pytorch_pfn_extras import engine, training
+from pytorch_pfn_extras import engine, testing, training
 from pytorch_pfn_extras.training import triggers
 from torch import nn
 from torch.nn import functional as F
@@ -360,41 +360,6 @@ def test_train_result_equal(device, path):
         assert torch.equal(a, e)
 
 
-def _compare_states(s1, s2, strict=False):
-    def allclose(a, b):
-        if strict:
-            return (a == b).all()
-        else:
-            return torch.allclose(a, b)
-
-    if isinstance(s1, dict):
-        keys = s1.keys()
-        if set(keys) != set(s2.keys()):
-            return False
-    elif isinstance(s1, (list, tuple)):
-        keys = range(len(s1))
-        if len(s1) != len(s2):
-            return False
-
-    all_equal = True
-    for k in keys:
-        if isinstance(s1[k], dict):
-            if not isinstance(s2[k], dict):
-                return False
-            all_equal = all_equal and _compare_states(s1[k], s2[k])
-        elif isinstance(s1[k], (list, tuple)):
-            if not isinstance(s2[k], (list, tuple)):
-                return False
-            all_equal = all_equal and _compare_states(s1[k], s2[k])
-        elif isinstance(s1[k], torch.Tensor):
-            all_equal = all_equal and allclose(s1[k], s2[k])
-        else:
-            all_equal = all_equal and s1[k] == s2[k]
-        if not all_equal:
-            return all_equal
-    return all_equal
-
-
 class TestTrainerState:
     def _get_trainer(
         self,
@@ -442,11 +407,11 @@ class TestTrainerState:
         torch.manual_seed(0)
         new_trainer = self._get_trainer(10, path)
         new_trainer.run(data)
-        assert not _compare_states(state, new_trainer.state_dict())
+        assert not testing._compare_states(state, new_trainer.state_dict())
         new_trainer = self._get_trainer(20, path)
         new_trainer.load_state_dict(trainer.state_dict())
         new_trainer.run(data)
-        assert _compare_states(state, new_trainer.state_dict())
+        assert testing._compare_states(state, new_trainer.state_dict())
 
     def test_trainer_autoload(self, path):
         trainer = self._get_trainer(20, path)
@@ -471,7 +436,9 @@ class TestTrainerState:
         # This forces engine initialization
         new_trainer._setup_manager(len(data))
         assert new_trainer.epoch == 20
-        assert _compare_states(trainer.state_dict(), new_trainer.state_dict())
+        assert testing._compare_states(
+            trainer.state_dict(), new_trainer.state_dict()
+        )
 
     def test_trainer_autoload_training_results_consistency(self, path):
         snapshot_epoch = 10
@@ -504,7 +471,7 @@ class TestTrainerState:
         print(trainer.state_dict().keys())
         trainer_state_dict = trainer.state_dict()
         new_trainer_state_dict = new_trainer.state_dict()
-        assert _compare_states(
+        assert testing._compare_states(
             trainer_state_dict["models"],
             new_trainer_state_dict["models"],
             strict=True,
@@ -544,7 +511,7 @@ class TestTrainerState:
         print(trainer.state_dict().keys())
         trainer_state_dict = trainer.state_dict()
         new_trainer_state_dict = new_trainer.state_dict()
-        assert _compare_states(
+        assert testing._compare_states(
             trainer_state_dict["models"],
             new_trainer_state_dict["models"],
             strict=True,
@@ -610,7 +577,7 @@ class TestTrainerState:
         trainer_state_dict = trainer.state_dict()
         new_trainer_state_dict = new_trainer.state_dict()
 
-        assert _compare_states(
+        assert testing._compare_states(
             trainer_state_dict["models"],
             new_trainer_state_dict["models"],
             strict=True,
