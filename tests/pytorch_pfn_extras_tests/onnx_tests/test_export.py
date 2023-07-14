@@ -426,8 +426,16 @@ def test_ppe_map():
             super(Net, self).__init__()
             self.conv = torch.nn.Conv2d(1, 1, 3)
 
-        def forward(self, x):
-            y = self.conv(x)
-            return list(ppe.map(lambda u: u + 1, y))[0]
+        def map_f(self, u):
+            return u + 1
 
-    run_model_test(Net(), (torch.rand(1, 1, 112, 112),), rtol=1e-03)
+        def forward(self, x):
+            y1 = self.conv(x)
+            y2 = self.conv(x)
+            y = [{"u" : y1}, {"u": y2}]
+            return list(ppe.map(self.map_f, y))[0]
+
+    model = Net()
+    ppe.to(model, device="cpu")
+
+    run_model_test(model, (torch.rand(1, 1, 112, 112),), rtol=1e-03)
