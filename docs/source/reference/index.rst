@@ -8,7 +8,7 @@ API Reference
 Training Loop
 ------------------
 
-Trainer (techincal preview)
+Trainer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autosummary::
