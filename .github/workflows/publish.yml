@@ -27,9 +27,6 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-22.04
-    environment:
-      name: release
-      url: https://pypi.org/project/pytorch-pfn-extras/
     permissions:
       id-token: write
     steps:
