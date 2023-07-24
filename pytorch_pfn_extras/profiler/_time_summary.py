@@ -128,7 +128,11 @@ class _CUDAWorker:
             return
         self._queue = queue.Queue(self._max_queue_size)
         self._events = queue.Queue(self._max_queue_size * 2)
-        self._thread = threading.Thread(target=self._worker, args=(torch.cuda.current_device(),), daemon=True)
+        self._thread = threading.Thread(
+            target=self._worker,
+            args=(torch.cuda.current_device(),),
+            daemon=True,
+        )
         self._thread.start()
         self._initialized = True
         self._thread_exited = False
