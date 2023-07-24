@@ -171,7 +171,7 @@ class _CUDAWorker:
                 break
             name, (begin, end) = v
             assert begin.device == end.device
-            assert begin.device == torch.cuda.current_device()
+            assert begin.device.index == torch.cuda.current_device()
             end.synchronize()  # type: ignore[no-untyped-call]
             t_ms = begin.elapsed_time(end)  # type: ignore[no-untyped-call]
             self._add(name, t_ms / 1000)
