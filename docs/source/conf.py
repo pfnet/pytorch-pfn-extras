@@ -46,6 +46,7 @@ exclude_patterns = []
 # Autosummary
 autosummary_generate = True
 autosummary_imported_members = True
+autosummary_mock_imports = ["onnx"]
 autoclass_content = "both"
 
 # -- Options for HTML output -------------------------------------------------
