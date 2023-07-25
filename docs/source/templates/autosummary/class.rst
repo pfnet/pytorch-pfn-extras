@@ -13,9 +13,9 @@
    .. rubric:: {{ _('Methods') }}
 
    .. autosummary::
-   {% for item in methods %}
+      {% for item in methods %}
       ~{{ name }}.{{ item }}
-   {%- endfor %}
+      {%- endfor %}
    {% endif %}
    {% endblock %}
 
@@ -24,8 +24,8 @@
    .. rubric:: {{ _('Attributes') }}
 
    .. autosummary::
-   {% for item in attributes %}
+      {% for item in attributes %}
       ~{{ name }}.{{ item }}
-   {%- endfor %}
+      {%- endfor %}
    {% endif %}
    {% endblock %}

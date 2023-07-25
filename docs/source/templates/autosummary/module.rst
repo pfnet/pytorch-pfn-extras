@@ -10,49 +10,49 @@
       :toctree: .
 
       {% for item in attributes %}
-         {{ fullname }}.{{ item }}
+      {{ fullname }}.{{ item }}
       {%- endfor %}
-      {% endif %}
-      {% endblock %}
+   {% endif %}
+   {% endblock %}
 
-      {% block functions %}
-      {% if functions %}
+   {% block functions %}
+   {% if functions %}
    .. rubric:: {{ _('Functions') }}
 
    .. autosummary::
       :toctree: .
 
       {% for item in functions %}
-         {{ fullname }}.{{ item }}
+      {{ fullname }}.{{ item }}
       {%- endfor %}
-      {% endif %}
-      {% endblock %}
+   {% endif %}
+   {% endblock %}
 
-      {% block classes %}
-      {% if classes %}
+   {% block classes %}
+   {% if classes %}
    .. rubric:: {{ _('Classes') }}
 
    .. autosummary::
       :toctree: .
 
       {% for item in classes %}
-         {{ fullname }}.{{ item }}
+      {{ fullname }}.{{ item }}
       {%- endfor %}
-      {% endif %}
-      {% endblock %}
+   {% endif %}
+   {% endblock %}
 
-      {% block exceptions %}
-      {% if exceptions %}
+   {% block exceptions %}
+   {% if exceptions %}
    .. rubric:: {{ _('Exceptions') }}
 
    .. autosummary::
       :toctree: .
 
       {% for item in exceptions %}
-         {{ fullname }}.{{ item }}
+      {{ fullname }}.{{ item }}
       {%- endfor %}
-      {% endif %}
-      {% endblock %}
+   {% endif %}
+   {% endblock %}
 
 {% block modules %}
 {% if modules %}
@@ -62,7 +62,7 @@
    :toctree: .
    :recursive:
    {% for item in modules %}
-      {{ item }}
+   {{ item }}
    {%- endfor %}
    {% endif %}
    {% endblock %}
