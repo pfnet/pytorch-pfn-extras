@@ -361,13 +361,13 @@ class _Snapshot(extension.Extension):
         writer = manager.writer if self.writer is None else self.writer
         self.writer = writer
         loaded_fn = None
+        assert writer is not None
         if self.autoload:
             # If ``autoload`` is on, this code scans the ``writer.out_dir``
             # for potential snapshot files by matching the file names
             # from ``filename`` format, picks up the latest one in
             # terms of mtime, and tries to load it it the target or
             # manager.
-            assert writer is not None
             loaded_fn = _find_latest_snapshot(
                 self.filename, writer.out_dir, writer.fs
             )
@@ -391,6 +391,11 @@ class _Snapshot(extension.Extension):
                     target.load_state_dict(state)
                 snapshot_file.close()
 
+        self._add_cleanup_hook(writer)
+
+        return loaded_fn
+
+    def _add_cleanup_hook(self, writer: writing.Writer) -> None:
         if (
             hasattr(writer, "_add_cleanup_hook")
             and self.n_retains > 0
@@ -412,8 +417,6 @@ class _Snapshot(extension.Extension):
 
             assert writer is not None
             writer._add_cleanup_hook(_cleanup)
-
-        return loaded_fn
 
     def on_error(
         self,
@@ -507,6 +510,10 @@ class _DistributedSnapshot(_Snapshot):
                 "Distributed snapshot requires a saver rank"
                 " in the range [0-{})".format(self._size)
             )
+
+    def _add_cleanup_hook(self, writer: writing.Writer) -> None:
+        if self._rank == self._saver_rank:
+            super()._add_cleanup_hook(writer)
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if self.condition():

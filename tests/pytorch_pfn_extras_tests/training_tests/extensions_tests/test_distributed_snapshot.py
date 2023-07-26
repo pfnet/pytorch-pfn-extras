@@ -94,3 +94,23 @@ def test_distributed_snapshot(path):
 
     if comm_size > 1:
         torch.distributed.barrier()
+
+
+@pytest.mark.gpu
+def test_subprocess_distributed_snapshot(path):
+    comm_size, comm_rank, comm_local_rank, device = _init_distributed(False)
+
+    if comm_size > 1:
+        torch.distributed.barrier()
+
+    saver_rank = 1
+    fmt = "snapshot_iter_{.iteration}"
+    snapshot = extensions.snapshot(filename=fmt, saver_rank=saver_rank)
+
+    trainer = get_trainer(path)
+    trainer.extend(snapshot, trigger=(1, "iteration"), priority=2)
+    for _ in range(1):
+        with trainer.run_iteration():
+            pass
+    assert snapshot.writer is not None
+    assert len(snapshot.writer._post_save_hooks) == 0
