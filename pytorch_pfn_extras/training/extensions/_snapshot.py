@@ -408,14 +408,12 @@ class _Snapshot(extension.Extension):
             # triggered right after creation of new snapshot file, is
             # injected here.
             def _cleanup() -> None:
-                assert writer is not None
                 files = _find_stale_snapshots(
                     self.filename, writer.out_dir, self.n_retains, writer.fs
                 )
                 for file in files:
                     writer.fs.remove(os.path.join(writer.out_dir, file))
 
-            assert writer is not None
             writer._add_cleanup_hook(_cleanup)
 
     def on_error(
