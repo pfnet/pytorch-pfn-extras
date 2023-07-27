@@ -18,14 +18,17 @@ import pytorch_pfn_extras.handler as handler_module
 import torch
 from pytorch_pfn_extras.runtime import runtime_registry
 from pytorch_pfn_extras.training import StateObjectProtocol
+from pytorch_pfn_extras.training._evaluator import (
+    DistributedEvaluator,
+    Evaluator,
+)
+from pytorch_pfn_extras.training._trainer import Trainer
 from pytorch_pfn_extras.training._transform_model import default_transform_model
 
 if TYPE_CHECKING:
     from pytorch_pfn_extras import writing
     from pytorch_pfn_extras.runtime._runtime import DeviceLike
     from pytorch_pfn_extras.training import extension
-    from pytorch_pfn_extras.training._evaluator import Evaluator
-    from pytorch_pfn_extras.training._trainer import Trainer
     from pytorch_pfn_extras.training.metrics import MetricType
     from pytorch_pfn_extras.training.trigger import TriggerLike
 
@@ -179,8 +182,6 @@ def create_trainer(
     if len(options) > 0:
         raise ValueError("Unknown options: ", options)
 
-    from pytorch_pfn_extras.training._trainer import Trainer
-
     return Trainer(
         handler,
         evaluator=evaluator,
@@ -209,6 +210,7 @@ def create_evaluator(
     options: Optional[Dict[str, Any]] = None,
     runtime_options: Optional[Mapping[str, Any]] = None,
     profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
+    distributed: bool = False,
 ) -> "Evaluator":
     """Creates an evaluator object. The return value of this function is
     expected to be fed to `ppe.engine.create_trainer` as an argument.
@@ -264,12 +266,19 @@ def create_evaluator(
     if len(options) > 0:
         raise ValueError("Unknown options: ", options)
 
-    from pytorch_pfn_extras.training._evaluator import Evaluator
-
-    return Evaluator(
-        handler,
-        models=models,
-        progress_bar=progress_bar,
-        metrics=metrics,
-        profile=profile,
-    )
+    if distributed:
+        return DistributedEvaluator(
+            handler,
+            models=models,
+            progress_bar=progress_bar,
+            metrics=metrics,
+            profile=profile,
+        )
+    else:
+        return Evaluator(
+            handler,
+            models=models,
+            progress_bar=progress_bar,
+            metrics=metrics,
+            profile=profile,
+        )

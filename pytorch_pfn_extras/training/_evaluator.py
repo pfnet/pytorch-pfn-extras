@@ -176,9 +176,14 @@ class DistributedEvaluator(Evaluator):
         *,
         progress_bar: bool = False,
         metrics: Optional[Sequence["MetricType"]] = None,
+        profile: Optional[torch.profiler.profile] = None,  # type: ignore[name-defined]
     ):
         super().__init__(
-            handler, models, progress_bar=progress_bar, metrics=metrics
+            handler,
+            models,
+            progress_bar=progress_bar,
+            metrics=metrics,
+            profile=profile,
         )
         if not torch.distributed.is_initialized():  # type: ignore[no-untyped-call]
             raise RuntimeError("PyTorch distributed module is not initialized.")
