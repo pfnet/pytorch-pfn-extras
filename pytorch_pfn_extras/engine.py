@@ -243,6 +243,9 @@ def create_evaluator(
         profile:
             A `torch.profiler.profile` object to collect the performance
             metrics.
+        distributed:
+            Flag to determine whether to create a distributed-enabled evaluator.
+            If set to True, the created evaluator will support distributed execution.
     """
 
     metrics = metrics if metrics else []
