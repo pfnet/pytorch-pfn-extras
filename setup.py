@@ -20,6 +20,7 @@ setuptools.setup(
             "pytest",
             "onnxruntime",
             "torchvision",
+            "torchaudio",
             "pysen",
             "black==23.3.0",
             "flake8==4.0.1",

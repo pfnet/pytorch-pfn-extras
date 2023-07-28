@@ -22,16 +22,11 @@ jobs:
       with:
         python-version: '3.8'
 
-    - name: Install
+    - name: Import Check
       run: |
-        pip install -U pip wheel
-        pip install --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cpu
-        pip install pytest
-        pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx onnxruntime pytorch-ignite
-        pip install -v -e .
         # Test PPE is importable with minimum dependency
-        python -c 'import pytorch_pfn_extras'
+        make import_check-cpu-latest-nightly
 
     - name: Test CPU only
       run: |
-        pytest -m "not gpu" tests
+        make cputest-cpu-latest-nightly

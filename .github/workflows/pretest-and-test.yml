@@ -28,33 +28,23 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
 
-    - name: Install
+    - name: Import Check
       run: |
-        pip install -U pip wheel
-        pip install 'torch==${{ matrix.torch }}' --extra-index-url https://download.pytorch.org/whl/cpu
-        pip install -v -e .
         # Test PPE is importable with minimum dependency
-        python -c 'import pytorch_pfn_extras'
+        make import_check-cpu-${{ matrix.torch }}-minimal
 
     - name: Code Style
       run: |
-        pip install pysen black==23.3.0 flake8==4.0.1 isort==5.10.1 mypy==0.991
-        pip install types-PyYAML types-setuptools
-        cp "$(pip show torch | awk '/^Location:/ { print $2 }')/torch/__init__.py" stubs/torch/__init__.py
-        MYPYPATH="${PWD}/stubs" pysen run lint
+        make lint-cpu-${{ matrix.torch }}
 
     - name: Code Style (Examples)
       run: |
-        pysen --config ./example/pysen.toml run lint
+        make example_lint-cpu-${{ matrix.torch }}
 
-    - name: Install for pytest
+    - name: Import Check with Extra Package
       run: |
-        pip install matplotlib tensorboard ipython ipywidgets pandas optuna onnx pytorch-ignite
-        pip install -v -e '.[test]' 'torch==${{ matrix.torch }}' --extra-index-url https://download.pytorch.org/whl/cpu
-        pip list -v
-        # Test PPE is importable with pytest dependency
-        python -c 'import pytorch_pfn_extras'
+        make import_check-cpu-${{ matrix.torch }}
 
     - name: Test CPU only
       run: |
-        pytest -m "not gpu" tests
+        make cputest-cpu-${{ matrix.torch }}
