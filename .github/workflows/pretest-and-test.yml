@@ -36,16 +36,20 @@ jobs:
 
     - name: Code Style
       run: |
+        VERSION=${{ matrix.torch }}
         make lint-cpu-${VERSION//\*/\\*}
 
     - name: Code Style (Examples)
       run: |
+        VERSION=${{ matrix.torch }}
         make example_lint-cpu-${VERSION//\*/\\*}
 
     - name: Import Check with Extra Package
       run: |
+        VERSION=${{ matrix.torch }}
         make import_check-cpu-${VERSION//\*/\\*}
 
     - name: Test CPU only
       run: |
+        VERSION=${{ matrix.torch }}
         make cputest-cpu-${VERSION//\*/\\*}
