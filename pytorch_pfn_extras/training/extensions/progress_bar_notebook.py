@@ -76,7 +76,7 @@ class ProgressBarNotebook(extension.Extension):
             self._init_status_template()
 
         self.update(manager.iteration, manager.epoch_detail)
-        display(self._widget)
+        display(self._widget)  # type: ignore [no-untyped-call]
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         length, unit = self._training_length
