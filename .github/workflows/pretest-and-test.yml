@@ -31,20 +31,20 @@ jobs:
     - name: Import Check
       run: |
         # Test PPE is importable with minimum dependency
-        make import_check-cpu-${{ matrix.torch }}-minimal
+        make import_check-cpu-${${{ matrix.torch }}//\*/\\\\*}-minimal
 
     - name: Code Style
       run: |
-        make lint-cpu-${{ matrix.torch }}
+        make lint-cpu-${${{ matrix.torch }}//\*/\\\\*}
 
     - name: Code Style (Examples)
       run: |
-        make example_lint-cpu-${{ matrix.torch }}
+        make example_lint-cpu-${${{ matrix.torch }}//\*/\\\\*}
 
     - name: Import Check with Extra Package
       run: |
-        make import_check-cpu-${{ matrix.torch }}
+        make import_check-cpu-${${{ matrix.torch }}//\*/\\\\*}
 
     - name: Test CPU only
       run: |
-        make cputest-cpu-${{ matrix.torch }}
+        make cputest-cpu-${${{ matrix.torch }}//\*/\\\\*}
