@@ -34,16 +34,13 @@ class ThreadWriter(StandardWriter[threading.Thread]):
     def _save_with_exitcode(
         self,
         filename: str,
-        out_dir: str,
         target: _TargetType,
         savefun: _SaveFun,
         append: bool,
         **savefun_kwargs: Any,
     ) -> None:
         try:
-            self.save(
-                filename, out_dir, target, savefun, append, **savefun_kwargs
-            )
+            self.save(filename, target, savefun, append, **savefun_kwargs)
         except Exception as e:
             thread = threading.current_thread()
             thread.exitcode = -1  # type: ignore[attr-defined]
@@ -56,7 +53,6 @@ class ThreadWriter(StandardWriter[threading.Thread]):
     def create_worker(
         self,
         filename: str,
-        out_dir: str,
         target: _TargetType,
         *,
         savefun: Optional[_SaveFun] = None,
@@ -65,7 +61,7 @@ class ThreadWriter(StandardWriter[threading.Thread]):
     ) -> threading.Thread:
         return threading.Thread(
             target=self._save_with_exitcode,
-            args=(filename, out_dir, target, savefun, append),
+            args=(filename, target, savefun, append),
             kwargs=savefun_kwargs,
         )
 
@@ -97,7 +93,6 @@ class ProcessWriter(StandardWriter[multiprocessing.Process]):
     def create_worker(
         self,
         filename: str,
-        out_dir: str,
         target: _TargetType,
         *,
         savefun: Optional[_SaveFun] = None,
@@ -106,6 +101,6 @@ class ProcessWriter(StandardWriter[multiprocessing.Process]):
     ) -> multiprocessing.Process:
         return multiprocessing.Process(
             target=self.save,
-            args=(filename, out_dir, target, savefun, append),
+            args=(filename, target, savefun, append),
             kwargs=savefun_kwargs,
         )

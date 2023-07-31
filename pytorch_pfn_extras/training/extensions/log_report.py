@@ -223,11 +223,9 @@ class LogReport(extension.Extension):
 
             # write to the log file
             log_name = self._filename.format(**stats_cpu)
-            out = manager.out
             savefun = LogWriterSaveFunc(self._format, self._append)
             writer(
                 log_name,
-                out,
                 self._log_looker.get(),
                 savefun=savefun,
                 append=self._append,

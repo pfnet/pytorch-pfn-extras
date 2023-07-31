@@ -14,9 +14,7 @@ from pytorch_pfn_extras.writing._writer_base import (
     _Worker,
 )
 
-_QueUnit = Optional[
-    Tuple[_TaskFun, str, str, _TargetType, Optional[_SaveFun], bool]
-]
+_QueUnit = Optional[Tuple[_TaskFun, str, _TargetType, Optional[_SaveFun], bool]]
 
 
 class QueueWriter(Writer, Generic[_Worker]):
@@ -66,16 +64,13 @@ class QueueWriter(Writer, Generic[_Worker]):
     def __call__(
         self,
         filename: str,
-        out_dir: str,
         target: _TargetType,
         *,
         savefun: Optional[_SaveFun] = None,
         append: bool = False,
     ) -> None:
         assert not self._finalized
-        self._queue.put(
-            (self._task, filename, out_dir, target, savefun, append)
-        )
+        self._queue.put((self._task, filename, target, savefun, append))
 
     def create_task(self, savefun: _SaveFun) -> _TaskFun:
         return SimpleWriter(savefun=savefun)
@@ -93,9 +88,7 @@ class QueueWriter(Writer, Generic[_Worker]):
                 q.task_done()
                 return
             else:
-                task[0](
-                    task[1], task[2], task[3], savefun=task[4], append=task[5]
-                )
+                task[0](task[1], task[2], savefun=task[3], append=task[4])
                 q.task_done()
 
     def finalize(self) -> None:

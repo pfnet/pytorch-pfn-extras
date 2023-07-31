@@ -453,7 +453,6 @@ grid=True)
 
         writer(
             self._filename,
-            manager.out,
             (fig, plt),  # type: ignore
             savefun=matplotlib_savefun,
         )
