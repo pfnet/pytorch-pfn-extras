@@ -1,4 +1,5 @@
 import tempfile
+from unittest.mock import MagicMock
 
 import pytest
 import pytorch_pfn_extras as ppe
@@ -96,3 +97,34 @@ def test_reduce_lr_on_plateau_no_report():
     with pytest.raises(ValueError):
         with manager.run_iteration():
             pass
+
+
+def test_lr_scheduler_wait_for_first_optimizer_step():
+    param = torch.nn.Parameter(torch.zeros(10))
+    optim = torch.optim.SGD([param], 1.0)
+    sched = torch.optim.lr_scheduler.MultiStepLR(
+        optim, milestones=[1, 2, 3], gamma=0.1, last_epoch=-1
+    )
+    stepper = MagicMock()
+    ext = ppe.training.extensions.LRScheduler(
+        sched,
+        stepper=stepper,
+        wait_for_first_optimizer_step=True,
+        trigger=(1, "iteration"),
+    )
+    manager = ppe.training.ExtensionsManager(
+        {}, {"main": optim}, 1, extensions=[ext], iters_per_epoch=40
+    )
+    for i in range(4):
+        with manager.run_iteration():
+            pass
+    assert stepper.call_count == 0
+    for i in range(4):
+        with manager.run_iteration(step_optimizers=["main"]):
+            pass
+    assert stepper.call_count == 4
+    for i in range(4):
+        with manager.run_iteration():
+            pass
+
+    assert stepper.call_count == 8
