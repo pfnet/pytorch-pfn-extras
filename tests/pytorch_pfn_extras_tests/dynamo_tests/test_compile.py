@@ -110,3 +110,27 @@ def test_compile_with_optimizer_and_split_graph():
     # This executes forward+backward+optimizer step
     with pytest.raises(torch._dynamo.exc.Unsupported):
         joint_module(x)
+
+
+@pytest.mark.skipif(
+    not ppe.requires("2.0.0") or sys.platform == "win32",
+    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
+)
+def test_compile_with_optimizer_and_user_backend():
+    user_backend_called = False
+    torch._dynamo.reset()
+    x = torch.randn(10, requires_grad=True)
+    compiled_module = _DummyModule()
+
+    opt = torch.optim.SGD(compiled_module.parameters(), lr=0.5, momentum=0.01)
+
+    def custom_backend(gm, o_model, o_optimizer, inputs):
+        nonlocal user_backend_called
+        user_backend_called = True
+        assert o_model is compiled_module
+        assert o_optimizer is opt
+        return gm
+
+    joint_module = ppe.compile(compiled_module, opt, custom_backend)
+    joint_module(x)
+    assert user_backend_called

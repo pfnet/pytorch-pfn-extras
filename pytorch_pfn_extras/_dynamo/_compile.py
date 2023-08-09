@@ -163,8 +163,13 @@ def _compile_module(
         if user_backend is None:
             func = gm
         else:
-            func = user_backend(gm, inputs)
-            supports_inplace = False
+            func = user_backend(gm, module, optimizer, inputs)
+            # If the backend returns the original graph, the outputs are set to None
+            # after update happens, we need to disable this
+            supports_inplace = func == gm or getattr(
+                user_backend, "supports_inplace", False
+            )
+
         n_params = len(parameters_optimizer)
 
         def _model_opt_func(*args, **kwargs):  # type: ignore[no-untyped-def]
