@@ -28,28 +28,21 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-pip-
 
-    - name: Import Check
+    - name: Install
       run: |
+        pip install -U pip wheel
+        pip install -e .[test] torch==${{ matrix.torch }} --extra-index-url https://download.pytorch.org/whl/cpu
         # Test PPE is importable with minimum dependency
-        VERSION=${{ matrix.torch }}
-        make import_check-cpu-${VERSION//\*/\\*}-minimal
+        make import_check
 
     - name: Code Style
       run: |
-        VERSION=${{ matrix.torch }}
-        make lint-cpu-${VERSION//\*/\\*}
+        make lint
 
     - name: Code Style (Examples)
       run: |
-        VERSION=${{ matrix.torch }}
-        make example_lint-cpu-${VERSION//\*/\\*}
-
-    - name: Import Check with Extra Package
-      run: |
-        VERSION=${{ matrix.torch }}
-        make import_check-cpu-${VERSION//\*/\\*}
+        make example_lint
 
     - name: Test CPU only
       run: |
-        VERSION=${{ matrix.torch }}
-        make cputest-cpu-${VERSION//\*/\\*}
+        make cputest

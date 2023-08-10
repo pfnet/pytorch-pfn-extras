@@ -95,7 +95,7 @@ class Reservoir:
     ) -> None:
         self.size = size
         self.data = numpy.zeros((size,) + data_shape, dtype=dtype)
-        self.idxs: numpy.ndarray = numpy.zeros((size,), dtype=numpy.int32)
+        self.idxs = numpy.zeros((size,), dtype=numpy.int32)
         self.counter = 0
 
     def add(self, x: Any, idx: Any = None) -> None:
@@ -323,9 +323,7 @@ grid=True)
         else:
             return
 
-        stats: numpy.ndarray = numpy.zeros(
-            self._data_shape, dtype=numpy.float32
-        )
+        stats = numpy.zeros(self._data_shape, dtype=numpy.float32)
         for i, k in enumerate(self._keys):
             xs = []
             for var in self._vars:

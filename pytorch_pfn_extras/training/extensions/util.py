@@ -17,8 +17,8 @@ except ImportError:
 
 
 def _is_notebook() -> bool:
-    if _ipython_available and get_ipython() is not None:  # type: ignore [no-untyped-call]
-        return "IPKernelApp" in get_ipython().config  # type: ignore [no-untyped-call]
+    if _ipython_available and get_ipython() is not None:
+        return "IPKernelApp" in get_ipython().config
     return False
 
 

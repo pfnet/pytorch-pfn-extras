@@ -22,11 +22,13 @@ jobs:
       with:
         python-version: '3.8'
 
-    - name: Import Check
+    - name: Install
       run: |
+        pip install -U pip wheel
+        pip install -v -e . --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cpu 
         # Test PPE is importable with minimum dependency
-        make import_check-cpu-latest-nightly
+        python -c 'import pytorch_pfn_extras'
 
     - name: Test CPU only
       run: |
-        make cputest-cpu-latest-nightly
+        make cputest
