@@ -9,6 +9,12 @@ _argvalues = [
     (1, (3, "epoch"), [False, False, True, False, False, True, False], 4),
     # fractional epoch
     (2, (1.5, "epoch"), [False, False, True, False, False, True, False], 4),
+    (
+        3,
+        (1.5, "epoch"),
+        [False, False, False, False, True, False, False, False, True],
+        4,
+    ),
 ]
 
 
