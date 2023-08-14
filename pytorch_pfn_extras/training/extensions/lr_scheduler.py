@@ -71,12 +71,12 @@ class LRScheduler(extension.Extension):
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         # https://github.com/pytorch/pytorch/blob/v2.0.1/torch/optim/lr_scheduler.py#L137-L138
         if (
-            self.scheduler.optimizer._step_count < 1
-            and self.wait_for_first_optimizer_step
+            self.wait_for_first_optimizer_step
+            and hasattr(self.scheduler.optimizer.step, "_with_counter")
+            and self.scheduler.optimizer._step_count < 1
         ):
             return
-        if self.scheduler.optimizer._step_count > 0:
-            self.stepper(manager, self.scheduler)
+        self.stepper(manager, self.scheduler)
 
     @staticmethod
     def step_by_value(key: Optional[str]) -> Any:
