@@ -3,11 +3,29 @@ from typing import Any, List, Optional, Tuple
 import torch
 import torch.fx
 import torch.utils._pytree as pytree
-from torch._functorch.partitioners import _is_primal, _is_tangent
+from torch._functorch.partitioners import (
+    _is_primal,
+    _is_tangent,
+    default_partition,
+)
 
 
-class JointGraph:
-    def __init__(self, parameter_names: Optional[List[str]] = None):
+class _Splitter:
+    def partition(
+        self,
+        joint_module: torch.fx.GraphModule,
+        _joint_inputs: Any,
+        *,
+        num_fwd_outputs: int,
+    ) -> Tuple[torch.fx.GraphModule, torch.fx.GraphModule]:
+        raise NotImplementedError("Splitters must override partition")
+
+
+class JointGraph(_Splitter):
+    def __init__(
+        self,
+        parameter_names: Optional[List[str]] = None,
+    ):
         if parameter_names is not None:
             self._parameter_names = [
                 n.replace(".", "__dot__") for n in parameter_names
@@ -15,7 +33,7 @@ class JointGraph:
         else:
             self._parameter_names = []
 
-    def _no_partition(
+    def partition(
         self,
         joint_module: torch.fx.GraphModule,
         _joint_inputs: Any,
@@ -131,3 +149,49 @@ class JointGraph:
         bwd_graph.output(out_nodes)
         bwd_module = torch.fx.GraphModule(joint_module, bwd_graph)
         return (fwd_module, bwd_module)
+
+
+class ForwardOnly(_Splitter):
+    def __init__(
+        self,
+        parameter_names: Optional[List[str]] = None,
+    ):
+        if parameter_names is not None:
+            self._parameter_names = [
+                n.replace(".", "__dot__") for n in parameter_names
+            ]
+        else:
+            self._parameter_names = []
+
+    def partition(
+        self,
+        joint_module: torch.fx.GraphModule,
+        _joint_inputs: Any,
+        *,
+        num_fwd_outputs: int,
+    ) -> Tuple[torch.fx.GraphModule, torch.fx.GraphModule]:
+        fwd_graph, _ = default_partition(
+            joint_module,
+            _joint_inputs,
+            num_fwd_outputs=num_fwd_outputs,
+        )
+        # Change the input names in the fwd graph
+        primal_inputs: List[torch.fx.Node] = list(
+            filter(_is_primal, fwd_graph.graph.nodes)
+        )
+        for i, node in enumerate(primal_inputs):
+            node.name = (
+                self._parameter_names[i]
+                if i < len(self._parameter_names)
+                else f"input_{i - len(self._parameter_names)}"
+            )
+
+        # Remove the outputs
+        output_node = [
+            node for node in fwd_graph.graph.nodes if node.op == "output"
+        ][0]
+        outputs = pytree.tree_flatten(output_node.args)[0]
+        fwd_graph.graph.erase_node(output_node)
+        fwd_graph.graph.output(outputs[:num_fwd_outputs])
+        fwd_graph = torch.fx.GraphModule(joint_module, fwd_graph.graph)
+        return (fwd_graph, torch.fx.GraphModule(joint_module, torch.fx.Graph()))

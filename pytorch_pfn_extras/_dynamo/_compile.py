@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional, cast
 
 import torch
 import torch.fx
@@ -127,6 +127,8 @@ def _compile_module(
     module: torch.nn.Module,
     optimizer: Optional[torch.optim.Optimizer],
     user_backend: Optional[Callable[..., Any]],
+    generate_backward: bool,
+    decompositions: Optional[Dict[Any, Callable]],
 ) -> Callable[..., Any]:
     if not isinstance(module, torch.nn.Module):
         raise TypeError("module needs to be a torch.nn.Module instance")
@@ -150,7 +152,7 @@ def _compile_module(
                     if _normalize_name(node.name) == n:
                         parameters_optimizer.append(p)
 
-            for n, p in module.named_parameters():
+            for _, p in module.named_parameters():
                 for p_n in optimizer.state[p]:  # type: ignore[index]
                     state_tensor = optimizer.state[p][p_n]  # type: ignore[index]
                     if state_tensor is not None:
@@ -195,13 +197,18 @@ def _compile_module(
         parameters_and_buffers.append(p)
         names.append(n)
 
-    partitioner = _splitter.JointGraph(names)
+    # This may be to simplistic ..., would be better to set a `mode`?
+    partitioner: _splitter._Splitter
+    if generate_backward:
+        partitioner = _splitter.JointGraph(names)
+    else:
+        partitioner = _splitter.ForwardOnly(names)
 
     aot_backend = aot_autograd(  # type: ignore[no-untyped-call]
         fw_compiler=_graph_getter,
         bw_compiler=_dummy_bwd_backend,
-        partition_fn=partitioner._no_partition,
-        decompositions=core_aten_decompositions(),
+        partition_fn=partitioner.partition,
+        decompositions=decompositions,
     )
     module_opt = torch.compile(module, fullgraph=True, backend=aot_backend)  # type: ignore[attr-defined]
     return cast(Callable[..., Any], module_opt)  # type: ignore[redundant-cast]
@@ -211,6 +218,9 @@ def compile(
     module: torch.nn.Module,
     optimizer: Optional[torch.optim.Optimizer] = None,
     backend: Optional[Callable[..., Any]] = None,
+    *,
+    generate_backward: bool = True,
+    decompositions: Optional[Dict[Any, Callable]] = None,
 ) -> Callable[..., Any]:
     """Compiles a module and an optimizer in a single graph using the provided backend.
 
@@ -233,7 +243,21 @@ def compile(
         backend (optional):
             Object to process the graph and compile it for custom devices, will
             use PyTorch dynamo by default if not specified.
+        generate_backward:
+            Add the backward pass to the graph. Default is ``True``.
+        decompositions (optional):
+            Custom mapping for decompose a torch op into simple ops. Default is
+            ``None`` and resorts to `torch._decomp.core_aten_decompositions()`
     """
 
-    module_opt = _compile_module(module, optimizer, backend)
+    if decompositions is None:
+        decompositions = core_aten_decompositions()
+
+    module_opt = _compile_module(
+        module,
+        optimizer,
+        backend,
+        generate_backward,
+        decompositions,
+    )
     return module_opt
