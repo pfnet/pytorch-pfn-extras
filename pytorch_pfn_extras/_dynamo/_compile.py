@@ -196,6 +196,9 @@ def _compile_module(
     for n, p in module.named_parameters():
         parameters_and_buffers.append(p)
         names.append(n)
+    for n, p in module.named_buffers():
+        parameters_and_buffers.append(p)
+        names.append(n)
 
     # This may be to simplistic ..., would be better to set a `mode`?
     partitioner: _splitter._Splitter
