@@ -77,7 +77,7 @@ class IntervalTrigger(trigger.Trigger):
             else:
                 return self.period == 0
         if self.unit == "epoch":
-            fire = (iteration % (epoch_length * self.period)) == 0
+            fire = (iteration % (epoch_length * self.period)) < 1
         else:
-            fire = (iteration % self.period) == 0
+            fire = (iteration % self.period) < 1
         return fire
