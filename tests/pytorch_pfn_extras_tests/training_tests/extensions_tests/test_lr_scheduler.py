@@ -128,3 +128,24 @@ def test_lr_scheduler_wait_for_first_optimizer_step():
             pass
 
     assert stepper.call_count == 8
+
+
+def test_wait_for_first_optimizer_step_with_non_torch_lr_scheduler():
+    param = torch.nn.Parameter(torch.zeros(10))
+    optim = torch.optim.SGD([param], 1.0)
+    sched = MagicMock()
+    sched.optimizer = optim
+    stepper = MagicMock()
+    ext = ppe.training.extensions.LRScheduler(
+        sched,
+        stepper=stepper,
+        wait_for_first_optimizer_step=True,
+        trigger=(1, "iteration"),
+    )
+    manager = ppe.training.ExtensionsManager(
+        {}, {}, 1, extensions=[ext], iters_per_epoch=40
+    )
+    for i in range(4):
+        with manager.run_iteration():
+            pass
+    assert stepper.call_count == 4
