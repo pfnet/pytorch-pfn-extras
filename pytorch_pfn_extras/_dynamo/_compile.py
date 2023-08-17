@@ -134,7 +134,7 @@ def _compile_module(
         raise TypeError("module needs to be a torch.nn.Module instance")
 
     names = []
-    parameters_and_buffers = []
+    parameters_and_buffers: List[torch.Tensor] = []
 
     def _graph_getter(gm, inputs):  # type: ignore[no-untyped-def]
         parameters_optimizer = []
@@ -196,8 +196,9 @@ def _compile_module(
     for n, p in module.named_parameters():
         parameters_and_buffers.append(p)
         names.append(n)
-    for n, p in module.named_buffers():
-        parameters_and_buffers.append(p)
+
+    for n, b in module.named_buffers():
+        parameters_and_buffers.append(b)
         names.append(n)
 
     # This may be to simplistic ..., would be better to set a `mode`?
