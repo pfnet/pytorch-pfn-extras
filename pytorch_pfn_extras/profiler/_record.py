@@ -12,7 +12,7 @@ from typing import (
 )
 
 import torch
-from pytorch_pfn_extras.profiler import _time_summary
+from pytorch_pfn_extras.profiler import _chrome_tracing, _time_summary
 from pytorch_pfn_extras.runtime import runtime_registry
 
 if TYPE_CHECKING:
@@ -44,12 +44,36 @@ class _DummyReportNotification(_time_summary._ReportNotification):
 
 
 @contextmanager
+def dummy_tracer(tag: Optional[str]) -> Generator[None, None, None]:
+    yield None
+
+
+@contextmanager
+def tracer(
+    tag: str,
+    device: "DeviceLike" = "cpu",
+    emit_chrome_trace: bool = False,
+) -> Generator[None, None, None]:
+    runtime_cls = runtime_registry.get_runtime_class_for_device_spec(device)
+    runtime_tracer = runtime_cls.trace
+
+    if emit_chrome_trace:
+        chrome_tracer = _chrome_tracing.get_chrome_tracer().add_event
+    else:
+        chrome_tracer = dummy_tracer  # type: ignore[assignment]
+
+    with runtime_tracer(tag, None), chrome_tracer(tag):
+        yield
+
+
+@contextmanager
 def record(
     tag: Optional[str],
     metric: Optional[str] = None,
     use_cuda: bool = False,
     enable: bool = True,
     device: "DeviceLike" = "cpu",
+    emit_chrome_trace: bool = False,
 ) -> Generator[_time_summary._ReportNotification, None, None]:
     if not enable:
         yield _DummyReportNotification()
@@ -61,13 +85,10 @@ def record(
     if metric is None:
         metric = tag
 
-    runtime_cls = runtime_registry.get_runtime_class_for_device_spec(device)
-    runtime_tracer = runtime_cls.trace
-
     if use_cuda:
         torch.cuda.nvtx.range_push(tag)  # type: ignore[no-untyped-call]
     try:
-        with runtime_tracer(tag, None):
+        with tracer(tag, device, emit_chrome_trace):
             time_summary = _time_summary.get_time_summary()
             with time_summary.report(metric, use_cuda) as ntf:
                 yield ntf
@@ -83,10 +104,20 @@ def record_function(
     tag: Optional[str],
     use_cuda: bool = False,
     enable: bool = True,
+    device: "DeviceLike" = "cpu",
+    emit_chrome_trace: bool = False,
 ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
     def wrapper(f: Callable[..., _T]) -> Callable[..., _T]:
         def wrapped(*args: Any, **kwargs: Any) -> _T:
-            with record(tag or f.__name__, use_cuda=use_cuda, enable=enable):
+            name = tag or f.__name__
+            with record(
+                name,
+                None,
+                use_cuda,
+                enable,
+                device,
+                emit_chrome_trace,
+            ):
                 return f(*args, **kwargs)
 
         return wrapped
@@ -100,6 +131,8 @@ def record_iterable(
     divide_metric: bool = False,
     use_cuda: bool = False,
     enable: bool = True,
+    device: "DeviceLike" = "cpu",
+    emit_chrome_trace: bool = False,
 ) -> Iterable[_T]:
     if tag is None:
         tag = _infer_tag_name(inspect.currentframe(), depth=1)
@@ -108,7 +141,14 @@ def record_iterable(
         for i, x in enumerate(iter):
             name = f"{tag}-{i}"
             metric = name if divide_metric else tag
-            with record(name, metric, use_cuda=use_cuda, enable=enable):
+            with record(
+                name,
+                metric,
+                use_cuda,
+                enable,
+                device,
+                emit_chrome_trace,
+            ):
                 yield x
 
     return wrapped()

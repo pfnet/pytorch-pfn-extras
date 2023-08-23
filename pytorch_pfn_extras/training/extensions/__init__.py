@@ -7,6 +7,9 @@ from pytorch_pfn_extras.training.extensions._snapshot import (  # NOQA
 from pytorch_pfn_extras.training.extensions.best_value import BestValue  # NOQA
 from pytorch_pfn_extras.training.extensions.best_value import MaxValue  # NOQA
 from pytorch_pfn_extras.training.extensions.best_value import MinValue  # NOQA
+from pytorch_pfn_extras.training.extensions.chrome_trace import (  # NOQA
+    ChromeTrace,
+)
 from pytorch_pfn_extras.training.extensions.evaluator import (  # NOQA
     DistributedEvaluator,
     Evaluator,

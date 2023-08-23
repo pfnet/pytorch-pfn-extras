@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 import pytest
 import pytorch_pfn_extras as ppe
@@ -127,3 +128,23 @@ def test_record_iterable_without_tag(device):
     assert any(k.endswith("test_record_iterable_without_tag-0") for k in keys)
     assert any(k.endswith("test_record_iterable_without_tag-1") for k in keys)
     assert any(k.endswith("test_record_iterable_without_tag-2") for k in keys)
+
+
+@pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_record_iterable_with_chrome_trace(device):
+    if not torch.cuda.is_available() and device == "cuda":
+        pytest.skip()
+    model = torch.nn.Linear(30, 40)
+    model.to(device)
+
+    x = torch.arange(30, dtype=torch.float32).to(device)
+
+    x = torch.arange(30, dtype=torch.float32).to(device)
+    with tempfile.TemporaryDirectory() as t_path:
+        w = ppe.writing.SimpleWriter(out_dir=t_path)
+        with torch.profiler.profile():
+            with ppe.profiler.record("tag", emit_chrome_trace=True):
+                model(x)
+        ppe.profiler.get_chrome_tracer().flush("trace.json", w)
+        assert os.path.exists(os.path.join(t_path, "trace.json"))
