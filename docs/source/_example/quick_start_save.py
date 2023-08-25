@@ -17,16 +17,6 @@ class Model(torch.nn.Module):
 model = Model()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
-extensions = [
-    ppe.training.extensions.LogReport(),
-    ppe.training.extensions.ProgressBar(),
-    ppe.training.extensions.PrintReport(
-        ["epoch", "iteration", "elapsed_time", "train/loss", "val/loss"],
-    ),
-    ppe.training.extensions.snapshot(
-        target=model
-    ),  # Save the model parameters after each epoch.
-]
 
 device = "cuda:0"
 epochs = 3
@@ -34,7 +24,6 @@ trainer = ppe.engine.create_trainer(
     models=model,
     optimizers=optimizer,
     max_epochs=epochs,
-    extensions=extensions,
     evaluator=ppe.engine.create_evaluator(
         models=model,
         device=device,
@@ -47,6 +36,23 @@ trainer = ppe.engine.create_trainer(
         "train_report_keys": ["loss"],
     },
 )
+
+trainer.extend(ppe.training.extensions.LogReport())
+trainer.extend(ppe.training.extensions.ProgressBar())
+trainer.extend(
+    ppe.training.extensions.PrintReport(  # Displays the collected logs interactively.
+        [
+            "epoch",  # epoch, iteration, elapsed_time are automatically collected by LogReport.
+            "iteration",
+            "elapsed_time",
+            "train/loss",  # The parameters specified by train_report_keys are collected under keys with the 'train/' prefix.
+            "val/loss",  # The parameters specified by eval_report_keys are collected under keys with the 'val/' prefix.
+        ],
+    )
+)
+trainer.extend(
+    ppe.training.extensions.snapshot(target=model)
+)  # Save the model parameters after each epoch.
 
 ppe.to(model, device=device)
 

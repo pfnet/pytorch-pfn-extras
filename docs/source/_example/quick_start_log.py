@@ -17,17 +17,12 @@ class Model(torch.nn.Module):
 model = Model()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
-extensions = [
-    ppe.training.extensions.LogReport(),  # It is an extension to collect parameters reported during training.
-]
-
 device = "cuda:0"
 epochs = 3
 trainer = ppe.engine.create_trainer(
     models=model,
     optimizers=optimizer,
     max_epochs=epochs,
-    extensions=extensions,
     evaluator=ppe.engine.create_evaluator(
         models=model,
         device=device,
@@ -44,6 +39,10 @@ trainer = ppe.engine.create_trainer(
         ],  # Let the value of the loss be notified to the LogReport.
     },
 )
+
+trainer.extend(
+    ppe.training.extensions.LogReport()
+)  # It is an extension to collect parameters reported during training.
 
 ppe.to(model, device=device)
 
