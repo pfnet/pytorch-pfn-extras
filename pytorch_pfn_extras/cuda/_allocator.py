@@ -23,7 +23,7 @@ def stream(stream: Optional[torch.cuda.Stream]) -> Generator[None, None, None]:
     with torch.cuda.stream(stream):
         if is_available():
             cupy_stream = cupy.cuda.ExternalStream(
-                stream.cuda_stream, device_id=stream.device_index
+                stream.cuda_stream, device_id=stream.device.index
             )
             with cupy_stream:
                 yield
