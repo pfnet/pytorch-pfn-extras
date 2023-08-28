@@ -1,8 +1,6 @@
 from typing import Any, Dict, Optional
 
-from pytorch_pfn_extras.profiler._tracing import (
-    get_tracer,
-)
+from pytorch_pfn_extras.profiler._tracing import get_tracer
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import (

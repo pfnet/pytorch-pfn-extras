@@ -13,7 +13,7 @@ from typing import (
 )
 
 import torch
-from pytorch_pfn_extras.profiler import _tracing, _time_summary
+from pytorch_pfn_extras.profiler import _time_summary, _tracing
 from pytorch_pfn_extras.runtime import runtime_registry
 
 if TYPE_CHECKING:
@@ -45,7 +45,7 @@ class _DummyReportNotification(_time_summary._ReportNotification):
 
 
 @contextmanager
-def dummy_tracer(tag: Optional[str]) -> Generator[None, None, None]:
+def dummy_tracer(name: str) -> Generator[None, None, None]:
     yield None
 
 
@@ -59,14 +59,15 @@ def tracer(
     runtime_cls = runtime_registry.get_runtime_class_for_device_spec(device)
     runtime_tracer = runtime_cls.trace
 
+    user_tracer: _tracing.Tracer
     if isinstance(trace, bool) and not trace:
-        user_tracer = dummy_tracer  # type: ignore[assignment]
+        user_tracer = _tracing.DummyTracer()
     elif isinstance(trace, bool):
-        user_tracer = _tracing.get_tracer().add_event
+        user_tracer = _tracing.get_tracer()
     elif isinstance(trace, _tracing.Tracer):
-        user_tracer = trace.add_event
+        user_tracer = trace
 
-    with runtime_tracer(tag, None), user_tracer(tag):
+    with runtime_tracer(tag, None), user_tracer.add_event(tag):
         yield
 
 

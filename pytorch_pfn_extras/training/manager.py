@@ -454,8 +454,7 @@ class _BaseExtensionsManager:
                         entry.extension(self)
         for name, extension in to_run:
             with record(
-                f"ppe.training.ExtensionsManager"
-                f".run_extensions:{name}",
+                f"ppe.training.ExtensionsManager.run_extensions:{name}",
                 enable=self._enable_profile,
                 trace=self._enable_trace,
             ):

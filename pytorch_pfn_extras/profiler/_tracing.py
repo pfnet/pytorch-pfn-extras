@@ -2,7 +2,7 @@ import contextlib
 import json
 import threading
 import time
-from typing import Any, Dict, Generator, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Type, Union
 
 import torch
 from pytorch_pfn_extras.writing import Writer
@@ -18,6 +18,18 @@ class Tracer:
 
     def flush(self, filename: str, writer: Writer) -> None:
         raise NotImplementedError("Tracers must implement flush")
+
+
+class DummyTracer(Tracer):
+    @contextlib.contextmanager
+    def add_event(self, name: str) -> Generator[None, None, None]:
+        yield
+
+    def clear(self) -> None:
+        pass
+
+    def flush(self, filename: str, writer: Writer) -> None:
+        pass
 
 
 class ChromeTracingSaveFunc:
@@ -99,9 +111,9 @@ class ChromeTracer(Tracer):
 _thread_local = threading.local()
 
 
-def get_tracer(tracer_cls=ChromeTracer) -> Tracer:
+def get_tracer(tracer_cls: Type[Tracer] = ChromeTracer) -> Tracer:
     if not hasattr(_thread_local, "_tracer"):
-        _thread_local._tracer = tracer_cls(None, True)
+        _thread_local._tracer = tracer_cls()
     if _thread_local._tracer.__class__ is not tracer_cls:
         raise TypeError("get_tracer called with a different cls")
     return _thread_local._tracer  # type: ignore[no-any-return]
