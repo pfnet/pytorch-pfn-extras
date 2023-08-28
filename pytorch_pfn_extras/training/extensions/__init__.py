@@ -7,9 +7,6 @@ from pytorch_pfn_extras.training.extensions._snapshot import (  # NOQA
 from pytorch_pfn_extras.training.extensions.best_value import BestValue  # NOQA
 from pytorch_pfn_extras.training.extensions.best_value import MaxValue  # NOQA
 from pytorch_pfn_extras.training.extensions.best_value import MinValue  # NOQA
-from pytorch_pfn_extras.training.extensions.chrome_trace import (  # NOQA
-    ChromeTrace,
-)
 from pytorch_pfn_extras.training.extensions.evaluator import (  # NOQA
     DistributedEvaluator,
     Evaluator,
@@ -43,6 +40,9 @@ from pytorch_pfn_extras.training.extensions.progress_bar import (
 from pytorch_pfn_extras.training.extensions.slack import (  # NOQA
     Slack,
     SlackWebhook,
+)
+from pytorch_pfn_extras.training.extensions.timeline_trace import (  # NOQA
+    TimelineTrace,
 )
 from pytorch_pfn_extras.training.extensions.value_observation import (  # NOQA
     observe_lr,

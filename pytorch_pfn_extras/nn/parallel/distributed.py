@@ -329,7 +329,7 @@ class DistributedDataParallel(nn.Module):
                 ]
                 groups = _group_by_type(grads)
                 with record(
-                    "pytorch_pfn_extras.nn.parallel."
+                    "ppe.nn.parallel."
                     "DistributedDataParallel:reduce_gradient",
                     use_cuda=torch.cuda.is_available(),
                 ):

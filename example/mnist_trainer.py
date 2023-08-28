@@ -202,6 +202,7 @@ def main():
                 "val/accuracy",
             ]
         ),
+        extensions.TimelineTrace(filename="trace.json"),
         extensions.snapshot(),
     ]
 
@@ -274,6 +275,8 @@ def main():
         ),
         options={"train_report_keys": ["loss"]},
         profile=profile,
+        enable_profile=True,
+        enable_trace=True,
     )
 
     ppe.to(model_with_loss, args.device)

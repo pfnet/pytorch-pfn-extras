@@ -144,7 +144,7 @@ def test_record_iterable_with_chrome_trace(device):
     with tempfile.TemporaryDirectory() as t_path:
         w = ppe.writing.SimpleWriter(out_dir=t_path)
         with torch.profiler.profile():
-            with ppe.profiler.record("tag", emit_chrome_trace=True):
+            with ppe.profiler.record("tag", trace=True):
                 model(x)
-        ppe.profiler.get_chrome_tracer().flush("trace.json", w)
+        ppe.profiler.get_tracer().flush("trace.json", w)
         assert os.path.exists(os.path.join(t_path, "trace.json"))

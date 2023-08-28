@@ -3,30 +3,19 @@ import os
 import tempfile
 import time
 
-import pytest
 import pytorch_pfn_extras as ppe
 
 
 def _body():
-    with ppe.profiler.record("tag", emit_chrome_trace=True):
+    with ppe.profiler.record("tag", trace=True):
         time.sleep(0.1)
 
 
-@pytest.mark.parametrize(
-    "format,append",
-    [
-        ("json", False),
-        ("json-lines", True),
-        ("json-lines", False),
-        ("yaml", True),
-        ("yaml", False),
-    ],
-)
-def test_profile_report(format, append):
+def test_tracer():
     max_epochs = 3
     iters_per_epoch = 5
-    ppe.profiler.clear_chrome_tracer()
-    ext = ppe.training.extensions.ChromeTrace(filename="trace.json")
+    ppe.profiler.clear_tracer()
+    ext = ppe.training.extensions.TimelineTrace(filename="trace.json")
     with tempfile.TemporaryDirectory() as tmpdir:
         manager = ppe.training.ExtensionsManager(
             {},

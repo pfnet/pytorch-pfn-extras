@@ -1,8 +1,7 @@
 from typing import Any, Dict, Optional
 
-from pytorch_pfn_extras.profiler._chrome_tracing import (
-    clear_chrome_tracer,
-    get_chrome_tracer,
+from pytorch_pfn_extras.profiler._tracing import (
+    get_tracer,
 )
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
@@ -11,7 +10,7 @@ from pytorch_pfn_extras.training._manager_protocol import (
 )
 
 
-class ChromeTrace(extension.Extension):
+class TimelineTrace(extension.Extension):
     """Writes the profile timeline to a file.
 
     Times are reported by using the
@@ -45,7 +44,7 @@ class ChromeTrace(extension.Extension):
         filename: Optional[str] = None,
         **kwargs: Any,
     ):
-        self._tracer = get_chrome_tracer()
+        self._tracer = kwargs.get("tracer", get_tracer())
 
         self._trigger = trigger_module.get_trigger(trigger)
 
@@ -79,4 +78,4 @@ class ChromeTrace(extension.Extension):
         self._flush_trace(manager)
         if self._writer is not None:
             self._writer.finalize()
-        clear_chrome_tracer()
+        self._Tracer.clear()
