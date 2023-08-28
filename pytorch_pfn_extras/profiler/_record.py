@@ -64,7 +64,7 @@ def tracer(
     elif isinstance(trace, bool):
         user_tracer = _tracing.get_tracer().add_event
     elif isinstance(trace, _tracing.Tracer):
-        user_tracer = trace
+        user_tracer = trace.add_event
 
     with runtime_tracer(tag, None), user_tracer(tag):
         yield

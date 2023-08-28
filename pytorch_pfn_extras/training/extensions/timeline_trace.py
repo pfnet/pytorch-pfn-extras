@@ -30,6 +30,9 @@ class TimelineTrace(extension.Extension):
             object to dump the log to. If specified, it needs to have a correct
             `savefun` defined. The writer can override the save location in
             the :class:`pytorch_pfn_extras.training.ExtensionsManager` object
+        tracer (tracer object, optional):
+            object with the tracing logic.  If not specified, the default
+            tracer in the thread local storage with be used.
     Args:
         entries (list): list of str
 
