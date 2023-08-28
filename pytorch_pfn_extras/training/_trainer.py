@@ -72,7 +72,7 @@ class Trainer:
         self._kwargs = kwargs
         self._profile = profile
         self._enable_profile = kwargs.get("enable_profile", profile is not None)
-        self._enable_chrome_trace = kwargs.pop("enable_chrome_tracing", False)
+        self._enable_chrome_trace = kwargs.get("enable_chrome_tracing", False)
         self._extensions: List[  # list of (args, kwargs)
             Tuple[
                 Tuple[
