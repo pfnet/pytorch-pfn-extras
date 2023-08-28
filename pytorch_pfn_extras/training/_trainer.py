@@ -72,6 +72,7 @@ class Trainer:
         self._kwargs = kwargs
         self._profile = profile
         self._enable_profile = kwargs.get("enable_profile", profile is not None)
+        self._enable_chrome_trace = kwargs.pop("enable_chrome_tracing", False)
         self._extensions: List[  # list of (args, kwargs)
             Tuple[
                 Tuple[
@@ -328,12 +329,14 @@ class Trainer:
                         use_cuda=torch.cuda.is_available(),
                         enable=self._enable_profile,
                         device=device,
+                        emit_chrome_trace=self._enable_chrome_trace,
                     ) as ntf0:
                         try:
                             with record(
                                 "pytorch_pfn_extras.training.Trainer:get_data",
                                 enable=self._enable_profile,
                                 device=device,
+                                emit_chrome_trace=self._enable_chrome_trace,
                             ):
                                 x = next(loader_iter)
                         except StopIteration:
@@ -342,6 +345,7 @@ class Trainer:
                                 "pytorch_pfn_extras.training.Trainer:get_data",
                                 enable=self._enable_profile,
                                 device=device,
+                                emit_chrome_trace=self._enable_chrome_trace,
                             ):
                                 x = next(loader_iter)
                         begin = time.time()
@@ -354,6 +358,7 @@ class Trainer:
                                 use_cuda=torch.cuda.is_available(),
                                 enable=self._enable_profile,
                                 device=device,
+                                emit_chrome_trace=self._enable_chrome_trace,
                             ) as ntf1, self.manager.run_iteration():
                                 self._observed.put(self.manager.observation)
                                 with record(
@@ -361,6 +366,7 @@ class Trainer:
                                     use_cuda=torch.cuda.is_available(),
                                     enable=self._enable_profile,
                                     device=device,
+                                    emit_chrome_trace=self._enable_chrome_trace,
                                 ) as ntf2:
                                     self._profile_records.put(
                                         [ntf0, ntf1, ntf2]
