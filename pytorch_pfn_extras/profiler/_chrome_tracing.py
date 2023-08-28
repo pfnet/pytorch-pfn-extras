@@ -119,6 +119,10 @@ class ChromeTracingEmitter:
         self._max_event_count = to_load["_max_event_count"]
         self._event_count = to_load["_event_count"]
 
+    def clear(self) -> None:
+        self._event_list = []
+        self._event_count = 0
+
 
 _thread_local = threading.local()
 
@@ -129,6 +133,5 @@ def get_chrome_tracer() -> ChromeTracingEmitter:
     return _thread_local.chrome_tracer  # type: ignore[no-any-return]
 
 
-def clear_chrome_tracer() -> ChromeTracingEmitter:
-    _thread_local.chrome_tracer = ChromeTracingEmitter(None, True)
-    return _thread_local.chrome_tracer  # type: ignore[no-any-return]
+def clear_chrome_tracer() -> None:
+    get_chrome_tracer().clear()

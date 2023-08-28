@@ -23,10 +23,10 @@ def _body():
     ],
 )
 def test_profile_report(format, append):
-    ext = ppe.training.extensions.ChromeTrace(filename="trace.json")
     max_epochs = 3
     iters_per_epoch = 5
-    # ppe.profiler.time_summary.clear()
+    ppe.profiler.clear_chrome_tracer()
+    ext = ppe.training.extensions.ChromeTrace(filename="trace.json")
     with tempfile.TemporaryDirectory() as tmpdir:
         manager = ppe.training.ExtensionsManager(
             {},
