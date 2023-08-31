@@ -44,7 +44,7 @@ popd
 
 # For docs
 pushd docs/source/_example/
-python quick_start_minimal.py
+python quick_start_trainer.py
 python quick_start_log.py
 python quick_start_progress.py
 python quick_start_save.py
