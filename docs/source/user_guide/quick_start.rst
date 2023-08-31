@@ -44,7 +44,7 @@ Make it possible to check the progress of the learning.
 Step 4: Save Model
 ------------------
 
-Finally, save the trained model obtained through training.
+Finally, save the trained model.
 
 .. literalinclude:: /_example/quick_start_save.py
     :language: python
