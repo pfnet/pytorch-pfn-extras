@@ -4,7 +4,7 @@ Quick Start
 First, pytorch-pfn-extras organizes the training code 
 implemented using PyTorch using the Trainer/Evaluator classes.
 
-Next, it provides the following interfaces for the organized PyTorch training code.
+Next, it provides the following interfaces for training PyTorch models.
 
 1. Addition of extensions for analysis and visualization
 2. Runtime changes
@@ -14,7 +14,7 @@ Next, it provides the following interfaces for the organized PyTorch training co
 Step 1: Use Trainer
 -------------------
 
-First, combine the Model and Optimizer you want to learn into the Trainer.
+First, pass to the Trainer the Model and Optimizer you want to train.
 
 .. literalinclude:: /_example/quick_start_trainer.py
     :language: python
@@ -50,6 +50,6 @@ Finally, save the trained model.
     :language: python
     :caption: quick_start_save.py
 
-The saved model parameters are stored in a file path including the timing they were saved under ``./result``.
+The model parameters are stored with a file name that includes the time they were saved under ``./result``.
 
 Snapshots are generated using ``state_dict()``. Please refer to the official PyTorch `docs <https://pytorch.org/tutorials/beginner/saving_loading_models.html#saving-loading-model-for-inference>`_ for how to load the model.
