@@ -67,3 +67,40 @@ def test_tracer_object():
             data = f.read()
             values = json.loads(data)
             assert len(values) == max_epochs * iters_per_epoch
+
+
+def test_tracer_enable():
+    max_epochs = 4
+    iters_per_epoch = 5
+    tracer = ppe.profiler.ChromeTracer()
+    disable = ppe.training.triggers.ManualScheduleTrigger(
+        [10], unit="iteration"
+    )
+    enable = ppe.training.triggers.ManualScheduleTrigger([15], unit="iteration")
+    ext = ppe.training.extensions.TimelineTrace(
+        filename="trace.json", tracer=tracer, enable=enable, disable=disable
+    )
+
+    def _body():
+        with ppe.profiler.record("tag", trace=tracer):
+            time.sleep(0.1)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        manager = ppe.training.ExtensionsManager(
+            {},
+            {},
+            max_epochs=max_epochs,
+            iters_per_epoch=iters_per_epoch,
+            out_dir=tmpdir,
+        )
+        manager.extend(ext)
+        count = 0
+        for _epoch_idx in range(max_epochs):
+            for _ in range(iters_per_epoch):
+                with manager.run_iteration():
+                    _body()
+                count += 1
+        with open(os.path.join(tmpdir, "trace.json")) as f:
+            data = f.read()
+            values = json.loads(data)
+            assert len(values) == (max_epochs * iters_per_epoch - 10 + 5)

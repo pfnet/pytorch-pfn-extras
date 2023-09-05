@@ -15,9 +15,19 @@ class TimelineTrace(extension.Extension):
     :meth:`pytorch_pfn_extras.profiler.TimeSummary.report` context manager.
 
     Args:
-        trigger: Trigger that decides when to aggregate the result and output
-            the values. This is distinct from the trigger of this extension
+        trigger: Trigger that decides when to output the trace.
+            This is distinct from the trigger of this extension
             itself. If it is a tuple in the form ``<int>, 'epoch'`` or
+            ``<int>, 'iteration'``, it is passed to :class:`IntervalTrigger`.
+        enable: Trigger that enables the tracing.
+            Note that since the extensions are executed at the end of an iteration
+            the tracer will be enabled from the iteration after
+            the trigger is fired. If it is a tuple in the form ``<int>, 'epoch'`` or
+            ``<int>, 'iteration'``, it is passed to :class:`IntervalTrigger`.
+        disable: Trigger that disables the tracing.
+            Note that since the extensions are executed at the end of an iteration
+            the tracer will be disabled from the iteration after
+            the trigger is fired. If it is a tuple in the form ``<int>, 'epoch'`` or
             ``<int>, 'iteration'``, it is passed to :class:`IntervalTrigger`.
         filename (str): Name of the log file under the output directory. It can
             be a format string: the last result dictionary is passed for the
@@ -43,9 +53,18 @@ class TimelineTrace(extension.Extension):
         self,
         trigger: trigger_module.TriggerLike = (1, "epoch"),
         filename: Optional[str] = None,
+        enable: Optional[trigger_module.TriggerLike] = None,
+        disable: Optional[trigger_module.TriggerLike] = None,
         **kwargs: Any,
     ):
         self._tracer = kwargs.get("tracer", get_tracer())
+        self._enable = None
+        if enable is not None:
+            self._enable = trigger_module.get_trigger(enable)
+
+        self._disable = None
+        if disable is not None:
+            self._disable = trigger_module.get_trigger(disable)
 
         self._trigger = trigger_module.get_trigger(trigger)
 
@@ -60,6 +79,11 @@ class TimelineTrace(extension.Extension):
             self._tracer.flush(self._filename, writer)
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
+        if self._enable is not None and self._enable(manager):
+            self._tracer.enable(True)
+        if self._disable is not None and self._disable(manager):
+            self._tracer.enable(False)
+
         if not manager.is_before_training and self._trigger(manager):
             self._flush_trace(manager)
 

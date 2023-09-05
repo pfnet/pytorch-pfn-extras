@@ -1,5 +1,6 @@
 import contextlib
 import json
+import os
 import threading
 import time
 from typing import Any, Dict, Generator, List, Optional, Type, Union
@@ -19,6 +20,9 @@ class Tracer:
     def flush(self, filename: str, writer: Writer) -> None:
         raise NotImplementedError("Tracers must implement flush")
 
+    def enable(self, enable_flag: bool) -> None:
+        raise NotImplementedError("Tracers must implement enable")
+
 
 class DummyTracer(Tracer):
     @contextlib.contextmanager
@@ -35,7 +39,7 @@ class DummyTracer(Tracer):
 class ChromeTracingSaveFunc:
     def __call__(self, target: Dict[str, Any], file_o: Any) -> None:
         log = json.dumps(target, indent=4)
-        file_o.write(bytes(log.encode("ascii")))
+        file_o.write(log.encode("ascii"))
 
 
 class ChromeTracer(Tracer):
@@ -49,6 +53,7 @@ class ChromeTracer(Tracer):
         self._max_event_count = max_event_count or float("inf")
         self._event_count = 0
         self._is_cuda_available = torch.cuda.is_available()
+        self._pid = os.getpid()
 
     @contextlib.contextmanager
     def add_event(self, name: str) -> Generator[None, None, None]:
@@ -61,6 +66,7 @@ class ChromeTracer(Tracer):
                     torch.cuda.synchronize()  # Wait for process to complete
                 self._event_count += 1
                 duration_ns = time.perf_counter_ns() - begin_ns
+                tid = threading.get_native_id()
                 self._event_list.append(
                     dict(
                         name=name,
@@ -68,8 +74,8 @@ class ChromeTracer(Tracer):
                         ph="X",
                         ts=begin_ns / 1000,  # nano sec -> micro sec
                         dur=duration_ns / 1000,  # ditto
-                        pid=0,
-                        tid=0,
+                        pid=self._pid,
+                        tid=tid,
                     )
                 )
 

@@ -140,7 +140,6 @@ def test_record_iterable_with_chrome_trace(device):
 
     x = torch.arange(30, dtype=torch.float32).to(device)
 
-    x = torch.arange(30, dtype=torch.float32).to(device)
     with tempfile.TemporaryDirectory() as t_path:
         w = ppe.writing.SimpleWriter(out_dir=t_path)
         with torch.profiler.profile():
