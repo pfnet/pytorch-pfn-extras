@@ -67,6 +67,9 @@ class ChromeTracer(Tracer):
                 self._event_count += 1
                 duration_ns = time.perf_counter_ns() - begin_ns
                 tid = threading.get_native_id()
+                # Append is thread safe so this should be fine to execute
+                # without a lock, the trace does not require the events
+                # to be ordered
                 self._event_list.append(
                     dict(
                         name=name,
@@ -114,15 +117,16 @@ class ChromeTracer(Tracer):
         self._event_count = 0
 
 
-_thread_local = threading.local()
+_tracer: Optional[Tracer] = None
 
 
 def get_tracer(tracer_cls: Type[Tracer] = ChromeTracer) -> Tracer:
-    if not hasattr(_thread_local, "_tracer"):
-        _thread_local._tracer = tracer_cls()
-    if _thread_local._tracer.__class__ is not tracer_cls:
+    global _tracer
+    if _tracer is None:
+        _tracer = tracer_cls()
+    if _tracer.__class__ is not tracer_cls:
         raise TypeError("get_tracer called with a different cls")
-    return _thread_local._tracer  # type: ignore[no-any-return]
+    return _tracer  # type: ignore[no-any-return]
 
 
 def clear_tracer() -> None:
