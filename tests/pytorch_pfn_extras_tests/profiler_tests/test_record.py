@@ -1,5 +1,7 @@
 import os
 import tempfile
+import time
+import threading
 
 import pytest
 import pytorch_pfn_extras as ppe
@@ -132,11 +134,12 @@ def test_record_iterable_without_tag(device):
 
 @pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_record_iterable_with_chrome_trace(device):
+def test_record_iterable_with_trace(device):
     if not torch.cuda.is_available() and device == "cuda":
         pytest.skip()
     model = torch.nn.Linear(30, 40)
     model.to(device)
+    ppe.profiler.clear_tracer()
 
     x = torch.arange(30, dtype=torch.float32).to(device)
 
@@ -145,5 +148,39 @@ def test_record_iterable_with_chrome_trace(device):
         with torch.profiler.profile():
             with ppe.profiler.record("tag", trace=True):
                 model(x)
+        ppe.profiler.get_tracer().flush("trace.json", w)
+        assert os.path.exists(os.path.join(t_path, "trace.json"))
+
+
+@pytest.mark.skipif(not _profiler_available, reason="profiler is not available")
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_record_iterable_with_threads(device):
+    if not torch.cuda.is_available() and device == "cuda":
+        pytest.skip()
+    model = torch.nn.Linear(30, 40)
+    model.to(device)
+    ppe.profiler.clear_tracer()
+
+    x = torch.arange(30, dtype=torch.float32).to(device)
+
+    with torch.profiler.profile():
+
+        def thread_body(thread_id):
+            for _ in range(10):
+                with ppe.profiler.record(f"{thread_id}", trace=True):
+                    model(x)
+                    # yield
+                    time.sleep(0.0001)
+
+        threads = []
+        for i in range(10):
+            threads.append(threading.Thread(target=thread_body, args=(i,)))
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    assert ppe.profiler.get_tracer()._event_count == 100
+    with tempfile.TemporaryDirectory() as t_path:
+        w = ppe.writing.SimpleWriter(out_dir=t_path)
         ppe.profiler.get_tracer().flush("trace.json", w)
         assert os.path.exists(os.path.join(t_path, "trace.json"))
