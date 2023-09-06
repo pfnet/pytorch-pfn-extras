@@ -1,7 +1,7 @@
 import os
 import tempfile
-import time
 import threading
+import time
 
 import pytest
 import pytorch_pfn_extras as ppe
