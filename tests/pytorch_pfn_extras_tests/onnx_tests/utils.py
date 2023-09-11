@@ -20,8 +20,11 @@ def run_model_test(
     strict_trace=True,
     mode="eval",
     use_gpu=False,
+    seed=5,
     **kwargs,
 ) -> onnx.ModelProto:
+    torch.manual_seed(seed)
+
     if mode == "train":
         model.train()
     else:
