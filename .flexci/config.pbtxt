@@ -88,7 +88,7 @@ configs {
       disk: 10
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: "bash .flexci/linux/main-flexci.sh torch200"
   }
