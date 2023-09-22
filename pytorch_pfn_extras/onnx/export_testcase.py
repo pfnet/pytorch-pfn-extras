@@ -157,6 +157,7 @@ def _export(
         large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
         use_pfto: bool = False,
         return_output: bool = True,
+        chrome_tracing: str = "",
         **kwargs: Any,
 ) -> Tuple[onnx.ModelProto, Any]:
     model.zero_grad()
@@ -199,10 +200,16 @@ def _export(
             lax.init_lax_state():
         if use_pfto:
             outs = pfto_export(
-                model, args, bytesio, **kwargs)
+                model, args, bytesio, chrome_tracing=chrome_tracing, **kwargs)
         else:
-            outs = _export_util(
-                model, args, bytesio, return_output=return_output, **kwargs)
+            if chrome_tracing:
+                with torch.profiler.profile() as prof:
+                    outs = _export_util(
+                        model, args, bytesio, return_output=return_output, **kwargs)
+                prof.export_chrome_trace(chrome_tracing)
+            else:
+                outs = _export_util(
+                    model, args, bytesio, return_output=return_output, **kwargs)
         onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)
@@ -230,6 +237,7 @@ def export(
         return_output: bool = False,
         strip_large_tensor_data: bool = False,
         large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
+        chrome_tracing: str = "",
         **kwargs: Any,
 ) -> Any:
     """Export model into ONNX Graph.
@@ -282,6 +290,7 @@ def export_testcase(
         user_meta: Optional[Mapping[str, Any]] = None,
         export_torch_script: bool = False,
         export_torch_trace: bool = False,
+        export_chrome_tracing: bool = True,
         **kwargs: Any,
 ) -> Any:
     """Export model and I/O tensors of the model in protobuf format.
@@ -329,6 +338,12 @@ def export_testcase(
     if user_meta is None:
         user_meta = {}
 
+    chrome_tracing = ""
+    if export_chrome_tracing:
+        chrome_tracing = os.path.join(out_dir, "export_trace.json.gz")
+        if os.path.exists(chrome_tracing):
+            os.remove(chrome_tracing)
+
     os.makedirs(out_dir, exist_ok=True)
     if isinstance(args, torch.Tensor):
         args = args,
@@ -354,7 +369,7 @@ def export_testcase(
 
     onnx_graph, outs = _export(
         model, args, strip_large_tensor_data, large_tensor_threshold,
-        input_names=input_names, **kwargs)
+        input_names=input_names, chrome_tracing=chrome_tracing, **kwargs)
     if isinstance(model, torch.jit.ScriptModule):
         assert outs is None
         outs = model(*args)
