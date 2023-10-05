@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import onnx
 import onnx.numpy_helper
+import onnxruntime
 import pytest
 import pytorch_pfn_extras
 import torch
@@ -74,6 +75,10 @@ def _helper(model, args, d, use_pfto=True, **kwargs):
         kwargs["metadata"] = False
     export_testcase(model, args, output_dir, use_pfto=use_pfto, **kwargs)
     return output_dir
+
+
+def _ort_session(model, providers=["CPUExecutionProvider"]) -> onnxruntime.InferenceSession:
+    return onnxruntime.InferenceSession(model, providers=providers)
 
 
 @pytest.mark.filterwarnings("ignore:Named tensors .* experimental:UserWarning")

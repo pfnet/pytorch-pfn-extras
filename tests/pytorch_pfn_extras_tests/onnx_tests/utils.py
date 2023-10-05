@@ -2,11 +2,10 @@ import os
 from typing import Callable
 
 import onnx
-import onnxruntime as ort
 import torch
 import pytorch_pfn_extras.onnx.pfto_exporter.export as pfto
 from pytorch_pfn_extras.onnx import export_testcase
-from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _get_output_dir
+from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _get_output_dir, _ort_session
 
 
 def run_model_test(
@@ -84,7 +83,7 @@ def run_model_test(
     if skip_oxrt:
         return pfto_model
 
-    ort_session = ort.InferenceSession(os.path.join(pf_dir, "model.onnx"))
+    ort_session = _ort_session(os.path.join(pf_dir, "model.onnx"))
     input_names = [i.name for i in pfto_model.graph.input]
     actual = ort_session.run(None, {k: v.cpu().numpy() for k, v in zip(input_names, args)})
     for a, e in zip(actual, expected):
