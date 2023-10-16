@@ -238,6 +238,7 @@ def test_record_iterable_with_all_thread_disabled(device):
     x = torch.arange(30, dtype=torch.float32).to(device)
 
     with torch.profiler.profile():
+
         def thread_body(thread_id):
             for _ in range(10):
                 with ppe.profiler.record(f"{thread_id}", trace=True):
