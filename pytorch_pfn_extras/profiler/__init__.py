@@ -5,7 +5,10 @@ from pytorch_pfn_extras.profiler._time_summary import TimeSummary  # NOQA
 from pytorch_pfn_extras.profiler._time_summary import get_time_summary  # NOQA
 from pytorch_pfn_extras.profiler._tracing import (  # NOQA
     ChromeTracer,
+    TraceableDataset,
     Tracer,
     clear_tracer,
+    enable_global_trace,
+    enable_thread_trace,
     get_tracer,
 )

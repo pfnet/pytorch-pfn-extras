@@ -80,7 +80,7 @@ def record(
     device: "DeviceLike" = "cpu",
     trace: Union[_tracing.Tracer, bool] = False,
 ) -> Generator[_time_summary._ReportNotification, None, None]:
-    if not enable:
+    if not enable and not trace:
         yield _DummyReportNotification()
         return
 
@@ -94,9 +94,12 @@ def record(
         torch.cuda.nvtx.range_push(tag)  # type: ignore[no-untyped-call]
     try:
         with tracer(tag, device, trace):
-            time_summary = _time_summary.get_time_summary()
-            with time_summary.report(metric, use_cuda) as ntf:
-                yield ntf
+            if not enable:
+                time_summary = _time_summary.get_time_summary()
+                with time_summary.report(metric, use_cuda) as ntf:
+                    yield ntf
+            else:
+                yield _DummyReportNotification()
     finally:
         if use_cuda:
             torch.cuda.nvtx.range_pop()  # type: ignore[no-untyped-call]

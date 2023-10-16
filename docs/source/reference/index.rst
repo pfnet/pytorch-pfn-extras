@@ -108,6 +108,13 @@ Profiler
 
    profiler.TimeSummary.report
 
+   profiler.clear_tracer
+   profiler.enable_global_trace
+   profiler.enable_thread_trace
+   profiler.get_tracer
+   profiler.ChromeTracer
+   profiler.TraceableDataset
+
 Distributed Training
 ---------------------
 

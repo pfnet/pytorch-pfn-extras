@@ -3,9 +3,10 @@ import json
 import os
 import threading
 import time
-from typing import Any, Dict, Generator, List, Optional, Type, Union
+from typing import Any, Dict, Generator, List, Optional, Type, Union, cast
 
 import torch
+from pytorch_pfn_extras.profiler import _util
 from pytorch_pfn_extras.writing import Writer
 
 
@@ -13,6 +14,9 @@ class Tracer:
     @contextlib.contextmanager
     def add_event(self, name: str) -> Generator[None, None, None]:
         raise NotImplementedError("Tracers must implement add_event")
+
+    def add_remote_event(self, name: str, value: Any) -> None:
+        raise NotImplementedError("Tracers must implement add_remote_event")
 
     def clear(self) -> None:
         raise NotImplementedError("Tracers must implement clear")
@@ -43,26 +47,47 @@ class ChromeTracingSaveFunc:
 
 
 class ChromeTracer(Tracer):
+    """Tracer object that outputs a timeline in Chrome format.
+
+    Args:
+        max_event_count (int): Limit the amount of events that can be traced,
+            optional.
+        enable (bool): Sets the tracer in active state. Optional,
+            defaults to ``True``.
+    """
+
     def __init__(
         self,
         max_event_count: Optional[int] = None,
         enable: bool = True,
-    ):
+    ) -> None:
         self._enable = enable
         self._event_list: List[Dict[str, Union[str, int, float]]] = []
         self._max_event_count = max_event_count or float("inf")
         self._event_count = 0
+        # Detect if i am a forked process, in such case I send the event to
+        # The parent process
         self._is_cuda_available = torch.cuda.is_available()
-        self._pid = os.getpid()
 
     @contextlib.contextmanager
     def add_event(self, name: str) -> Generator[None, None, None]:
+        if (
+            not self._enable
+            or not _enabled
+            or not getattr(_thread_local, "enable", True)
+        ):
+            yield
+            return
+
+        pid = os.getpid()
+        is_forked = pid != _main_pid
+        is_cuda_available = self._is_cuda_available and not is_forked
         begin_ns = time.perf_counter_ns()
         try:
             yield
         finally:
             if self._enable and self._event_count < self._max_event_count:
-                if self._is_cuda_available:
+                if is_cuda_available:
                     torch.cuda.synchronize()  # Wait for process to complete
                 self._event_count += 1
                 duration_ns = time.perf_counter_ns() - begin_ns
@@ -70,17 +95,26 @@ class ChromeTracer(Tracer):
                 # Append is thread safe so this should be fine to execute
                 # without a lock, the trace does not require the events
                 # to be ordered
-                self._event_list.append(
-                    dict(
-                        name=name,
-                        cat="",
-                        ph="X",
-                        ts=begin_ns / 1000,  # nano sec -> micro sec
-                        dur=duration_ns / 1000,  # ditto
-                        pid=self._pid,
-                        tid=tid,
-                    )
+                event = dict(
+                    name=name,
+                    cat="",
+                    ph="X",
+                    ts=begin_ns / 1000,  # nano sec -> micro sec
+                    dur=duration_ns / 1000,  # ditto
+                    pid=pid,
+                    tid=tid,
                 )
+                if is_forked:
+                    _default_tracer_queue.put(name, event)
+                else:
+                    self._event_list.append(
+                        cast(Dict[str, Union[str, int, float]], event)
+                    )
+
+    def add_remote_event(
+        self, name: str, event: Dict[str, Union[str, int, float]]
+    ) -> None:
+        self._event_list.append(event)
 
     def flush(self, filename: str, writer: Writer) -> None:
         if not self._enable:
@@ -117,17 +151,88 @@ class ChromeTracer(Tracer):
         self._event_count = 0
 
 
+def _add_event_to_tracer(key: str, value: Any) -> None:
+    get_tracer().add_remote_event(key, value)
+
+
+# the tracer is lazily initialized, we maintain a queue in case
+# the process is forked before the tracer instance is created
+# this allows to trace inside the DataLoader workers.
+_default_tracer_queue: _util._QueueWorker = _util._QueueWorker(
+    _add_event_to_tracer, 1000
+)
+
 _tracer: Optional[Tracer] = None
+_main_pid = os.getpid()
+_enabled: bool = True
+_thread_local = threading.local()
 
 
-def get_tracer(tracer_cls: Type[Tracer] = ChromeTracer) -> Tracer:
+def get_tracer(tracer_cls: Type[Tracer] = ChromeTracer, *params: Any) -> Tracer:
+    """Gets the current global tracer.
+
+    Args:
+        tracer_cls (type of Tracer): type of tracer to create if the global tracer
+            hasn't been initialized
+    """
     global _tracer
     if _tracer is None:
-        _tracer = tracer_cls()
+        _tracer = tracer_cls(*params)
+        _default_tracer_queue.initialize()
     if _tracer.__class__ is not tracer_cls:
         raise TypeError("get_tracer called with a different cls")
     return _tracer  # type: ignore[no-any-return]
 
 
 def clear_tracer() -> None:
+    """Resets the status of the global tracer."""
     get_tracer().clear()
+
+
+def enable_global_trace(enable: bool) -> None:
+    """Enable or disable tracing for all the threads.
+
+    Args:
+        enable (bool): Enable or disable flag.
+    """
+    global _enabled
+    _enabled = enable
+
+
+def enable_thread_trace(enable: bool) -> None:
+    """Enable or disable tracing for the current thread.
+
+    Args:
+        enable (bool): Enable or disable flag.
+    """
+    _thread_local.enable = enable
+
+
+class TraceableDataset(torch.utils.data.Dataset):
+    """Utility class to trace a Dataset inside the DataLoader worker threads.
+
+    Args:
+        dataset (torch.utils.data.Dataset): dataset where __getitem__ will
+           be traced.
+        tag (str): Tag will be used to name the events.
+        tracer (Tracer): Tracer object, optional. If ``None`` it defaults to
+           `ppe.profile.get_tracer()`.
+    """
+
+    def __init__(
+        self,
+        dataset: torch.utils.data.Dataset,
+        tag: str,
+        tracer: Optional[Tracer] = None,
+    ) -> None:
+        super().__init__()
+        self._dataset = dataset
+        self._tag = tag
+        self._tracer = tracer if tracer is not None else get_tracer()
+
+    def __len__(self) -> Any:
+        return len(self._dataset)  # type: ignore[arg-type]
+
+    def __getitem__(self, idx: Any) -> Any:
+        with self._tracer.add_event(self._tag):
+            return self._dataset.__getitem__(idx)
