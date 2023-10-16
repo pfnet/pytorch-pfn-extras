@@ -1,9 +1,18 @@
-.. module:: pytorch_pfn_extras
 
 API Reference
 =============
 
 * :ref:`genindex`
+
+Package
+-------
+.. autosummary::
+   :toctree: generated/
+   :recursive:
+   
+   pytorch_pfn_extras
+
+.. currentmodule:: pytorch_pfn_extras
 
 Training Loop
 ------------------
@@ -12,7 +21,6 @@ Trainer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autosummary::
-   :toctree: generated/
 
    engine.create_trainer
    engine.create_evaluator
@@ -28,7 +36,6 @@ Extensions Manager
 ~~~~~~~~~~~~~~~~~~
 
 .. autosummary::
-   :toctree: generated/
 
    training.ExtensionsManager
    training.IgniteExtensionsManager
@@ -37,7 +44,6 @@ Extensions
 ~~~~~~~~~~
 
 .. autosummary::
-   :toctree: generated/
 
    training.extension.make_extension
    training.extension.Extension
@@ -45,7 +51,6 @@ Extensions
 
 
 .. autosummary::
-   :toctree: generated/
 
    training.extensions.BestValue
    training.extensions.Evaluator
@@ -69,7 +74,6 @@ Triggers
 ~~~~~~~~
 
 .. autosummary::
-   :toctree: generated/
 
    training.triggers.EarlyStoppingTrigger
    training.triggers.IntervalTrigger
@@ -85,7 +89,6 @@ Reporting
 ~~~~~~~~~
 
 .. autosummary::
-   :toctree: generated/
 
    reporting.Reporter
    reporting.report
@@ -96,7 +99,6 @@ Logging
 ~~~~~~~
 
 .. autosummary::
-   :toctree: generated/
 
    logging.get_logger
 
@@ -104,7 +106,6 @@ Profiler
 ~~~~~~~~
 
 .. autosummary::
-   :toctree: generated/
 
    profiler.TimeSummary.report
 
@@ -112,7 +113,6 @@ Distributed Training
 ---------------------
 
 .. autosummary::
-   :toctree: generated/
 
    nn.parallel.DistributedDataParallel
    distributed.initialize_ompi_environment
@@ -122,7 +122,6 @@ Check Pointing
 ---------------------
 
 .. autosummary::
-   :toctree: generated/
 
    utils.checkpoint
 
@@ -131,7 +130,6 @@ Lazy Modules
 ------------------
 
 .. autosummary::
-   :toctree: generated/
 
    nn.Ensure
    nn.ensure
@@ -151,7 +149,6 @@ Export
 ~~~~~~~
 
 .. autosummary::
-   :toctree: generated/
 
    onnx.export
    onnx.export_testcase
@@ -161,7 +158,6 @@ Annotation
 ~~~~~~~~~~~
 
 .. autosummary::
-   :toctree: generated/
 
    onnx.annotate
    onnx.apply_annotation
@@ -174,7 +170,6 @@ Datasets
 ------------------------
 
 .. autosummary::
-   :toctree: generated/
 
    dataset.SharedDataset
    dataset.TabularDataset
@@ -185,12 +180,10 @@ Config
 ------------------------
 
 .. autosummary::
-   :toctree: generated/
 
    config.Config
 
 .. autosummary::
-   :toctree: generated/
 
    config_types.optuna_types
    config_types.load_path_with_optuna_types
@@ -200,7 +193,6 @@ NumPy/CuPy Compatibility
 ------------------------
 
 .. autosummary::
-   :toctree: generated/
 
    from_ndarray
    as_ndarray
@@ -209,7 +201,6 @@ NumPy/CuPy Compatibility
    from_numpy_dtype
 
 .. autosummary::
-   :toctree: generated/
 
    cuda.stream
    cuda.use_torch_mempool_in_cupy
