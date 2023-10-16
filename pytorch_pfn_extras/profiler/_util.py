@@ -12,7 +12,7 @@ class _QueueWorker:
         self._add = add
         self._max_queue_size = max_queue_size
         self._initialized = False
-        self._queue: mp.JoinableQueue = mp.JoinableQueue(self._max_queue_size)
+        self._queue: Optional[mp.JoinableQueue] = None
         self._thread: Optional[threading.Thread] = None
         self._thread_exited = False
 
@@ -20,6 +20,7 @@ class _QueueWorker:
         if self._initialized:
             return
         self._thread = threading.Thread(target=self._worker, daemon=True)
+        self._queue = mp.JoinableQueue(self._max_queue_size)
         self._thread.start()
         self._initialized = True
         self._thread_exited = False

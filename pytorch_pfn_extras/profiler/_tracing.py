@@ -68,6 +68,10 @@ class ChromeTracer(Tracer):
         # Detect if i am a forked process, in such case I send the event to
         # The parent process
         self._is_cuda_available = torch.cuda.is_available()
+        self._tracer_queue: _util._QueueWorker = _util._QueueWorker(
+            self.add_remote_event, 1000
+        )
+        self._tracer_queue.initialize()
 
     @contextlib.contextmanager
     def add_event(self, name: str) -> Generator[None, None, None]:
@@ -105,7 +109,7 @@ class ChromeTracer(Tracer):
                     tid=tid,
                 )
                 if is_forked:
-                    _default_tracer_queue.put(name, event)
+                    self._tracer_queue.put(name, event)
                 else:
                     self._event_list.append(
                         cast(Dict[str, Union[str, int, float]], event)
@@ -151,17 +155,6 @@ class ChromeTracer(Tracer):
         self._event_count = 0
 
 
-def _add_event_to_tracer(key: str, value: Any) -> None:
-    get_tracer().add_remote_event(key, value)
-
-
-# the tracer is lazily initialized, we maintain a queue in case
-# the process is forked before the tracer instance is created
-# this allows to trace inside the DataLoader workers.
-_default_tracer_queue: _util._QueueWorker = _util._QueueWorker(
-    _add_event_to_tracer, 1000
-)
-
 _tracer: Optional[Tracer] = None
 _main_pid = os.getpid()
 _enabled: bool = True
@@ -178,7 +171,6 @@ def get_tracer(tracer_cls: Type[Tracer] = ChromeTracer, *params: Any) -> Tracer:
     global _tracer
     if _tracer is None:
         _tracer = tracer_cls(*params)
-        _default_tracer_queue.initialize()
     if _tracer.__class__ is not tracer_cls:
         raise TypeError("get_tracer called with a different cls")
     return _tracer  # type: ignore[no-any-return]
