@@ -4,6 +4,13 @@ from pytorch_pfn_extras.training.extensions._snapshot import snapshot  # NOQA
 from pytorch_pfn_extras.training.extensions._snapshot import (  # NOQA
     snapshot_object,
 )
+from pytorch_pfn_extras.training.extensions.accumulate import (  # NOQA
+    AverageAccumulate,
+    MaxAccumulate,
+    MinAccumulate,
+    StandardDeviationAccumulate,
+    UnbiasedStandardDeviationAccumulate,
+)
 from pytorch_pfn_extras.training.extensions.best_value import BestValue  # NOQA
 from pytorch_pfn_extras.training.extensions.best_value import MaxValue  # NOQA
 from pytorch_pfn_extras.training.extensions.best_value import MinValue  # NOQA
