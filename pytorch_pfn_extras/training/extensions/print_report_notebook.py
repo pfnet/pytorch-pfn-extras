@@ -44,7 +44,7 @@ class PrintReportNotebook(PrintReport):
         self._widget = HTML()
 
     def initialize(self, manager: ExtensionsManagerProtocol) -> None:
-        display(self._widget)
+        display(self._widget)  # type: ignore[no-untyped-call]
         super(PrintReportNotebook, self).initialize(manager)
 
     @property
