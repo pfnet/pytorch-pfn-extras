@@ -2,7 +2,6 @@ import os
 import sys
 
 import onnx
-import onnxruntime as ort
 import pytest
 import pytorch_pfn_extras
 import torch
@@ -10,7 +9,7 @@ import torch.nn as nn
 import torch.onnx
 
 from pytorch_pfn_extras.onnx import lax
-from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper
+from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper, _ort_session
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -74,7 +73,7 @@ def test_fori_loop():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     assert len([x for x in actual_onnx.graph.node if x.op_type == "Loop"]) == 1
-    ort_session = ort.InferenceSession(os.path.join(output_dir, "model.onnx"))
+    ort_session = _ort_session(os.path.join(output_dir, "model.onnx"))
     actual = ort_session.run(None, {"x": x.cpu().numpy()})
     expected = model(x)
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
@@ -117,7 +116,7 @@ def test_fori_loop_with_tuple_state():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     assert len([x for x in actual_onnx.graph.node if x.op_type == "Loop"]) == 1
-    ort_session = ort.InferenceSession(os.path.join(output_dir, "model.onnx"))
+    ort_session = _ort_session(os.path.join(output_dir, "model.onnx"))
     actual = ort_session.run(None, {"x": x.cpu().numpy()})
     expected = model(x)
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
@@ -192,7 +191,7 @@ def test_while_loop():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     assert len([x for x in actual_onnx.graph.node if x.op_type == "Loop"]) == 1
-    ort_session = ort.InferenceSession(os.path.join(output_dir, "model.onnx"))
+    ort_session = _ort_session(os.path.join(output_dir, "model.onnx"))
     actual = ort_session.run(None, {"x": x.cpu().numpy()})
     expected = model(x)
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
@@ -271,7 +270,7 @@ def test_cond():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     assert len([x for x in actual_onnx.graph.node if x.op_type == "If"]) == 1
-    ort_session = ort.InferenceSession(os.path.join(output_dir, "model.onnx"))
+    ort_session = _ort_session(os.path.join(output_dir, "model.onnx"))
     actual = ort_session.run(None, {"x": x.cpu().numpy()})
     expected = model(x)
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
@@ -317,7 +316,7 @@ def test_lax_multiple_times():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     assert len([x for x in actual_onnx.graph.node if x.op_type == "Loop"]) == 2
-    ort_session = ort.InferenceSession(os.path.join(output_dir, "model.onnx"))
+    ort_session = _ort_session(os.path.join(output_dir, "model.onnx"))
     actual = ort_session.run(None, {"x": x.cpu().numpy()})
     expected = model(x)
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
@@ -366,7 +365,7 @@ def test_lax_nested():
     assert len([x for x in actual_onnx.graph.node if x.op_type == "Loop"]) == 1
     loop_node = [x for x in actual_onnx.graph.node if x.op_type == "Loop"][0]
     assert len([x for x in loop_node.attribute[0].g.node if x.op_type == "Loop"]) == 1
-    ort_session = ort.InferenceSession(os.path.join(output_dir, "model.onnx"))
+    ort_session = _ort_session(os.path.join(output_dir, "model.onnx"))
     actual = ort_session.run(None, {"x": x.cpu().numpy()})
     expected = model(x)
     torch.testing.assert_close(expected, torch.tensor(actual[0]))
