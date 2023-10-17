@@ -2,8 +2,11 @@ import glob
 import os
 import tempfile
 
+import py
 import pytest
 import torch
+import torch.distributed
+from mpi4py import MPI
 from pytorch_pfn_extras import distributed, training
 from pytorch_pfn_extras.training import extensions
 
@@ -56,6 +59,17 @@ def path():
         yield t_path
 
 
+@pytest.fixture(scope="function")
+def mpi_tmp_path(tmpdir):
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+
+    name = str(tmpdir) if rank == 0 else None
+    name = comm.bcast(name, root=0)
+    yield py.path.local(name)
+    comm.barrier()
+
+
 def _model_params_equal(model1, model2):
     for p1, p2 in zip(model1.parameters(), model2.parameters()):
         if p1.data.ne(p2.data).sum() > 0.0:
@@ -64,17 +78,18 @@ def _model_params_equal(model1, model2):
 
 
 @pytest.mark.gpu
-def test_distributed_snapshot(path):
+@pytest.mark.mpi
+@pytest.mark.parametrize("saver_rank", [0, 1])
+def test_distributed_snapshot(mpi_tmp_path, saver_rank):
     comm_size, comm_rank, comm_local_rank, device = _init_distributed(False)
 
     if comm_size > 1:
         torch.distributed.barrier()
 
-    saver_rank = 0
     fmt = "snapshot_iter_{.iteration}"
     snapshot = extensions.snapshot(filename=fmt, saver_rank=saver_rank)
 
-    trainer = get_trainer(path)
+    trainer = get_trainer(mpi_tmp_path)
     trainer.extend(snapshot, trigger=(1, "iteration"), priority=2)
     for _ in range(1):
         with trainer.run_iteration():
@@ -83,34 +98,46 @@ def test_distributed_snapshot(path):
     pattern = os.path.join(trainer.out, "snapshot_iter_*")
     found = [os.path.basename(path) for path in glob.glob(pattern)]
     # the snapshot is generated only for the saver rank
-    assert comm_rank == saver_rank and len(found) == 1 or len(found) == 0
+    assert len(found) == 1
 
-    if comm_rank == saver_rank:
-        new_trainer = get_trainer(path)
-        new_trainer.load_state_dict(torch.load(os.path.join(path, found[0])))
-        assert _model_params_equal(
-            trainer._models["main"], new_trainer._models["main"]
-        )
-
-    if comm_size > 1:
-        torch.distributed.barrier()
+    new_trainer = get_trainer(mpi_tmp_path)
+    assert not _model_params_equal(
+        trainer._models["main"], new_trainer._models["main"]
+    )
+    new_trainer.load_state_dict(
+        torch.load(os.path.join(mpi_tmp_path, found[0]))
+    )
+    assert _model_params_equal(
+        trainer._models["main"], new_trainer._models["main"]
+    )
 
 
 @pytest.mark.gpu
-def test_subprocess_distributed_snapshot(path):
+@pytest.mark.mpi
+@pytest.mark.parametrize("saver_rank", [0, 1])
+def test_distributed_snapshot_autoload(mpi_tmp_path, saver_rank):
     comm_size, comm_rank, comm_local_rank, device = _init_distributed(False)
 
     if comm_size > 1:
         torch.distributed.barrier()
-
-    saver_rank = 1
     fmt = "snapshot_iter_{.iteration}"
-    snapshot = extensions.snapshot(filename=fmt, saver_rank=saver_rank)
-
-    trainer = get_trainer(path)
+    snapshot = extensions.snapshot(
+        filename=fmt, saver_rank=saver_rank, autoload=True
+    )
+    trainer = get_trainer(mpi_tmp_path)
     trainer.extend(snapshot, trigger=(1, "iteration"), priority=2)
     for _ in range(1):
         with trainer.run_iteration():
             pass
-    assert snapshot.writer is not None
-    assert len(snapshot.writer._post_save_hooks) == 0
+    assert 1 == trainer.iteration
+    pattern = os.path.join(trainer.out, "snapshot_iter_*")
+    found = [os.path.basename(path) for path in glob.glob(pattern)]
+    assert len(found) == 1
+    new_trainer = get_trainer(mpi_tmp_path)
+    assert not _model_params_equal(
+        trainer._models["main"], new_trainer._models["main"]
+    )
+    snapshot.initialize(new_trainer)
+    assert _model_params_equal(
+        trainer._models["main"], new_trainer._models["main"]
+    )

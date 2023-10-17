@@ -16,6 +16,9 @@ JUPYTER_PLATFORM_DIRS=1 \
 python -m pytest --cov-report=html --cov pytorch_pfn_extras .
 popd
 
+# Run unit tests with mpi
+make mpitest
+
 # Run examples
 if [ -d mnist_raw ]; then
     mkdir -p data/MNIST/raw

@@ -18,6 +18,8 @@ setuptools.setup(
     extras_require={
         "test": [
             "pytest",
+            "pytest-mpi",
+            "mpi4py",
             "onnxruntime",
             "torchvision",
             "torchaudio",
@@ -36,6 +38,7 @@ setuptools.setup(
             "optuna",
             "onnx",
             "pytorch-ignite",
+            "cupy-cuda11x",
         ],
         "onnx": ["onnx"],
     },
