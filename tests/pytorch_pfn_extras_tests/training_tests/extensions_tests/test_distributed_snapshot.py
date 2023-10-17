@@ -6,7 +6,6 @@ import py
 import pytest
 import torch
 import torch.distributed
-from mpi4py import MPI
 from pytorch_pfn_extras import distributed, training
 from pytorch_pfn_extras.training import extensions
 
@@ -61,6 +60,11 @@ def path():
 
 @pytest.fixture(scope="function")
 def mpi_tmp_path(tmpdir):
+    try:
+        from mpi4py import MPI
+    except ImportError:
+        pytest.fail("mpi4py needs to be installed to run this test")
+
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
 
