@@ -15,7 +15,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         build-essential libssl-dev zlib1g-dev libbz2-dev \
         libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
         xz-utils tk-dev libffi-dev liblzma-dev git cmake protobuf-compiler libprotobuf-dev \
-        openmpi-bin openmpi-common && \
+        openmpi-bin openmpi-common libopenmpi-dev && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install pyenv.
