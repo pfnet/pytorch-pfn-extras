@@ -44,7 +44,7 @@ setuptools.setup(
         "onnx": ["onnx"],
         "mpi": [
             "mpi4py",
-        ]
+        ],
     },
     python_requires=">=3.6.0",
     packages=setuptools.find_packages(exclude=["tests", "tests.*"]),
