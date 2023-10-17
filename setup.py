@@ -18,8 +18,6 @@ setuptools.setup(
     extras_require={
         "test": [
             "pytest",
-            "pytest-mpi",
-            "mpi4py",
             "onnxruntime",
             "torchvision",
             "torchaudio",
@@ -43,6 +41,10 @@ setuptools.setup(
             "slack_sdk",
         ],
         "onnx": ["onnx"],
+        "mpi": [
+            "pytest-mpi",
+            "mpi4py",
+        ]
     },
     python_requires=">=3.6.0",
     packages=setuptools.find_packages(exclude=["tests", "tests.*"]),

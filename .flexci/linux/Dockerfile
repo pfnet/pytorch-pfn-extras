@@ -36,5 +36,5 @@ RUN pip install -U pip && \
 
 COPY ./setup.py ./pytorch_pfn_extras
 COPY ./pytorch_pfn_extras/_version.py ./pytorch_pfn_extras/pytorch_pfn_extras/_version.py
-RUN pip install -e ./pytorch_pfn_extras[test] \
+RUN pip install -e ./pytorch_pfn_extras[test,mpi] \
     pip list
