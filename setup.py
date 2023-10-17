@@ -39,6 +39,8 @@ setuptools.setup(
             "onnx",
             "pytorch-ignite",
             "cupy-cuda11x",
+            "pytest-cov",
+            "slack_sdk",
         ],
         "onnx": ["onnx"],
     },
