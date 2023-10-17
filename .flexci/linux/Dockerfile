@@ -30,9 +30,11 @@ RUN pyenv install ${python_version} && \
 
 # Install test dependencies.
 ARG pip_install_torch_args
-ARG pip_install_dep_args
 RUN pip install -U pip && \
     pip install -U "setuptools<59.6" && \
-    pip install ${pip_install_torch_args} && \
-    pip install ${pip_install_dep_args} && \
+    pip install ${pip_install_torch_args}
+
+COPY ./setup.py ./pytorch_pfn_extras
+COPY ./pytorch_pfn_extras/_version.py ./pytorch_pfn_extras/pytorch_pfn_extras/_version.py
+RUN pip install -e ./pytorch_pfn_extras[test] \
     pip list
