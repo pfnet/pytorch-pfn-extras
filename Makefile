@@ -32,7 +32,7 @@ cputest: ## Run all tests except for ones requiring GPU.
 
 .PHONY: mpitest
 mpitest: ## Run all tests except for ones requiring GPU.
-	mpirun $(MPI_OPTIONS) $(PY) -m pytest --only-mpi tests > /dev/null 2> /dev/null &&:; \
+	mpirun $(MPI_OPTIONS) $(PY) -m pytest --only-mpi tests &&:; \
 	ret=$$?; \
 	for i in $$(seq 0 $$(($(PROCESS_NUM) - 1))); do echo ========= MPI process $$i =========; cat $(MPI_OUTPUT_FILE_DIR)/1/rank.$$i/stdout; cat $(MPI_OUTPUT_FILE_DIR)/1/rank.$$i/stderr; done; \
 	[ $$ret = 0 ]
