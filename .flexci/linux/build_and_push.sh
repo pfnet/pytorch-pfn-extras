@@ -30,7 +30,7 @@ case "${TARGET}" in
     torch110 )
         # PyTorch 1.10 + Python 3.8
         docker_build_and_push \
-            --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
+            --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04" \
             --build-arg python_version="3.8.15" \
             --build-arg pip_install_torch_args="torch==1.10.* torchvision==0.11.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
         ;;
@@ -38,23 +38,23 @@ case "${TARGET}" in
     torch111 )
         # PyTorch 1.11 + Python 3.9
         docker_build_and_push \
-            --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
+            --build-arg base_image="nvidia/cuda:11.5.2-cudnn8-devel-ubuntu20.04" \
             --build-arg python_version="3.9.7" \
-            --build-arg pip_install_torch_args="torch==1.11.* torchvision==0.12.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
+            --build-arg pip_install_torch_args="torch==1.11.* torchvision==0.12.* -f https://download.pytorch.org/whl/cu115/torch_stable.html" \
         ;;
 
     torch112 )
         # PyTorch 1.12 + Python 3.10
         docker_build_and_push \
-            --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
+            --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04" \
             --build-arg python_version="3.10.5" \
-            --build-arg pip_install_torch_args="torch==1.12.* torchvision==0.13.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
+            --build-arg pip_install_torch_args="torch==1.12.* torchvision==0.13.* -f https://download.pytorch.org/whl/cu117/torch_stable.html" \
         ;;
 
     torch113 )
         # PyTorch 1.13 + Python 3.10
         docker_build_and_push \
-            --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu18.04" \
+            --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04" \
             --build-arg python_version="3.10.5" \
             --build-arg pip_install_torch_args="torch==1.13.* torchvision==0.14.* -f https://download.pytorch.org/whl/cu117/torch_stable.html" \
         ;;
@@ -62,7 +62,7 @@ case "${TARGET}" in
     torch200 )
         # PyTorch 2.0 + Python 3.10
         docker_build_and_push \
-            --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu18.04" \
+            --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04" \
             --build-arg python_version="3.10.5" \
             --build-arg pip_install_torch_args="torch==2.0.* torchvision==0.15.* -f https://download.pytorch.org/whl/cu117/torch_stable.html" \
         ;;
