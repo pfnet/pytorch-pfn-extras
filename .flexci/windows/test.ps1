@@ -49,12 +49,9 @@ if ($test -eq "torch110") {
 }
 RunOrDie python -V
 
-# Install common requirements
-RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna cupy-cuda102 onnxruntime==1.15.1 slack_sdk
-RunOrDie python -m pip list
-
 # Install
-RunOrDie python -m pip install -e .
+RunOrDie python -m pip install -e .[test]
+RunOrDie python -m pip list
 
 # Unit Test
 $Env:JUPYTER_PLATFORM_DIRS = "1"
