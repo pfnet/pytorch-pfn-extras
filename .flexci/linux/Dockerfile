@@ -28,13 +28,12 @@ ARG python_version
 RUN pyenv install ${python_version} && \
     pyenv global ${python_version}
 
+COPY ./setup.py ./pytorch_pfn_extras/setup.py
+COPY ./pytorch_pfn_extras/_version.py ./pytorch_pfn_extras/pytorch_pfn_extras/_version.py
+
 # Install test dependencies.
 ARG pip_install_torch_args
 RUN pip install -U pip && \
     pip install -U "setuptools<59.6" && \
-    pip install ${pip_install_torch_args}
-
-COPY ./setup.py ./pytorch_pfn_extras/setup.py
-COPY ./pytorch_pfn_extras/_version.py ./pytorch_pfn_extras/pytorch_pfn_extras/_version.py
-RUN pip install -e ./pytorch_pfn_extras[test,mpi] && \
+    pip install -e ./pytorch_pfn_extras[test,mpi] ${pip_install_torch_args} && \
     pip list
