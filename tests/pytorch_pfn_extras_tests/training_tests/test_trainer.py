@@ -878,7 +878,7 @@ def test_trainer_with_clousure_logic(device, progress_bar, path):
         evaluator=evaluator,
         extensions=extensions,
         out_dir=path,
-        logic=ppe.handler.ClousureLogic(options={"backward_outputs": ["loss"]}),
+        logic=ppe.handler.ClousureLogic(),
     )
     trainer.run(data, data)
 
