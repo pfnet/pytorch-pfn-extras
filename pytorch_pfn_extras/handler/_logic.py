@@ -10,6 +10,7 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Tuple,
     Union,
 )
 
@@ -189,7 +190,9 @@ class Logic(BaseLogic):
                 * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
                     A gradient scaler that outputs are applied to.
         """
-        self.backward_outputs: Optional[Union[str, List[str]]] = None
+        self.backward_outputs: Optional[
+            Union[str, List[str], Tuple[str, ...]]
+        ] = None
         self._grad_scaler: Optional[torch.cuda.amp.GradScaler] = None
         self._backward_fn: Optional[Callable[..., Any]] = None
         self._autocast_options: Optional[Union[Dict[str, Any], bool]] = None
@@ -284,7 +287,7 @@ class Logic(BaseLogic):
             assert (
                 len(to_backward) == 1
             ), "loss scaling with multiple loss is not supported"
-            to_backward = {self._grad_scaler.scale(v) for v in to_backward}
+            to_backward = {self._grad_scaler.scale(v) for v in to_backward}  # type: ignore[no-untyped-call]
         for v in to_backward:
             if self._backward_fn is None:
                 v.backward()  # type: ignore[no-untyped-call]
@@ -363,8 +366,8 @@ class Logic(BaseLogic):
         """
         optimizer = optimizers[self.model_name]
         if self._grad_scaler is not None:
-            self._grad_scaler.step(optimizer)
-            self._grad_scaler.update()
+            self._grad_scaler.step(optimizer)  # type: ignore[no-untyped-call]
+            self._grad_scaler.update()  # type: ignore[no-untyped-call]
         else:
             optimizer.step()
 
