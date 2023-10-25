@@ -149,6 +149,7 @@ logic_options_type_map = {
 }
 
 
+@pytest.mark.gpu
 @pytest.mark.parametrize(
     "logic_options_name, trainer_options_name",
     [
@@ -168,6 +169,57 @@ logic_options_type_map = {
         (("autocast",), ("grad_scaler",)),
         (("grad_scaler", "backward_function"), ()),
         (("backward_function",), ("grad_scaler", "autocast")),
+    ],
+)
+def test_initialize_logic_with_options_with_autocast(
+    logic_options_name: Tuple[str, ...], trainer_options_name: Tuple[str, ...]
+):
+    logic_options = {
+        k: mock.MagicMock(spec=logic_options_type_map[k])
+        for k in logic_options_name
+    }
+    trainer_options = {
+        k: mock.MagicMock(spec=logic_options_type_map[k])
+        for k in trainer_options_name
+    }
+    expected_options = deepcopy(logic_options)
+    expected_options.update(deepcopy(trainer_options))
+    expected_logic = ppe.handler.Logic(options=expected_options)
+
+    actual_logic = ppe.handler.Logic(options=logic_options)
+    _ = ppe.engine.create_trainer(
+        models=mock.MagicMock(spec=nn.Module),
+        optimizers=mock.MagicMock(spec=Optimizer),
+        max_epochs=1,
+        logic=actual_logic,
+        options=trainer_options,
+    )
+    assert actual_logic.backward_outputs == expected_logic.backward_outputs
+    assert actual_logic._grad_scaler == expected_logic._grad_scaler
+    assert actual_logic._backward_fn == expected_logic._backward_fn
+    assert actual_logic._autocast._options == expected_logic._autocast._options
+
+# The autocast option is removed from the test case
+# because it will result in a RuntimeError if the gpu is not present.
+@pytest.mark.parametrize(
+    "logic_options_name, trainer_options_name",
+    [
+        ((), ("backward_outputs", "backward_function", )),
+        (("backward_function",), ("backward_function", )),
+        ((), ("backward_outputs", "grad_scaler")),
+        (("backward_outputs", "backward_function"), ("backward_outputs",)),
+        (("backward_function", ), ("grad_scaler", )),
+        (
+            ("backward_outputs",),
+            ("backward_outputs", "grad_scaler", "backward_function"),
+        ),
+        (
+            ("backward_outputs", "grad_scaler", ),
+            ("backward_function",),
+        ),
+        ((), ("grad_scaler",)),
+        (("grad_scaler", "backward_function"), ()),
+        (("backward_function",), ("grad_scaler", )),
     ],
 )
 def test_initialize_logic_with_options(
