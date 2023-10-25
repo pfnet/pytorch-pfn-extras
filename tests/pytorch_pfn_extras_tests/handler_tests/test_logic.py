@@ -1,10 +1,12 @@
-from typing import Any, Mapping
+from copy import deepcopy
+from typing import Any, Mapping, Tuple
 from unittest import mock
 
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
 from torch import nn
+from torch.cuda.amp import GradScaler
 from torch.nn import Module
 from torch.nn import functional as F
 from torch.optim import Optimizer
@@ -137,3 +139,61 @@ def test_train_step_mode_with_evaluator(trigger):
     )
     trainer.run(data, data)
     assert backward_fn.call_count == epochs * iters_per_epoch
+
+
+logic_options_type_map = {
+    "backward_outputs": str,
+    "grad_scaler": GradScaler,
+    "backward_function": None,
+    "autocast": bool,
+}
+
+
+@pytest.mark.parametrize(
+    "logic_options_name, trainer_options_name",
+    [
+        ((), ("backward_outputs", "backward_function", "autocast")),
+        (("backward_function",), ("backward_function", "autocast")),
+        ((), ("backward_outputs", "grad_scaler")),
+        (("backward_outputs", "backward_function"), ("backward_outputs",)),
+        (("backward_function", "autocast"), ("grad_scaler", "autocast")),
+        (
+            ("backward_outputs",),
+            ("backward_outputs", "grad_scaler", "backward_function"),
+        ),
+        (
+            ("backward_outputs", "grad_scaler", "autocast"),
+            ("backward_function",),
+        ),
+        (("autocast",), ("grad_scaler",)),
+        (("grad_scaler", "backward_function"), ()),
+        (("backward_function",), ("grad_scaler", "autocast")),
+    ],
+)
+def test_initialize_logic_with_options(
+    logic_options_name: Tuple[str, ...], trainer_options_name: Tuple[str, ...]
+):
+    logic_options = {
+        k: mock.MagicMock(spec=logic_options_type_map[k])
+        for k in logic_options_name
+    }
+    trainer_options = {
+        k: mock.MagicMock(spec=logic_options_type_map[k])
+        for k in trainer_options_name
+    }
+    expected_options = deepcopy(logic_options)
+    expected_options.update(deepcopy(trainer_options))
+    expected_logic = ppe.handler.Logic(options=expected_options)
+
+    actual_logic = ppe.handler.Logic(options=logic_options)
+    _ = ppe.engine.create_trainer(
+        models=mock.MagicMock(spec=nn.Module),
+        optimizers=mock.MagicMock(spec=Optimizer),
+        max_epochs=1,
+        logic=actual_logic,
+        options=trainer_options,
+    )
+    assert actual_logic.backward_outputs == expected_logic.backward_outputs
+    assert actual_logic._grad_scaler == expected_logic._grad_scaler
+    assert actual_logic._backward_fn == expected_logic._backward_fn
+    assert actual_logic._autocast._options == expected_logic._autocast._options
