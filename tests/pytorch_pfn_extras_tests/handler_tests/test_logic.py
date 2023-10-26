@@ -200,36 +200,30 @@ def test_initialize_logic_with_options_with_autocast(
     assert actual_logic._autocast._options == expected_logic._autocast._options
 
 
-# The autocast option is removed from the test case
+# The `autocast` and `grad_scaler` option is removed from the test case
 # because it will result in a RuntimeError if the gpu is not present.
 @pytest.mark.parametrize(
     "logic_options_name, trainer_options_name",
     [
-        (
-            (),
-            (
-                "backward_outputs",
-                "backward_function",
-            ),
-        ),
+        ((), ()),
+        ((), ("backward_outputs",)),
+        ((), ("backward_function",)),
+        ((), ("backward_outputs", "backward_function")),
+        (("backward_outputs",), ()),
+        (("backward_outputs",), ("backward_outputs",)),
+        (("backward_outputs",), ("backward_function",)),
+        (("backward_outputs",), ("backward_outputs", "backward_function")),
+        (("backward_function",), ()),
+        (("backward_function",), ("backward_outputs",)),
         (("backward_function",), ("backward_function",)),
-        ((), ("backward_outputs", "grad_scaler")),
+        (("backward_function",), ("backward_outputs", "backward_function")),
+        (("backward_outputs", "backward_function"), ()),
         (("backward_outputs", "backward_function"), ("backward_outputs",)),
-        (("backward_function",), ("grad_scaler",)),
+        (("backward_outputs", "backward_function"), ("backward_function",)),
         (
-            ("backward_outputs",),
-            ("backward_outputs", "grad_scaler", "backward_function"),
+            ("backward_outputs", "backward_function"),
+            ("backward_outputs", "backward_function"),
         ),
-        (
-            (
-                "backward_outputs",
-                "grad_scaler",
-            ),
-            ("backward_function",),
-        ),
-        ((), ("grad_scaler",)),
-        (("grad_scaler", "backward_function"), ()),
-        (("backward_function",), ("grad_scaler",)),
     ],
 )
 def test_initialize_logic_with_options(
