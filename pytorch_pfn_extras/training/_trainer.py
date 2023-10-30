@@ -247,9 +247,15 @@ class Trainer:
             - :meth:`pytorch_pfn_extras.training._evaluator.Evaluator`
         """
         if train_len is None:
-            train_len = len(train_loader)  # type: ignore[arg-type]
+            if hasattr(train_loader, "__len__"):
+                train_len = len(train_loader)  # type: ignore[arg-type]
+            else:
+                train_len = 1
         if eval_len is None and val_loader is not None:
-            eval_len = len(val_loader)  # type: ignore[arg-type]
+            if hasattr(eval_len, "__len__"):
+                eval_len = len(val_loader)  # type: ignore[arg-type]
+            else:
+                eval_len = 1
 
         self._train_len = train_len
         self._eval_len = eval_len

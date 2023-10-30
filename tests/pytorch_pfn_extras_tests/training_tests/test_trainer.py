@@ -948,3 +948,39 @@ def test_create_distributed_evaluator():
     with mock.patch.object(dist, "is_initialized", return_value=True):
         evaluator = engine.create_evaluator(models=model, distributed=True)
     assert isinstance(evaluator, DistributedEvaluator)
+
+
+def test_trainer_run_with_iterator():
+    model = MyModel()
+    model = MyModelWithLossFn(model)
+    model = ppe.to(model, "cpu")
+    optimier = mock.MagicMock(spec=torch.optim.Optimizer)
+    evaluator = engine.create_evaluator(models=model)
+    trainer = engine.create_trainer(
+        models=model, optimizers=optimier, max_epochs=1, evaluator=evaluator
+    )
+    train_iterator = (
+        {
+            "x": torch.rand(
+                20,
+            ),
+            "t": torch.rand(
+                10,
+            ),
+        }
+        for i in range(10)
+    )
+    valid_iterator = (
+        {
+            "x": torch.rand(
+                20,
+            ),
+            "t": torch.rand(
+                10,
+            ),
+        }
+        for i in range(5)
+    )
+    trainer.run(train_iterator, valid_iterator)
+    assert trainer._train_len == 1
+    assert trainer._eval_len == 1
