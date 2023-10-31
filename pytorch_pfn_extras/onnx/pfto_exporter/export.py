@@ -170,11 +170,11 @@ def _type_to_proto(t: torch._C.TensorType) -> onnx.TypeProto:
         ret.tensor_type.elem_type = onnx.TensorProto.DataType.UNDEFINED  # type: ignore[attr-defined]
     elif t.scalarType() == "Float8_e4m3fn":
         ret.tensor_type.elem_type = int(  # type: ignore
-            sym_hel._C_onnx.TensorProtoDataType.FLOAT8E4M3FN
+            onnx.TensorProto.DataType.FLOAT8E4M3FN
         )
     elif t.scalarType() == "Float8_e5m2":
         ret.tensor_type.elem_type = int(  # type: ignore
-            sym_hel._C_onnx.TensorProtoDataType.FLOAT8E5M2
+            onnx.TensorProto.DataType.FLOAT8E5M2
         )
     else:
         ret.tensor_type.elem_type = int(  # type: ignore
