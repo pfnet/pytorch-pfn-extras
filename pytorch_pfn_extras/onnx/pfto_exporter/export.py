@@ -168,6 +168,14 @@ def _type_to_proto(t: torch._C.TensorType) -> onnx.TypeProto:
 
     if t.scalarType() is None:
         ret.tensor_type.elem_type = onnx.TensorProto.DataType.UNDEFINED  # type: ignore[attr-defined]
+    elif t.scalarType() == "Float8_e4m3fn":
+        ret.tensor_type.elem_type = int(  # type: ignore
+            sym_hel._C_onnx.TensorProtoDataType.FLOAT8E4M3FN
+        )
+    elif t.scalarType() == "Float8_e5m2":
+        ret.tensor_type.elem_type = int(  # type: ignore
+            sym_hel._C_onnx.TensorProtoDataType.FLOAT8E5M2
+        )
     else:
         ret.tensor_type.elem_type = int(  # type: ignore
             sym_hel.cast_pytorch_to_onnx[t.scalarType()]  # type: ignore[index]
@@ -221,6 +229,8 @@ torch_dtype_to_onnx_data_type = {
     torch.float16: onnx.TensorProto.DataType.FLOAT16,  # type: ignore[attr-defined]
     torch.complex64: onnx.TensorProto.DataType.COMPLEX64,  # type: ignore[attr-defined]
     torch.complex128: onnx.TensorProto.DataType.COMPLEX128,  # type: ignore[attr-defined]
+    torch.torch.float8_e4m3fn:  onnx.TensorProto.DataType.FLOAT8E4M3FN,  # type: ignore[attr-defined]
+    torch.torch.float8_e5m2:  onnx.TensorProto.DataType.FLOAT8E5M2,  # type: ignore[attr-defined]
 }
 
 
