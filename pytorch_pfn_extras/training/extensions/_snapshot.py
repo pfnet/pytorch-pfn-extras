@@ -519,4 +519,4 @@ class _DistributedSnapshot(_Snapshot):
         if self._rank == self._saver_rank:
             super()._make_snapshot(manager)
         if self._size > 1:
-            torch.distributed.barrier()
+            torch.distributed.barrier()  # type: ignore
