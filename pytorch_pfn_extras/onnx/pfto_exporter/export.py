@@ -148,6 +148,20 @@ def _tensor_to_proto(t: torch.Tensor, name: Optional[ONNXValueID] = None) -> onn
     return onnx.numpy_helper.from_array(t.detach().cpu().numpy(), name)
 
 
+def _scalar_type_to_elem_type(scalar_type: Optional[str]) -> int:
+    if scalar_type is None:
+        return cast(int, onnx.TensorProto.DataType.UNDEFINED)  # type: ignore[attr-defined]
+    typ = sym_hel.cast_pytorch_to_onnx.get(scalar_type)
+    if typ is not None:
+        return cast(int, typ.value)
+    if pytorch_pfn_extras.requires("14.0", "onnx"):
+        if scalar_type == "Float8_e4m3fn":
+            return cast(int, onnx.TensorProto.DataType.FLOAT8E4M3FN)  # type: ignore[attr-defined]
+        if scalar_type == "Float8_e5m2":
+            return cast(int, onnx.TensorProto.DataType.FLOAT8E5M2)  # type: ignore[attr-defined]
+    raise ValueError("Unsupported scalar type: {scalar_type}")
+
+
 def _type_to_proto(t: torch._C.TensorType) -> onnx.TypeProto:
     if t.kind() == "NoneType":
         return onnx.TypeProto()
@@ -166,21 +180,7 @@ def _type_to_proto(t: torch._C.TensorType) -> onnx.TypeProto:
 
     assert t.kind() == "TensorType", f"Not Tensor type(actual: {t.kind()}): {t}"
 
-    if t.scalarType() is None:
-        ret.tensor_type.elem_type = onnx.TensorProto.DataType.UNDEFINED  # type: ignore[attr-defined]
-    elif t.scalarType() == "Float8_e4m3fn":
-        ret.tensor_type.elem_type = int(  # type: ignore
-            onnx.TensorProto.DataType.FLOAT8E4M3FN
-        )
-    elif t.scalarType() == "Float8_e5m2":
-        ret.tensor_type.elem_type = int(  # type: ignore
-            onnx.TensorProto.DataType.FLOAT8E5M2
-        )
-    else:
-        ret.tensor_type.elem_type = int(  # type: ignore
-            sym_hel.cast_pytorch_to_onnx[t.scalarType()]  # type: ignore[index]
-        )
-
+    ret.tensor_type.elem_type = _scalar_type_to_elem_type(t.scalarType())
     ret.tensor_type.shape.CopyFrom(onnx.TensorShapeProto())
     if t.sizes() is not None:
         for s in t.sizes():  # type: ignore
@@ -229,8 +229,12 @@ torch_dtype_to_onnx_data_type = {
     torch.float16: onnx.TensorProto.DataType.FLOAT16,  # type: ignore[attr-defined]
     torch.complex64: onnx.TensorProto.DataType.COMPLEX64,  # type: ignore[attr-defined]
     torch.complex128: onnx.TensorProto.DataType.COMPLEX128,  # type: ignore[attr-defined]
-    torch.torch.float8_e4m3fn:  onnx.TensorProto.DataType.FLOAT8E4M3FN,  # type: ignore[attr-defined]
-    torch.torch.float8_e5m2:  onnx.TensorProto.DataType.FLOAT8E5M2,  # type: ignore[attr-defined]
+    **(
+        {
+            torch.float8_e4m3fn: onnx.TensorProto.DataType.FLOAT8E4M3FN,  # type: ignore[attr-defined]
+            torch.float8_e5m2: onnx.TensorProto.DataType.FLOAT8E5M2,  # type: ignore[attr-defined]
+        } if pytorch_pfn_extras.requires("2.1") and pytorch_pfn_extras.requires("14.0", "onnx") else {}
+    ),
 }
 
 
