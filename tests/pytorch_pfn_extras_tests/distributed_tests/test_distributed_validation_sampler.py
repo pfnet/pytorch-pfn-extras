@@ -79,9 +79,9 @@ def test_seed(base_dataset):
 
 
 def test_no_distributed_available(base_dataset):
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         DistributedValidationSampler(base_dataset, num_replicas=_world_size)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         DistributedValidationSampler(base_dataset, rank=0)
 
 
