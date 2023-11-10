@@ -257,9 +257,9 @@ class DistributedDataParallel(nn.Module):
         self,
         state_dict: Mapping[str, torch.Tensor],
         strict: bool = True,
-        *args,  # `assign=False` added in PyTorch 2.1.
+        *args: Any,  # `assign=False` added in PyTorch 2.1.
     ) -> None:
-        self.module.load_state_dict(state_dict, strict=strict, *args)  # type: ignore[arg-type]
+        self.module.load_state_dict(state_dict, strict=strict, *args)  # type: ignore[arg-type,misc]
 
     T_destination = TypeVar("T_destination", bound=Mapping[str, torch.Tensor])
 
