@@ -78,6 +78,15 @@ case "${TARGET}" in
             --build-arg pip_install_dep_args="cupy-cuda11x pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
         ;;
 
+    torch201 )
+        # PyTorch 2.1 + Python 3.11
+        docker_build_and_push \
+            --build-arg base_image="nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04" \
+            --build-arg python_version="3.10.5" \
+            --build-arg pip_install_torch_args="torch==2.1.* torchvision==0.16.* -f https://download.pytorch.org/whl/cu118/torch_stable.html" \
+            --build-arg pip_install_dep_args="cupy-cuda11x pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
+        ;;
+
     * )
         echo "${1}: Unknown test name."
         exit 1
