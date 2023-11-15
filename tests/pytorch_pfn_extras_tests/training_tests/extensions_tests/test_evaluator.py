@@ -272,6 +272,7 @@ def create_dummy_evaluator(model):
     evaluator = Engine(update_fn)
     return evaluator
 
+
 @pytest.mark.filterwarnings("ignore::UserWarning")
 def test_ignite_evaluator_reporting_metrics():
     try:

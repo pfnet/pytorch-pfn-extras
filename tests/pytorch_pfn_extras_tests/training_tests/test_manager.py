@@ -313,6 +313,7 @@ def test_extensions_manager_state_dict_future_ppe_version():
     with pytest.warns(UserWarning, match="version"):
         manager_2.load_state_dict(state_dict)
 
+
 @pytest.mark.filterwarnings("ignore::UserWarning")
 def test_ignite_extensions_manager_state_dict():
     try:
