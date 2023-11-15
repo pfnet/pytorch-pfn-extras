@@ -45,6 +45,8 @@ exclude_patterns = []
 
 # Autosummary
 autosummary_generate = True
+autosummary_imported_members = True
+autoclass_content = "both"
 
 # -- Options for HTML output -------------------------------------------------
 

@@ -48,6 +48,9 @@ class LRScheduler(extension.Extension):
         stepper (callable): Function that performs the step on
             the scheduler.
         trigger: Frequency to call this extension.
+        wait_for_first_optimizer_step (bool): Wait until `optimizer.step()` is called
+            before invoking `scheduler.step()`. This can address the issue where
+            `optimizer.step()` is not called from the first iteration when using GradScaler.
     """
 
     def __init__(
@@ -56,14 +59,23 @@ class LRScheduler(extension.Extension):
         *,
         stepper: Any = _default_stepper,
         trigger: trigger_module.TriggerLike = (1, "epoch"),
+        wait_for_first_optimizer_step: bool = False,
         is_async: bool = True,
     ) -> None:
         self.scheduler = scheduler
         self.trigger = trigger_module.get_trigger(trigger)
         self.stepper = stepper
+        self.wait_for_first_optimizer_step = wait_for_first_optimizer_step
         self.is_async = is_async
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
+        # https://github.com/pytorch/pytorch/blob/v2.0.1/torch/optim/lr_scheduler.py#L137-L138
+        if (
+            self.wait_for_first_optimizer_step
+            and hasattr(self.scheduler.optimizer.step, "_with_counter")
+            and self.scheduler.optimizer._step_count < 1
+        ):
+            return
         self.stepper(manager, self.scheduler)
 
     @staticmethod
