@@ -160,7 +160,7 @@ class TimeSummary:
         self._summary = DictSummary()
         self._additional_stats: Dict[str, float] = {}
 
-        self._cpu_worker = _util._QueueWorker(
+        self._cpu_worker = _util.QueueWorker(
             self._add_from_worker, max_queue_size
         )
         self._cuda_worker: Optional[_CUDAWorker] = None

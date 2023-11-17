@@ -5,7 +5,8 @@ import threading
 import time
 from typing import Any, Dict, Generator, List, Optional, Type, Union, cast
 
-import torch
+import torch.cuda
+import torch.utils.data
 from pytorch_pfn_extras.profiler import _util
 from pytorch_pfn_extras.writing import Writer
 
@@ -26,6 +27,15 @@ class Tracer:
 
     def enable(self, enable_flag: bool) -> None:
         raise NotImplementedError("Tracers must implement enable")
+
+    def finalize(self) -> None:
+        raise NotImplementedError("Tracers must implement finalize")
+
+    def state_dict(self) -> Dict[str, Any]:
+        raise NotImplementedError("Tracers must implement state_dict")
+
+    def load_state_dict(self, to_load: Dict[str, Any]) -> None:
+        raise NotImplementedError("Tracers must implement load_state_dict")
 
 
 class DummyTracer(Tracer):
@@ -68,7 +78,7 @@ class ChromeTracer(Tracer):
         # Detect if i am a forked process, in such case I send the event to
         # The parent process
         self._is_cuda_available = torch.cuda.is_available()
-        self._tracer_queue: _util._QueueWorker = _util._QueueWorker(
+        self._tracer_queue: _util.QueueWorker = _util.QueueWorker(
             self.add_remote_event, 1000
         )
         self._tracer_queue.initialize()
@@ -123,6 +133,7 @@ class ChromeTracer(Tracer):
     def flush(self, filename: str, writer: Writer) -> None:
         if not self._enable:
             return
+        self._tracer_queue.synchronize()
         # TODO(ecastill): try to work on some append mode manipulating the
         # file pointer and with json.dumps?
         savefun = ChromeTracingSaveFunc()
@@ -151,8 +162,12 @@ class ChromeTracer(Tracer):
         self._event_count = to_load["_event_count"]
 
     def clear(self) -> None:
+        self._tracer_queue.synchronize()
         self._event_list = []
         self._event_count = 0
+
+    def finalize(self) -> None:
+        self._tracer_queue.synchronize()
 
 
 _tracer: Optional[Tracer] = None

@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 
-from pytorch_pfn_extras.profiler._tracing import get_tracer
+from pytorch_pfn_extras.profiler._tracing import Tracer, get_tracer
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import (
@@ -55,9 +55,10 @@ class TimelineTrace(extension.Extension):
         filename: Optional[str] = None,
         enable: Optional[trigger_module.TriggerLike] = None,
         disable: Optional[trigger_module.TriggerLike] = None,
+        tracer: Optional[Tracer] = None,
         **kwargs: Any,
     ):
-        self._tracer = kwargs.get("tracer", get_tracer())
+        self._tracer = tracer if tracer is not None else get_tracer()
         self._enable = None
         if enable is not None:
             self._enable = trigger_module.get_trigger(enable)
@@ -72,6 +73,8 @@ class TimelineTrace(extension.Extension):
         self._writer = kwargs.get("writer", None)
 
     def _flush_trace(self, manager: ExtensionsManagerProtocol) -> None:
+        # TODO(kaku) It would be nice to be able to select a mode to
+        # synchronize the tracer and then flush it as a strict flush_trace()
         writer = manager.writer if self._writer is None else self._writer
 
         # write to the log file
@@ -103,4 +106,4 @@ class TimelineTrace(extension.Extension):
         self._flush_trace(manager)
         if self._writer is not None:
             self._writer.finalize()
-        self._Tracer.clear()
+        self._tracer.finalize()

@@ -3,7 +3,7 @@ import threading
 from typing import Any, Callable, Optional
 
 
-class _QueueWorker:
+class QueueWorker:
     def __init__(
         self,
         add: Callable[[str, Any], None],
