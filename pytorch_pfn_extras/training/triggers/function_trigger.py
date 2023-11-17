@@ -50,3 +50,5 @@ class FunctionTrigger(trigger_module.Trigger):
             iteration=iteration, epoch_len=epoch_len
         ):
             return self._fn(*self._args, **self._kwargs)
+        else:
+            return False
