@@ -1,4 +1,12 @@
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Sequence
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Mapping,
+    Optional,
+    Sequence,
+)
 
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import (
@@ -14,7 +22,7 @@ class FunctionTrigger(trigger_module.Trigger):
         self,
         fn: Callable[..., bool],
         args: Optional[Sequence[Any]] = None,
-        kwargs: Optional[Sequence[Any]] = None,
+        kwargs: Optional[Mapping[str, Any]] = None,
         trigger: "TriggerLike" = (1, "iteration"),
     ) -> None:
         self._fn = fn
