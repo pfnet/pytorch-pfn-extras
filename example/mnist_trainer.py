@@ -129,27 +129,49 @@ def main():
         default=None,
         help="output mode for profiler results",
     )
+    parser.add_argument(
+        "--trace",
+        type=str,
+        default=None,
+        help="output trace for timeline in chrome format",
+    )
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
     numpy.random.seed(args.seed)
     torch.use_deterministic_algorithms(args.deterministic)
 
+    train_dataset = datasets.MNIST(
+        "../data",
+        train=True,
+        download=True,
+        transform=transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)),
+            ]
+        ),
+    )
+    eval_dataset = datasets.MNIST(
+        "../data",
+        train=False,
+        transform=transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307,), (0.3081,)),
+            ]
+        ),
+    )
+    if args.trace is not None:
+        train_dataset = ppe.profiler.TraceableDataset(
+            train_dataset, "train_dataset_read"
+        )
+
     use_cuda = args.device.startswith("cuda")
 
     kwargs = {"num_workers": 1, "pin_memory": True} if use_cuda else {}
     train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST(
-            "../data",
-            train=True,
-            download=True,
-            transform=transforms.Compose(
-                [
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.1307,), (0.3081,)),
-                ]
-            ),
-        ),
+        train_dataset,
         batch_size=args.batch_size,
         shuffle=True,
         collate_fn=ppe.dataloaders.utils.CollateAsDict(
@@ -158,16 +180,7 @@ def main():
         **kwargs,  # type: ignore[arg-type]
     )
     test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST(
-            "../data",
-            train=False,
-            transform=transforms.Compose(
-                [
-                    transforms.ToTensor(),
-                    transforms.Normalize((0.1307,), (0.3081,)),
-                ]
-            ),
-        ),
+        eval_dataset,
         batch_size=args.test_batch_size,
         shuffle=True,
         collate_fn=ppe.dataloaders.utils.CollateAsDict(
@@ -204,6 +217,8 @@ def main():
         ),
         extensions.snapshot(),
     ]
+    if args.trace is not None:
+        my_extensions.append(extensions.TimelineTrace(filename=args.trace))
 
     # Custom stop triggers can be added to the manager and
     # their status accessed through `manager.stop_trigger`
@@ -272,6 +287,7 @@ def main():
             metrics=[ppe.training.metrics.AccuracyMetric("target", "output")],
             options={"eval_report_keys": ["loss", "accuracy"]},
         ),
+        enable_trace=args.trace is not None,
         options={"train_report_keys": ["loss"]},
         profile=profile,
     )

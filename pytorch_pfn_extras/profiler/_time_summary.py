@@ -1,5 +1,4 @@
 import atexit
-import multiprocessing as mp
 import os
 import queue
 import threading
@@ -9,6 +8,7 @@ from contextlib import contextmanager
 from typing import Callable, Dict, Generator, Optional, Tuple
 
 import torch
+from pytorch_pfn_extras.profiler import _util
 from pytorch_pfn_extras.reporting import DictSummary
 
 Events = Tuple[torch.cuda.Event, torch.cuda.Event]
@@ -37,72 +37,6 @@ class _ReportNotification:
         self._summary.complete_report(
             self._tag, self._use_cuda, self._begin_event, self._begin
         )
-
-
-class _CPUWorker:
-    def __init__(
-        self,
-        add: Callable[[str, float], None],
-        max_queue_size: int,
-    ) -> None:
-        self._add = add
-        self._max_queue_size = max_queue_size
-        self._initialized = False
-        self._queue: Optional[
-            mp.JoinableQueue[Optional[Tuple[str, float]]]
-        ] = None
-        self._thread: Optional[threading.Thread] = None
-        self._thread_exited = False
-
-    def initialize(self) -> None:
-        if self._initialized:
-            return
-        self._queue = mp.JoinableQueue(self._max_queue_size)
-        self._thread = threading.Thread(target=self._worker, daemon=True)
-        self._thread.start()
-        self._initialized = True
-        self._thread_exited = False
-
-    def finalize(self) -> None:
-        if not self._initialized:
-            return
-        assert self._queue is not None
-        assert self._thread is not None
-        # In some situations, (when this runs in a subprocess), the queue might have
-        # been cut in the worker thread before this function is called
-        # due to the non-deterministic shutdown process.
-        if not self._thread_exited:
-            self._queue.put(None)
-        self._queue.join()
-        self._queue.close()
-        self._queue.join_thread()
-        self._initialized = False
-
-    def synchronize(self) -> None:
-        assert self._queue is not None
-        self._queue.join()
-
-    def put(self, name: str, value: float) -> None:
-        assert self._queue is not None
-        assert not self._thread_exited
-        self._queue.put((name, value))
-
-    def _worker(self) -> None:
-        assert self._queue is not None
-        while True:
-            try:
-                v = self._queue.get()
-            # If this runs in a subprocess, the cleanup may throw an EOF here
-            # before the queue cleanup code is executed
-            except EOFError:
-                self._thread_exited = True
-                break
-            if v is None:
-                self._queue.task_done()
-                break
-            name, value = v
-            self._add(name, value)
-            self._queue.task_done()
 
 
 _QueueElem = Tuple[str, Tuple[torch.cuda.Event, torch.cuda.Event]]
@@ -226,7 +160,9 @@ class TimeSummary:
         self._summary = DictSummary()
         self._additional_stats: Dict[str, float] = {}
 
-        self._cpu_worker = _CPUWorker(self._add_from_worker, max_queue_size)
+        self._cpu_worker = _util.QueueWorker(
+            self._add_from_worker, max_queue_size
+        )
         self._cuda_worker: Optional[_CUDAWorker] = None
         if torch.cuda.is_available():
             self._cuda_worker = _CUDAWorker(
