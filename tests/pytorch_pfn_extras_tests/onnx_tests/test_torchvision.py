@@ -27,6 +27,25 @@ def test_eval_resnet18():
         torch.backends.cudnn.allow_tf32 = old_allow_tf32
 
 
+@pytest.mark.filterwarnings("ignore:torch.onnx.dynamo_export only implements opset version 18 for now. If you need to use a different opset version, please register them with register_custom_op.:UserWarning")
+@pytest.mark.filterwarnings("ignore:Attempted to insert a get_attr Node with no underlying reference in the owning GraphModule! Call GraphModule.add_submodule to add the necessary submodule, GraphModule.add_parameter to add the necessary Parameter, or nn.Module.register_buffer to add the necessary buffer:UserWarning")
+@pytest.mark.filterwarnings("ignore:.*does not reference an nn.Module, nn.Parameter, or buffer, which is what 'get_attr' Nodes typically target:UserWarning")
+def test_eval_resnet18_dynamo():
+    if not pytorch_pfn_extras.requires("2.1.0"):
+        pytest.skip()
+
+    m = torchvision.models.resnet.resnet18(**resnet18_kwargs)
+    m.eval()
+    run_model_test(
+        m,
+        (torch.rand(1, 3, 224, 224),),
+        rtol=1e-03,
+        use_gpu=True,
+        use_dynamo=True,
+        opset_version=18,
+    )
+
+
 @pytest.mark.gpu
 @pytest.mark.xfail
 def test_train_resnet18():

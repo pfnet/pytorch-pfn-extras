@@ -156,6 +156,7 @@ def _export(
         strip_large_tensor_data: bool = False,
         large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
         use_pfto: bool = False,
+        use_dynamo: bool = False,
         return_output: bool = True,
         chrome_tracing: str = "",
         **kwargs: Any,
@@ -199,8 +200,35 @@ def _export(
             grad.init_grad_state(), \
             lax.init_lax_state():
         if use_pfto:
+            assert not use_dynamo
             outs = pfto_export(
                 model, args, bytesio, chrome_tracing=chrome_tracing, **kwargs)
+        elif use_dynamo:
+            assert pytorch_pfn_extras.requires("2.1.0")
+            opts = torch.onnx.ExportOptions(op_level_debug=kwargs["verbose"])
+            prog = torch.onnx.dynamo_export(model, *args, export_options=opts)
+            xmodel: onnx.ModelProto = prog.model_proto
+            inout_names: Dict[str, str] = {}
+            if "input_names" in kwargs:
+                for o, n in zip(kwargs["input_names"], [i.name for i in xmodel.graph.input]):
+                    inout_names[n] = o
+            if "output_names" in kwargs:
+                for o, n in zip(kwargs["output_names"], [i.name for i in xmodel.graph.output]):
+                    inout_names[n] = o
+            def rename_graph(graph: onnx.GraphProto):
+                for n in graph.node:
+                    for i, v in enumerate(n.input):
+                        if v in inout_names:
+                            n.input[i] = inout_names[v]
+                    for i, v in enumerate(n.output):
+                        if v in inout_names:
+                            n.output[i] = inout_names[v]
+                    for i in n.attribute:
+                        if i.HasField("g"):
+                            rename_graph(i.g)
+            rename_graph(xmodel.graph)
+            bytesio.write(xmodel.SerializeToString())
+            outs = model(*args)
         else:
             if chrome_tracing:
                 with torch.profiler.profile() as prof:
