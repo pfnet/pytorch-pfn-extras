@@ -145,3 +145,41 @@ def test_distributed_snapshot_autoload(mpi_tmp_path, saver_rank):
     assert _model_params_equal(
         trainer._models["main"], new_trainer._models["main"]
     )
+
+
+@pytest.mark.gpu
+@pytest.mark.mpi
+@pytest.mark.parametrize("saver_rank", [0, 1])
+def test_distributed_snapshot_on_error(mpi_tmp_path, saver_rank):
+    comm_size, comm_rank, comm_local_rank, device = _init_distributed(False)
+    if comm_size > 1:
+        torch.distributed.barrier()
+    trainer = get_trainer(mpi_tmp_path)
+
+    fmt = f"snapshot_iter_{comm_rank}_" "{.iteration}"
+    snapshot = extensions.snapshot(
+        filename=fmt,
+        snapshot_on_error=True,
+        saver_rank=saver_rank,
+    )
+    try:
+        raise RuntimeError
+    except RuntimeError as dummy_exception:
+        pass
+        dummy_tb = dummy_exception.__traceback__
+        snapshot.on_error(trainer, dummy_exception, dummy_tb)
+    pattern = os.path.join(trainer.out, f"snapshot_iter_{saver_rank}_*")
+    found = [os.path.basename(path) for path in glob.glob(pattern)]
+    # the snapshot is generated only for the saver rank
+    assert len(found) == 1
+
+    new_trainer = get_trainer(mpi_tmp_path)
+    assert not _model_params_equal(
+        trainer._models["main"], new_trainer._models["main"]
+    )
+    new_trainer.load_state_dict(
+        torch.load(os.path.join(mpi_tmp_path, found[0]))
+    )
+    assert _model_params_equal(
+        trainer._models["main"], new_trainer._models["main"]
+    )
