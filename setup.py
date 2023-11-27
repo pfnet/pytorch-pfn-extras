@@ -18,7 +18,6 @@ setuptools.setup(
     extras_require={
         "test": [
             "pytest",
-            "pytest-mpi",
             "onnxruntime",
             "torchvision",
             "torchaudio",
