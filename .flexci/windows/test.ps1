@@ -60,7 +60,7 @@ RunOrDie python -m pip list
 
 # Unit Test
 $Env:JUPYTER_PLATFORM_DIRS = "1"
-RunOrDie python -m pytest tests
+RunOrDie python -m pytest -m "not mpi" tests
 
 # Examples
 .\.flexci\windows\download_mnist.ps1

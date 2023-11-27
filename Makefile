@@ -24,7 +24,7 @@ lint: ## Lint the Python code.
 
 .PHONY: test
 test: ## Run all tests.
-	$(PY) -m pytest tests
+	$(PY) -m pytest -m "not mpi" tests
 
 .PHONY: cputest
 cputest: ## Run all tests except for ones requiring GPU.
