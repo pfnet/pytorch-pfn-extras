@@ -33,7 +33,9 @@ COPY ./pytorch_pfn_extras/_version.py ./pytorch_pfn_extras/pytorch_pfn_extras/_v
 
 # Install test dependencies.
 ARG pip_install_torch_args
+ARG pip_install_dep_args	
 RUN pip install -U pip && \
     pip install -U "setuptools<59.6" && \
     pip install -e ./pytorch_pfn_extras[test,mpi] ${pip_install_torch_args} && \
+    pip install ${pip_install_dep_args} && \	
     pip list
