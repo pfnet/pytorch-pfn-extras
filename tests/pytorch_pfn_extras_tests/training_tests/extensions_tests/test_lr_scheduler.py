@@ -57,9 +57,7 @@ def test_serialize_scheduler():
 def test_reduce_lr_on_plateau():
     param = torch.nn.Parameter(torch.zeros(10))
     optim = torch.optim.SGD([param], 1.0)
-    sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optim, patience=1, verbose=True
-    )
+    sched = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, patience=1)
     ext = ppe.training.extensions.LRScheduler(sched, trigger=(1, "iteration"))
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -86,9 +84,7 @@ def test_reduce_lr_on_plateau():
 def test_reduce_lr_on_plateau_no_report():
     param = torch.nn.Parameter(torch.zeros(10))
     optim = torch.optim.SGD([param], 1.0)
-    sched = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optim, patience=1, verbose=True
-    )
+    sched = torch.optim.lr_scheduler.ReduceLROnPlateau(optim, patience=1)
     ext = ppe.training.extensions.LRScheduler(sched, trigger=(1, "iteration"))
 
     manager = ppe.training.ExtensionsManager(
