@@ -3,8 +3,6 @@ import sys
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
-from pytorch_pfn_extras import ops
-from torch._dynamo.backends.common import aot_autograd
 
 
 def _get_function_nodes(fx_module):
@@ -30,11 +28,11 @@ def test_register():
     def test_bwd_meta(g, a):
         return torch.empty_like(a)
 
-    fwd_op = ops.OpDesc(test, test_meta, "(Tensor a) -> Tensor")
-    bwd_op = ops.OpDesc(
+    fwd_op = ppe.ops.OpDesc(test, test_meta, "(Tensor a) -> Tensor")
+    bwd_op = ppe.ops.OpDesc(
         test_bwd, test_bwd_meta, "(Tensor g, Tensor a) -> Tensor"
     )
-    ops.register("test", fwd_op, bwd_op)
+    ppe.ops.register("test", fwd_op, bwd_op)
 
     class TestModule(torch.nn.Module):
         def forward(self, a):
@@ -45,6 +43,7 @@ def test_register():
     found_bwd_op = False
 
     from functorch.compile import make_boxed_func
+    from torch._dynamo.backends.common import aot_autograd
 
     # Detect the custom ops
     def fwd_compiler_fn(fx_module: torch.fx.GraphModule, _):
@@ -70,6 +69,7 @@ def test_register():
         bw_compiler=bwd_compiler_fn,
     )
     m = TestModule()
+    torch._dynamo.reset()
     module_opt = torch.compile(m, fullgraph=True, backend=aot_backend)
     shape = [1, 16, 2048, 128]
     x = torch.ones(shape, requires_grad=True)
