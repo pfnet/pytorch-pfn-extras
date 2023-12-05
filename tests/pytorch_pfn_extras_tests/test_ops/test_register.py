@@ -12,8 +12,8 @@ def _get_function_nodes(fx_module):
 
 
 @pytest.mark.skipif(
-    not ppe.requires("2.0.0") or sys.platform == "win32",
-    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
+    not ppe.requires("2.1.0") or sys.platform == "win32",
+    reason="torch custom ops only works for PyTorch>2.1 and linux",
 )
 def test_register():
     def test(a):
