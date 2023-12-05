@@ -206,7 +206,7 @@ class ForwardOnly(_Splitter):
         # besides the gradients.
         bwd_graph = torch.fx.Graph()
         bwd_graph.output(
-            outputs[num_fwd_outputs:num_fwd_outputs + len(primal_inputs)]
+            outputs[num_fwd_outputs : num_fwd_outputs + len(primal_inputs)]
         )
         bwd_module = torch.fx.GraphModule(joint_module, bwd_graph)
         return (fwd_module, bwd_module)
