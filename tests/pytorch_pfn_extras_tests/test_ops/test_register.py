@@ -1,16 +1,15 @@
 from typing import List
 
 import torch
-
 from functorch.compile import make_boxed_func
+from pytorch_pfn_extras import ops
 from torch._dynamo.backends.common import aot_autograd
 
 
-from pytorch_pfn_extras import ops
-
-
 def _get_function_nodes(fx_module: torch.fx.GraphModule) -> List[torch.fx.Node]:
-    return [node for node in fx_module.graph.nodes if node.op == "call_function"]
+    return [
+        node for node in fx_module.graph.nodes if node.op == "call_function"
+    ]
 
 
 def test_register():
@@ -27,7 +26,9 @@ def test_register():
         return torch.empty_like(a)
 
     fwd_op = ops.OpDesc(test, test_meta, "(Tensor a) -> Tensor")
-    bwd_op = ops.OpDesc(test_bwd, test_bwd_meta, "(Tensor g, Tensor a) -> Tensor")
+    bwd_op = ops.OpDesc(
+        test_bwd, test_bwd_meta, "(Tensor g, Tensor a) -> Tensor"
+    )
     ops.register("test", fwd_op, bwd_op)
 
     class TestModule(torch.nn.Module):
@@ -43,14 +44,18 @@ def test_register():
         nonlocal found_fwd_op
         function_nodes = _get_function_nodes(fx_module)
         assert len(function_nodes) == 1
-        found_fwd_op = function_nodes[0].target is torch.ops.ppe.test_fwd.default
+        found_fwd_op = (
+            function_nodes[0].target is torch.ops.ppe.test_fwd.default
+        )
         return make_boxed_func(fx_module)
 
     def bwd_compiler_fn(fx_module: torch.fx.GraphModule, _):
         nonlocal found_bwd_op
         function_nodes = _get_function_nodes(fx_module)
         assert len(function_nodes) == 1
-        found_bwd_op = function_nodes[0].target is torch.ops.ppe.test_bwd.default
+        found_bwd_op = (
+            function_nodes[0].target is torch.ops.ppe.test_bwd.default
+        )
         return make_boxed_func(fx_module)
 
     aot_backend = aot_autograd(  # type: ignore[no-untyped-call]

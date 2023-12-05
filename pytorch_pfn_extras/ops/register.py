@@ -1,8 +1,6 @@
 from typing import Any, Callable
 
-
 import torch
-
 
 # Libraries used to store the ops definitions
 library = torch.library.Library("ppe", "DEF")
@@ -12,7 +10,7 @@ library_meta_impl = torch.library.Library("ppe", "IMPL", "Meta")
 
 
 class OpDesc:
-    """ Metadata to register an op to torch.library.
+    """Metadata to register an op to torch.library.
 
     Attributed:
         op (callable): code to be executed in the forward/backward of the op.
@@ -21,6 +19,7 @@ class OpDesc:
         signature (str): Arguments and return type of the function
             ``"(Tensor a, Tensor b) -> Tensor[]"``.
     """
+
     def __init__(
         self,
         op: Callable[..., Any],
@@ -37,24 +36,26 @@ def _get_autograd(name: str):
         @staticmethod
         def forward(ctx, *args, **kwargs):
             ctx.save_for_backward(*args)
-            op_h = torch._C._dispatch_find_schema_or_throw(f"ppe::{name}_fwd", "")
+            op_h = torch._C._dispatch_find_schema_or_throw(
+                f"ppe::{name}_fwd", ""
+            )
             return torch._C._dispatch_call_boxed(op_h, *args, **kwargs)
 
         @staticmethod
         def backward(ctx, *args):
             i_args = tuple(ctx.saved_tensors)
-            op_h = torch._C._dispatch_find_schema_or_throw(f"ppe::{name}_bwd", "")
+            op_h = torch._C._dispatch_find_schema_or_throw(
+                f"ppe::{name}_bwd", ""
+            )
             return torch._C._dispatch_call_boxed(op_h, *(args + i_args), **{})
 
-    def run(*args):
-        return RunBackward.apply(*args)
-
-    # return run
     return RunBackward.apply
 
 
 def register(
-    name: str, fwd_op: OpDesc, bwd_op: OpDesc,
+    name: str,
+    fwd_op: OpDesc,
+    bwd_op: OpDesc,
 ) -> None:
     """
     Register a custom op under ``torch.ops.ppe.name``
