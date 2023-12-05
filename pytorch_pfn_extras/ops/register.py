@@ -1,6 +1,7 @@
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 import torch
+import torch.library
 
 # Libraries used to store the ops definitions
 library = torch.library.Library("ppe", "DEF")
@@ -31,10 +32,10 @@ class OpDesc:
         self.signature = signature
 
 
-def _get_autograd(name: str):
+def _get_autograd(name: str) -> Callable[..., Any]:
     class RunBackward(torch.autograd.Function):
         @staticmethod
-        def forward(ctx, *args, **kwargs):
+        def forward(ctx, *args, **kwargs):  # type: ignore[no-untyped-def]
             ctx.save_for_backward(*args)
             op_h = torch._C._dispatch_find_schema_or_throw(
                 f"ppe::{name}_fwd", ""
@@ -42,14 +43,14 @@ def _get_autograd(name: str):
             return torch._C._dispatch_call_boxed(op_h, *args, **kwargs)
 
         @staticmethod
-        def backward(ctx, *args):
+        def backward(ctx, *args):  # type: ignore[no-untyped-def]
             i_args = tuple(ctx.saved_tensors)
             op_h = torch._C._dispatch_find_schema_or_throw(
                 f"ppe::{name}_bwd", ""
             )
             return torch._C._dispatch_call_boxed(op_h, *(args + i_args), **{})
 
-    return RunBackward.apply
+    return cast(Callable[..., Any], RunBackward.apply)
 
 
 def register(
@@ -76,7 +77,7 @@ def register(
     for s in (function_sig, function_fwd_sig, function_bwd_sig):
         library.define(s)
 
-    def function(*args):
+    def function(*args):  # type: ignore[no-untyped-def]
         op_h = torch._C._dispatch_find_schema_or_throw(f"ppe::{name}_fwd", "")
         return torch._C._dispatch_call_boxed(op_h, *args, **{})
 

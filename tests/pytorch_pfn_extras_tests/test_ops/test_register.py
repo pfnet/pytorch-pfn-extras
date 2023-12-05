@@ -1,17 +1,22 @@
-from typing import List
+import sys
 
+import pytest
+import pytorch_pfn_extras as ppe
 import torch
-from functorch.compile import make_boxed_func
 from pytorch_pfn_extras import ops
 from torch._dynamo.backends.common import aot_autograd
 
 
-def _get_function_nodes(fx_module: torch.fx.GraphModule) -> List[torch.fx.Node]:
+def _get_function_nodes(fx_module):
     return [
         node for node in fx_module.graph.nodes if node.op == "call_function"
     ]
 
 
+@pytest.mark.skipif(
+    not ppe.requires("2.0.0") or sys.platform == "win32",
+    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
+)
 def test_register():
     def test(a):
         return a * 2
@@ -38,6 +43,8 @@ def test_register():
 
     found_fwd_op = False
     found_bwd_op = False
+
+    from functorch.compile import make_boxed_func
 
     # Detect the custom ops
     def fwd_compiler_fn(fx_module: torch.fx.GraphModule, _):
