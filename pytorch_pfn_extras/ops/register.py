@@ -63,14 +63,16 @@ def register(
 
     The function appears as a primitive op in the forward and backward
     ``torch.fx.Graph``s after compiling torch code with `aot_autograd` backend.
+    Note that for backward functions, all the arguments of the backward pass
+    together with the forward arguments are passed to it. This means if forward had
+    ``fwd_op(x, y)`` ``x,y`` arguments, the custom bwd_op needs to have a
+    signature like``bwd_op(grad_output, x, y)``
 
     Arguments:
         name (str): name of the op, shows how it is registered in ``torch.ops.ppe``.
-        fwd_op (callable): code that is executed in the forward pass
-        bwd_op (callable): code that is executed in the backward pass
+        fwd_op (ppe.ops.OpDesc): code that is executed in the forward pass
+        bwd_op (ppe.ops.OpDesc): code that is executed in the backward pass
     """
-    # TODO make it possible to pass the signatures in an argument
-    # TODO support multiple tensor returns
     function_sig = f"{name}{fwd_op.signature}"
     function_fwd_sig = f"{name}_fwd{fwd_op.signature}"
     function_bwd_sig = f"{name}_bwd{bwd_op.signature}"
