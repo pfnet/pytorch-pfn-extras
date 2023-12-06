@@ -205,8 +205,14 @@ class ForwardOnly(_Splitter):
         # forward pass. The outputs of the joint graph returns additional values
         # besides the gradients.
         bwd_graph = torch.fx.Graph()
-        bwd_graph.output(
-            outputs[num_fwd_outputs : num_fwd_outputs + len(primal_inputs)]
-        )
+        # Needs to create one gradient per each input element
+        bwd_outs = []
+        for i in primal_inputs:
+            bwd_outs.append(
+                bwd_graph.call_function(
+                    torch.ones_like, (i.meta.get("tensor_meta").shape,)
+                )
+            )
+        bwd_graph.output(tuple(bwd_outs))
         bwd_module = torch.fx.GraphModule(joint_module, bwd_graph)
         return (fwd_module, bwd_module)
