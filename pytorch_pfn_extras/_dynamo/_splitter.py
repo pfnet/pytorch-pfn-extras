@@ -207,10 +207,10 @@ class ForwardOnly(_Splitter):
         bwd_graph = torch.fx.Graph()
         # Needs to create one gradient per each input element
         bwd_outs = []
-        for i in primal_inputs:
+        for i_node in primal_inputs:
             bwd_outs.append(
                 bwd_graph.call_function(
-                    torch.ones, (i.meta.get("tensor_meta").shape,)
+                    torch.ones, (i_node.meta.get("tensor_meta").shape,)
                 )
             )
         bwd_graph.output(tuple(bwd_outs))
