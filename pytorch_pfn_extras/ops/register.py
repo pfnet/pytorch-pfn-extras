@@ -13,7 +13,7 @@ library_meta_impl = torch.library.Library("ppe", "IMPL", "Meta")
 class OpDesc:
     """Metadata to register an op to torch.library.
 
-    Attributed:
+    Attributes:
         op (callable): code to be executed in the forward/backward of the op.
         meta (callable): function to perform shape inference for forward/backward
             passes.
