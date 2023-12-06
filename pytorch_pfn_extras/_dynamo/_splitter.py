@@ -210,7 +210,7 @@ class ForwardOnly(_Splitter):
         for i in primal_inputs:
             bwd_outs.append(
                 bwd_graph.call_function(
-                    torch.ones_like, (i.meta.get("tensor_meta").shape,)
+                    torch.ones, (i.meta.get("tensor_meta").shape,)
                 )
             )
         bwd_graph.output(tuple(bwd_outs))
