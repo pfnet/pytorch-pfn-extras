@@ -210,7 +210,7 @@ class ForwardOnly(_Splitter):
         for i_node in primal_inputs:
             bwd_outs.append(
                 bwd_graph.call_function(
-                    torch.ones, (i_node.meta.get("tensor_meta").shape,)
+                    torch.zeros, (i_node.meta.get("tensor_meta").shape,)
                 )
             )
         bwd_graph.output(tuple(bwd_outs))
