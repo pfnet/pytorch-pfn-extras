@@ -347,6 +347,8 @@ trigger=(1, 'epoch'))
             saver_rank=saver_rank,
             savefun=savefun,
         )
+    else:
+        raise RuntimeError("`snapshot_mode` is unexpected.")
 
 
 def _always_true() -> bool:
@@ -630,7 +632,7 @@ class _ShardedSnapshot(_Snapshot):
     ) -> None:
         snapshot_dir = None if loaded_fn is None else os.path.dirname(loaded_fn)
         snapshot_dir_list: list[Optional[str]] = [None] * self._size
-        torch.distributed.all_gather_object(snapshot_dir_list, snapshot_dir)
+        torch.distributed.all_gather_object(snapshot_dir_list, snapshot_dir)  # type: ignore[no-untyped-call]
         assert all(
             x == snapshot_dir_list[0] for x in snapshot_dir_list
         ), "The target directory of autload is not identical between processes."
@@ -643,7 +645,7 @@ class _ShardedSnapshot(_Snapshot):
             print(complete_path)
             complete_path_is_exists = writer.fs.exists(complete_path)
             complete_path_is_exists_list: List[bool] = [False] * self._size
-            torch.distributed.all_gather_object(
+            torch.distributed.all_gather_object(  # type: ignore[no-untyped-call]
                 complete_path_is_exists_list, complete_path_is_exists
             )
             assert all(
