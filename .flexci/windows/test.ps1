@@ -56,7 +56,10 @@ if ($test -eq "torch110") {
 }
 RunOrDie python -V
 
-RunOrDie python -m pip list
+RunOrDie python -m pip 
+
+# Install
+RunOrDie python -m pip install -e .
 
 # Unit Test
 $Env:JUPYTER_PLATFORM_DIRS = "1"
