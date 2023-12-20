@@ -579,10 +579,11 @@ class _ShardedSnapshot(_Snapshot):
 
     This extension serializes the given object and stores it in the output directory.
 
-    When running in distributed mode, the saving is done simultaneously in 
-    all processes. ideal for cases where state_dict is sharded. 
+    When running in distributed mode, the saving is done simultaneously in
+    all processes. ideal for cases where state_dict is sharded.
     (e.g. FullyShardedDataParallel)
     """
+
     def __init__(
         self,
         target: Any = None,

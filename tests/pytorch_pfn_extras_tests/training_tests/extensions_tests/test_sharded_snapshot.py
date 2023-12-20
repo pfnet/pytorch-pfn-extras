@@ -1,21 +1,16 @@
 import os
+import sys
 from glob import glob
 from io import BytesIO
 
 import py
 import pytest
+import pytorch_pfn_extras as ppe
 import torch
 import torch.distributed
+import torch.distributed.fsdp as fsdp
 from pytorch_pfn_extras import distributed, training
 from pytorch_pfn_extras.training.extensions import SnapshotMode, snapshot
-from torch.distributed.fsdp import (
-    FullOptimStateDictConfig,
-    FullStateDictConfig,
-    FullyShardedDataParallel,
-    ShardedOptimStateDictConfig,
-    ShardedStateDictConfig,
-    StateDictType,
-)
 
 
 def _init_distributed(use_cuda):
@@ -34,7 +29,7 @@ def _init_distributed(use_cuda):
 
 def _create_fsdp_model(device):
     model = torch.nn.Linear(2**13 + 1, 3)
-    model = FullyShardedDataParallel(
+    model = fsdp.FullyShardedDataParallel(
         model, device_id=device, sync_module_states=False
     )
     optimizer = torch.optim.SGD(model.parameters(), momentum=0.9, lr=1.0)
@@ -55,6 +50,10 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
         assert actuary_io.read() == expected_io.read()
 
 
+@pytest.mark.skipif(
+    not ppe.requires("2.0.0") or sys.platform == "win32",
+    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -62,56 +61,64 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
     [
         (
             (
-                StateDictType.FULL_STATE_DICT,
-                FullStateDictConfig(rank0_only=False),
-                FullOptimStateDictConfig(rank0_only=False),
+                fsdp.StateDictType.FULL_STATE_DICT,
+                fsdp.FullStateDictConfig(rank0_only=False),
+                fsdp.FullOptimStateDictConfig(rank0_only=False),
             ),
             (
-                StateDictType.FULL_STATE_DICT,
-                FullStateDictConfig(rank0_only=False),
-                FullOptimStateDictConfig(rank0_only=False),
+                fsdp.StateDictType.FULL_STATE_DICT,
+                fsdp.FullStateDictConfig(rank0_only=False),
+                fsdp.FullOptimStateDictConfig(rank0_only=False),
             ),
         ),
         (
             (
-                StateDictType.FULL_STATE_DICT,
-                FullStateDictConfig(rank0_only=False),
-                FullOptimStateDictConfig(rank0_only=False),
+                fsdp.StateDictType.FULL_STATE_DICT,
+                fsdp.FullStateDictConfig(rank0_only=False),
+                fsdp.FullOptimStateDictConfig(rank0_only=False),
             ),
             (
-                StateDictType.SHARDED_STATE_DICT,
-                ShardedStateDictConfig(offload_to_cpu=True, use_dtensor=False),
-                ShardedOptimStateDictConfig(
+                fsdp.StateDictType.SHARDED_STATE_DICT,
+                fsdp.ShardedStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+                fsdp.ShardedOptimStateDictConfig(
                     offload_to_cpu=True, use_dtensor=False
                 ),
             ),
         ),
         (
             (
-                StateDictType.SHARDED_STATE_DICT,
-                ShardedStateDictConfig(offload_to_cpu=True, use_dtensor=False),
-                ShardedOptimStateDictConfig(
+                fsdp.StateDictType.SHARDED_STATE_DICT,
+                fsdp.ShardedStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+                fsdp.ShardedOptimStateDictConfig(
                     offload_to_cpu=True, use_dtensor=False
                 ),
             ),
             (
-                StateDictType.FULL_STATE_DICT,
-                FullStateDictConfig(rank0_only=False),
-                FullOptimStateDictConfig(rank0_only=False),
+                fsdp.StateDictType.FULL_STATE_DICT,
+                fsdp.FullStateDictConfig(rank0_only=False),
+                fsdp.FullOptimStateDictConfig(rank0_only=False),
             ),
         ),
         (
             (
-                StateDictType.SHARDED_STATE_DICT,
-                ShardedStateDictConfig(offload_to_cpu=True, use_dtensor=False),
-                ShardedOptimStateDictConfig(
+                fsdp.StateDictType.SHARDED_STATE_DICT,
+                fsdp.ShardedStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+                fsdp.ShardedOptimStateDictConfig(
                     offload_to_cpu=True, use_dtensor=False
                 ),
             ),
             (
-                StateDictType.SHARDED_STATE_DICT,
-                ShardedStateDictConfig(offload_to_cpu=True, use_dtensor=False),
-                ShardedOptimStateDictConfig(
+                fsdp.StateDictType.SHARDED_STATE_DICT,
+                fsdp.ShardedStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+                fsdp.ShardedOptimStateDictConfig(
                     offload_to_cpu=True, use_dtensor=False
                 ),
             ),
@@ -121,24 +128,28 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
 @pytest.mark.filterwarnings("ignore::UserWarning")
 def test_sharded_state_dict(
     expected_state_dict_type: tuple[
-        StateDictType, FullStateDictConfig, FullOptimStateDictConfig
+        fsdp.StateDictType,
+        fsdp.FullStateDictConfig,
+        fsdp.FullOptimStateDictConfig,
     ],
     actuary_state_dict_type: tuple[
-        StateDictType, FullStateDictConfig, FullOptimStateDictConfig
+        fsdp.StateDictType,
+        fsdp.FullStateDictConfig,
+        fsdp.FullOptimStateDictConfig,
     ],
 ):
     size, rank, local_rank, device = _init_distributed(True)
 
     # create actuary state dict
     model, optimizer = _create_fsdp_model(device)
-    FullyShardedDataParallel.set_state_dict_type(
+    fsdp.FullyShardedDataParallel.set_state_dict_type(
         model,
         *actuary_state_dict_type,
     )
     model_state_dict = model.state_dict()
     optimizer_state_dict = optimizer.state_dict()
     actuary_model, actuary_optimizer = _create_fsdp_model(device)
-    FullyShardedDataParallel.set_state_dict_type(
+    fsdp.FullyShardedDataParallel.set_state_dict_type(
         actuary_model,
         *actuary_state_dict_type,
     )
@@ -146,51 +157,55 @@ def test_sharded_state_dict(
     actuary_optimizer.load_state_dict(optimizer_state_dict)
 
     # create expected state dict
-    FullyShardedDataParallel.set_state_dict_type(
+    fsdp.FullyShardedDataParallel.set_state_dict_type(
         model, *expected_state_dict_type
     )
     model_state_dict = model.state_dict()
-    optimizer_state_dict = FullyShardedDataParallel.optim_state_dict(
+    optimizer_state_dict = fsdp.FullyShardedDataParallel.optim_state_dict(
         model,
         optimizer,
         optim_state_dict=optimizer.state_dict(),
     )
 
     expected_model, expected_optimizer = _create_fsdp_model(device)
-    FullyShardedDataParallel.set_state_dict_type(
+    fsdp.FullyShardedDataParallel.set_state_dict_type(
         expected_model, *expected_state_dict_type
     )
     expected_model.load_state_dict(model_state_dict)
     expected_optimizer.load_state_dict(
-        FullyShardedDataParallel.optim_state_dict_to_load(
+        fsdp.FullyShardedDataParallel.optim_state_dict_to_load(
             expected_model, expected_optimizer, optimizer_state_dict
         )
     )
 
     # Full state dict check
     check_state_dict_type = (
-        StateDictType.FULL_STATE_DICT,
-        FullStateDictConfig(rank0_only=False),
-        FullOptimStateDictConfig(rank0_only=False),
+        fsdp.StateDictType.FULL_STATE_DICT,
+        fsdp.FullStateDictConfig(rank0_only=False),
+        fsdp.FullOptimStateDictConfig(rank0_only=False),
     )
-    FullyShardedDataParallel.set_state_dict_type(
+    fsdp.FullyShardedDataParallel.set_state_dict_type(
         actuary_model, *check_state_dict_type
     )
     actuary_model_state_dict = actuary_model.state_dict()
-    actuary_optimizer_state_dict = FullyShardedDataParallel.optim_state_dict(
-        actuary_model,
-        actuary_optimizer,
-        optim_state_dict=actuary_optimizer.state_dict(),
+    actuary_optimizer_state_dict = (
+        fsdp.FullyShardedDataParallel.optim_state_dict(
+            actuary_model,
+            actuary_optimizer,
+            optim_state_dict=actuary_optimizer.state_dict(),
+        )
     )
 
-    FullyShardedDataParallel.set_state_dict_type(
+    fsdp.FullyShardedDataParallel.set_state_dict_type(
         expected_model, *check_state_dict_type
     )
     expected_model_state_dict = expected_model.state_dict()
-    expected_optimizer_state_dict = FullyShardedDataParallel.optim_state_dict(
-        expected_model,
-        expected_optimizer,
-        optim_state_dict=expected_optimizer.state_dict(),
+    expected_optimizer_state_dict = (
+        fsdp.FullyShardedDataParallel.optim_state_dict(
+            expected_model,
+            expected_optimizer,
+            optim_state_dict=expected_optimizer.state_dict(),
+        )
     )
 
     _assert_state_dict_is_eq(
@@ -202,28 +217,34 @@ def test_sharded_state_dict(
 
     # sharded state dict check
     check_state_dict_type = (
-        StateDictType.SHARDED_STATE_DICT,
-        ShardedStateDictConfig(offload_to_cpu=True, use_dtensor=False),
-        ShardedOptimStateDictConfig(offload_to_cpu=True, use_dtensor=False),
+        fsdp.StateDictType.SHARDED_STATE_DICT,
+        fsdp.ShardedStateDictConfig(offload_to_cpu=True, use_dtensor=False),
+        fsdp.ShardedOptimStateDictConfig(
+            offload_to_cpu=True, use_dtensor=False
+        ),
     )
-    FullyShardedDataParallel.set_state_dict_type(
+    fsdp.FullyShardedDataParallel.set_state_dict_type(
         actuary_model, *check_state_dict_type
     )
     actuary_model_state_dict = actuary_model.state_dict()
-    actuary_optimizer_state_dict = FullyShardedDataParallel.optim_state_dict(
-        actuary_model,
-        actuary_optimizer,
-        optim_state_dict=actuary_optimizer.state_dict(),
+    actuary_optimizer_state_dict = (
+        fsdp.FullyShardedDataParallel.optim_state_dict(
+            actuary_model,
+            actuary_optimizer,
+            optim_state_dict=actuary_optimizer.state_dict(),
+        )
     )
 
-    FullyShardedDataParallel.set_state_dict_type(
+    fsdp.FullyShardedDataParallel.set_state_dict_type(
         expected_model, *check_state_dict_type
     )
     expected_model_state_dict = expected_model.state_dict()
-    expected_optimizer_state_dict = FullyShardedDataParallel.optim_state_dict(
-        expected_model,
-        expected_optimizer,
-        optim_state_dict=expected_optimizer.state_dict(),
+    expected_optimizer_state_dict = (
+        fsdp.FullyShardedDataParallel.optim_state_dict(
+            expected_model,
+            expected_optimizer,
+            optim_state_dict=expected_optimizer.state_dict(),
+        )
     )
 
     _assert_state_dict_is_eq(
@@ -260,6 +281,10 @@ def get_trainer(path, device):
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("2.0.0") or sys.platform == "win32",
+    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 def test_sharded_snapshot(mpi_tmp_path):
@@ -289,6 +314,10 @@ def test_sharded_snapshot(mpi_tmp_path):
     assert os.path.exists(complete_path)
 
 
+@pytest.mark.skipif(
+    not ppe.requires("2.0.0") or sys.platform == "win32",
+    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 def test_sharded_snapshot_cleanup(mpi_tmp_path):
@@ -318,6 +347,10 @@ def test_sharded_snapshot_cleanup(mpi_tmp_path):
     assert len(found) <= 3
 
 
+@pytest.mark.skipif(
+    not ppe.requires("2.0.0") or sys.platform == "win32",
+    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 def test_sharded_snapshot_autoload(mpi_tmp_path):
