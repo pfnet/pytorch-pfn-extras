@@ -2,6 +2,7 @@ from pytorch_pfn_extras.training.extensions import snapshot_writers  # NOQA
 from pytorch_pfn_extras.training.extensions import util as _util
 from pytorch_pfn_extras.training.extensions._snapshot import snapshot  # NOQA
 from pytorch_pfn_extras.training.extensions._snapshot import (  # NOQA
+    SnapshotMode,
     snapshot_object,
 )
 from pytorch_pfn_extras.training.extensions.best_value import BestValue  # NOQA
