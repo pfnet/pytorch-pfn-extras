@@ -336,7 +336,7 @@ trigger=(1, 'epoch'))
 
     elif snapshot_mode == SnapshotMode.SHARDED:
         assert saver_rank is not None
-        return _SharadedSnapshot(
+        return _ShardedSnapshot(
             target=target,
             condition=condition,
             writer=writer,
@@ -572,7 +572,7 @@ class _DistributedSnapshot(_Snapshot):
             torch.distributed.barrier()  # type: ignore
 
 
-class _SharadedSnapshot(_Snapshot):
+class _ShardedSnapshot(_Snapshot):
     def __init__(
         self,
         target: Any = None,
