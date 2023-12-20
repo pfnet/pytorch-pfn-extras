@@ -14,42 +14,42 @@ if ($test -eq "torch110") {
     ActivateCUDA 11.8
     ActivatePython 3.8
     RunOrDie python -m pip install -U pip "setuptools<59.6"
-    RunOrDieWithRetry 3 python -m pip install -e .[test] torch==1.10.* torchvision==0.11.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install -r ./tests/requirements.txt torch==1.10.* torchvision==0.11.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
 
 } elseif ($test -eq "torch111") {
     # PyTorch 1.11 + Python 3.9
     ActivateCUDA 11.3
     ActivatePython 3.9
     RunOrDie python -m pip install -U pip "setuptools<59.6"
-    RunOrDieWithRetry 3 python -m pip install -e .[test] torch==1.11.* torchvision==0.12.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install -r ./tests/requirements.txt torch==1.11.* torchvision==0.12.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
 
 } elseif ($test -eq "torch112") {
     # PyTorch 1.12 + Python 3.10
     ActivateCUDA 11.3
     ActivatePython 3.10
     RunOrDie python -m pip install -U pip "setuptools<59.6"
-    RunOrDieWithRetry 3 python -m pip install -e .[test] torch==1.12.* torchvision==0.13.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install -r ./tests/requirements.txt torch==1.12.* torchvision==0.13.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
 
 } elseif ($test -eq "torch113") {
     # PyTorch 1.13 + Python 3.10
     ActivateCUDA 11.7
     ActivatePython 3.10
     RunOrDie python -m pip install -U pip "setuptools<59.6"
-    RunOrDieWithRetry 3 python -m pip install -e .[test] torch==1.13.* torchvision==0.14.* -f https://download.pytorch.org/whl/cu117/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install -r ./tests/requirements.txt torch==1.13.* torchvision==0.14.* -f https://download.pytorch.org/whl/cu117/torch_stable.html
 
 } elseif ($test -eq "torch200") {
     # PyTorch 2.0 + Python 3.10
     ActivateCUDA 11.7
     ActivatePython 3.10
     RunOrDie python -m pip install -U pip "setuptools<59.6"
-    RunOrDieWithRetry 3 python -m pip install -e .[test] torch==2.0.* torchvision==0.15.* -f https://download.pytorch.org/whl/cu117/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install -r ./tests/requirements.txt torch==2.0.* torchvision==0.15.* -f https://download.pytorch.org/whl/cu117/torch_stable.html
 
 } elseif ($test -eq "torch201") {
     # PyTorch 2.1 + Python 3.10
     ActivateCUDA 11.8
     ActivatePython 3.10
     RunOrDie python -m pip install -U pip "setuptools<59.6"
-    RunOrDieWithRetry 3 python -m pip install torch==2.1.* torchvision==0.16.* -f https://download.pytorch.org/whl/cu118/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install -r ./tests/requirements.txt torch==2.1.* torchvision==0.16.* -f https://download.pytorch.org/whl/cu118/torch_stable.html
 
 } else {
     throw "Unsupported test variant: $test"
