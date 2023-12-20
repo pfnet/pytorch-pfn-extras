@@ -8,9 +8,8 @@ PWD := $(realpath $(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
 PY := python
 PIP := $(PY) -m pip
 
-PROCESS_NUM := 2
-MPI_OUTPUT_FILE_DIR := $(realpath $(shell mktemp -d))
-MPI_OPTIONS := --allow-run-as-root -n $(PROCESS_NUM) --output-filename $(MPI_OUTPUT_FILE_DIR) -x TORCH_DISTRIBUTED_DEBUG=DETAIL
+PROCESS_NUM = 2
+MPI_OUTPUT_FILE_DIR = $(realpath $(shell mktemp -d))
 
 .PHONY: format
 format: ## Format the Python code.	
@@ -32,9 +31,10 @@ cputest: ## Run all tests except for ones requiring GPU.
 
 .PHONY: mpitest
 mpitest: ## Run all tests except for ones requiring GPU.
-	mpirun $(MPI_OPTIONS) $(PY) -m pytest -m mpi tests > /dev/null 2> /dev/null &&:; \
+	mpi_output_file_dir=$(MPI_OUTPUT_FILE_DIR); \
+	mpirun --allow-run-as-root -n $(PROCESS_NUM) --output-filename $$mpi_output_file_dir -x TORCH_DISTRIBUTED_DEBUG=DETAIL $(PY) -m pytest -m mpi tests > /dev/null 2> /dev/null &&:; \
 	ret=$$?; \
-	for i in $$(seq 0 $$(($(PROCESS_NUM) - 1))); do echo ========= MPI process $$i =========; cat $(MPI_OUTPUT_FILE_DIR)/1/rank.$$i/stdout; cat $(MPI_OUTPUT_FILE_DIR)/1/rank.$$i/stderr; done; \
+	for i in $$(seq 0 $$(($(PROCESS_NUM) - 1))); do echo ========= MPI process $$i =========; cat $$mpi_output_file_dir/1/rank.$$i/stdout; cat $$mpi_output_file_dir/1/rank.$$i/stderr; done; \
 	[ $$ret = 0 ]
 
 .PHONY: example_lint
