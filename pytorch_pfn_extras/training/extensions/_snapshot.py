@@ -631,7 +631,7 @@ class _ShardedSnapshot(_Snapshot):
         self, manager: ExtensionsManagerProtocol, loaded_fn: Optional[str]
     ) -> None:
         snapshot_dir = None if loaded_fn is None else os.path.dirname(loaded_fn)
-        snapshot_dir_list: list[Optional[str]] = [None] * self._size
+        snapshot_dir_list: List[Optional[str]] = [None] * self._size
         torch.distributed.all_gather_object(snapshot_dir_list, snapshot_dir)  # type: ignore[no-untyped-call]
         assert all(
             x == snapshot_dir_list[0] for x in snapshot_dir_list
