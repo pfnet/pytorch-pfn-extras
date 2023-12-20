@@ -57,7 +57,7 @@ if ($test -eq "torch110") {
 RunOrDie python -V
 
 # Install common requirements
-RunOrDie python -m pip install -r tests/requirements.txt
+RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda102
 RunOrDie python -m pip list
 
 # Install
