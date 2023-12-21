@@ -2,11 +2,6 @@
 
 TARGET="${1}"
 
-TEST_PIP_PACKAGES="
-matplotlib tensorboard ipython ipywidgets pandas optuna onnxruntime
-pytest flake8 pysen[lint] pytest-cov slack_sdk
-"
-
 docker_build_and_push() {
     IMAGE_NAME="${PPE_FLEXCI_IMAGE_NAME}:${TARGET}"
 
@@ -17,13 +12,12 @@ docker_build_and_push() {
         CACHE_IMAGE_NAME="${IMAGE_NAME}"
     fi
 
-    pushd "$(dirname ${0})"
     DOCKER_BUILDKIT=1 docker build \
         -t "${IMAGE_NAME}" \
+        -f "$(dirname ${0})/Dockerfile" \
         --cache-from "${CACHE_IMAGE_NAME}" \
         --build-arg BUILDKIT_INLINE_CACHE=1 \
         "$@" .
-    popd
 
     if [ "${PPE_FLEXCI_IMAGE_PUSH}" = "0" ]; then
       echo "Skipping docker push."
@@ -36,46 +30,55 @@ case "${TARGET}" in
     torch110 )
         # PyTorch 1.10 + Python 3.8
         docker_build_and_push \
-            --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
+            --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu20.04" \
             --build-arg python_version="3.8.15" \
             --build-arg pip_install_torch_args="torch==1.10.* torchvision==0.11.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda11x pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
+            --build-arg pip_install_dep_args="cupy-cuda11x"
         ;;
 
     torch111 )
         # PyTorch 1.11 + Python 3.9
         docker_build_and_push \
-            --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
+            --build-arg base_image="nvidia/cuda:11.5.2-cudnn8-devel-ubuntu20.04" \
             --build-arg python_version="3.9.7" \
-            --build-arg pip_install_torch_args="torch==1.11.* torchvision==0.12.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda11x pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
+            --build-arg pip_install_torch_args="torch==1.11.* torchvision==0.12.* -f https://download.pytorch.org/whl/cu115/torch_stable.html" \
+            --build-arg pip_install_dep_args="cupy-cuda11x"
         ;;
 
     torch112 )
         # PyTorch 1.12 + Python 3.10
         docker_build_and_push \
-            --build-arg base_image="nvidia/cuda:11.3.1-cudnn8-devel-ubuntu18.04" \
+            --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04" \
             --build-arg python_version="3.10.5" \
-            --build-arg pip_install_torch_args="torch==1.12.* torchvision==0.13.* -f https://download.pytorch.org/whl/cu113/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda11x pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
+            --build-arg pip_install_torch_args="torch==1.12.* torchvision==0.13.* -f https://download.pytorch.org/whl/cu117/torch_stable.html" \
+            --build-arg pip_install_dep_args="cupy-cuda11x"
         ;;
 
     torch113 )
         # PyTorch 1.13 + Python 3.10
         docker_build_and_push \
-            --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu18.04" \
+            --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04" \
             --build-arg python_version="3.10.5" \
             --build-arg pip_install_torch_args="torch==1.13.* torchvision==0.14.* -f https://download.pytorch.org/whl/cu117/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda11x pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
+            --build-arg pip_install_dep_args="cupy-cuda11x"
         ;;
 
     torch200 )
         # PyTorch 2.0 + Python 3.10
         docker_build_and_push \
-            --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu18.04" \
+            --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04" \
             --build-arg python_version="3.10.5" \
             --build-arg pip_install_torch_args="torch==2.0.* torchvision==0.15.* -f https://download.pytorch.org/whl/cu117/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda11x pytorch-ignite onnx ${TEST_PIP_PACKAGES}"
+            --build-arg pip_install_dep_args="cupy-cuda11x"
+        ;;
+
+    torch201 )
+        # PyTorch 2.1 + Python 3.11
+        docker_build_and_push \
+            --build-arg base_image="nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04" \
+            --build-arg python_version="3.10.5" \
+            --build-arg pip_install_torch_args="torch==2.1.* torchvision==0.16.* -f https://download.pytorch.org/whl/cu118/torch_stable.html" \
+            --build-arg pip_install_dep_args="cupy-cuda11x"
         ;;
 
     * )

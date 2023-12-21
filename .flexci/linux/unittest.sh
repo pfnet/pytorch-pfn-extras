@@ -16,6 +16,9 @@ JUPYTER_PLATFORM_DIRS=1 \
 python -m pytest --cov-report=html --cov pytorch_pfn_extras .
 popd
 
+# Run unit tests with mpi
+make mpitest
+
 # Run examples
 if [ -d mnist_raw ]; then
     mkdir -p data/MNIST/raw
@@ -40,6 +43,14 @@ pushd example
 mkdir -p comp_dump_cpu
 python mnist_trainer.py --device cpu --epochs 2 --batch-size 1024 --deterministic --compare-dump comp_dump_cpu
 CUBLAS_WORKSPACE_CONFIG=:4096:8 python mnist_trainer.py --device cuda --epochs 2 --batch-size 1024 --deterministic --compare-with comp_dump_cpu
+popd
+
+# For docs
+pushd docs/source/_example/
+python quick_start_trainer.py
+python quick_start_log.py
+python quick_start_progress.py
+python quick_start_save.py
 popd
 
 # Publish coverage report

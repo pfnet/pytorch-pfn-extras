@@ -48,6 +48,9 @@ from pytorch_pfn_extras.training.extensions.slack import (  # NOQA
     Slack,
     SlackWebhook,
 )
+from pytorch_pfn_extras.training.extensions.timeline_trace import (  # NOQA
+    TimelineTrace,
+)
 from pytorch_pfn_extras.training.extensions.value_observation import (  # NOQA
     observe_lr,
     observe_value,

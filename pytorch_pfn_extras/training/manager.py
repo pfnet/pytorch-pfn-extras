@@ -121,6 +121,7 @@ class _BaseExtensionsManager:
         stop_trigger: "trigger_module.TriggerLike" = None,
         transform_model: _TransformModel = default_transform_model,
         enable_profile: bool = False,
+        enable_trace: bool = False,
         state_objects: Dict[str, StateObjectProtocol] = _default_state_objects,
     ) -> None:
         if extensions is None:
@@ -183,6 +184,7 @@ class _BaseExtensionsManager:
             self.extend(ext)
 
         self._enable_profile = enable_profile
+        self._enable_trace = enable_trace
         self._state_objects = state_objects
         # Initialize the writer
         self.writer.initialize(self.out)
@@ -444,16 +446,17 @@ class _BaseExtensionsManager:
                     to_run.append((name, entry.extension))
                 else:
                     with record(
-                        f"pytorch_pfn_extras.training.ExtensionsManager"
+                        f"ppe.training.ExtensionsManager"
                         f".run_extensions:{name}",
                         enable=self._enable_profile,
+                        trace=self._enable_trace,
                     ):
                         entry.extension(self)
         for name, extension in to_run:
             with record(
-                f"pytorch_pfn_extras.training.ExtensionsManager"
-                f".run_extensions:{name}",
+                f"ppe.training.ExtensionsManager.run_extensions:{name}",
                 enable=self._enable_profile,
+                trace=self._enable_trace,
             ):
                 extension(self)
         self._model_available = True
@@ -578,6 +581,8 @@ class ExtensionsManager(_BaseExtensionsManager):
             extensions to write data to custom filesystems.
         enable_profile (bool): Flag to enable/disable profiling of iterations.
             Default is `False`.
+        enable_trace (bool): Flag to enable/disable tracing of iterations.
+            Default is `False`.
     """
 
     def __init__(
@@ -595,6 +600,7 @@ class ExtensionsManager(_BaseExtensionsManager):
         writer: Optional[writing.Writer] = None,
         transform_model: _TransformModel = lambda n, x: x,
         enable_profile: bool = False,
+        enable_trace: bool = False,
         state_objects: Dict[str, StateObjectProtocol] = _default_state_objects,
     ) -> None:
         super().__init__(
@@ -607,6 +613,7 @@ class ExtensionsManager(_BaseExtensionsManager):
             stop_trigger,
             transform_model,
             enable_profile,
+            enable_trace,
             state_objects,
         )
         if iters_per_epoch < 1:
@@ -686,6 +693,8 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             extensions to write data to custom filesystems.
         enable_profile (bool): Flag to enable/disable profiling of iterations.
             Default is `False`.
+        enable_trace (bool): Flag to enable/disable tracing of iterations.
+            Default is `False`.
     """
 
     def __init__(
@@ -701,6 +710,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
         out_dir: str = "result",
         writer: Optional[writing.Writer] = None,
         enable_profile: bool = False,
+        enable_trace: bool = False,
         state_objects: Dict[str, StateObjectProtocol] = _default_state_objects,
     ) -> None:
         import ignite
@@ -722,6 +732,7 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
             out_dir,
             writer,
             enable_profile=enable_profile,
+            enable_trace=enable_trace,
             state_objects=state_objects,
         )
         self.engine = engine

@@ -72,6 +72,8 @@ class Trainer:
         self._kwargs = kwargs
         self._profile = profile
         self._enable_profile = kwargs.get("enable_profile", profile is not None)
+        self._enable_trace = kwargs.get("enable_trace", False)
+
         self._extensions: List[  # list of (args, kwargs)
             Tuple[
                 Tuple[
@@ -324,24 +326,27 @@ class Trainer:
                 )
                 for idx in range(train_len):
                     with record(
-                        "pytorch_pfn_extras.training.Trainer:iteration",
+                        "ppe.training.Trainer:iteration",
                         use_cuda=torch.cuda.is_available(),
                         enable=self._enable_profile,
                         device=device,
+                        trace=self._enable_trace,
                     ) as ntf0:
                         try:
                             with record(
-                                "pytorch_pfn_extras.training.Trainer:get_data",
+                                "ppe.training.Trainer:get_data",
                                 enable=self._enable_profile,
                                 device=device,
+                                trace=self._enable_trace,
                             ):
                                 x = next(loader_iter)
                         except StopIteration:
                             loader_iter = iter(train_loader)
                             with record(
-                                "pytorch_pfn_extras.training.Trainer:get_data",
+                                "ppe.training.Trainer:get_data",
                                 enable=self._enable_profile,
                                 device=device,
+                                trace=self._enable_trace,
                             ):
                                 x = next(loader_iter)
                         begin = time.time()
@@ -350,10 +355,11 @@ class Trainer:
                         self._times.put(begin)
                         try:
                             with record(
-                                "pytorch_pfn_extras.training.Trainer:run_iteration",
+                                "ppe.training.Trainer:run_iteration",
                                 use_cuda=torch.cuda.is_available(),
                                 enable=self._enable_profile,
                                 device=device,
+                                trace=self._enable_trace,
                             ) as ntf1, self.manager.run_iteration():
                                 self._observed.put(self.manager.observation)
                                 with record(
@@ -361,6 +367,7 @@ class Trainer:
                                     use_cuda=torch.cuda.is_available(),
                                     enable=self._enable_profile,
                                     device=device,
+                                    trace=self._enable_trace,
                                 ) as ntf2:
                                     self._profile_records.put(
                                         [ntf0, ntf1, ntf2]

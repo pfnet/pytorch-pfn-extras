@@ -5,8 +5,9 @@ from unittest import mock
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
+import torch.distributed as dist
 from pytorch_pfn_extras import engine, testing, training
-from pytorch_pfn_extras.training import triggers
+from pytorch_pfn_extras.training import DistributedEvaluator, triggers
 from torch import nn
 from torch.nn import functional as F
 
@@ -940,3 +941,10 @@ def test_trainer_with_autocast(path, autocast_train, autocast_eval):
     )
 
     trainer.run(data, data)
+
+
+def test_create_distributed_evaluator():
+    model = MyModel()
+    with mock.patch.object(dist, "is_initialized", return_value=True):
+        evaluator = engine.create_evaluator(models=model, distributed=True)
+    assert isinstance(evaluator, DistributedEvaluator)

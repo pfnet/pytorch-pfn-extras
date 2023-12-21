@@ -294,6 +294,8 @@ class _ComparerBase:
             with self.report_lock:
                 self._finalized = True
                 self._assert_incompatible_trigger(len(self.targets) == 0)
+        except threading.BrokenBarrierError:
+            pass
         except Exception:
             self.barrier.abort()
             raise
@@ -747,6 +749,8 @@ class Comparer:
             with self._report_lock:
                 self._finalized = True
                 self._assert_incompatible_trigger(len(self._targets) == 0)
+        except threading.BrokenBarrierError:
+            pass
         except Exception:
             self._barrier.abort()
             raise
