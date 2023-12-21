@@ -121,7 +121,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch110"
   }
@@ -138,7 +138,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch111"
   }
@@ -155,7 +155,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch112"
   }
@@ -172,7 +172,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch113"
   }
@@ -189,7 +189,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch200"
   }
