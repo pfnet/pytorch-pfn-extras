@@ -8,13 +8,13 @@ from typing import Any, Callable, Dict, List
 
 import pytest
 import pytorch_pfn_extras as ppe
+import torch
+import torch.distributed
+from pytorch_pfn_extras import distributed
 from pytorch_pfn_extras.training.extensions.accumulate._accumulate_base import (
     AccumulateBase,
 )
 from pytorch_pfn_extras.training.trigger import Trigger, get_trigger
-from pytorch_pfn_extras import distributed
-import torch
-import torch.distributed
 
 ITERATION_LENGTH = 2 * 3 * 5
 NUM_EPOCH = 5
@@ -35,6 +35,7 @@ primary_iteration_trigger_case = {
     "value": [random.uniform(0, 100) for _ in range(ITERATION_LENGTH)],
     "trigger": (7, "iteration"),
 }
+
 
 def _init_distributed(use_cuda):
     if "OMPI_COMM_WORLD_SIZE" in os.environ:
@@ -79,7 +80,9 @@ def check_accumulate_extension(
                     if distributed:
                         world_size = torch.distributed.get_world_size()
                         epoch_value_list_list = [None] * world_size
-                        torch.distributed.all_gather_object(epoch_value_list_list, epoch_value_list)
+                        torch.distributed.all_gather_object(
+                            epoch_value_list_list, epoch_value_list
+                        )
                         epoch_value_list = sum(epoch_value_list_list, [])
                     expected_value = expected_fn(epoch_value_list)
                 except Exception:
@@ -91,7 +94,10 @@ def check_accumulate_extension(
                 assert (
                     isnan(accumulated_value) and isnan(expected_value)
                 ) or isclose(
-                    accumulated_value, expected_value, rel_tol=1e-9, abs_tol=1e-6
+                    accumulated_value,
+                    expected_value,
+                    rel_tol=1e-9,
+                    abs_tol=1e-6,
                 )
 
 
@@ -205,6 +211,7 @@ def test_max_accumulate(case: Dict[str, Any]):
         trigger=trigger,
     )
 
+
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -220,7 +227,9 @@ def test_average_accumulate_distributed(case: Dict[str, Any]):
     _init_distributed(use_cuda=True)
     trigger = get_trigger(case["trigger"])
     extension = ppe.training.extensions.AverageAccumulate(
-        conversion_key_pair=("value", "value/accumulated"), trigger=trigger, distributed=True
+        conversion_key_pair=("value", "value/accumulated"),
+        trigger=trigger,
+        distributed=True,
     )
     check_accumulate_extension(
         extension=extension,
@@ -229,6 +238,7 @@ def test_average_accumulate_distributed(case: Dict[str, Any]):
         trigger=trigger,
         distributed=True,
     )
+
 
 @pytest.mark.mpi
 @pytest.mark.gpu
@@ -245,7 +255,9 @@ def test_standard_deviation_accumulate_distributed(case: Dict[str, Any]):
     _init_distributed(use_cuda=True)
     trigger = get_trigger(case["trigger"])
     extension = ppe.training.extensions.StandardDeviationAccumulate(
-        conversion_key_pair=("value", "value/accumulated"), trigger=trigger, distributed=True
+        conversion_key_pair=("value", "value/accumulated"),
+        trigger=trigger,
+        distributed=True,
     )
     check_accumulate_extension(
         extension=extension,
@@ -254,6 +266,7 @@ def test_standard_deviation_accumulate_distributed(case: Dict[str, Any]):
         trigger=trigger,
         distributed=True,
     )
+
 
 @pytest.mark.mpi
 @pytest.mark.gpu
@@ -266,11 +279,15 @@ def test_standard_deviation_accumulate_distributed(case: Dict[str, Any]):
         primary_iteration_trigger_case,
     ],
 )
-def test_unbiased_standard_deviation_accumulate_distributed(case: Dict[str, Any]):
+def test_unbiased_standard_deviation_accumulate_distributed(
+    case: Dict[str, Any]
+):
     _init_distributed(use_cuda=True)
     trigger = get_trigger(case["trigger"])
     extension = ppe.training.extensions.UnbiasedStandardDeviationAccumulate(
-        conversion_key_pair=("value", "value/accumulated"), trigger=trigger, distributed=True
+        conversion_key_pair=("value", "value/accumulated"),
+        trigger=trigger,
+        distributed=True,
     )
     check_accumulate_extension(
         extension=extension,
@@ -280,6 +297,7 @@ def test_unbiased_standard_deviation_accumulate_distributed(case: Dict[str, Any]
         allow_nan=True,
         distributed=True,
     )
+
 
 @pytest.mark.mpi
 @pytest.mark.gpu
@@ -296,7 +314,9 @@ def test_min_accumulate_distributed(case: Dict[str, Any]):
     _init_distributed(use_cuda=True)
     trigger = get_trigger(case["trigger"])
     extension = ppe.training.extensions.MinAccumulate(
-        conversion_key_pair=("value", "value/accumulated"), trigger=trigger, distributed=True
+        conversion_key_pair=("value", "value/accumulated"),
+        trigger=trigger,
+        distributed=True,
     )
     check_accumulate_extension(
         extension=extension,
@@ -305,6 +325,7 @@ def test_min_accumulate_distributed(case: Dict[str, Any]):
         trigger=trigger,
         distributed=True,
     )
+
 
 @pytest.mark.mpi
 @pytest.mark.gpu
@@ -321,7 +342,9 @@ def test_max_accumulate_distributed(case: Dict[str, Any]):
     _init_distributed(use_cuda=True)
     trigger = get_trigger(case["trigger"])
     extension = ppe.training.extensions.MaxAccumulate(
-        conversion_key_pair=("value", "value/accumulated"), trigger=trigger, distributed=True
+        conversion_key_pair=("value", "value/accumulated"),
+        trigger=trigger,
+        distributed=True,
     )
     check_accumulate_extension(
         extension=extension,
@@ -330,6 +353,7 @@ def test_max_accumulate_distributed(case: Dict[str, Any]):
         trigger=trigger,
         distributed=True,
     )
+
 
 def check_accumulate_extension_with_log_report(
     extension: AccumulateBase,
@@ -377,7 +401,9 @@ def check_accumulate_extension_with_log_report(
                         if distributed:
                             world_size = torch.distributed.get_world_size()
                             epoch_value_list_list = [None] * world_size
-                            torch.distributed.all_gather_object(epoch_value_list_list, epoch_value_list)
+                            torch.distributed.all_gather_object(
+                                epoch_value_list_list, epoch_value_list
+                            )
                             epoch_value_list = sum(epoch_value_list_list, [])
                         expected_value = expected_fn(epoch_value_list)
                     except Exception:
@@ -510,6 +536,7 @@ def test_max_accumulate_with_log_report(case: Dict[str, Any]):
         trigger=trigger,
     )
 
+
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -525,7 +552,9 @@ def test_average_accumulate_with_log_report_distributed(case: Dict[str, Any]):
     _init_distributed(use_cuda=True)
     trigger = get_trigger(case["trigger"])
     extension = ppe.training.extensions.AverageAccumulate(
-        conversion_key_pair=("value", "value/accumulated"), trigger=trigger, distributed=True
+        conversion_key_pair=("value", "value/accumulated"),
+        trigger=trigger,
+        distributed=True,
     )
     check_accumulate_extension_with_log_report(
         extension=extension,
@@ -547,11 +576,15 @@ def test_average_accumulate_with_log_report_distributed(case: Dict[str, Any]):
         primary_iteration_trigger_case,
     ],
 )
-def test_standard_deviation_accumulate_with_log_report_distributed(case: Dict[str, Any]):
+def test_standard_deviation_accumulate_with_log_report_distributed(
+    case: Dict[str, Any]
+):
     _init_distributed(use_cuda=True)
     trigger = get_trigger(case["trigger"])
     extension = ppe.training.extensions.StandardDeviationAccumulate(
-        conversion_key_pair=("value", "value/accumulated"), trigger=trigger, distributed=True
+        conversion_key_pair=("value", "value/accumulated"),
+        trigger=trigger,
+        distributed=True,
     )
     check_accumulate_extension_with_log_report(
         extension=extension,
@@ -579,7 +612,9 @@ def test_unbiased_standard_deviation_accumulate_with_log_report_distributed(
     _init_distributed(use_cuda=True)
     trigger = get_trigger(case["trigger"])
     extension = ppe.training.extensions.UnbiasedStandardDeviationAccumulate(
-        conversion_key_pair=("value", "value/accumulated"), trigger=trigger, distributed=True
+        conversion_key_pair=("value", "value/accumulated"),
+        trigger=trigger,
+        distributed=True,
     )
     check_accumulate_extension_with_log_report(
         extension=extension,
@@ -606,7 +641,9 @@ def test_min_accumulate_with_log_report_distributed(case: Dict[str, Any]):
     _init_distributed(use_cuda=True)
     trigger = get_trigger(case["trigger"])
     extension = ppe.training.extensions.MinAccumulate(
-        conversion_key_pair=("value", "value/accumulated"), trigger=trigger, distributed=True
+        conversion_key_pair=("value", "value/accumulated"),
+        trigger=trigger,
+        distributed=True,
     )
     check_accumulate_extension_with_log_report(
         extension=extension,
@@ -632,7 +669,9 @@ def test_max_accumulate_with_log_report_distributed(case: Dict[str, Any]):
     _init_distributed(use_cuda=True)
     trigger = get_trigger(case["trigger"])
     extension = ppe.training.extensions.MaxAccumulate(
-        conversion_key_pair=("value", "value/accumulated"), trigger=trigger, distributed=True
+        conversion_key_pair=("value", "value/accumulated"),
+        trigger=trigger,
+        distributed=True,
     )
     check_accumulate_extension_with_log_report(
         extension=extension,
