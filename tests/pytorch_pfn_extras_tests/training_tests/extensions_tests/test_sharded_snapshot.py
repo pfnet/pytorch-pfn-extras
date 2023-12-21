@@ -16,7 +16,9 @@ from pytorch_pfn_extras.training.extensions import SnapshotMode, snapshot
 def _init_distributed(use_cuda):
     if "OMPI_COMM_WORLD_SIZE" in os.environ:
         size, rank, local_rank = distributed.initialize_ompi_environment(
-            backend="nccl", init_method="env"
+            backend="nccl",
+            init_method="env",
+            timeout=15,
         )
     else:
         pytest.skip("This test requires MPI to run")
@@ -305,6 +307,9 @@ def test_sharded_snapshot(mpi_tmp_path):
         with trainer.run_iteration():
             pass
 
+    if comm_size > 1:
+        torch.distributed.barrier()
+
     pattern = os.path.join(trainer.out, "snapshot_iter_*")
     found = [path for path in glob(pattern)]
 
@@ -340,6 +345,8 @@ def test_sharded_snapshot_cleanup(mpi_tmp_path):
     for _ in range(5):
         with trainer.run_iteration():
             pass
+    if comm_size > 1:
+        torch.distributed.barrier()
 
     pattern = os.path.join(trainer.out, "snapshot_iter_*")
     found = [os.path.basename(path) for path in glob(pattern)]
@@ -368,12 +375,16 @@ def test_sharded_snapshot_autoload(mpi_tmp_path):
         autoload=True,
     )
 
-    trainer = get_trainer("./tmp/test_result", device)
+    trainer = get_trainer(mpi_tmp_path, device)
     trainer.extend(snapshot_extension, trigger=(1, "iteration"), priority=2)
     for _ in range(5):
         with trainer.run_iteration():
             pass
-    trainer2 = get_trainer("./tmp/test_result", device)
+
+    if comm_size > 1:
+        torch.distributed.barrier()
+
+    trainer2 = get_trainer(mpi_tmp_path, device)
     snapshot_extension2 = snapshot(
         filename=fmt,
         snapshot_mode=SnapshotMode.SHARDED,
@@ -385,7 +396,7 @@ def test_sharded_snapshot_autoload(mpi_tmp_path):
     with pytest.raises(AssertionError):
         _assert_state_dict_is_eq(trainer2.state_dict(), trainer.state_dict())
 
-    trainer3 = get_trainer("./tmp/test_result", device)
+    trainer3 = get_trainer(mpi_tmp_path, device)
     snapshot_extension3 = snapshot(
         filename=fmt,
         snapshot_mode=SnapshotMode.SHARDED,
