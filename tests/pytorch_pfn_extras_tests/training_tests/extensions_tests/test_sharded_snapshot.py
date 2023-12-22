@@ -4,9 +4,9 @@ from typing import Tuple
 import pytest
 import pytorch_pfn_extras as ppe
 
-if not ppe.requires("2.0.0") or sys.platform == "win32":
+if not ppe.requires("2.1.0") or sys.platform == "win32":
     pytest.skip(
-        "sharded snapshot is tested only with pytorch>2.0 or later.",
+        "sharded snapshot is tested only with pytorch>2.1 or later.",
         allow_module_level=True,
     )
 import os
