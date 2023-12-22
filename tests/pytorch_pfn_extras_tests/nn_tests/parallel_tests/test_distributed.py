@@ -78,8 +78,8 @@ class MyModuleWithCheckpoint(nn.Module):
 
     def forward(self, x):
         y = self.l0(x)
-        y = checkpoint(self.l1, y)
-        y = checkpoint(self.l2, y)
+        y = checkpoint(self.l1, y, use_reentrant=False)
+        y = checkpoint(self.l2, y, use_reentrant=False)
         return y
 
 
