@@ -1,16 +1,17 @@
-import os
 import sys
+import pytest
+import pytorch_pfn_extras as ppe
+if ppe.requires("2.0.0") and not sys.platform == "win32":
+    pytest.skip("sharded snapshot is tested only with pytorch>2.0 or later.", allow_module_level=True)
+import os
 from glob import glob
 from io import BytesIO
 
 import py
-import pytest
-import pytorch_pfn_extras as ppe
 import torch
 import torch.distributed
 
-if ppe.requires("2.0.0") and not sys.platform == "win32":
-    import torch.distributed.fsdp as fsdp
+import torch.distributed.fsdp as fsdp
 
 from pytorch_pfn_extras import distributed, training
 from pytorch_pfn_extras.training.extensions import SnapshotMode, snapshot
@@ -54,93 +55,93 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
         expected_io.seek(0)
         assert actuary_io.read() == expected_io.read()
 
+if ppe.requires("2.0.0"):
+    state_dict_type_case = [
+        (
+            (
+                fsdp.StateDictType.FULL_STATE_DICT,
+                fsdp.FullStateDictConfig(rank0_only=False),
+                fsdp.FullOptimStateDictConfig(rank0_only=False),
+            ),
+            (
+                fsdp.StateDictType.FULL_STATE_DICT,
+                fsdp.FullStateDictConfig(rank0_only=False),
+                fsdp.FullOptimStateDictConfig(rank0_only=False),
+            ),
+        ),
+        (
+            (
+                fsdp.StateDictType.FULL_STATE_DICT,
+                fsdp.FullStateDictConfig(rank0_only=False),
+                fsdp.FullOptimStateDictConfig(rank0_only=False),
+            ),
+            (
+                fsdp.StateDictType.SHARDED_STATE_DICT,
+                fsdp.ShardedStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+                fsdp.ShardedOptimStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+            ),
+        ),
+        (
+            (
+                fsdp.StateDictType.SHARDED_STATE_DICT,
+                fsdp.ShardedStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+                fsdp.ShardedOptimStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+            ),
+            (
+                fsdp.StateDictType.FULL_STATE_DICT,
+                fsdp.FullStateDictConfig(rank0_only=False),
+                fsdp.FullOptimStateDictConfig(rank0_only=False),
+            ),
+        ),
+        (
+            (
+                fsdp.StateDictType.SHARDED_STATE_DICT,
+                fsdp.ShardedStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+                fsdp.ShardedOptimStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+            ),
+            (
+                fsdp.StateDictType.SHARDED_STATE_DICT,
+                fsdp.ShardedStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+                fsdp.ShardedOptimStateDictConfig(
+                    offload_to_cpu=True, use_dtensor=False
+                ),
+            ),
+        ),
+    ]
+else:
+    state_dict_type_case = []
 
-@pytest.mark.skipif(
-    not ppe.requires("2.0.0") or sys.platform == "win32",
-    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
-)
+
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
-    "expected_state_dict_type,actuary_state_dict_type",
-    [
-        (
-            (
-                fsdp.StateDictType.FULL_STATE_DICT,
-                fsdp.FullStateDictConfig(rank0_only=False),
-                fsdp.FullOptimStateDictConfig(rank0_only=False),
-            ),
-            (
-                fsdp.StateDictType.FULL_STATE_DICT,
-                fsdp.FullStateDictConfig(rank0_only=False),
-                fsdp.FullOptimStateDictConfig(rank0_only=False),
-            ),
-        ),
-        (
-            (
-                fsdp.StateDictType.FULL_STATE_DICT,
-                fsdp.FullStateDictConfig(rank0_only=False),
-                fsdp.FullOptimStateDictConfig(rank0_only=False),
-            ),
-            (
-                fsdp.StateDictType.SHARDED_STATE_DICT,
-                fsdp.ShardedStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-                fsdp.ShardedOptimStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-            ),
-        ),
-        (
-            (
-                fsdp.StateDictType.SHARDED_STATE_DICT,
-                fsdp.ShardedStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-                fsdp.ShardedOptimStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-            ),
-            (
-                fsdp.StateDictType.FULL_STATE_DICT,
-                fsdp.FullStateDictConfig(rank0_only=False),
-                fsdp.FullOptimStateDictConfig(rank0_only=False),
-            ),
-        ),
-        (
-            (
-                fsdp.StateDictType.SHARDED_STATE_DICT,
-                fsdp.ShardedStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-                fsdp.ShardedOptimStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-            ),
-            (
-                fsdp.StateDictType.SHARDED_STATE_DICT,
-                fsdp.ShardedStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-                fsdp.ShardedOptimStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-            ),
-        ),
-    ],
+    "expected_state_dict_type,actuary_state_dict_type", state_dict_type_case
 )
 @pytest.mark.filterwarnings("ignore::UserWarning")
 def test_sharded_state_dict(
     expected_state_dict_type: tuple[
-        fsdp.StateDictType,
-        fsdp.FullStateDictConfig,
-        fsdp.FullOptimStateDictConfig,
+        "fsdp.StateDictType",
+        "fsdp.FullStateDictConfig",
+        "fsdp.FullOptimStateDictConfig",
     ],
     actuary_state_dict_type: tuple[
-        fsdp.StateDictType,
-        fsdp.FullStateDictConfig,
-        fsdp.FullOptimStateDictConfig,
+        "fsdp.StateDictType",
+        "fsdp.FullStateDictConfig",
+        "fsdp.FullOptimStateDictConfig",
     ],
 ):
     size, rank, local_rank, device = _init_distributed(True)
@@ -286,10 +287,6 @@ def get_trainer(path, device):
     )
 
 
-@pytest.mark.skipif(
-    not ppe.requires("2.0.0") or sys.platform == "win32",
-    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
-)
 @pytest.mark.mpi
 @pytest.mark.gpu
 def test_sharded_snapshot(mpi_tmp_path):
@@ -322,10 +319,6 @@ def test_sharded_snapshot(mpi_tmp_path):
     assert os.path.exists(complete_path)
 
 
-@pytest.mark.skipif(
-    not ppe.requires("2.0.0") or sys.platform == "win32",
-    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
-)
 @pytest.mark.mpi
 @pytest.mark.gpu
 def test_sharded_snapshot_cleanup(mpi_tmp_path):
@@ -357,10 +350,6 @@ def test_sharded_snapshot_cleanup(mpi_tmp_path):
     assert len(found) <= 3
 
 
-@pytest.mark.skipif(
-    not ppe.requires("2.0.0") or sys.platform == "win32",
-    reason="torch.compile interface its only added in PyTorch>2.0 and linux",
-)
 @pytest.mark.mpi
 @pytest.mark.gpu
 def test_sharded_snapshot_autoload(mpi_tmp_path):
