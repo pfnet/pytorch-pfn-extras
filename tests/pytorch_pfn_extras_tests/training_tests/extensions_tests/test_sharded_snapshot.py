@@ -1,8 +1,13 @@
 import sys
+
 import pytest
 import pytorch_pfn_extras as ppe
+
 if ppe.requires("2.0.0") and not sys.platform == "win32":
-    pytest.skip("sharded snapshot is tested only with pytorch>2.0 or later.", allow_module_level=True)
+    pytest.skip(
+        "sharded snapshot is tested only with pytorch>2.0 or later.",
+        allow_module_level=True,
+    )
 import os
 from glob import glob
 from io import BytesIO
@@ -10,9 +15,7 @@ from io import BytesIO
 import py
 import torch
 import torch.distributed
-
 import torch.distributed.fsdp as fsdp
-
 from pytorch_pfn_extras import distributed, training
 from pytorch_pfn_extras.training.extensions import SnapshotMode, snapshot
 
@@ -54,6 +57,7 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
         actuary_io.seek(0)
         expected_io.seek(0)
         assert actuary_io.read() == expected_io.read()
+
 
 if ppe.requires("2.0.0"):
     state_dict_type_case = [
