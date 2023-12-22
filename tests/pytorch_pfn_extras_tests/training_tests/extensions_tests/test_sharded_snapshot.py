@@ -1,9 +1,10 @@
 import sys
+from typing import Tuple
 
 import pytest
 import pytorch_pfn_extras as ppe
 
-if ppe.requires("2.0.0") and not sys.platform == "win32":
+if not ppe.requires("2.0.0") or sys.platform == "win32":
     pytest.skip(
         "sharded snapshot is tested only with pytorch>2.0 or later.",
         allow_module_level=True,
@@ -59,8 +60,11 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
         assert actuary_io.read() == expected_io.read()
 
 
-if ppe.requires("2.0.0"):
-    state_dict_type_case = [
+@pytest.mark.mpi
+@pytest.mark.gpu
+@pytest.mark.parametrize(
+    "expected_state_dict_type,actuary_state_dict_type",
+     [
         (
             (
                 fsdp.StateDictType.FULL_STATE_DICT,
@@ -126,26 +130,18 @@ if ppe.requires("2.0.0"):
             ),
         ),
     ]
-else:
-    state_dict_type_case = []
-
-
-@pytest.mark.mpi
-@pytest.mark.gpu
-@pytest.mark.parametrize(
-    "expected_state_dict_type,actuary_state_dict_type", state_dict_type_case
 )
 @pytest.mark.filterwarnings("ignore::UserWarning")
 def test_sharded_state_dict(
-    expected_state_dict_type: tuple[
-        "fsdp.StateDictType",
-        "fsdp.FullStateDictConfig",
-        "fsdp.FullOptimStateDictConfig",
+    expected_state_dict_type: Tuple[
+        fsdp.StateDictType,
+        fsdp.FullStateDictConfig,
+        fsdp.FullOptimStateDictConfig,
     ],
-    actuary_state_dict_type: tuple[
-        "fsdp.StateDictType",
-        "fsdp.FullStateDictConfig",
-        "fsdp.FullOptimStateDictConfig",
+    actuary_state_dict_type: Tuple[
+        fsdp.StateDictType,
+        fsdp.FullStateDictConfig,
+        fsdp.FullOptimStateDictConfig,
     ],
 ):
     size, rank, local_rank, device = _init_distributed(True)
