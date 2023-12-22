@@ -212,6 +212,10 @@ def test_max_accumulate(case: Dict[str, Any]):
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("1.11.0"),
+    reason="Because torch<1.11 does not allow the use of TORCH_DISTRIBUTED_DEBUG=DETAIL and nccl communicator together.",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -240,6 +244,10 @@ def test_average_accumulate_distributed(case: Dict[str, Any]):
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("1.11.0"),
+    reason="Because torch<1.11 does not allow the use of TORCH_DISTRIBUTED_DEBUG=DETAIL and nccl communicator together.",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -268,6 +276,10 @@ def test_standard_deviation_accumulate_distributed(case: Dict[str, Any]):
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("1.11.0"),
+    reason="Because torch<1.11 does not allow the use of TORCH_DISTRIBUTED_DEBUG=DETAIL and nccl communicator together.",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -299,6 +311,10 @@ def test_unbiased_standard_deviation_accumulate_distributed(
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("1.11.0"),
+    reason="Because torch<1.11 does not allow the use of TORCH_DISTRIBUTED_DEBUG=DETAIL and nccl communicator together.",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -327,6 +343,10 @@ def test_min_accumulate_distributed(case: Dict[str, Any]):
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("1.11.0"),
+    reason="Because torch<1.11 does not allow the use of TORCH_DISTRIBUTED_DEBUG=DETAIL and nccl communicator together.",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -537,6 +557,10 @@ def test_max_accumulate_with_log_report(case: Dict[str, Any]):
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("1.11.0"),
+    reason="Because torch<1.11 does not allow the use of TORCH_DISTRIBUTED_DEBUG=DETAIL and nccl communicator together.",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -565,6 +589,10 @@ def test_average_accumulate_with_log_report_distributed(case: Dict[str, Any]):
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("1.11.0"),
+    reason="Because torch<1.11 does not allow the use of TORCH_DISTRIBUTED_DEBUG=DETAIL and nccl communicator together.",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -595,6 +623,10 @@ def test_standard_deviation_accumulate_with_log_report_distributed(
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("1.11.0"),
+    reason="Because torch<1.11 does not allow the use of TORCH_DISTRIBUTED_DEBUG=DETAIL and nccl communicator together.",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -626,6 +658,10 @@ def test_unbiased_standard_deviation_accumulate_with_log_report_distributed(
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("1.11.0"),
+    reason="Because torch<1.11 does not allow the use of TORCH_DISTRIBUTED_DEBUG=DETAIL and nccl communicator together.",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -654,6 +690,10 @@ def test_min_accumulate_with_log_report_distributed(case: Dict[str, Any]):
     )
 
 
+@pytest.mark.skipif(
+    not ppe.requires("1.11.0"),
+    reason="Because torch<1.11 does not allow the use of TORCH_DISTRIBUTED_DEBUG=DETAIL and nccl communicator together.",
+)
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
