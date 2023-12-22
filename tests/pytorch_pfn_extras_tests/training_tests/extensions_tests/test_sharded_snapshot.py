@@ -64,7 +64,7 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
 @pytest.mark.gpu
 @pytest.mark.parametrize(
     "expected_state_dict_type,actuary_state_dict_type",
-     [
+    [
         (
             (
                 fsdp.StateDictType.FULL_STATE_DICT,
@@ -129,7 +129,7 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
                 ),
             ),
         ),
-    ]
+    ],
 )
 @pytest.mark.filterwarnings("ignore::UserWarning")
 def test_sharded_state_dict(
