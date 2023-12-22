@@ -8,7 +8,10 @@ import pytest
 import pytorch_pfn_extras as ppe
 import torch
 import torch.distributed
-import torch.distributed.fsdp as fsdp
+
+if ppe.requires("2.0.0") and not sys.platform == "win32":
+    import torch.distributed.fsdp as fsdp
+
 from pytorch_pfn_extras import distributed, training
 from pytorch_pfn_extras.training.extensions import SnapshotMode, snapshot
 
