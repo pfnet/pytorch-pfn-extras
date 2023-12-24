@@ -528,7 +528,11 @@ def test_extensions_accessing_models_without_flag(priority):
     if priority is not None:
         extension.priority = priority
     manager = training.ExtensionsManager(
-        m, optimizer, 1, iters_per_epoch=5, extensions=[extension]
+        m,
+        optimizer,
+        1,
+        iters_per_epoch=5,
+        extensions=[extension],
     )
     while not manager.stop_trigger:
         with pytest.raises(RuntimeError):

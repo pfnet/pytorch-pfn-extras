@@ -51,7 +51,6 @@ class TensorBoardWriter(object):
     def __call__(
         self,
         filename: str,
-        out_dir: str,
         target: _TargetType,
         *,
         savefun: Optional[_SaveFun] = None,

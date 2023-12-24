@@ -44,7 +44,6 @@ class SimpleWriter(Writer):
     def __call__(
         self,
         filename: str,
-        out_dir: str,
         target: _TargetType,
         *,
         savefun: Optional[_SaveFun] = None,
@@ -52,4 +51,4 @@ class SimpleWriter(Writer):
     ) -> None:
         if savefun is None:
             savefun = self._savefun
-        self.save(filename, out_dir, target, savefun, append, **self._kwds)
+        self.save(filename, target, savefun, append, **self._kwds)

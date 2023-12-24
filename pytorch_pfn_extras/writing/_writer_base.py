@@ -235,7 +235,6 @@ class Writer:
     def __call__(
         self,
         filename: str,
-        out_dir: str,
         target: _TargetType,
         *,
         savefun: Optional[_SaveFun] = None,
@@ -280,7 +279,6 @@ class Writer:
     def save(
         self,
         filename: str,
-        out_dir: str,
         target: _TargetType,
         savefun: _SaveFun,
         append: bool,
@@ -375,7 +373,6 @@ class StandardWriter(Writer, Generic[_Worker]):
     def __call__(
         self,
         filename: str,
-        out_dir: str,
         target: _TargetType,
         *,
         savefun: Optional[_SaveFun] = None,
@@ -389,7 +386,6 @@ class StandardWriter(Writer, Generic[_Worker]):
         self._filename = filename
         self._worker = self.create_worker(
             filename,
-            out_dir,
             target,
             savefun=savefun,
             append=append,
@@ -402,7 +398,6 @@ class StandardWriter(Writer, Generic[_Worker]):
     def create_worker(
         self,
         filename: str,
-        out_dir: str,
         target: _TargetType,
         *,
         savefun: Optional[_SaveFun] = None,

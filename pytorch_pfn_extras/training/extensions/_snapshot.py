@@ -445,9 +445,8 @@ class _Snapshot(extension.Extension):
             filename = filename(manager)
         else:
             filename = filename.format(manager)
-        outdir = manager.out
         writer(  # type: ignore
-            filename, outdir, serialized_target, savefun=self._savefun
+            filename, serialized_target, savefun=self._savefun
         )
 
     def finalize(self, manager: ExtensionsManagerProtocol) -> None:

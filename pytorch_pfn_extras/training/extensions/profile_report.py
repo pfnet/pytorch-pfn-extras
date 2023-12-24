@@ -131,7 +131,6 @@ class ProfileReport(extension.Extension):
                 )
                 writer(
                     log_name,
-                    out,
                     self._log,  # type: ignore
                     savefun=savefun,
                     append=self._append,

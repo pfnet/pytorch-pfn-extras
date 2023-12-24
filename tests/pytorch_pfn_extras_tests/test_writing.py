@@ -15,7 +15,7 @@ def test_tensorboard_writing():
         writer = ppe.writing.TensorBoardWriter(
             out_dir=tempd, filename_suffix="_test"
         )
-        writer(None, None, data)
+        writer(None, data)
         # Check that the file was generated
         for snap in os.listdir(tempd):
             assert "_test" in snap
