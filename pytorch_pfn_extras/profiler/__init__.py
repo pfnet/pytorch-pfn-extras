@@ -11,4 +11,5 @@ from pytorch_pfn_extras.profiler._tracing import (  # NOQA
     enable_global_trace,
     enable_thread_trace,
     get_tracer,
+    load_chrome_trace_as_json,
 )

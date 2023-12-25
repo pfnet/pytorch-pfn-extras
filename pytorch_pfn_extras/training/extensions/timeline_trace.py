@@ -81,6 +81,10 @@ class TimelineTrace(extension.Extension):
         if self._filename is not None:
             self._tracer.flush(self._filename, writer)
 
+    def initialize(self, manager: ExtensionsManagerProtocol) -> None:
+        writer = manager.writer if self._writer is None else self._writer
+        self._tracer.initialize_writer(self._filename, writer)
+
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         if self._enable is not None and self._enable(manager):
             self._tracer.enable(True)
