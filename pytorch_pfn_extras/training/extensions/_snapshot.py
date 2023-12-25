@@ -241,6 +241,19 @@ def snapshot(
             by :func:`torch.save` .
         saver_rank (int): If defined, the snapshot will be taken by only one
             rank when running in distributed mode and restored by all.
+        snapshot_mode (SnapshotMode): If SnapshotModel.DEFAULT is specified, it provides
+            a snapshot feature that operates in single-process mode. However,
+            if saver_rank is specified, it provides a snapshot feature that operates in
+            a distributed execution environment.
+             If SnapshotModel.DISTRIBUTED is specified, it provides a snapshot feature
+            that operates in a distributed execution environment. saver_rank must be
+            specified simultaneously. In this mode, only the specified saver_rank will
+            create a snapshot.
+             If SnapshotModel.SHARDED is specified, it provides a snapshot feature that
+            operates in a distributed execution environment. saver_rank must be
+            specified simultaneously. In this mode, all ranks create a snapshot. It
+            creates an appropriate snapshot when the state_dict holds a sharded value
+            (e.g. FullyShardedDataParallel).
     Returns:
         Snapshot extension object.
 
