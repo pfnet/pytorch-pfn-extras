@@ -75,7 +75,7 @@ def load_chrome_trace_as_json(filename: str) -> List[Dict[str, Any]]:
         s = f.read()
     if s[-1] != "]":
         s = s[:-1] + "]"
-    return json.loads(s)
+    return cast(List[Dict[str, Any]], json.loads(s))
 
 
 class ChromeTracer(Tracer):
