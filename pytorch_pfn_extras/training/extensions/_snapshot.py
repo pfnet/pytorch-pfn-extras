@@ -1,5 +1,7 @@
 import os
 import types
+from contextlib import contextmanager, nullcontext
+from enum import Enum, auto
 from typing import Any, Generator, List, Optional, Tuple
 
 import torch
@@ -40,7 +42,7 @@ def _find_snapshot_files(
 
     matched_files = (
         file
-        for file in fs.list(path)
+        for file in fs.list(path, recursive=True)
         if file.startswith(prefix) and file.endswith(suffix)
     )
 
@@ -169,6 +171,12 @@ n_retains=-1, autoload=False)
     return snapshot(target=target, filename=filename, savefun=savefun, **kwargs)
 
 
+class SnapshotMode(Enum):
+    DEFAULT = auto()
+    DISTRIBUTED = auto()
+    SHARDED = auto()
+
+
 def snapshot(
     savefun: Any = None,
     filename: str = "snapshot_iter_{.iteration}",
@@ -180,6 +188,7 @@ def snapshot(
     n_retains: int = -1,
     autoload: bool = False,
     saver_rank: Optional[int] = None,
+    snapshot_mode: SnapshotMode = SnapshotMode.DEFAULT,
 ) -> "_Snapshot":
     """
     Returns a trainer extension to take snapshots of the trainer.
@@ -232,6 +241,19 @@ def snapshot(
             by :func:`torch.save` .
         saver_rank (int): If defined, the snapshot will be taken by only one
             rank when running in distributed mode and restored by all.
+        snapshot_mode (SnapshotMode): If SnapshotModel.DEFAULT is specified, it provides
+            a snapshot feature that operates in single-process mode. However,
+            if saver_rank is specified, it provides a snapshot feature that operates in
+            a distributed execution environment.
+             If SnapshotModel.DISTRIBUTED is specified, it provides a snapshot feature
+            that operates in a distributed execution environment. saver_rank must be
+            specified simultaneously. In this mode, only the specified saver_rank will
+            create a snapshot.
+             If SnapshotModel.SHARDED is specified, it provides a snapshot feature that
+            operates in a distributed execution environment. saver_rank must be
+            specified simultaneously. In this mode, all ranks create a snapshot. It
+            creates an appropriate snapshot when the state_dict holds a sharded value
+            (e.g. FullyShardedDataParallel).
     Returns:
         Snapshot extension object.
 
@@ -285,8 +307,35 @@ trigger=(1, 'epoch'))
             "savefun and writer arguments cannot be specified together."
         )
 
-    if saver_rank is None:
-        return _Snapshot(
+    if snapshot_mode == SnapshotMode.DEFAULT:
+        if saver_rank is None:
+            return _Snapshot(
+                target=target,
+                condition=condition,
+                writer=writer,
+                filename=filename,
+                snapshot_on_error=snapshot_on_error,
+                n_retains=n_retains,
+                autoload=autoload,
+                savefun=savefun,
+            )
+        else:
+            # To maintain backward compatibility.
+            return _DistributedSnapshot(
+                target=target,
+                condition=condition,
+                writer=writer,
+                filename=filename,
+                snapshot_on_error=snapshot_on_error,
+                n_retains=n_retains,
+                autoload=autoload,
+                saver_rank=saver_rank,
+                savefun=savefun,
+            )
+
+    elif snapshot_mode == SnapshotMode.DISTRIBUTED:
+        assert saver_rank is not None
+        return _DistributedSnapshot(
             target=target,
             condition=condition,
             writer=writer,
@@ -294,19 +343,25 @@ trigger=(1, 'epoch'))
             snapshot_on_error=snapshot_on_error,
             n_retains=n_retains,
             autoload=autoload,
+            saver_rank=saver_rank,
             savefun=savefun,
         )
-    return _DistributedSnapshot(
-        target=target,
-        condition=condition,
-        writer=writer,
-        filename=filename,
-        snapshot_on_error=snapshot_on_error,
-        n_retains=n_retains,
-        autoload=autoload,
-        saver_rank=saver_rank,
-        savefun=savefun,
-    )
+
+    elif snapshot_mode == SnapshotMode.SHARDED:
+        assert saver_rank is not None
+        return _ShardedSnapshot(
+            target=target,
+            condition=condition,
+            writer=writer,
+            filename=filename,
+            snapshot_on_error=snapshot_on_error,
+            n_retains=n_retains,
+            autoload=autoload,
+            saver_rank=saver_rank,
+            savefun=savefun,
+        )
+    else:
+        raise RuntimeError("`snapshot_mode` is unexpected.")
 
 
 def _always_true() -> bool:
@@ -354,15 +409,43 @@ class _Snapshot(extension.Extension):
         self.autoload = autoload
         self._savefun = savefun
 
+    def _autoload(
+        self, manager: ExtensionsManagerProtocol, loaded_fn: Optional[str]
+    ) -> None:
+        if loaded_fn is not None:
+            target = manager if self._target is None else self._target
+            writer = self.writer
+            assert writer is not None
+
+            snapshot_file = writer.fs.open(
+                os.path.join(writer.out_dir, loaded_fn), "rb"
+            )
+            # As described above (at ``autoload`` option),
+            # snapshot files to be autoloaded must be saved by
+            # ``save_npz`` . In order to support general format,
+            # we nned to first reconstruct the design of savefun
+            # and loadfun.
+            state = torch.load(
+                snapshot_file,  # type: ignore[no-untyped-call]
+                map_location=torch.device("cpu"),
+            )
+            if type(target) is dict:
+                for k in target:
+                    target[k].load_state_dict(state[k])
+            else:
+                target.load_state_dict(state)
+            snapshot_file.close()
+
     def initialize(  # type: ignore[override]
         self, manager: ExtensionsManagerProtocol
     ) -> Optional[str]:
-        target = manager if self._target is None else self._target
         writer = manager.writer if self.writer is None else self.writer
         self.writer = writer
         loaded_fn = None
         assert writer is not None
         if self.autoload:
+            writer = self.writer
+            assert writer is not None
             # If ``autoload`` is on, this code scans the ``writer.out_dir``
             # for potential snapshot files by matching the file names
             # from ``filename`` format, picks up the latest one in
@@ -371,25 +454,7 @@ class _Snapshot(extension.Extension):
             loaded_fn = _find_latest_snapshot(
                 self.filename, writer.out_dir, writer.fs
             )
-            if loaded_fn:
-                snapshot_file = writer.fs.open(
-                    os.path.join(writer.out_dir, loaded_fn), "rb"
-                )
-                # As described above (at ``autoload`` option),
-                # snapshot files to be autoloaded must be saved by
-                # ``save_npz`` . In order to support general format,
-                # we nned to first reconstruct the design of savefun
-                # and loadfun.
-                state = torch.load(
-                    snapshot_file,  # type: ignore[no-untyped-call]
-                    map_location=torch.device("cpu"),
-                )
-                if type(target) is dict:
-                    for k in target:
-                        target[k].load_state_dict(state[k])
-                else:
-                    target.load_state_dict(state)
-                snapshot_file.close()
+            self._autoload(manager, loaded_fn)
 
         self._add_cleanup_hook(writer)
 
@@ -520,3 +585,120 @@ class _DistributedSnapshot(_Snapshot):
             super()._make_snapshot(manager)
         if self._size > 1:
             torch.distributed.barrier()  # type: ignore
+
+
+class _ShardedSnapshot(_Snapshot):
+    """Trainer extension to take snapshots.
+
+    This extension serializes the given object and stores it in the output directory.
+
+    When running in distributed mode, the saving is done simultaneously in
+    all processes. ideal for cases where state_dict is sharded.
+    (e.g. FullyShardedDataParallel)
+    """
+
+    def __init__(
+        self,
+        target: Any = None,
+        condition: Any = None,
+        writer: Optional[writing.Writer] = None,
+        filename: str = "snapshot_iter_{.iteration}",
+        snapshot_on_error: bool = False,
+        n_retains: int = -1,
+        autoload: bool = False,
+        savefun: Any = None,
+        saver_rank: int = 0,
+    ) -> None:
+        self._rank = torch.distributed.get_rank()  # type: ignore[no-untyped-call]
+        self._snapshot_dir = filename
+        filename = os.path.join(filename, str(self._rank))
+
+        super().__init__(
+            target,
+            condition,
+            writer,
+            filename,
+            snapshot_on_error,
+            n_retains,
+            autoload,
+            savefun,
+        )
+        if not torch.distributed.is_initialized():  # type: ignore[no-untyped-call]
+            raise RuntimeError(
+                "The Sharded Snapshot extension",
+                " requires torch.distributed to be initialized",
+            )
+        self._size = torch.distributed.get_world_size()  # type: ignore[no-untyped-call]
+        self._saver_rank = saver_rank
+
+    @contextmanager
+    def _save_session(
+        self, manager: ExtensionsManagerProtocol
+    ) -> Generator[None, None, None]:
+        snapshot_dir = self._snapshot_dir.format(manager)
+        writer = self.writer
+        assert writer is not None
+        complete_path = os.path.join(writer.out_dir, snapshot_dir, "complete")
+        if writer.fs.exists(complete_path):
+            writer.fs.remove(complete_path)
+        yield
+        writer(
+            os.path.join(snapshot_dir, "complete"),
+            "",
+            dict(),
+            savefun=self._savefun,
+        )
+
+    def _autoload(
+        self, manager: ExtensionsManagerProtocol, loaded_fn: Optional[str]
+    ) -> None:
+        snapshot_dir = None if loaded_fn is None else os.path.dirname(loaded_fn)
+        snapshot_dir_list: List[Optional[str]] = [None] * self._size
+        torch.distributed.all_gather_object(snapshot_dir_list, snapshot_dir)  # type: ignore[no-untyped-call]
+        assert all(
+            x == snapshot_dir_list[0] for x in snapshot_dir_list
+        ), "The target directory of autload is not identical between processes."
+        if snapshot_dir:
+            writer = self.writer
+            assert writer is not None
+            complete_path = os.path.join(
+                writer.out_dir, snapshot_dir, "complete"
+            )
+            print(complete_path)
+            complete_path_is_exists = writer.fs.exists(complete_path)
+            complete_path_is_exists_list: List[bool] = [False] * self._size
+            torch.distributed.all_gather_object(  # type: ignore[no-untyped-call]
+                complete_path_is_exists_list, complete_path_is_exists
+            )
+            assert all(
+                complete_path_is_exists_list
+            ), "The target directory for autoload is incomplete."
+            super()._autoload(manager, loaded_fn)
+
+    def _make_snapshot(self, manager: ExtensionsManagerProtocol) -> None:
+        with self._save_session(
+            manager
+        ) if self._rank == self._saver_rank else nullcontext():
+            super()._make_snapshot(manager)
+            if self._size > 1:
+                torch.distributed.barrier()  # type: ignore
+
+    def _add_cleanup_hook(self, writer: writing.Writer) -> None:
+        if (
+            hasattr(writer, "_add_cleanup_hook")
+            and self.n_retains > 0
+            and isinstance(self.filename, str)
+            and self._rank == self._saver_rank
+        ):
+
+            def _cleanup() -> None:
+                files = _find_stale_snapshots(
+                    self.filename, writer.out_dir, self.n_retains, writer.fs
+                )
+                for file in files:
+                    writer.fs.remove(
+                        os.path.dirname(os.path.join(writer.out_dir, file)),
+                        recursive=True,
+                    )
+
+            writer._add_cleanup_hook(_cleanup)

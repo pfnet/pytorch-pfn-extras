@@ -42,7 +42,9 @@ def get_trainer(path):
 def _init_distributed(use_cuda):
     if "OMPI_COMM_WORLD_SIZE" in os.environ:
         size, rank, local_rank = distributed.initialize_ompi_environment(
-            backend="nccl", init_method="env"
+            backend="nccl",
+            init_method="env",
+            timeout=15,
         )
     else:
         pytest.skip("This test requires MPI to run")
@@ -99,6 +101,8 @@ def test_distributed_snapshot(mpi_tmp_path, saver_rank):
         with trainer.run_iteration():
             pass
     assert 1 == trainer.iteration
+    if comm_size > 1:
+        torch.distributed.barrier()
     pattern = os.path.join(trainer.out, "snapshot_iter_*")
     found = [os.path.basename(path) for path in glob.glob(pattern)]
     # the snapshot is generated only for the saver rank
@@ -130,10 +134,14 @@ def test_distributed_snapshot_autoload(mpi_tmp_path, saver_rank):
     )
     trainer = get_trainer(mpi_tmp_path)
     trainer.extend(snapshot, trigger=(1, "iteration"), priority=2)
+    if comm_size > 1:
+        torch.distributed.barrier()
     for _ in range(1):
         with trainer.run_iteration():
             pass
     assert 1 == trainer.iteration
+    if comm_size > 1:
+        torch.distributed.barrier()
     pattern = os.path.join(trainer.out, "snapshot_iter_*")
     found = [os.path.basename(path) for path in glob.glob(pattern)]
     assert len(found) == 1
@@ -168,6 +176,8 @@ def test_distributed_snapshot_on_error(mpi_tmp_path, saver_rank):
         pass
         dummy_tb = dummy_exception.__traceback__
         snapshot.on_error(trainer, dummy_exception, dummy_tb)
+    if comm_size > 1:
+        torch.distributed.barrier()
     pattern = os.path.join(trainer.out, f"snapshot_iter_{saver_rank}_*")
     found = [os.path.basename(path) for path in glob.glob(pattern)]
     # the snapshot is generated only for the saver rank
