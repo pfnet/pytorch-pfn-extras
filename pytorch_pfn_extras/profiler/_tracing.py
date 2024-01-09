@@ -57,13 +57,24 @@ class DummyTracer(Tracer):
 
 
 class ChromeTracingSaveFunc:
-    def write(self, target: Dict[str, Any], file_o: Any) -> None:
+    def _write(self, target: Dict[str, Any], file_o: Any) -> None:
         log = json.dumps(target, indent=4)
         file_o.write(log.encode("ascii"))
 
-    def append(self, target: List[Dict[str, Any]], file_o: Any) -> None:
+    def _append(self, target: List[Dict[str, Any]], file_o: Any) -> None:
         log = "".join(f"\n{json.dumps(o, indent=4)}," for o in target)
         file_o.write(log.encode("ascii"))
+
+    def __call__(
+        self,
+        target: Union[Dict[str, Any], List[Dict[str, Any]]],
+        file_o: Any,
+        append_mode: bool,
+    ) -> None:
+        if append_mode:
+            self._append(target, file_o)
+        else:
+            self._write(target, file_o)
 
     def init(self, target: List[Dict[str, Any]], file_o: Any) -> None:
         log = "["
@@ -173,23 +184,16 @@ class ChromeTracer(Tracer):
         self._tracer_queue.synchronize()
         # TODO(ecastill): try to work on some append mode manipulating the
         # file pointer and with json.dumps?
+        writer.save(
+            filename,
+            "",  # out_dir arg is ignored in the writer, uses the writer attr
+            self._event_list,
+            savefun=self._savefun,
+            append=self._append,
+            append_mode=self._append,
+        )
         if self._append:
-            writer(
-                filename,
-                "",
-                self._event_list,
-                savefun=self._savefun.append,
-                append=True,
-            )
             self._event_list.clear()
-        else:
-            writer(
-                filename,
-                "",  # out_dir arg is ignored in the writer, uses the writer attr
-                self._event_list,
-                savefun=self._savefun.write,
-                append=False,
-            )
 
     def enable(self, enable_flag: bool) -> None:
         self._enable = enable_flag
