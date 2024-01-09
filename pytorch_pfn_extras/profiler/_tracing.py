@@ -57,7 +57,7 @@ class DummyTracer(Tracer):
 
 
 class ChromeTracingSaveFunc:
-    def _write(self, target: Dict[str, Any], file_o: Any) -> None:
+    def _write(self, target: List[Dict[str, Any]], file_o: Any) -> None:
         log = json.dumps(target, indent=4)
         file_o.write(log.encode("ascii"))
 
@@ -67,7 +67,7 @@ class ChromeTracingSaveFunc:
 
     def __call__(
         self,
-        target: Union[Dict[str, Any], List[Dict[str, Any]]],
+        target: List[Dict[str, Any]],
         file_o: Any,
         append_mode: bool,
     ) -> None:
