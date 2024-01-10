@@ -1,3 +1,4 @@
+import pathlib
 import types
 import warnings
 
@@ -82,9 +83,11 @@ def _get_jit_cpu_model(device_type):
     return model, optimizer
 
 
-def test_jit_runtime_trainer():
+def test_jit_runtime_trainer(tmp_path: pathlib.Path):
     model, optimizer = _get_jit_cpu_model("jit-cpu")
-    trainer = ppe.engine.create_trainer(model, optimizer, 10, device="jit-cpu")
+    trainer = ppe.engine.create_trainer(
+        model, optimizer, 10, out_dir=str(tmp_path), device="jit-cpu"
+    )
     data = torch.utils.data.DataLoader(
         [
             (
@@ -120,11 +123,16 @@ def test_jit_runtime_evaluator():
     evaluator.run(data)
 
 
-def test_jit_runtime_trainer_with_evaluator():
+def test_jit_runtime_trainer_with_evaluator(tmp_path: pathlib.Path):
     model, optimizer = _get_jit_cpu_model("jit-cpu")
     evaluator = ppe.engine.create_evaluator(model, device="jit-cpu")
     trainer = ppe.engine.create_trainer(
-        model, optimizer, 10, device="jit-cpu", evaluator=evaluator
+        model,
+        optimizer,
+        10,
+        out_dir=str(tmp_path),
+        device="jit-cpu",
+        evaluator=evaluator,
     )
     data = torch.utils.data.DataLoader(
         [

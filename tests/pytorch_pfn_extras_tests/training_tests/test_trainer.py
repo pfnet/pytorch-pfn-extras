@@ -1,3 +1,4 @@
+import pathlib
 import tempfile
 import typing
 from unittest import mock
@@ -795,7 +796,7 @@ def test_trainer_with_code_block_with_multiple_optimizers(
     trainer.run(data, data)
 
 
-def test_trainer_profile():
+def test_trainer_profile(tmp_path: pathlib.Path):
     device = "cpu"
     model = MyModel()
     model_with_loss = MyModelWithLossDictOutput(model)
@@ -834,6 +835,7 @@ def test_trainer_profile():
         evaluator=evaluator,
         extensions=extensions,
         profile=profile,
+        out_dir=str(tmp_path),
     )
     trainer.run(data, data)
     assert trace_handler.call_count == 20  # n_epochs

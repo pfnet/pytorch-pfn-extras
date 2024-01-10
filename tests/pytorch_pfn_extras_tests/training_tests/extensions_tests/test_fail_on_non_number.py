@@ -1,3 +1,5 @@
+import pathlib
+
 import numpy
 import pytest
 import torch
@@ -42,14 +44,20 @@ class ErroneousFunc(torch.autograd.Function):
         return grad_output + float("nan")
 
 
-def get_manager_model_optimizer(*, check_grad=True, grad_error=False):
+def get_manager_model_optimizer(
+    *, check_grad=True, grad_error=False, tmp_path: pathlib.Path
+):
     epochs = 3
     model = Model(grad_error)
     optimizer = torch.optim.SGD(model.parameters(), lr=1.0)
     optimizers = {"main": optimizer}
     models = {"main": model}
     manager = training.ExtensionsManager(
-        models, optimizers, epochs, iters_per_epoch=4
+        models,
+        optimizers,
+        epochs,
+        iters_per_epoch=4,
+        out_dir=str(tmp_path),
     )
     manager.extend(FailOnNonNumber(check_grad=check_grad))
     return manager, model, optimizer
@@ -70,37 +78,37 @@ def run_train(manager, model, optimizer, *, optimizer_step=True):
                     optimizer.step()
 
 
-def test_valid():
-    manager, model, optimizer = get_manager_model_optimizer()
+def test_valid(tmp_path: pathlib.Path):
+    manager, model, optimizer = get_manager_model_optimizer(tmp_path=tmp_path)
     run_train(manager, model, optimizer)
 
 
-def test_nan():
-    manager, model, optimizer = get_manager_model_optimizer()
+def test_nan(tmp_path: pathlib.Path):
+    manager, model, optimizer = get_manager_model_optimizer(tmp_path=tmp_path)
     with torch.no_grad():
         model.l1.weight[1, 0] = float("NaN")
     with pytest.raises(RuntimeError, match="diverge"):
         run_train(manager, model, optimizer)
 
 
-def test_inf():
-    manager, model, optimizer = get_manager_model_optimizer()
+def test_inf(tmp_path: pathlib.Path):
+    manager, model, optimizer = get_manager_model_optimizer(tmp_path=tmp_path)
     with torch.no_grad():
         model.l1.weight[2, 0] = float("inf")
     with pytest.raises(RuntimeError, match="diverge"):
         run_train(manager, model, optimizer)
 
 
-def test_check_grad():
+def test_check_grad(tmp_path: pathlib.Path):
     manager, model, optimizer = get_manager_model_optimizer(
-        check_grad=True, grad_error=True
+        check_grad=True, grad_error=True, tmp_path=tmp_path
     )
     with pytest.raises(RuntimeError, match="diverge"):
         run_train(manager, model, optimizer, optimizer_step=False)
 
 
-def test_no_check_grad():
+def test_no_check_grad(tmp_path: pathlib.Path):
     manager, model, optimizer = get_manager_model_optimizer(
-        check_grad=False, grad_error=True
+        check_grad=False, grad_error=True, tmp_path=tmp_path
     )
     run_train(manager, model, optimizer, optimizer_step=False)

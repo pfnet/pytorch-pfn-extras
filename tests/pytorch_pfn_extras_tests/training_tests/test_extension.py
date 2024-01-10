@@ -1,3 +1,4 @@
+import pathlib
 from unittest import mock
 
 import pytest
@@ -5,22 +6,23 @@ import pytorch_pfn_extras as ppe
 import torch
 
 
-def _get_dummy_manager():
+def _get_dummy_manager(tmp_path: pathlib.Path):
     model = torch.nn.Module()
     return ppe.training.ExtensionsManager(
         {"main": model},
         [],  # optimizers
         10,  # max_epochs
         iters_per_epoch=1,
+        out_dir=str(tmp_path),
     )
 
 
-def test_raise_error_if_call_not_implemented():
+def test_raise_error_if_call_not_implemented(tmp_path: pathlib.Path):
     class MyExtension(ppe.training.Extension):
         pass
 
     ext = MyExtension()
-    trainer = _get_dummy_manager()
+    trainer = _get_dummy_manager(tmp_path)
     with pytest.raises(NotImplementedError):
         ext(trainer)
 
@@ -84,7 +86,7 @@ def test_make_extension_unexpected_kwargs():
             pass
 
 
-def test_on_error():
+def test_on_error(tmp_path: pathlib.Path):
     class DummyExt(ppe.training.Extension):
         def __init__(self):
             self.call_cnt = 0
@@ -98,7 +100,11 @@ def test_on_error():
 
     optimizers = {"main": object()}
     manager = ppe.training.ExtensionsManager(
-        {}, optimizers, 1, iters_per_epoch=2
+        {},
+        optimizers,
+        1,
+        iters_per_epoch=2,
+        out_dir=str(tmp_path),
     )
     ext = DummyExt()
     manager.extend(ext)

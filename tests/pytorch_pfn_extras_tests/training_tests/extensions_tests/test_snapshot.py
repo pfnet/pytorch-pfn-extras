@@ -17,6 +17,18 @@ from pytorch_pfn_extras.training.extensions._snapshot import (
 )
 
 
+@pytest.fixture(scope="function")
+def path():
+    with tempfile.TemporaryDirectory() as t_path:
+        yield t_path
+
+
+@pytest.fixture(scope="function")
+def snapshot_path():
+    with tempfile.TemporaryDirectory() as t_path:
+        yield t_path
+
+
 def get_trainer(*, out_dir, state_to_load=None, epochs=10):
     model_state_dict = {}
     optimizer_state_dict = {}
@@ -73,37 +85,30 @@ def test_savefun_and_writer_exclusive():
         extensions.snapshot_object(trainer, savefun=savefun, writer=writer)
 
 
-@pytest.fixture(scope="function")
-def remover():
-    yield
-    if os.path.exists("myfile.dat"):
-        os.remove("myfile.dat")
-
-
-def test_save_file(remover):
-    trainer = get_trainer(out_dir=".")
+def test_save_file(path):
+    trainer = get_trainer(out_dir=path)
     trainer._done = True
-    w = writing.SimpleWriter()
+    w = writing.SimpleWriter(out_dir=path)
     snapshot = extensions.snapshot_object(trainer, "myfile.dat", writer=w)
     snapshot(trainer)
 
-    assert os.path.exists("myfile.dat")
+    assert os.path.exists(os.path.join(path, "myfile.dat"))
 
 
-def test_multi_target(remover):
-    trainer = get_trainer(out_dir=".")
+def test_multi_target(path):
+    trainer = get_trainer(out_dir=path)
     trainer._done = True
     other_state_dict = {"test": True}
     other = _StateDictObj(state_dict=other_state_dict)
-    w = ppe.writing.SimpleWriter()
+    w = ppe.writing.SimpleWriter(out_dir=path)
     target = {"trainer": trainer, "other": other}
     snapshot = extensions.snapshot_object(target, "myfile.dat", writer=w)
     snapshot(trainer)
 
-    assert os.path.exists("myfile.dat")
+    assert os.path.exists(os.path.join(path, "myfile.dat"))
     # Load the snapshot and verify it
-    state = torch.load("myfile.dat")
-    new_trainer = get_trainer(out_dir=".")
+    state = torch.load(os.path.join(path, "myfile.dat"))
+    new_trainer = get_trainer(out_dir=path)
     new_other = _StateDictObj(state_dict={})
     new_trainer.load_state_dict(state["trainer"])
     new_other.load_state_dict(state["other"])
@@ -111,18 +116,18 @@ def test_multi_target(remover):
     assert new_other.state_dict() == other_state_dict
 
 
-def test_multi_target_autoload(remover):
-    trainer = get_trainer(out_dir=".")
+def test_multi_target_autoload(path):
+    trainer = get_trainer(out_dir=path)
     trainer._done = True
     other_state_dict = {"test": True}
     other = _StateDictObj(state_dict=other_state_dict)
-    w = ppe.writing.SimpleWriter()
+    w = ppe.writing.SimpleWriter(out_dir=path)
     target = {"trainer": trainer, "other": other}
     snapshot = extensions.snapshot_object(target, "myfile.dat", writer=w)
     snapshot(trainer)
 
-    assert os.path.exists("myfile.dat")
-    new_trainer = get_trainer(out_dir=".")
+    assert os.path.exists(os.path.join(path, "myfile.dat"))
+    new_trainer = get_trainer(out_dir=path)
     new_other = _StateDictObj(state_dict={})
 
     target = {"trainer": new_trainer, "other": new_other}
@@ -133,8 +138,8 @@ def test_multi_target_autoload(remover):
     assert new_other.state_dict() == other_state_dict
 
 
-def test_multi_target_autoload_not_found(remover):
-    trainer = get_trainer(out_dir=".")
+def test_multi_target_autoload_not_found(path):
+    trainer = get_trainer(out_dir=path)
     other = _StateDictObj(state_dict={"original": "state"})
 
     target = {"trainer": trainer, "other": other}
@@ -144,8 +149,8 @@ def test_multi_target_autoload_not_found(remover):
     assert other.state_dict() == {"original": "state"}
 
 
-def test_clean_up_tempdir(remover):
-    trainer = get_trainer(out_dir=".")
+def test_clean_up_tempdir(path):
+    trainer = get_trainer(out_dir=path)
     trainer._done = True
     snapshot = extensions.snapshot_object(trainer, "myfile.dat")
     snapshot(trainer)
@@ -154,11 +159,11 @@ def test_clean_up_tempdir(remover):
     assert len(left_tmps) == 0
 
 
-def test_on_error():
+def test_on_error(path):
     # Will fail when accesing the dummy optimizer
     optimizers = {"main": object()}
     trainer = training.ExtensionsManager(
-        {}, optimizers, 1, iters_per_epoch=1, out_dir="."
+        {}, optimizers, 1, iters_per_epoch=1, out_dir=path
     )
     filename = "myfile-deadbeef.dat"
 
@@ -171,18 +176,6 @@ def test_on_error():
         with trainer.run_iteration():
             pass
     assert not os.path.exists(filename)
-
-
-@pytest.fixture(scope="function")
-def path():
-    with tempfile.TemporaryDirectory() as t_path:
-        yield t_path
-
-
-@pytest.fixture(scope="function")
-def snapshot_path():
-    with tempfile.TemporaryDirectory() as t_path:
-        yield t_path
 
 
 @pytest.mark.parametrize(

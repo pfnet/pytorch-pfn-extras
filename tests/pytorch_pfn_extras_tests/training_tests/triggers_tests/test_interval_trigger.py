@@ -1,3 +1,5 @@
+import pathlib
+
 import pytest
 from pytorch_pfn_extras import training
 from pytorch_pfn_extras.training import triggers
@@ -19,9 +21,11 @@ _argvalues = [
 
 
 @pytest.mark.parametrize("iters_per_epoch,interval,expected,resume", _argvalues)
-def test_trigger(iters_per_epoch, interval, expected, resume):
+def test_trigger(
+    iters_per_epoch, interval, expected, resume, tmp_path: pathlib.Path
+):
     trainer = training.ExtensionsManager(
-        {}, [], 100, iters_per_epoch=iters_per_epoch
+        {}, [], 100, iters_per_epoch=iters_per_epoch, out_dir=str(tmp_path)
     )
     trigger = triggers.IntervalTrigger(*interval)
 
@@ -33,9 +37,15 @@ def test_trigger(iters_per_epoch, interval, expected, resume):
 
 
 @pytest.mark.parametrize("iters_per_epoch,interval,expected,resume", _argvalues)
-def test_resumed_trigger(iters_per_epoch, interval, expected, resume):
+def test_resumed_trigger(
+    iters_per_epoch, interval, expected, resume, tmp_path: pathlib.Path
+):
     trainer = training.ExtensionsManager(
-        {}, [], 100, iters_per_epoch=iters_per_epoch
+        {},
+        [],
+        100,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
     trigger = triggers.IntervalTrigger(*interval)
 
@@ -57,7 +67,12 @@ def test_resumed_trigger(iters_per_epoch, interval, expected, resume):
 
 
 @pytest.mark.parametrize("iters_per_epoch,interval,expected,resume", _argvalues)
-def test_str(iters_per_epoch, interval, expected, resume):
+def test_str(
+    iters_per_epoch,
+    interval,
+    expected,
+    resume,
+):
     trigger = triggers.IntervalTrigger(*interval)
 
     expected = "IntervalTrigger({}, '{}')".format(*interval)
