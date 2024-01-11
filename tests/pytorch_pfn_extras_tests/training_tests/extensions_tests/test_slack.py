@@ -1,5 +1,4 @@
 import json
-import os
 import pathlib
 from types import SimpleNamespace
 from unittest import mock
