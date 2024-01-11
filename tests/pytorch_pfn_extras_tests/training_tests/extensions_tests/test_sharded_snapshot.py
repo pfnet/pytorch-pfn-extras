@@ -85,23 +85,15 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
             ),
             (
                 fsdp.StateDictType.SHARDED_STATE_DICT,
-                fsdp.ShardedStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-                fsdp.ShardedOptimStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
+                fsdp.ShardedStateDictConfig(offload_to_cpu=True),
+                fsdp.ShardedOptimStateDictConfig(offload_to_cpu=True),
             ),
         ),
         (
             (
                 fsdp.StateDictType.SHARDED_STATE_DICT,
-                fsdp.ShardedStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-                fsdp.ShardedOptimStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
+                fsdp.ShardedStateDictConfig(offload_to_cpu=True),
+                fsdp.ShardedOptimStateDictConfig(offload_to_cpu=True),
             ),
             (
                 fsdp.StateDictType.FULL_STATE_DICT,
@@ -112,21 +104,13 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
         (
             (
                 fsdp.StateDictType.SHARDED_STATE_DICT,
-                fsdp.ShardedStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-                fsdp.ShardedOptimStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
+                fsdp.ShardedStateDictConfig(offload_to_cpu=True),
+                fsdp.ShardedOptimStateDictConfig(offload_to_cpu=True),
             ),
             (
                 fsdp.StateDictType.SHARDED_STATE_DICT,
-                fsdp.ShardedStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
-                fsdp.ShardedOptimStateDictConfig(
-                    offload_to_cpu=True, use_dtensor=False
-                ),
+                fsdp.ShardedStateDictConfig(offload_to_cpu=True),
+                fsdp.ShardedOptimStateDictConfig(offload_to_cpu=True),
             ),
         ),
     ],
