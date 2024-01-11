@@ -1,7 +1,8 @@
 import os
+from datetime import timedelta
 from typing import Tuple
 
-import torch
+import torch.distributed
 
 
 def initialize_ompi_environment(
@@ -13,6 +14,7 @@ def initialize_ompi_environment(
     local_rank: int = 0,
     addr: str = "localhost",
     port: str = "1234",
+    timeout: int = 1800,
 ) -> Tuple[int, int, int]:
     """Initialize `torch.distributed` environments with values taken from
     OpenMPI.
@@ -32,6 +34,8 @@ def initialize_ompi_environment(
             Defaults to ``"localhost"``
         port: The port of the master process of `torch.distributed`.
             Defaults to ``"1234"``
+        timeout: Timeout seconds for `torch.distributed` collective communication.
+            Defaults to ``1800``.
     """
     e = os.environ
     backend = backend
@@ -62,7 +66,11 @@ def initialize_ompi_environment(
 
     if world_size > 1 and not torch.distributed.is_initialized():  # type: ignore
         torch.distributed.init_process_group(  # type: ignore
-            backend, init_method=init_method, world_size=world_size, rank=rank
+            backend,
+            init_method=init_method,
+            world_size=world_size,
+            rank=rank,
+            timeout=timedelta(seconds=timeout),
         )
         torch.distributed.barrier()  # type: ignore
 

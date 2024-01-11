@@ -12,6 +12,9 @@ from pytorch_pfn_extras.writing import Writer
 
 
 class Tracer:
+    def initialize_writer(self, filename: str, writer: Writer) -> None:
+        raise NotImplementedError("Tracers must implement initialize")
+
     @contextlib.contextmanager
     def add_event(self, name: str) -> Generator[None, None, None]:
         raise NotImplementedError("Tracers must implement add_event")
@@ -39,6 +42,9 @@ class Tracer:
 
 
 class DummyTracer(Tracer):
+    def initialize_writer(self, filename: str, writer: Writer) -> None:
+        pass
+
     @contextlib.contextmanager
     def add_event(self, name: str) -> Generator[None, None, None]:
         yield
@@ -51,9 +57,36 @@ class DummyTracer(Tracer):
 
 
 class ChromeTracingSaveFunc:
-    def __call__(self, target: Dict[str, Any], file_o: Any) -> None:
+    def _write(self, target: List[Dict[str, Any]], file_o: Any) -> None:
         log = json.dumps(target, indent=4)
         file_o.write(log.encode("ascii"))
+
+    def _append(self, target: List[Dict[str, Any]], file_o: Any) -> None:
+        log = "".join(f"\n{json.dumps(o, indent=4)}," for o in target)
+        file_o.write(log.encode("ascii"))
+
+    def __call__(
+        self,
+        target: List[Dict[str, Any]],
+        file_o: Any,
+        append_mode: bool,
+    ) -> None:
+        if append_mode:
+            self._append(target, file_o)
+        else:
+            self._write(target, file_o)
+
+    def init(self, target: List[Dict[str, Any]], file_o: Any) -> None:
+        log = "["
+        file_o.write(log.encode("ascii"))
+
+
+def load_chrome_trace_as_json(filename: str) -> List[Dict[str, Any]]:
+    with open(filename) as f:
+        s = f.read()
+    if s[-1] != "]":
+        s = s[:-1] + "]"
+    return cast(List[Dict[str, Any]], json.loads(s))
 
 
 class ChromeTracer(Tracer):
@@ -70,6 +103,7 @@ class ChromeTracer(Tracer):
         self,
         max_event_count: Optional[int] = None,
         enable: bool = True,
+        append: bool = True,
     ) -> None:
         self._enable = enable
         self._event_list: List[Dict[str, Union[str, int, float]]] = []
@@ -82,6 +116,8 @@ class ChromeTracer(Tracer):
             self.add_remote_event, 1000
         )
         self._tracer_queue.initialize()
+        self._append = append
+        self._savefun = ChromeTracingSaveFunc()
 
     @contextlib.contextmanager
     def add_event(self, name: str) -> Generator[None, None, None]:
@@ -130,19 +166,34 @@ class ChromeTracer(Tracer):
     ) -> None:
         self._event_list.append(event)
 
+    def initialize_writer(self, filename: str, writer: Writer) -> None:
+        if not self._enable:
+            return
+        if self._append:
+            writer(
+                filename,
+                "",
+                {},
+                savefun=self._savefun.init,
+                append=False,
+            )
+
     def flush(self, filename: str, writer: Writer) -> None:
         if not self._enable:
             return
         self._tracer_queue.synchronize()
         # TODO(ecastill): try to work on some append mode manipulating the
         # file pointer and with json.dumps?
-        savefun = ChromeTracingSaveFunc()
-        writer(
+        writer.save(
             filename,
             "",  # out_dir arg is ignored in the writer, uses the writer attr
             self._event_list,
-            savefun=savefun,
+            savefun=self._savefun,
+            append=self._append,
+            append_mode=self._append,
         )
+        if self._append:
+            self._event_list.clear()
 
     def enable(self, enable_flag: bool) -> None:
         self._enable = enable_flag

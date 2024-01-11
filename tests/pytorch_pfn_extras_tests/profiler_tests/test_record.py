@@ -1,4 +1,3 @@
-import json
 import os
 import tempfile
 import threading
@@ -279,16 +278,17 @@ def test_record_iterable_with_multiprocessing(device):
 
     with tempfile.TemporaryDirectory() as t_path:
         w = ppe.writing.SimpleWriter(out_dir=t_path)
+        ppe.profiler.get_tracer().initialize_writer("trace.json", w)
         with torch.profiler.profile():
             for x in dataloader:
                 model(x.to(device))
         ppe.profiler.get_tracer().flush("trace.json", w)
         assert os.path.exists(os.path.join(t_path, "trace.json"))
         pid = os.getpid()
-        with open(os.path.join(t_path, "trace.json")) as f:
-            data = f.read()
-            values = json.loads(data)
-            assert len(values) == 5
-            # Check that the values were written by a dataloader worker
-            for v in values:
-                assert v["pid"] != pid
+        values = ppe.profiler.load_chrome_trace_as_json(
+            os.path.join(t_path, "trace.json")
+        )
+        assert len(values) == 5
+        # Check that the values were written by a dataloader worker
+        for v in values:
+            assert v["pid"] != pid
