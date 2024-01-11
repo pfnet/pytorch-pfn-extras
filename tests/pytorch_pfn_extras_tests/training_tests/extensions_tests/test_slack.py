@@ -139,7 +139,6 @@ class TestSlack:
             "0", message, filenames=filenames, token="123"
         )
         manager.extend(extension, trigger=(1, "iteration"))
-
         with mock.patch(
             "slack_sdk.WebClient.chat_postMessage",
             return_value={"ok": True, "ts": 1},
@@ -149,7 +148,7 @@ class TestSlack:
             upload.assert_has_calls(
                 [
                     mock.call(file="file_1"),
-                    mock.call(file=os.path.join(str(tmp_path), "abc")),
+                    mock.call(file=f"{str(tmp_path)}/abc"),
                 ],
                 any_order=True,
             )
