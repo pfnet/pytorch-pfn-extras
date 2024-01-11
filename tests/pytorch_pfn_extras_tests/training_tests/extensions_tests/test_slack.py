@@ -1,4 +1,5 @@
 import json
+import os
 import pathlib
 from types import SimpleNamespace
 from unittest import mock
@@ -148,7 +149,7 @@ class TestSlack:
             upload.assert_has_calls(
                 [
                     mock.call(file="file_1"),
-                    mock.call(file=str(tmp_path / "abc")),
+                    mock.call(file=os.path.join(str(tmp_path), "abc")),
                 ],
                 any_order=True,
             )
