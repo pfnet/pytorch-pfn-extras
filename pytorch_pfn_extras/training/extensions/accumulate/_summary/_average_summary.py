@@ -22,7 +22,8 @@ class AverageSummary(SummaryBase):
         if callable(value):
             self._deferred.append((value, weight))
             return
-        self._x += weight * value
+        m = self._n / (self._n + weight)
+        self._x = self._x * m + value / weight * (1 - m)
         self._n += weight
 
     def state_dict(self) -> Dict[str, Any]:
@@ -46,15 +47,15 @@ class AverageSummary(SummaryBase):
 
     def compute_average(self) -> Scalar:
         self._add_deferred_values()
-        x, n = self._x, self._n
-        return x / n
+        return self._x
 
     def compute_accumulate(self) -> Scalar:
         return self.compute_average()
 
     def __add__(self, other: AverageSummary) -> AverageSummary:
         s = AverageSummary()
-        s._x = self._x + other._x
+        m = self._n / (self._n + other._n)
+        s._x = self._x * m + other._x * (1 - m)
         s._n = self._n + other._n
         s._deferred = self._deferred + other._deferred
         return s
