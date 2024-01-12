@@ -1,4 +1,5 @@
 import json
+import pathlib
 from types import SimpleNamespace
 from unittest import mock
 
@@ -11,12 +12,14 @@ import pytorch_pfn_extras as ppe
     reason="Slack SDK not installed",
 )
 class TestSlack:
-    def _get_manager(self):
-        return ppe.training.ExtensionsManager({}, [], 1, iters_per_epoch=5)
+    def _get_manager(self, tmp_path: pathlib.Path):
+        return ppe.training.ExtensionsManager(
+            {}, [], 1, iters_per_epoch=5, out_dir=str(tmp_path)
+        )
 
     @pytest.mark.parametrize("thread", [False, True])
-    def test_post_message(self, thread):
-        manager = self._get_manager()
+    def test_post_message(self, thread, tmp_path: pathlib.Path):
+        manager = self._get_manager(tmp_path)
         message = "It {manager.iteration} loss: {loss}"
         extension = ppe.training.extensions.Slack(
             "0", message, token="123", thread=thread
@@ -50,8 +53,8 @@ class TestSlack:
                 ppe.reporting.report({"loss": 0.75})
             assert "Training finish" in patched.call_args.kwargs["text"]
 
-    def test_post_message_on_error(self):
-        manager = self._get_manager()
+    def test_post_message_on_error(self, tmp_path: pathlib.Path):
+        manager = self._get_manager(tmp_path)
         message = "It {manager.iteration} loss: {loss}"
         extension = ppe.training.extensions.Slack(
             "0", message, token="123", thread=False
@@ -70,8 +73,8 @@ class TestSlack:
             except RuntimeError:
                 assert "Error during" in patched.call_args.kwargs["text"]
 
-    def test_post_message_webhook(self):
-        manager = self._get_manager()
+    def test_post_message_webhook(self, tmp_path: pathlib.Path):
+        manager = self._get_manager(tmp_path)
         message = "It {manager.iteration} loss: {loss}"
         extension = ppe.training.extensions.SlackWebhook(
             url="http://test", msg=message
@@ -100,12 +103,12 @@ class TestSlack:
             ),
         ],
     )
-    def test_post_message_context(self, message):
+    def test_post_message_context(self, message, tmp_path: pathlib.Path):
         class _CustomContext:
             def __init__(self):
                 self.foo = "bar"
 
-        manager = self._get_manager()
+        manager = self._get_manager(tmp_path)
         context = _CustomContext()
         extension = ppe.training.extensions.Slack(
             "0", message, context=context, token="123"
@@ -127,15 +130,14 @@ class TestSlack:
                 channel="0", text="It 2 loss: 0.75 custom: test", thread_ts=1
             )
 
-    def test_post_message_files(self):
-        manager = self._get_manager()
+    def test_post_message_files(self, tmp_path: pathlib.Path):
+        manager = self._get_manager(tmp_path)
         message = "it: {manager.iteration}"
         filenames = ["file_{manager.iteration}", "{manager._out}/abc"]
         extension = ppe.training.extensions.Slack(
             "0", message, filenames=filenames, token="123"
         )
         manager.extend(extension, trigger=(1, "iteration"))
-
         with mock.patch(
             "slack_sdk.WebClient.chat_postMessage",
             return_value={"ok": True, "ts": 1},
@@ -145,7 +147,7 @@ class TestSlack:
             upload.assert_has_calls(
                 [
                     mock.call(file="file_1"),
-                    mock.call(file="result/abc"),
+                    mock.call(file=f"{str(tmp_path)}/abc"),
                 ],
                 any_order=True,
             )

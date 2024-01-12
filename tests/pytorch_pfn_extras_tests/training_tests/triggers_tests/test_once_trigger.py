@@ -1,3 +1,4 @@
+import pathlib
 import random
 
 import pytest
@@ -15,12 +16,18 @@ _parametrize = pytest.mark.parametrize(
 
 
 @_parametrize
-def test_trigger(iters_per_epoch, call_on_resume, resume):
+def test_trigger(
+    iters_per_epoch, call_on_resume, resume, tmp_path: pathlib.Path
+):
     del resume  # resume is ignored
     expected = [True] + [False] * 6
     finished = [False] + [True] * 6
     manager = ppe.training.ExtensionsManager(
-        {}, [], 100, iters_per_epoch=iters_per_epoch
+        {},
+        [],
+        100,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
     trigger = ppe.training.triggers.OnceTrigger(call_on_resume)
     for e, f in zip(expected, finished):
@@ -31,14 +38,20 @@ def test_trigger(iters_per_epoch, call_on_resume, resume):
 
 
 @_parametrize
-def test_resumed_trigger(iters_per_epoch, call_on_resume, resume):
+def test_resumed_trigger(
+    iters_per_epoch, call_on_resume, resume, tmp_path: pathlib.Path
+):
     expected = [True] + [False] * 6
     finished = [False] + [True] * 6
     if call_on_resume:
         expected[resume] = True
         finished[resume] = False
     manager = ppe.training.ExtensionsManager(
-        {}, [], 100, iters_per_epoch=iters_per_epoch
+        {},
+        [],
+        100,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
     trigger = ppe.training.triggers.OnceTrigger(call_on_resume)
     for e, f in zip(expected[:resume], finished[:resume]):
@@ -58,13 +71,19 @@ def test_resumed_trigger(iters_per_epoch, call_on_resume, resume):
 
 
 @_parametrize
-def test_trigger_sparse_call(iters_per_epoch, call_on_resume, resume):
+def test_trigger_sparse_call(
+    iters_per_epoch, call_on_resume, resume, tmp_path: pathlib.Path
+):
     del resume  # resume is ignored
     expected = [True] + [False] * 6
     finished = [False] + [True] * 6
     for _ in range(10):
         manager = ppe.training.ExtensionsManager(
-            {}, [], 100, iters_per_epoch=iters_per_epoch
+            {},
+            [],
+            100,
+            iters_per_epoch=iters_per_epoch,
+            out_dir=str(tmp_path),
         )
         trigger = ppe.training.triggers.OnceTrigger(call_on_resume)
         accumulated = False

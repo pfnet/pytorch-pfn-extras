@@ -1,4 +1,5 @@
 import multiprocessing
+import os
 import tempfile
 import threading
 from unittest import mock
@@ -14,7 +15,7 @@ def test_simple_writer():
     w = writing.SimpleWriter(foo=True)
     savefun = mock.MagicMock()
     with tempfile.TemporaryDirectory() as tempd:
-        w("myfile.dat", tempd, target, savefun=savefun)
+        w(os.path.join(tempd, "myfile.dat"), "", target, savefun=savefun)
     assert savefun.call_count == 1
     assert savefun.call_args[0][0] == target
     assert savefun.call_args[1]["foo"] is True
@@ -28,8 +29,8 @@ def test_standard_writer():
     name = spshot_writers_path + ".StandardWriter.create_worker"
     with mock.patch(name, return_value=worker):
         with tempfile.TemporaryDirectory() as tempd:
-            w("myfile.dat", tempd, target)
-            w("myfile.dat", tempd, target)
+            w(os.path.join(tempd, "myfile.dat"), "", target)
+            w(os.path.join(tempd, "myfile.dat"), "", target)
             w.finalize()
 
         assert worker.start.call_count == 2
@@ -40,16 +41,18 @@ def test_thread_writer_create_worker():
     target = mock.MagicMock()
     w = writing.ThreadWriter()
     with tempfile.TemporaryDirectory() as tempd:
-        worker = w.create_worker("myfile.dat", tempd, target, append=False)
+        worker = w.create_worker(
+            os.path.join(tempd, "myfile.dat"), "", target, append=False
+        )
         assert isinstance(worker, threading.Thread)
-        w("myfile2.dat", tempd, "test")
+        w(os.path.join(tempd, "myfile2.dat"), "", "test")
         w.finalize()
 
 
 def test_thread_writer_fail():
     w = writing.ThreadWriter(savefun=None)
     with tempfile.TemporaryDirectory() as tempd:
-        w("myfile2.dat", tempd, "test")
+        w(os.path.join(tempd, "myfile2.dat"), "", "test")
         with pytest.raises(RuntimeError):
             w.finalize()
 
@@ -58,16 +61,18 @@ def test_process_writer_create_worker():
     target = mock.MagicMock()
     w = writing.ProcessWriter()
     with tempfile.TemporaryDirectory() as tempd:
-        worker = w.create_worker("myfile.dat", tempd, target, append=False)
+        worker = w.create_worker(
+            os.path.join(tempd, "myfile.dat"), "", target, append=False
+        )
         assert isinstance(worker, multiprocessing.Process)
-        w("myfile2.dat", tempd, "test")
+        w(os.path.join(tempd, "myfile2.dat"), "", "test")
         w.finalize()
 
 
 def test_process_writer_fail():
     w = writing.ProcessWriter(savefun=None)
     with tempfile.TemporaryDirectory() as tempd:
-        w("myfile2.dat", tempd, "test")
+        w(os.path.join(tempd, "myfile2.dat"), "", "test")
         with pytest.raises(RuntimeError):
             w.finalize()
 
@@ -85,8 +90,8 @@ def test_queue_writer():
             w = writing.QueueWriter()
 
             with tempfile.TemporaryDirectory() as tempd:
-                w("myfile.dat", tempd, target)
-                w("myfile.dat", tempd, target)
+                w(os.path.join(tempd, "myfile.dat"), "", target)
+                w(os.path.join(tempd, "myfile.dat"), "", target)
                 w.finalize()
 
             assert consumer.start.call_count == 1

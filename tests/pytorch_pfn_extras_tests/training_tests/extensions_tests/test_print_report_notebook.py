@@ -1,4 +1,5 @@
 import io
+import pathlib
 
 import pytest
 import pytorch_pfn_extras as ppe
@@ -11,11 +12,15 @@ from pytorch_pfn_extras.training.extensions.log_report import _pandas_available
     reason="print report notebook import failed, "
     "maybe ipython is not installed",
 )
-def test_run_print_report_notebook():
+def test_run_print_report_notebook(tmp_path: pathlib.Path):
     max_epochs = 5
     iters_per_epoch = 5
     manager = ppe.training.ExtensionsManager(
-        {}, {}, max_epochs, iters_per_epoch=iters_per_epoch
+        {},
+        {},
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     out = io.StringIO()
