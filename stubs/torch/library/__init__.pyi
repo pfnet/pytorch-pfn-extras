@@ -1,0 +1,9 @@
+# flake8: noqa
+from typing import Any, Callable
+
+class Library:
+    def __init__(self, ns: str, kind: str, dispatch_key: str = "") -> None: ...
+    def impl(
+        self, name: str, fn: Callable[..., Any], dispatch_key: str = ""
+    ) -> None: ...
+    def define(self, name: str) -> None: ...

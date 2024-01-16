@@ -1,3 +1,5 @@
+import pathlib
+
 import pytest
 from pytorch_pfn_extras import training
 from pytorch_pfn_extras.training import triggers
@@ -49,9 +51,15 @@ def _test_trigger(trainer, trigger, expected):
 @pytest.mark.parametrize(
     "iters_per_epoch,schedule,expected,resume", _scheduled_trigger_test_params
 )
-def test_trigger(iters_per_epoch, schedule, expected, resume):
+def test_trigger(
+    iters_per_epoch, schedule, expected, resume, tmp_path: pathlib.Path
+):
     trainer = training.ExtensionsManager(
-        {}, [], 100, iters_per_epoch=iters_per_epoch
+        {},
+        [],
+        100,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
     trigger = triggers.ManualScheduleTrigger(*schedule)
 
@@ -61,9 +69,15 @@ def test_trigger(iters_per_epoch, schedule, expected, resume):
 @pytest.mark.parametrize(
     "iters_per_epoch,schedule,expected,resume", _scheduled_trigger_test_params
 )
-def test_resumed_trigger(iters_per_epoch, schedule, expected, resume):
+def test_resumed_trigger(
+    iters_per_epoch, schedule, expected, resume, tmp_path: pathlib.Path
+):
     trainer = training.ExtensionsManager(
-        {}, [], 100, iters_per_epoch=iters_per_epoch
+        {},
+        [],
+        100,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
     trigger = triggers.ManualScheduleTrigger(*schedule)
 

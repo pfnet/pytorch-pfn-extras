@@ -1,3 +1,5 @@
+import pathlib
+
 import pytest
 from pytorch_pfn_extras import training
 from pytorch_pfn_extras.training import triggers
@@ -117,11 +119,21 @@ _trigger_test_params = [
     _trigger_test_params,
 )
 def test_trigger(
-    trigger_type, trigger_args, iters_per_epoch, accuracies, expected, resume
+    trigger_type,
+    trigger_args,
+    iters_per_epoch,
+    accuracies,
+    expected,
+    resume,
+    tmp_path: pathlib.Path,
 ):
     key = "main/accuracy"
     manager = training.ExtensionsManager(
-        {}, [], 100, iters_per_epoch=iters_per_epoch
+        {},
+        [],
+        100,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
     trigger = trigger_type(key, *trigger_args)
     _test_trigger(manager, trigger, key, accuracies, expected)
@@ -132,11 +144,21 @@ def test_trigger(
     _trigger_test_params,
 )
 def test_resumed_trigger(
-    trigger_type, trigger_args, iters_per_epoch, accuracies, expected, resume
+    trigger_type,
+    trigger_args,
+    iters_per_epoch,
+    accuracies,
+    expected,
+    resume,
+    tmp_path: pathlib.Path,
 ):
     key = "main/accuracy"
     manager = training.ExtensionsManager(
-        {}, [], 100, iters_per_epoch=iters_per_epoch
+        {},
+        [],
+        100,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     trigger = trigger_type(key, *trigger_args)

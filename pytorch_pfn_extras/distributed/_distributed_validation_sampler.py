@@ -26,13 +26,13 @@ class DistributedValidationSampler(torch.utils.data.Sampler):
         seed: int = 0,
     ) -> None:
         if num_replicas is None:
-            if not dist.is_available():  # type: ignore[no-untyped-call]
+            if not dist.is_available() or not dist.is_initialized():  # type: ignore[no-untyped-call]
                 raise RuntimeError(
                     "Requires distributed package to be available"
                 )
             num_replicas = dist.get_world_size()  # type: ignore[no-untyped-call]
         if rank is None:
-            if not dist.is_available():  # type: ignore[no-untyped-call]
+            if not dist.is_available() or not dist.is_initialized():  # type: ignore[no-untyped-call]
                 raise RuntimeError(
                     "Requires distributed package to be available"
                 )

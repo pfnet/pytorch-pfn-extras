@@ -78,8 +78,12 @@ class MyModuleWithCheckpoint(nn.Module):
 
     def forward(self, x):
         y = self.l0(x)
-        y = checkpoint(self.l1, y)
-        y = checkpoint(self.l2, y)
+        if pytorch_pfn_extras.requires("1.11.0"):
+            y = checkpoint(self.l1, y, use_reentrant=False)
+            y = checkpoint(self.l2, y, use_reentrant=False)
+        else:
+            y = checkpoint(self.l1, y)
+            y = checkpoint(self.l2, y)
         return y
 
 

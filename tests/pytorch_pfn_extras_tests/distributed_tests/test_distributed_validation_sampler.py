@@ -18,7 +18,7 @@ def test_default(base_dataset):
     sample_idxs = []
     with mock.patch.object(
         dist, "get_world_size", return_value=_world_size
-    ), mock.patch.object(dist, "is_available", return_value=True):
+    ), mock.patch.object(dist, "is_initialized", return_value=True):
         for rank in range(_world_size):
             with mock.patch.object(dist, "get_rank", return_value=rank):
                 sampler = DistributedValidationSampler(base_dataset)
@@ -41,7 +41,7 @@ def test_no_shuffle(base_dataset):
     ]
     with mock.patch.object(
         dist, "get_world_size", return_value=_world_size
-    ), mock.patch.object(dist, "is_available", return_value=True):
+    ), mock.patch.object(dist, "is_initialized", return_value=True):
         for rank in range(_world_size):
             with mock.patch.object(dist, "get_rank", return_value=rank):
                 sampler = DistributedValidationSampler(
@@ -57,7 +57,7 @@ def test_manual_num_replicas_and_ranks(base_dataset):
     with mock.patch.object(
         dist, "get_world_size", side_effect=AssertionError()
     ), mock.patch.object(
-        dist, "is_available", side_effect=AssertionError()
+        dist, "is_initialized", side_effect=AssertionError()
     ), mock.patch.object(
         dist, "get_rank", side_effect=AssertionError()
     ):
@@ -78,7 +78,7 @@ def test_seed(base_dataset):
     assert list(sampler1) != list(sampler2)
 
 
-def test_no_distributed_available(base_dataset):
+def test_no_distributed_initialized(base_dataset):
     with pytest.raises(RuntimeError):
         DistributedValidationSampler(base_dataset, num_replicas=_world_size)
     with pytest.raises(RuntimeError):
@@ -88,6 +88,10 @@ def test_no_distributed_available(base_dataset):
 def test_invalid_rank(base_dataset):
     with mock.patch.object(dist, "get_world_size", return_value=_world_size):
         with pytest.raises(ValueError):
-            DistributedValidationSampler(base_dataset, rank=-1)
+            DistributedValidationSampler(
+                base_dataset, num_replicas=_world_size, rank=-1
+            )
         with pytest.raises(ValueError):
-            DistributedValidationSampler(base_dataset, rank=_world_size)
+            DistributedValidationSampler(
+                base_dataset, num_replicas=_world_size, rank=_world_size
+            )

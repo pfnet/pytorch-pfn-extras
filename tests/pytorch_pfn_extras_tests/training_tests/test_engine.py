@@ -1,3 +1,4 @@
+import pathlib
 from typing import Any, Dict
 
 import pytest
@@ -5,9 +6,14 @@ import pytorch_pfn_extras as ppe
 
 
 class TestEngine:
-    def test_engine_extension(self):
+    def test_engine_extension(self, tmp_path: pathlib.Path):
         engine = ppe.training._trainer.Trainer(
-            None, evaluator=None, models={}, optimizers={}, max_epochs=10
+            None,
+            evaluator=None,
+            models={},
+            optimizers={},
+            max_epochs=10,
+            out_dir=str(tmp_path),
         )
         extension = ppe.training.extensions.LogReport()
         engine.extend(extension)
@@ -16,33 +22,56 @@ class TestEngine:
         # Extension is not stored as is so we make sure it was detected
         assert len(engine.manager._extensions) == 1
 
-    def test_engine_state_dict(self):
+    def test_engine_state_dict(self, tmp_path: pathlib.Path):
         manager = ppe.training.ExtensionsManager(
-            {}, {}, 10, iters_per_epoch=100
+            {},
+            {},
+            10,
+            iters_per_epoch=100,
+            out_dir=str(tmp_path),
         )
         engine = ppe.training._trainer.Trainer(
-            None, evaluator=None, models={}, optimizers={}, max_epochs=10
+            None,
+            evaluator=None,
+            models={},
+            optimizers={},
+            max_epochs=10,
+            out_dir=str(tmp_path),
         )
         engine._setup_manager(100)
         assert engine.state_dict() == manager.state_dict()
 
-    def test_engine_load_state_dict(self):
+    def test_engine_load_state_dict(self, tmp_path: pathlib.Path):
         manager = ppe.training.ExtensionsManager(
-            {}, {}, 10, iters_per_epoch=100
+            {}, {}, 10, iters_per_epoch=100, out_dir=str(tmp_path)
         )
         engine = ppe.training._trainer.Trainer(
-            None, evaluator=None, models={}, optimizers={}, max_epochs=1
+            None,
+            evaluator=None,
+            models={},
+            optimizers={},
+            max_epochs=1,
+            out_dir=str(tmp_path),
         )
         engine.load_state_dict(manager.state_dict())
         engine._setup_manager(20)
         assert engine.state_dict() == manager.state_dict()
 
-    def test_engine_load_state_dict_2(self):
+    def test_engine_load_state_dict_2(self, tmp_path: pathlib.Path):
         manager = ppe.training.ExtensionsManager(
-            {}, {}, 10, iters_per_epoch=100
+            {},
+            {},
+            10,
+            iters_per_epoch=100,
+            out_dir=str(tmp_path),
         )
         engine = ppe.training._trainer.Trainer(
-            None, evaluator=None, models={}, optimizers={}, max_epochs=1
+            None,
+            evaluator=None,
+            models={},
+            optimizers={},
+            max_epochs=1,
+            out_dir=str(tmp_path),
         )
         engine._setup_manager(20)
         engine.load_state_dict(manager.state_dict())
@@ -69,9 +98,14 @@ class TestEngineInvalid:
         with pytest.raises(RuntimeError, match="is not started"):
             engine.manager
 
-    def test_extend_after_init(self):
+    def test_extend_after_init(self, tmp_path: pathlib.Path):
         engine = ppe.training._trainer.Trainer(
-            None, evaluator=None, models={}, optimizers={}, max_epochs=10
+            None,
+            evaluator=None,
+            models={},
+            optimizers={},
+            max_epochs=10,
+            out_dir=str(tmp_path),
         )
         engine._setup_manager(10)
         extension = ppe.training.extensions.LogReport()

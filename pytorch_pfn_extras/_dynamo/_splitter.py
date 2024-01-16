@@ -3,11 +3,29 @@ from typing import Any, List, Optional, Tuple
 import torch
 import torch.fx
 import torch.utils._pytree as pytree
-from torch._functorch.partitioners import _is_primal, _is_tangent
+from torch._functorch.partitioners import (
+    _is_primal,
+    _is_tangent,
+    default_partition,
+)
 
 
-class JointGraph:
-    def __init__(self, parameter_names: Optional[List[str]] = None):
+class _Splitter:
+    def partition(
+        self,
+        joint_module: torch.fx.GraphModule,
+        _joint_inputs: Any,
+        *,
+        num_fwd_outputs: int,
+    ) -> Tuple[torch.fx.GraphModule, torch.fx.GraphModule]:
+        raise NotImplementedError("Splitters must override partition")
+
+
+class JointGraph(_Splitter):
+    def __init__(
+        self,
+        parameter_names: Optional[List[str]] = None,
+    ):
         if parameter_names is not None:
             self._parameter_names = [
                 n.replace(".", "__dot__") for n in parameter_names
@@ -15,7 +33,7 @@ class JointGraph:
         else:
             self._parameter_names = []
 
-    def _no_partition(
+    def partition(
         self,
         joint_module: torch.fx.GraphModule,
         _joint_inputs: Any,
@@ -129,5 +147,72 @@ class JointGraph:
                 env[node] = new_node
 
         bwd_graph.output(out_nodes)
+        bwd_module = torch.fx.GraphModule(joint_module, bwd_graph)
+        return (fwd_module, bwd_module)
+
+
+class ForwardOnly(_Splitter):
+    def __init__(
+        self,
+        parameter_names: Optional[List[str]] = None,
+    ):
+        if parameter_names is not None:
+            self._parameter_names = [
+                n.replace(".", "__dot__") for n in parameter_names
+            ]
+        else:
+            self._parameter_names = []
+
+    def partition(
+        self,
+        joint_module: torch.fx.GraphModule,
+        _joint_inputs: Any,
+        *,
+        num_fwd_outputs: int,
+    ) -> Tuple[torch.fx.GraphModule, torch.fx.GraphModule]:
+        fwd_module, _ = default_partition(
+            joint_module,
+            _joint_inputs,
+            num_fwd_outputs=num_fwd_outputs,
+        )
+        fwd_graph = fwd_module.graph
+        # Change the input names in the fwd graph
+        primal_inputs: List[torch.fx.Node] = list(
+            filter(_is_primal, fwd_graph.nodes)
+        )
+        for i, node in enumerate(primal_inputs):
+            node.name = (
+                self._parameter_names[i]
+                if i < len(self._parameter_names)
+                else f"input_{i - len(self._parameter_names)}"
+            )
+
+        # The joint graph has the forward and backward outputs together as output values
+        # by accessing the output node of the graph (there is only one output node)
+        # the node has a list of all the variables the graph returns in the node.args
+        # https://pytorch.org/docs/stable/fx.html#a-quick-primer-on-graphs
+        output_node = [node for node in fwd_graph.nodes if node.op == "output"][
+            0
+        ]
+        outputs = pytree.tree_flatten(output_node.args)[0]
+        fwd_graph.erase_node(output_node)
+        # Select only the return values from the forward pass
+        fwd_graph.output(outputs[:num_fwd_outputs])
+        fwd_module = torch.fx.GraphModule(joint_module, fwd_graph)
+
+        # We now create a dummy graph that returns the outputs of the backward pass
+        # Notice that the graph needs to return as many values as the inputs of the
+        # forward pass. The outputs of the joint graph returns additional values
+        # besides the gradients.
+        bwd_graph = torch.fx.Graph()
+        # Needs to create one gradient per each input element
+        bwd_outs = []
+        for i_node in primal_inputs:
+            bwd_outs.append(
+                bwd_graph.call_function(
+                    torch.zeros, (i_node.meta.get("tensor_meta").shape,)
+                )
+            )
+        bwd_graph.output(tuple(bwd_outs))
         bwd_module = torch.fx.GraphModule(joint_module, bwd_graph)
         return (fwd_module, bwd_module)

@@ -1,3 +1,4 @@
+import pathlib
 from copy import deepcopy
 from typing import Any, Mapping, Tuple
 from unittest import mock
@@ -44,7 +45,7 @@ class MyModelWithLossFn(torch.nn.Module):
 
 
 @pytest.mark.parametrize("device", ["cpu", "cuda"])
-def test_trainer(device):
+def test_trainer(device, tmp_path: pathlib.Path):
     if not torch.cuda.is_available() and device == "cuda":
         pytest.skip()
     iters_per_epoch = 10
@@ -72,6 +73,7 @@ def test_trainer(device):
         model_with_loss,
         optimizer,
         epochs,
+        out_dir=str(tmp_path),
         device=device,
         options={"backward_function": backward_fn},
     )
@@ -89,7 +91,7 @@ def test_trainer(device):
         (1, "iteration"),
     ],
 )
-def test_train_step_mode_with_evaluator(trigger):
+def test_train_step_mode_with_evaluator(trigger, tmp_path: pathlib.Path):
     iters_per_epoch = 10
     epochs = 20
     model = MyModel()
@@ -127,6 +129,7 @@ def test_train_step_mode_with_evaluator(trigger):
         model_with_loss,
         optimizer,
         epochs,
+        out_dir=str(tmp_path),
         logic=LogicWithTrainStepCheck(),
         evaluator=(
             ppe.engine.create_evaluator(

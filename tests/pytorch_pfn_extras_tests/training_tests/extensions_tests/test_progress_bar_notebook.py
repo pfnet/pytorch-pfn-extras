@@ -1,4 +1,5 @@
 import io
+import pathlib
 
 import pytest
 import pytorch_pfn_extras as ppe
@@ -15,11 +16,15 @@ from torch.optim.adam import Adam
     reason="progress bar notebook import failed, "
     "maybe ipython is not installed",
 )
-def test_run_progress_bar_notebook():
+def test_run_progress_bar_notebook(tmp_path: pathlib.Path):
     max_epochs = 5
     iters_per_epoch = 5
     manager = ppe.training.ExtensionsManager(
-        {}, {}, max_epochs, iters_per_epoch=iters_per_epoch
+        {},
+        {},
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     out = io.StringIO()
@@ -47,7 +52,10 @@ def test_run_progress_bar_notebook():
     reason="progress bar notebook import failed, "
     "maybe ipython is not installed",
 )
-def test_ignite_extensions_manager_with_progressbar_notebook():
+@pytest.mark.filterwarnings("ignore::UserWarning")
+def test_ignite_extensions_manager_with_progressbar_notebook(
+    tmp_path: pathlib.Path,
+):
     try:
         from ignite.engine import create_supervised_trainer
     except ImportError:
@@ -77,6 +85,7 @@ def test_ignite_extensions_manager_with_progressbar_notebook():
         {"model_name": model},
         {"optimizer_name": optimizer},
         max_epochs,
+        out_dir=str(tmp_path),
     )
     manager.extend(ppe.training.extensions.ProgressBarNotebook())
 

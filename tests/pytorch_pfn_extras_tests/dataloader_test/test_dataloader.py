@@ -3,10 +3,7 @@ import torch
 
 
 class DummyDataset(torch.utils.data.Dataset):
-    """Face Landmarks dataset."""
-
     def __init__(self):
-        print("init")
         self.data = list(range(10))
 
     def __len__(self):

@@ -1,14 +1,19 @@
 import io
+import pathlib
 
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras.training import extensions
 
 
-def test_run_print_report():
+def test_run_print_report(tmp_path: pathlib.Path):
     max_epochs = 5
     iters_per_epoch = 5
     manager = ppe.training.ExtensionsManager(
-        {}, {}, max_epochs, iters_per_epoch=iters_per_epoch
+        {},
+        {},
+        max_epochs,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     out = io.StringIO()

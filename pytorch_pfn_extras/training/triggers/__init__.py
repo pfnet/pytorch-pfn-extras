@@ -2,6 +2,9 @@
 from pytorch_pfn_extras.training.triggers.early_stopping_trigger import (  # NOQA
     EarlyStoppingTrigger,
 )
+from pytorch_pfn_extras.training.triggers.function_trigger import (  # NOQA
+    FunctionTrigger,
+)
 from pytorch_pfn_extras.training.triggers.interval_trigger import (  # NOQA
     IntervalTrigger,
 )

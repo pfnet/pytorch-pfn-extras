@@ -1,3 +1,5 @@
+import pathlib
+
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
@@ -5,9 +7,9 @@ from pytorch_pfn_extras import training
 from torch import nn
 
 
-def test_manager_status_info():
+def test_manager_status_info(tmp_path: pathlib.Path):
     manager = training.ExtensionsManager(
-        nn.Module(), object(), 10, iters_per_epoch=4
+        nn.Module(), object(), 10, iters_per_epoch=4, out_dir=str(tmp_path)
     )
     manager.iteration = 9
     assert manager.iteration == 9
@@ -39,7 +41,7 @@ class _DummyExtensionInitialize(_DummyExtension):
         self.init_record.append(self.extension_id)
 
 
-def test_extensions_manager_extensions():
+def test_extensions_manager_extensions(tmp_path: pathlib.Path):
     model = nn.Module()
     optimizer = object()
     max_epochs = 5
@@ -49,6 +51,7 @@ def test_extensions_manager_extensions():
         {"optimizer_name": optimizer},
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     call_record = []
@@ -154,7 +157,7 @@ def _fake_loss(*args):
     return torch.tensor([0.0], requires_grad=True)
 
 
-def test_extensions_manager_state_dict():
+def test_extensions_manager_state_dict(tmp_path: pathlib.Path):
     model_state_dict = object()
     optimizer_state_dict = object()
     extension_state_dict = object()
@@ -169,6 +172,7 @@ def test_extensions_manager_state_dict():
         max_epochs,
         iters_per_epoch=iters_per_epoch,
         state_objects={"misc": _StateDictObj(state_dict=misc_state_dict)},
+        out_dir=str(tmp_path),
     )
 
     manager.extend(
@@ -207,6 +211,7 @@ def test_extensions_manager_state_dict():
         {"optimizer_name": new_optimizer},
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
     new_manager.extend(new_extension, name="extension_name")
     new_manager.load_state_dict(state_dict)
@@ -215,7 +220,9 @@ def test_extensions_manager_state_dict():
     assert new_optimizer.called_load_state_dict == 1
 
 
-def test_extensions_manager_state_dict_old_ppe_no_version():
+def test_extensions_manager_state_dict_old_ppe_no_version(
+    tmp_path: pathlib.Path,
+):
     model_state_dict = object()
     optimizer_state_dict = object()
     max_epochs = 5
@@ -227,6 +234,7 @@ def test_extensions_manager_state_dict_old_ppe_no_version():
         {"optimizer_name": _StateDictObj(state_dict=optimizer_state_dict)},
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     for _ in range(passed_iteration):
@@ -240,6 +248,7 @@ def test_extensions_manager_state_dict_old_ppe_no_version():
         {"optimizer_name": new_optimizer},
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     state_dict = manager.state_dict()
@@ -248,7 +257,7 @@ def test_extensions_manager_state_dict_old_ppe_no_version():
         manager_2.load_state_dict(state_dict)
 
 
-def test_extensions_manager_state_dict_old_ppe_version():
+def test_extensions_manager_state_dict_old_ppe_version(tmp_path: pathlib.Path):
     model_state_dict = object()
     optimizer_state_dict = object()
     max_epochs = 5
@@ -260,6 +269,7 @@ def test_extensions_manager_state_dict_old_ppe_version():
         {"optimizer_name": _StateDictObj(state_dict=optimizer_state_dict)},
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     for _ in range(passed_iteration):
@@ -273,6 +283,7 @@ def test_extensions_manager_state_dict_old_ppe_version():
         {"optimizer_name": new_optimizer},
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     state_dict = manager.state_dict()
@@ -281,7 +292,9 @@ def test_extensions_manager_state_dict_old_ppe_version():
         manager_2.load_state_dict(state_dict)
 
 
-def test_extensions_manager_state_dict_future_ppe_version():
+def test_extensions_manager_state_dict_future_ppe_version(
+    tmp_path: pathlib.Path,
+):
     model_state_dict = object()
     optimizer_state_dict = object()
     max_epochs = 5
@@ -293,6 +306,7 @@ def test_extensions_manager_state_dict_future_ppe_version():
         {"optimizer_name": _StateDictObj(state_dict=optimizer_state_dict)},
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     for _ in range(passed_iteration):
@@ -306,6 +320,7 @@ def test_extensions_manager_state_dict_future_ppe_version():
         {"optimizer_name": new_optimizer},
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     state_dict = manager.state_dict()
@@ -314,7 +329,8 @@ def test_extensions_manager_state_dict_future_ppe_version():
         manager_2.load_state_dict(state_dict)
 
 
-def test_ignite_extensions_manager_state_dict():
+@pytest.mark.filterwarnings("ignore::UserWarning")
+def test_ignite_extensions_manager_state_dict(tmp_path: pathlib.Path):
     try:
         from ignite.engine import create_supervised_trainer
     except ImportError:
@@ -337,6 +353,7 @@ def test_ignite_extensions_manager_state_dict():
         {"model_name": model},
         {"optimizer_name": optimizer},
         max_epochs,
+        out_dir=str(tmp_path),
     )
     manager.extend(
         _StateDictExtension(state_dict=extension_state_dict),
@@ -380,6 +397,7 @@ def test_ignite_extensions_manager_state_dict():
         {"model_name": new_model},
         {"optimizer_name": new_optimizer},
         max_epochs,
+        out_dir=str(tmp_path),
     )
     new_manager.extend(new_extension, name="extension_name")
     new_manager.load_state_dict(state_dict)
@@ -388,7 +406,9 @@ def test_ignite_extensions_manager_state_dict():
     assert new_optimizer.called_load_state_dict == 1
 
 
-def test_extensions_manager_with_plain_model_and_optimizer():
+def test_extensions_manager_with_plain_model_and_optimizer(
+    tmp_path: pathlib.Path,
+):
     model_state_dict = object()
     optimizer_state_dict = object()
     max_epochs = 5
@@ -398,6 +418,7 @@ def test_extensions_manager_with_plain_model_and_optimizer():
         _StateDictObj(state_dict=optimizer_state_dict),
         max_epochs,
         iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
 
     state_dict = manager.state_dict()
@@ -424,7 +445,7 @@ class Wrapper(torch.nn.Module):
         return self._wrapper_module
 
 
-def test_model_transformations():
+def test_model_transformations(tmp_path: pathlib.Path):
     model_state_dict = object()
     optimizer_state_dict = object()
     max_epochs = 5
@@ -436,13 +457,14 @@ def test_model_transformations():
         max_epochs,
         iters_per_epoch=iters_per_epoch,
         transform_model=lambda n, x: x.wrapper_module(),
+        out_dir=str(tmp_path),
     )
 
     assert not isinstance(manager.models["main"], Wrapper)
     assert model.accessed
 
 
-def test_model_transformations_in_state_dict():
+def test_model_transformations_in_state_dict(tmp_path: pathlib.Path):
     model_state_dict = object()
     optimizer_state_dict = object()
     max_epochs = 5
@@ -454,6 +476,7 @@ def test_model_transformations_in_state_dict():
         max_epochs,
         iters_per_epoch=iters_per_epoch,
         transform_model=lambda n, x: x.wrapper_module(),
+        out_dir=str(tmp_path),
     )
 
     state_dict = manager.state_dict()
@@ -467,12 +490,13 @@ def test_model_transformations_in_state_dict():
         max_epochs,
         iters_per_epoch=iters_per_epoch,
         transform_model=lambda n, x: x.wrapper_module(),
+        out_dir=str(tmp_path),
     )
     new_manager.load_state_dict(state_dict)
     assert isinstance(new_manager.models["main"], _StateDictModel)
 
 
-def test_call_optimizers():
+def test_call_optimizers(tmp_path: pathlib.Path):
     m = torch.nn.Linear(5, 5)
     a = torch.ones(1, requires_grad=True)
     optimizer = torch.optim.SGD(lr=1.0, params=[a])
@@ -481,13 +505,14 @@ def test_call_optimizers():
         optimizer,
         1,
         iters_per_epoch=1,
+        out_dir=str(tmp_path),
     )
     with manager.run_iteration(step_optimizers=["main"]):
         a.grad = torch.tensor([2.0])
     assert torch.equal(a.detach(), torch.tensor([-1.0]))
 
 
-def test_needs_state_this_iteration():
+def test_needs_state_this_iteration(tmp_path: pathlib.Path):
     m = torch.nn.Linear(5, 5)
     a = torch.ones(1, requires_grad=True)
     optimizer = torch.optim.SGD(lr=1.0, params=[a])
@@ -496,7 +521,12 @@ def test_needs_state_this_iteration():
     extension.needs_model_state = True
     extension.trigger = (50, "iteration")
     manager = training.ExtensionsManager(
-        m, optimizer, 1, iters_per_epoch=100, extensions=[extension]
+        m,
+        optimizer,
+        1,
+        iters_per_epoch=100,
+        extensions=[extension],
+        out_dir=str(tmp_path),
     )
     while not manager.stop_trigger:
         with manager.run_iteration():
@@ -516,7 +546,9 @@ def test_needs_state_this_iteration():
         training.PRIORITY_WRITER,
     ],
 )
-def test_extensions_accessing_models_without_flag(priority):
+def test_extensions_accessing_models_without_flag(
+    priority, tmp_path: pathlib.Path
+):
     m = torch.nn.Linear(5, 5)
     a = torch.ones(1, requires_grad=True)
     optimizer = torch.optim.SGD(lr=1.0, params=[a])
@@ -527,7 +559,12 @@ def test_extensions_accessing_models_without_flag(priority):
     if priority is not None:
         extension.priority = priority
     manager = training.ExtensionsManager(
-        m, optimizer, 1, iters_per_epoch=5, extensions=[extension]
+        m,
+        optimizer,
+        1,
+        iters_per_epoch=5,
+        extensions=[extension],
+        out_dir=str(tmp_path),
     )
     while not manager.stop_trigger:
         with pytest.raises(RuntimeError):
@@ -535,7 +572,7 @@ def test_extensions_accessing_models_without_flag(priority):
                 pass
 
 
-def test_finalize():
+def test_finalize(tmp_path: pathlib.Path):
     class DummyExt(ppe.training.Extension):
         def __init__(self):
             self.call_cnt = 0
@@ -549,7 +586,11 @@ def test_finalize():
 
     optimizers = {"main": object()}
     manager = ppe.training.ExtensionsManager(
-        {}, optimizers, 1, iters_per_epoch=1
+        {},
+        optimizers,
+        1,
+        iters_per_epoch=1,
+        out_dir=str(tmp_path),
     )
     ext = DummyExt()
     manager.extend(ext)

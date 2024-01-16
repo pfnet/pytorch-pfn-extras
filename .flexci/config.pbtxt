@@ -95,6 +95,22 @@ configs {
 }
 
 configs {
+  key: "pytorch-pfn-extras.torch201-linux"
+  value {
+    requirement {
+      cpu: 8
+      gpu: 2
+      memory: 52
+      disk: 10
+    }
+    time_limit: {
+      seconds: 1800
+    }
+    command: "bash .flexci/linux/main-flexci.sh torch201"
+  }
+}
+
+configs {
   key: "pytorch-pfn-extras.torch110-win"
   value {
     requirement {
@@ -105,7 +121,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch110"
   }
@@ -122,7 +138,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch111"
   }
@@ -139,7 +155,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch112"
   }
@@ -156,7 +172,7 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch113"
   }
@@ -173,8 +189,25 @@ configs {
       image: "windows"
     }
     time_limit: {
-      seconds: 1200
+      seconds: 1800
     }
     command: ".flexci\\windows\\run.bat torch200"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch201-win"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 2
+      memory: 24
+      disk: 10
+      image: "windows"
+    }
+    time_limit: {
+      seconds: 1200
+    }
+    command: ".flexci\\windows\\run.bat torch201"
   }
 }

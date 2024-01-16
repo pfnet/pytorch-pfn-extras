@@ -1,4 +1,5 @@
 import os
+import pathlib
 
 import numpy
 import pytest
@@ -17,11 +18,13 @@ def matplotlib():
         pytest.skip("matplotlib is not installed")
 
 
-def test_run_and_save_plot(matplotlib):
+def test_run_and_save_plot(matplotlib, tmp_path: pathlib.Path):
     filename = "variable_statistics_plot_test.png"
     iterations = 2
     extension_trigger = (1, "iteration")
-    manager = ppe.training.ExtensionsManager({}, [], 2, iters_per_epoch=1)
+    manager = ppe.training.ExtensionsManager(
+        {}, [], 2, iters_per_epoch=1, out_dir=str(tmp_path)
+    )
 
     x = torch.rand(1, 2, 3)
     extension = ppe.training.extensions.VariableStatisticsPlot(

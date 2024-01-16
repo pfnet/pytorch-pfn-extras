@@ -1,3 +1,5 @@
+import pathlib
+
 import pytest
 from pytorch_pfn_extras import training
 from pytorch_pfn_extras.training import _trigger_util, triggers
@@ -29,9 +31,15 @@ from pytorch_pfn_extras.training import _trigger_util, triggers
         ),
     ],
 )
-def test_get_trigger(iters_per_epoch, trigger_args, expected):
+def test_get_trigger(
+    iters_per_epoch, trigger_args, expected, tmp_path: pathlib.Path
+):
     trainer = training.ExtensionsManager(
-        {}, [], 100, iters_per_epoch=iters_per_epoch
+        {},
+        [],
+        100,
+        iters_per_epoch=iters_per_epoch,
+        out_dir=str(tmp_path),
     )
     trigger = _trigger_util.get_trigger(trigger_args)
 

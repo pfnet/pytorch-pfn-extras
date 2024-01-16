@@ -25,7 +25,7 @@ jobs:
     - name: Install
       run: |
         pip install -U pip wheel
-        pip install -v -e .[test] --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cpu 
+        pip install -v -e . -r ./tests/requirements.txt --pre torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/nightly/cpu 
         # Test PPE is importable with minimum dependency
         python -c 'import pytorch_pfn_extras'
 

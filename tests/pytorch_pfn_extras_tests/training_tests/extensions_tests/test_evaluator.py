@@ -273,6 +273,7 @@ def create_dummy_evaluator(model):
     return evaluator
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_ignite_evaluator_reporting_metrics():
     try:
         from ignite.metrics import MeanSquaredError

@@ -44,13 +44,20 @@ if ($test -eq "torch110") {
     RunOrDie python -m pip install -U pip "setuptools<59.6"
     RunOrDieWithRetry 3 python -m pip install torch==2.0.* torchvision==0.15.* -f https://download.pytorch.org/whl/cu117/torch_stable.html
 
+} elseif ($test -eq "torch201") {
+    # PyTorch 2.1 + Python 3.10
+    ActivateCUDA 11.8
+    ActivatePython 3.10
+    RunOrDie python -m pip install -U pip "setuptools<59.6"
+    RunOrDieWithRetry 3 python -m pip install torch==2.1.* torchvision==0.16.* -f https://download.pytorch.org/whl/cu118/torch_stable.html
+
 } else {
     throw "Unsupported test variant: $test"
 }
 RunOrDie python -V
 
 # Install common requirements
-RunOrDie python -m pip install pytorch-ignite pytest flake8 matplotlib tensorboard onnx ipython ipywidgets pandas optuna cupy-cuda102 onnxruntime==1.15.1 slack_sdk
+RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda102
 RunOrDie python -m pip list
 
 # Install
@@ -58,7 +65,7 @@ RunOrDie python -m pip install -e .
 
 # Unit Test
 $Env:JUPYTER_PLATFORM_DIRS = "1"
-RunOrDie python -m pytest tests
+RunOrDie python -m pytest -m "not mpi" tests
 
 # Examples
 .\.flexci\windows\download_mnist.ps1

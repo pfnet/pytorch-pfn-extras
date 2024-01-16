@@ -292,6 +292,10 @@ class Writer:
 
         dest = os.path.join(out_dir, filename)
 
+        save_dir = os.path.dirname(dest)
+        self.fs.makedirs(save_dir, exist_ok=True)
+        basename = os.path.basename(dest)
+
         if append:
             with self.fs.open(dest, "ab") as f:
                 # HDFS does not support overwrite
@@ -299,8 +303,8 @@ class Writer:
         else:
             # Some filesystems are not compatible with temp folders, etc
             # so we rely on raw temp files
-            prefix = "tmp_{}".format(filename)
-            tmppath = os.path.join(out_dir, prefix)
+            prefix = "tmp_{}".format(basename)
+            tmppath = os.path.join(save_dir, prefix)
             make_backup = self.fs.exists(dest)
             with self.fs.open(tmppath, "wb") as f:
                 savefun(target, f, **savefun_kwargs)
