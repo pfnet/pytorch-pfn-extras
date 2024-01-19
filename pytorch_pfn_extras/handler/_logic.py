@@ -1,7 +1,18 @@
 import contextlib
 import dataclasses
 import warnings
-from typing import Any, Dict, Generator, Iterable, Mapping, Optional
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import torch
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
@@ -179,22 +190,45 @@ class Logic(BaseLogic):
                 * ``'grad_scaler'`` (torch.cuda.amp.GradScaler):
                     A gradient scaler that outputs are applied to.
         """
-        super().__init__(options)
+        self.backward_outputs: Optional[
+            Union[str, List[str], Tuple[str, ...]]
+        ] = None
+        self._grad_scaler: Optional[torch.cuda.amp.GradScaler] = None
+        self._backward_fn: Optional[Callable[..., Any]] = None
+        self._autocast_options: Optional[Union[Dict[str, Any], bool]] = None
         self.model_name = model_name
+
+        super().__init__(options)
 
     def consume_options(self, options: Dict[str, Any]) -> None:
         super().consume_options(options)
 
-        self.backward_outputs = options.pop("backward_outputs", None)
-        self._grad_scaler = options.pop("grad_scaler", None)
+        self.backward_outputs = (
+            options.pop("backward_outputs", None) or self.backward_outputs
+        )
+        self._grad_scaler = (
+            options.pop("grad_scaler", None) or self._grad_scaler
+        )
+        self._backward_fn = (
+            options.pop("backward_function", None) or self._backward_fn
+        )
 
-        self._backward_fn = options.pop("backward_function", None)
-        autocast_options = options.pop("autocast", False)
-        if isinstance(autocast_options, bool):
+        # The `autocast` option is checked for `None`
+        # since it can take a bool value containing false.
+        autocast_options_value: Optional[
+            Union[Dict[str, Any], bool]
+        ] = options.pop("autocast", None)
+        if autocast_options_value is not None:
+            self._autocast_options = autocast_options_value
+
+        autocast_options_value = self._autocast_options or False
+        if isinstance(autocast_options_value, bool):
             autocast_options = {
-                "enabled": autocast_options,
+                "enabled": autocast_options_value,
                 "device_type": "cuda",
             }
+        else:
+            autocast_options = autocast_options_value
         self._autocast = _autocast._AutocastManager(
             autocast_options, self._grad_scaler is not None
         )
@@ -253,7 +287,7 @@ class Logic(BaseLogic):
             assert (
                 len(to_backward) == 1
             ), "loss scaling with multiple loss is not supported"
-            to_backward = {self._grad_scaler.scale(v) for v in to_backward}
+            to_backward = {self._grad_scaler.scale(v) for v in to_backward}  # type: ignore[no-untyped-call]
         for v in to_backward:
             if self._backward_fn is None:
                 v.backward()  # type: ignore[no-untyped-call]
@@ -332,8 +366,8 @@ class Logic(BaseLogic):
         """
         optimizer = optimizers[self.model_name]
         if self._grad_scaler is not None:
-            self._grad_scaler.step(optimizer)
-            self._grad_scaler.update()
+            self._grad_scaler.step(optimizer)  # type: ignore[no-untyped-call]
+            self._grad_scaler.update()  # type: ignore[no-untyped-call]
         else:
             optimizer.step()
 
