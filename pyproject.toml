@@ -12,6 +12,7 @@ enable_mypy = true
 mypy_preset = "strict"
 line_length = 80
 py_version = "py38"
+mypy_path = ["./stubs"]
 
 [[tool.pysen.lint.mypy_targets]]
   paths = ["pytorch_pfn_extras"]
