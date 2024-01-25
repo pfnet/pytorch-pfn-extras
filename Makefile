@@ -39,7 +39,8 @@ mpitest: ## Run all tests except for ones requiring GPU.
 
 .PHONY: example_lint
 example_lint: ## Format the Python code.
-	$(PY) -m pysen --config ./example/pysen.toml run lint
+	cp "$$($(PIP) show torch | awk '/^Location:/ { print $$2 }')/torch/__init__.py" stubs/torch/__init__.py
+	trap "rm -f stubs/torch/__init__.py" EXIT; $(PY) -m pysen --config ./example_pysen.toml run lint
 
 .PHONY: help
 help: ## Display this help message.

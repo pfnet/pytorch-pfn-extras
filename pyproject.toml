@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools<64", "wheel"]
+requires = ["setuptools", "wheel"]
 
 [tool.pysen]
 version = "0.10.1"
@@ -12,9 +12,13 @@ enable_mypy = true
 mypy_preset = "strict"
 line_length = 80
 py_version = "py38"
+mypy_path = ["./stubs"]
 
 [[tool.pysen.lint.mypy_targets]]
   paths = ["pytorch_pfn_extras"]
+
+[tool.pysen.lint.mypy_modules."torch.*"]
+  ignore_errors = true
 
 [tool.pysen.lint.source]
   includes = ["."]
