@@ -81,7 +81,7 @@ case "${TARGET}" in
             --build-arg pip_install_dep_args="cupy-cuda11x"
         ;;
 
-    torch201 )
+    torch202 )
         # PyTorch 2.2 + Python 3.10
         docker_build_and_push \
             --build-arg base_image="nvidia/cuda:12.1.0-cudnn8-devel-ubuntu20.04" \
