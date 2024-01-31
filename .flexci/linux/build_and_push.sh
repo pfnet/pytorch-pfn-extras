@@ -87,7 +87,7 @@ case "${TARGET}" in
             --build-arg base_image="nvidia/cuda:12.1.0-cudnn8-devel-ubuntu20.04" \
             --build-arg python_version="3.10.5" \
             --build-arg pip_install_torch_args="torch==2.2.* torchvision==0.17.* -f https://download.pytorch.org/whl/cu121/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda11x"
+            --build-arg pip_install_dep_args="cupy-cuda12x"
         ;;
 
     * )
