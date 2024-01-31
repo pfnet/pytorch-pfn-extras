@@ -507,7 +507,7 @@ class _Exporter(_ExporterOptions):
             for k, t in folded.items():
                 c: torch._C.Value = graph.create("onnx::Constant", 1).output()
                 assert isinstance(t, torch.Tensor)
-                c.node().t_("value", cast(torch.Tensor, t))
+                c.node().t_("value", t)
                 graph.prependNode(c.node())
                 # TODO(twata): Determine folded nodes from original graph and document it
                 self.node_doc_string[c.node()] = f"Constant folded node: {input_table[k]}"
@@ -1155,9 +1155,9 @@ class _Exporter(_ExporterOptions):
                     GLOBALS.onnx_shape_inference = False
                 else:
                     to_utils.__IN_ONNX_EXPORT = True  # type: ignore[attr-defined]
-                    sym_hel._set_opset_version(self.opset_version)  # type: ignore[no-untyped-call]
-                    sym_hel._set_operator_export_type(self.operator_export_type)  # type: ignore[no-untyped-call]
-                    sym_hel._set_onnx_shape_inference(  # type: ignore[no-untyped-call]
+                    sym_hel._set_opset_version(self.opset_version)  # type: ignore[attr-defined, no-untyped-call]
+                    sym_hel._set_operator_export_type(self.operator_export_type)  # type: ignore[attr-defined, no-untyped-call]
+                    sym_hel._set_onnx_shape_inference(  # type: ignore[attr-defined, no-untyped-call]
                         False  # TODO(twata): Use `self.onnx_shape_inference`
                     )
                 with record("pfto.original_outputs"):
@@ -1177,11 +1177,11 @@ class _Exporter(_ExporterOptions):
             else:
                 to_utils.__IN_ONNX_EXPORT = False  # type: ignore[attr-defined]
                 if prev_opset_version is not None:
-                    sym_hel._set_opset_version(prev_opset_version)  # type: ignore[no-untyped-call]
+                    sym_hel._set_opset_version(prev_opset_version)  # type: ignore[attr-defined, no-untyped-call]
                 if prev_export_type is not None:
-                    sym_hel._set_operator_export_type(prev_export_type)  # type: ignore[no-untyped-call]
+                    sym_hel._set_operator_export_type(prev_export_type)  # type: ignore[attr-defined, no-untyped-call]
                 if prev_shape_inference is not None:
-                    sym_hel._set_onnx_shape_inference(prev_shape_inference)  # type: ignore[no-untyped-call]
+                    sym_hel._set_onnx_shape_inference(prev_shape_inference)  # type: ignore[attr-defined, no-untyped-call]
 
     def generate(self, f: Union[str, typing.IO]) -> None:
         with record("pfto.write_to_file"):
