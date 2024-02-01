@@ -47,6 +47,7 @@ class _LazyBatchNorm(  # type: ignore[misc]
                 )
             if self.track_running_stats:
                 assert isinstance(self.running_mean, torch.Tensor)
+                assert isinstance(self.num_features, int)
                 self.running_mean = torch.zeros(
                     self.num_features,
                     device=self.running_mean.device,

@@ -58,10 +58,10 @@ def to(
     runtime = runtime_class(device, options)
     obj = module_or_tensor
     if isinstance(obj, torch.nn.Module):
-        obj = runtime.move_module(obj)
-        for module in obj.modules():
+        mod = runtime.move_module(obj)
+        for module in mod.modules():
             ppe.runtime._runtime._set_module_runtime_tag(module, runtime)
-        return obj
+        return mod
     elif isinstance(obj, torch.Tensor):
         return runtime.move_tensor(obj)
     else:
