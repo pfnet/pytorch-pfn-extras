@@ -208,10 +208,8 @@ def test_sharded_state_dict(
     # sharded state dict check
     check_state_dict_type = (
         fsdp.StateDictType.SHARDED_STATE_DICT,
-        fsdp.ShardedStateDictConfig(offload_to_cpu=True, use_dtensor=False),
-        fsdp.ShardedOptimStateDictConfig(
-            offload_to_cpu=True, use_dtensor=False
-        ),
+        fsdp.ShardedStateDictConfig(offload_to_cpu=True),
+        fsdp.ShardedOptimStateDictConfig(offload_to_cpu=True),
     )
     fsdp.FullyShardedDataParallel.set_state_dict_type(
         actuary_model, *check_state_dict_type
