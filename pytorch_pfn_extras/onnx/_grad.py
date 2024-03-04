@@ -85,7 +85,7 @@ def grad(
             @staticmethod
             def symbolic(g, output, grad_output, *inputs):  # type: ignore
                 return g.op(
-                    "ai.onnx.preview::Gradient",
+                    "ai.onnx.preview.training::Gradient",
                     *inputs,
                     xs_s=input_names,
                     zs_s=[],
