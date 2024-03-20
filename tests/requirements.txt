@@ -3,7 +3,7 @@ onnxruntime
 torchvision
 torchaudio
 pysen
-black==23.3.0
+black==24.3.0
 flake8==4.0.1
 isort==5.10.1
 mypy==1.3.0
