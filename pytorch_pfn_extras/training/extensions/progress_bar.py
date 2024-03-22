@@ -10,7 +10,6 @@ from pytorch_pfn_extras.training.extensions import util
 
 
 class ProgressBar(extension.Extension):
-
     """An extension to print a progress bar and recent training status.
 
     This extension prints a progress bar at every call. It watches the current

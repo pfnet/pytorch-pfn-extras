@@ -321,9 +321,9 @@ class Trainer:
                 # Iterator must be created after `train_epoch_begin` as it may be
                 #  using a DistributedSampler.
                 loader_iter = iter(train_loader)
-                self._profile_records: "queue.Queue[List[_ReportNotification]]" = (
-                    queue.Queue()
-                )
+                self._profile_records: (
+                    "queue.Queue[List[_ReportNotification]]"
+                ) = queue.Queue()
                 for idx in range(train_len):
                     with record(
                         "ppe.training.Trainer:iteration",

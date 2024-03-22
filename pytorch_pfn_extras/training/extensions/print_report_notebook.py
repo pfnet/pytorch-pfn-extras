@@ -13,7 +13,6 @@ from pytorch_pfn_extras.training.extensions.print_report import PrintReport
 
 
 class PrintReportNotebook(PrintReport):
-
     """An extension to print the accumulated results.
 
     It is aimed to work on jupyter notebook as replacement of `PrintReport`.

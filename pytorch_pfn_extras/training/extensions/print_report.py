@@ -62,7 +62,6 @@ def filter_and_sort_entries(
 
 
 class PrintReport(extension.Extension):
-
     """An extension to print the accumulated results.
 
     This extension uses the log accumulated by a :class:`LogReport` extension

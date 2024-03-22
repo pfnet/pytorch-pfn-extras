@@ -243,12 +243,14 @@ def main():
             default_trigger,
         ),
         device=device,
-        options={
-            "autocast": True,
-            "grad_scaler": GradScaler(),
-        }
-        if args.mixed_fp16
-        else {},
+        options=(
+            {
+                "autocast": True,
+                "grad_scaler": GradScaler(),
+            }
+            if args.mixed_fp16
+            else {}
+        ),
     )
 
     trainer.run(train_loader=train_loader, val_loader=val_loader)

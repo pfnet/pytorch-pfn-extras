@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 
 class ManualScheduleTrigger(trigger.Trigger):
-
     """Trigger invoked at specified point(s) of iterations or epochs.
 
     This trigger accepts iterations or epochs indicated by given point(s).

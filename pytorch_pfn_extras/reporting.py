@@ -31,13 +31,11 @@ _thread_local = threading.local()
 
 
 @overload
-def _nograd(value: FloatLikeValue) -> FloatLikeValue:
-    ...
+def _nograd(value: FloatLikeValue) -> FloatLikeValue: ...
 
 
 @overload
-def _nograd(value: Value) -> Value:
-    ...
+def _nograd(value: Value) -> Value: ...
 
 
 def _nograd(
@@ -49,7 +47,6 @@ def _nograd(
 
 
 class Reporter:
-
     """Object to which observed values are reported.
 
     Reporter is used to collect values that users want to watch. The reporter
@@ -292,7 +289,6 @@ def report_scope(observation: Observation) -> Generator[None, None, None]:
 
 
 class Summary:
-
     """Online summarization of a sequence of scalars.
 
     Summary computes the statistics of given scalars online.
@@ -387,7 +383,6 @@ class Summary:
 
 
 class DictSummary:
-
     """Online summarization of a sequence of dictionaries.
 
     ``DictSummary`` computes the statistics of a given set of scalars online.

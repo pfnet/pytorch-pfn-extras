@@ -204,7 +204,6 @@ class _PosixFileSystem(object):
 
 
 class Writer:
-
     """Base class of snapshot writers.
 
     :class:`~pytorch_pfn_extras.training.extensions.Snapshot`
