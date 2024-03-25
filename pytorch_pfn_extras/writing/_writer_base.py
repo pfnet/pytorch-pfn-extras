@@ -285,7 +285,6 @@ class Writer:
         append: bool,
         **savefun_kwargs: Any,
     ) -> None:
-        out_dir = self.out_dir
         if not self._initialized:
             self.initialize(out_dir)
 
