@@ -676,9 +676,8 @@ class _ShardedSnapshot(_Snapshot):
             super()._autoload(manager, loaded_fn)
 
     def _make_snapshot(self, manager: ExtensionsManagerProtocol) -> None:
-        with self._save_session(
-            manager
-        ) if self._rank == self._saver_rank else nullcontext():
+        is_saver_rank = self._rank == self._saver_rank
+        with self._save_session(manager) if is_saver_rank else nullcontext():
             super()._make_snapshot(manager)
             if self._size > 1:
                 torch.distributed.barrier()  # type: ignore

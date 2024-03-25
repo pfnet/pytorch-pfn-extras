@@ -215,9 +215,9 @@ class Logic(BaseLogic):
 
         # The `autocast` option is checked for `None`
         # since it can take a bool value containing false.
-        autocast_options_value: Optional[
-            Union[Dict[str, Any], bool]
-        ] = options.pop("autocast", None)
+        autocast_options_value: Optional[Union[Dict[str, Any], bool]] = (
+            options.pop("autocast", None)
+        )
         if autocast_options_value is not None:
             self._autocast_options = autocast_options_value
 

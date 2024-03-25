@@ -44,7 +44,6 @@ def _check_available() -> None:
 
 
 class PlotReport(extension.Extension):
-
     """__init__(\
 y_keys, x_key='iteration', trigger=(1, 'epoch'), postprocess=None, \
 filename='plot.png', marker='x', grid=True)

@@ -90,9 +90,9 @@ if os.name == "nt":
 class ProgressBar:
     def __init__(self, out: Optional[TextIO] = None) -> None:
         self._out = sys.stdout if out is None else out
-        self._recent_timing: Deque[
-            Tuple[int, float, float]
-        ] = collections.deque([], maxlen=100)
+        self._recent_timing: Deque[Tuple[int, float, float]] = (
+            collections.deque([], maxlen=100)
+        )
 
     def update_speed(
         self, iteration: int, epoch_detail: float

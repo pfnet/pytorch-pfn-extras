@@ -28,7 +28,6 @@ _Scalar = Union[torch.Tensor, numpy.ndarray, numpy.floating, float]
 
 
 class Evaluator(extension.Extension):
-
     """__init__(self, iterator, target, eval_func=None, *, progress_bar=False)
 
     An extension to evaluate models on a validation set.
@@ -269,7 +268,6 @@ def _dist_gather(obj: Any) -> List[Any]:
 
 
 class DistributedEvaluator(Evaluator):
-
     """__init__(self, iterator, target, eval_func=None, *, progress_bar=False)
 
     An extension to evaluate models on a validation set in a distributed training setup.

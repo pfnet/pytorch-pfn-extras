@@ -19,7 +19,6 @@ PRIORITY_SNAPSHOT = -100
 
 
 class Extension:
-
     """Base class of extensions.
 
     An extension is a callable object that takes the manager

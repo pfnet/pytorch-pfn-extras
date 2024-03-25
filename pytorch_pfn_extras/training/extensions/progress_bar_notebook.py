@@ -12,7 +12,6 @@ from pytorch_pfn_extras.training._manager_protocol import (
 
 
 class ProgressBarNotebook(extension.Extension):
-
     """An extension to print a progress bar and recent training status.
 
     It is aimed to work on jupyter notebook as replacement of `ProgressBar`.

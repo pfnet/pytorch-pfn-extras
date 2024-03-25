@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 
 class IntervalTrigger(trigger.Trigger):
-
     """Trigger based on a fixed interval.
 
     This trigger accepts iterations divided by a given interval. There are two
