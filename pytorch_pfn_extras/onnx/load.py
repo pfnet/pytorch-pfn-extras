@@ -24,8 +24,9 @@ def load_model(
     """
     try:
         return onnx.load_model(f, format=format, load_external_data=load_external_data)
-    except OSError as e:  # The ONNX may contain stripped large tensors.
+    except (OSError, onnx.checker.ValidationError) as e:  # The ONNX may contain stripped large tensors.
         if (load_external_data
+                and isinstance(e, OSError)
                 and json.loads(Path(e.filename).name)["type"] != "stripped"):
             raise
         warnings.warn(
