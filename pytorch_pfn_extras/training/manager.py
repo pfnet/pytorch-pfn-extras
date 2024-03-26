@@ -177,9 +177,9 @@ class _BaseExtensionsManager:
         # Defer!
         self._start_time: Optional[float] = None
         self.__iters_per_epoch: Optional[int] = None
-        self._extensions: Dict[
-            str, extension_module.ExtensionEntry
-        ] = collections.OrderedDict()
+        self._extensions: Dict[str, extension_module.ExtensionEntry] = (
+            collections.OrderedDict()
+        )
         for ext in extensions:
             self.extend(ext)
 

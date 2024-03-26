@@ -9,7 +9,6 @@ from pytorch_pfn_extras.training._manager_protocol import (
 
 
 class MicroAverage(extension.Extension):
-
     """Calculates micro-average ratio.
 
     Give :math:`N` batches and values :math:`\\{n_1, \\dots, n_N\\}` and

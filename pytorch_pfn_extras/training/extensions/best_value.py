@@ -10,7 +10,6 @@ if TYPE_CHECKING:
 
 
 class BestValue(extension.Extension):
-
     """Extension traces the best value of a specific key in the observation.
 
     Args:
@@ -88,7 +87,6 @@ class BestValue(extension.Extension):
 
 
 class MaxValue(BestValue):
-
     """Extension traces the maximum value of a specific key in the observation.
 
     Args:
@@ -108,7 +106,6 @@ class MaxValue(BestValue):
 
 
 class MinValue(BestValue):
-
     """Extension traces the maximum value of a specific key in the observation.
 
     Args:

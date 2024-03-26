@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 
 
 class LazyInitializationMixin:
-
     """A mixin for modules that lazily initialize buffers and parameters.
 
     Unlike regular modules, subclasses of this module can initialize

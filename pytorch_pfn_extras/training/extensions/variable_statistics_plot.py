@@ -84,7 +84,6 @@ def _unpack_variables(x: Any, memo: Any = None) -> Any:
 
 
 class Reservoir:
-
     """Reservoir sample with a fixed sized buffer."""
 
     def __init__(
@@ -120,7 +119,6 @@ class Reservoir:
 
 
 class Statistician:
-
     """Helper to compute basic NumPy-like statistics."""
 
     def __init__(
@@ -160,7 +158,6 @@ class Statistician:
 
 
 class VariableStatisticsPlot(extension.Extension):
-
     """__init__(\
 targets, max_sample_size=1000, report_data=True, report_grad=True, \
 plot_mean=True, plot_std=True, \

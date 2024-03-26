@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
 
 class BestValueTrigger(trigger_module.Trigger):
-
     """Trigger invoked when specific value becomes best.
 
     Args:
@@ -100,7 +99,6 @@ class BestValueTrigger(trigger_module.Trigger):
 
 
 class MaxValueTrigger(BestValueTrigger):
-
     """Trigger invoked when specific value becomes maximum.
 
     For example you can use this trigger to take snapshot on the epoch the
@@ -123,7 +121,6 @@ class MaxValueTrigger(BestValueTrigger):
 
 
 class MinValueTrigger(BestValueTrigger):
-
     """Trigger invoked when specific value becomes minimum.
 
     For example you can use this trigger to take snapshot on the epoch the

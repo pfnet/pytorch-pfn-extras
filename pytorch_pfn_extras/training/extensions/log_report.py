@@ -98,7 +98,6 @@ class _LogLooker:
 
 
 class LogReport(extension.Extension):
-
     """
     An extension to output the accumulated results to a log file.
 

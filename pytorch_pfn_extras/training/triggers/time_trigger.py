@@ -7,7 +7,6 @@ from pytorch_pfn_extras.training._manager_protocol import (
 
 
 class TimeTrigger(trigger.Trigger):
-
     """Trigger based on a fixed time interval.
 
     This trigger accepts iterations with a given interval time.

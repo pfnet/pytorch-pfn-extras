@@ -7,7 +7,6 @@ from pytorch_pfn_extras.training._manager_protocol import (
 
 
 class OnceTrigger(trigger.Trigger):
-
     """Trigger based on the starting point of the iteration.
 
     This trigger accepts only once at starting point of the iteration. There

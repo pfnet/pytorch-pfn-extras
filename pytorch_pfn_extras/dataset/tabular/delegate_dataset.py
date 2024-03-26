@@ -4,7 +4,6 @@ from pytorch_pfn_extras.dataset.tabular import tabular_dataset
 
 
 class DelegateDataset(tabular_dataset.TabularDataset):
-
     """A helper class to implement a TabularDataset.
 
     This class wraps an instance of
