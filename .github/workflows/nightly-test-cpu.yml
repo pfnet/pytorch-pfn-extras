@@ -3,7 +3,11 @@ name: "Nightly CPU Tests"
 on:
   schedule:
   - cron: 0 0 * * *
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit or branch to test (e.g., refs/pull/1234/merge)'
+        type: string
 
 jobs:
   nightly-test:
@@ -15,6 +19,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
+        ref: ${{ inputs.ref || github.ref }}
         submodules: recursive
 
     - name: Setup Python
