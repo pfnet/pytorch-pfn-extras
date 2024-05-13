@@ -46,7 +46,7 @@ def check_optimizer_is_called(optimizer: Optimizer) -> bool:
     else:
         # https://github.com/pytorch/pytorch/blob/v2.0.1/torch/optim/lr_scheduler.py#L137-L138
         if hasattr(optimizer.step, "_with_counter"):
-            return optimizer._step_count >= 1
+            return bool(optimizer._step_count >= 1)  # type: ignore[attr-defined]
         else:
             return True
 
