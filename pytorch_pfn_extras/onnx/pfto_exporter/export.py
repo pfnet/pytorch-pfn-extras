@@ -693,16 +693,15 @@ class _Exporter(_ExporterOptions):
             node_inputs.extend(n.scalar_args())
             if "module" in attrs:
                 del attrs["module"]
-        if pytorch_pfn_extras.requires("2.4.0.dev"):
+        if pytorch_pfn_extras.requires("1.13"):
+            if pytorch_pfn_extras.requires("2.4.0.dev"):
+                g_ctx_kwargs: Dict[str, Any] = {"values_in_env": set()}
+            else:
+                g_ctx_kwargs = {}
             g_ctx = GraphContext(
                 graph=g, block=n.owningBlock(),
                 opset=self.opset_version, original_node=n,
-                params_dict=self.vars, env=self.torch2onnx_var, values_in_env=set())            
-        elif pytorch_pfn_extras.requires("1.13"):
-            g_ctx = GraphContext(
-                graph=g, block=n.owningBlock(),
-                opset=self.opset_version, original_node=n,
-                params_dict=self.vars, env=self.torch2onnx_var)            
+                params_dict=self.vars, env=self.torch2onnx_var, **g_ctx_kwargs)            
         else:
             g_ctx = g  # type: ignore
         if (
