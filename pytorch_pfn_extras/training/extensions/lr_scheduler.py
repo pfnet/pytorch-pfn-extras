@@ -1,14 +1,14 @@
 from typing import Any, Dict, Optional
 
-
+from pytorch_pfn_extras._torch_version import requires
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import (
     ExtensionsManagerProtocol,
 )
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.optim import Optimizer
-from pytorch_pfn_extras._torch_version import requires
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
 
 def _get_value_from_log_report(
     manager: ExtensionsManagerProtocol, key: Any
@@ -34,6 +34,7 @@ def _default_stepper(
     else:
         scheduler.step()
 
+
 def check_optimizer_is_called(optimizer: Optimizer) -> bool:
     if requires("2.4.0.dev"):
         # https://github.com/pytorch/pytorch/blob/afda6685ae87cce7ac2fe4bac3926572da2960f7/torch/optim/lr_scheduler.py#L172-L191
@@ -48,7 +49,6 @@ def check_optimizer_is_called(optimizer: Optimizer) -> bool:
             return optimizer._step_count >= 1
         else:
             return True
-
 
 
 class LRScheduler(extension.Extension):
