@@ -17,7 +17,7 @@ jobs:
       - name: Install Dependencies
         run: python3 -m pip install build --user
       - name: Build Packages
-        run: python3 -m build --sdist --outdir dist/ .
+        run: python3 -m build --outdir dist/ .
       - name: Upload Artifacts
         uses: actions/upload-artifact@v3
         with:
