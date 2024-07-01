@@ -427,6 +427,10 @@ def export_testcase(
     for pb_name in glob.glob(os.path.join(data_set_path, "*.pb")):
         os.remove(pb_name)
     for i, (arg, name) in enumerate(zip(named_args, input_names)):
+        if isinstance(arg, (list, tuple)):
+            assert len(arg) == 1, \
+                'Models that receive nested lists/tuples are not supported yet'
+            arg = arg[0]
         f = os.path.join(data_set_path, 'input_{}.pb'.format(i))
         write_to_pb(f, arg, name)
 

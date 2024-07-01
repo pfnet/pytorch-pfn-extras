@@ -636,7 +636,6 @@ def test_export_tuple_input():
     model = Net()
     x = torch.rand(2, 5)
 
-    # Test with labels
     export_testcase(
         model,
         ((x,),),
