@@ -617,3 +617,32 @@ def test_export_default_kwargs():
     )
 
     check_inputs(output_dir, ["x", "bias"])
+
+
+def test_export_tuple_input():
+
+    class Net(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = nn.Linear(5, 10, bias=False)
+            self.in_channels = [5, 10]
+
+        def forward(self, inputs):
+            assert isinstance(inputs, tuple), f"{type(inputs)=}"
+            linears = [self.linear(x) for x in inputs]
+            return linears
+
+
+    model = Net()
+    x = torch.rand(2, 5)
+
+    # Test with labels
+    export_testcase(
+        model,
+        ((x,),),
+        output_dir,
+        input_names=["x"],
+        training=model.training,
+        do_constant_folding=False,
+        opset_version=12,
+    )
