@@ -240,7 +240,16 @@ class Logic(BaseLogic):
                     "torch.cuda.amp.GradScaler object"
                 )
 
-    def _forward(self, model: torch.nn.Module, batch: Any) -> Any:
+    def forward(self, model: torch.nn.Module, batch: Any) -> Any:
+        """Get the result of inputting the sampled data batch into the model.
+
+        Args:
+            model (torch.nn.Module): Model to input data.
+            batch (Any): Mini-batch sampled from data loader running in Trainer
+
+        Returns:
+            Any: Output of the model. loss is assumed to be output.
+        """
         if isinstance(batch, tuple) and hasattr(batch, "_fields"):
             # namedtuple
             return model(batch)
@@ -343,7 +352,7 @@ class Logic(BaseLogic):
         """
         with self._autocast.autocast():
             optimizers[self.model_name].zero_grad()
-            outs = self._forward(models[self.model_name], batch)
+            outs = self.forward(models[self.model_name], batch)
             to_back_outs = _normalize_outputs(outs)
         self._backward(to_back_outs)
         return outs
@@ -403,7 +412,7 @@ class Logic(BaseLogic):
         """
         model = models[self.model_name]
         with self._autocast.autocast():
-            outs = self._forward(model, batch)
+            outs = self.forward(model, batch)
         return outs
 
 
@@ -564,7 +573,7 @@ class ClousureLogic(Logic):
         def clousure() -> ClousureModelOutput:
             with self._autocast.autocast():
                 optimizers[self.model_name].zero_grad()
-                outs = self._forward(models[self.model_name], batch)
+                outs = self.forward(models[self.model_name], batch)
             to_back_outs = _normalize_outputs(outs)
             if len(to_back_outs) > 1:
                 raise RuntimeError(
