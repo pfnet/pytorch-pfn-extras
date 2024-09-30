@@ -1,17 +1,10 @@
 # https://stackoverflow.com/questions/9948517/how-to-stop-a-powershell-script-on-the-first-error
 
-trap {
-  Write-Host "###Trap start###"
-  Write-Host $_
-  Write-Host "###Trap end###"
-}
-
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $PSDefaultParameterValues['*:ErrorAction']='Stop'
 
 function RunOrDie {
-    Write-Host "RunOrDie: $args"
     $cmd, $params = $args
     $params = @($params)
     $global:LastExitCode = 0

@@ -75,12 +75,6 @@ RunOrDie python -m pip list
 # Install
 RunOrDie python -m pip install -e .
 
-trap {
-  Write-Host "###Trap start###"
-  Write-Host $_
-  Write-Host "###Trap end###"
-}
-
 # Unit Test
 $Env:JUPYTER_PLATFORM_DIRS = "1"
 RunOrDie python -m pytest -m "not mpi" tests
