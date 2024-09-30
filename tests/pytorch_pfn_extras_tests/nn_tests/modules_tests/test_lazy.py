@@ -159,11 +159,9 @@ class LazyTestBase:
             torch.save(model_src.state_dict(), f.name)
             if not init_src and init_dst:
                 with pytest.raises(RuntimeError):
-                    model_dst.load_state_dict(
-                        torch.load(f.name, weights_only=True)
-                    )
+                    model_dst.load_state_dict(torch.load(f.name))
             else:
-                model_dst.load_state_dict(torch.load(f.name, weights_only=True))
+                model_dst.load_state_dict(torch.load(f.name))
 
         # Ensure that if the model was initialized, the parameters are the same
         # after loading a state dict
