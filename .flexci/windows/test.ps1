@@ -78,7 +78,8 @@ RunOrDie python -m pip install -e .
 # Unit Test
 $Env:JUPYTER_PLATFORM_DIRS = "1"
 # RunOrDie python -m pytest -m "not mpi" tests
-$test_retval = RunWithTimeout -timeout 7200 -output ./ppe_test_log.txt -- python -m pytest -m "not mpi" tests
+$pytest_opts = "-m", "not mpi"
+$test_retval = RunWithTimeout -timeout 7200 -output ./ppe_test_log.txt -- python -m pytest @pytest_opts tests
 if ($test_retval -ne 0) {
     echo "------------------------------------------------------------------------------------------"
     Get-Content ppe_test_log.txt
