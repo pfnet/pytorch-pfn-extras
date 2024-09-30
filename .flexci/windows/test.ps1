@@ -83,7 +83,7 @@ trap {
 
 # Unit Test
 $Env:JUPYTER_PLATFORM_DIRS = "1"
-python -m pytest -m "not mpi" tests
+RunOrDie python -m pytest -m "not mpi" tests
 
 # Examples
 .\.flexci\windows\download_mnist.ps1

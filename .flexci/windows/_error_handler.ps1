@@ -11,6 +11,7 @@ $ErrorActionPreference = "Stop"
 $PSDefaultParameterValues['*:ErrorAction']='Stop'
 
 function RunOrDie {
+    Write-Host "RunOrDie: $args"
     $cmd, $params = $args
     $params = @($params)
     $global:LastExitCode = 0
