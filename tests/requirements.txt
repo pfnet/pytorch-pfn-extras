@@ -20,3 +20,4 @@ onnx
 pytorch-ignite
 pytest-cov
 slack_sdk
+numpy<2
