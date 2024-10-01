@@ -77,7 +77,7 @@ RunOrDie python -m pip install -e .
 
 # Unit Test
 $Env:JUPYTER_PLATFORM_DIRS = "1"
-$test_retval = RunWithTimeout -timeout 7200 -output ./ppe_test_log.txt -- python -m pytest -m '"not mpi"' tests/pytorch_pfn_extras_tests/dataloader_test/test_dataloader.py
+$test_retval = RunWithTimeout -timeout 7200 -output ./ppe_test_log.txt -- python -m pytest tests/pytorch_pfn_extras_tests/dataloader_test/test_dataloader.py
 echo "------------------------------------------------------------------------------------------"
 Get-Content ppe_test_log.txt
 echo "------------------------------------------------------------------------------------------"
