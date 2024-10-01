@@ -35,11 +35,13 @@ function RunWithTimeout {
         [Parameter(Mandatory=$true)]
         [string]$output,
         [Parameter(Mandatory=$true)]
+        [string]$stderr,
+        [Parameter(Mandatory=$true)]
         [string]$command,
         [Parameter(Mandatory=$true, ValueFromRemainingArguments=$true)]
         [string[]]$params
     )
-    $process = Start-Process -PassThru -NoNewWindow -RedirectStandardOutput $output -FilePath $command -ArgumentList $params
+    $process = Start-Process -PassThru -NoNewWindow -RedirectStandardOutput $output -RedirectStandardError $stderr -FilePath $command -ArgumentList $params
     try {
         $process | Wait-Process -Timeout $timeout
     } catch [TimeoutException] {

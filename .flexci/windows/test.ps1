@@ -77,9 +77,12 @@ RunOrDie python -m pip install -e .
 
 # Unit Test
 $Env:JUPYTER_PLATFORM_DIRS = "1"
-$test_retval = RunWithTimeout -timeout 7200 -output ./ppe_test_log.txt -- python -m pytest tests/pytorch_pfn_extras_tests/dataloader_test/test_dataloader.py
-echo "------------------------------------------------------------------------------------------"
+$test_retval = RunWithTimeout -timeout 7200 -output ./ppe_test_log.txt -stderr ./ppe_test_err.txt -- python -m pytest tests/pytorch_pfn_extras_tests/dataloader_test/test_dataloader.py
+echo "-------------------------------------stdout-----------------------------------------------"
 Get-Content ppe_test_log.txt
+echo "------------------------------------------------------------------------------------------"
+echo "-------------------------------------stderr-----------------------------------------------"
+Get-Content ppe_test_err.txt
 echo "------------------------------------------------------------------------------------------"
 
 if ($test_retval -ne 0) {
