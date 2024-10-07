@@ -27,32 +27,3 @@ function RunOrDieWithRetry {
     }
     throw "No more retry."
 }
-
-function RunWithTimeout {
-    param(
-        [Parameter(Mandatory=$true)]
-        [int]$timeout,
-        [Parameter(Mandatory=$true)]
-        [string]$output,
-        [Parameter(Mandatory=$true)]
-        [string]$stderr,
-        [Parameter(Mandatory=$true)]
-        [string]$command,
-        [Parameter(Mandatory=$true, ValueFromRemainingArguments=$true)]
-        [string[]]$params
-    )
-    $process = Start-Process -PassThru -NoNewWindow -RedirectStandardOutput $output -RedirectStandardError $stderr -FilePath $command -ArgumentList $params
-    try {
-        $process | Wait-Process -Timeout $timeout
-    } catch [TimeoutException] {
-        Write-Warning "Command timed out: $command $params"
-        $process | Stop-Process -Force
-        if (!$process.HasExited) {
-            Write-Warning "Failed to force terminate the process: $command $params"
-            return 999  # ExitCode unavailable, return a dummy value
-        }
-    }
-
-    # Return code will be -1 when force terminated.
-    return $process.ExitCode
-}
