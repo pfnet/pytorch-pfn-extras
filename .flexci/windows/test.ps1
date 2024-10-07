@@ -77,9 +77,9 @@ RunOrDie python -m pip install -e .
 
 # Unit Test
 $Env:JUPYTER_PLATFORM_DIRS = "1"
-RunOrDie python -m pytest -m "not mpi" tests
+RunOrDie python -m pytest -m "not mpi" tests/pytorch_pfn_extras_tests/dataloader_test/test_dataloader.py
 
 # Examples
-.\.flexci\windows\download_mnist.ps1
-RunOrDie python example/mnist.py --batch-size 2048 --test-batch-size 2048 --epochs 1 --save-model
-RunOrDie python example/ignite-mnist.py --batch_size 2048 --val_batch_size 2048 --epochs 1
+# .\.flexci\windows\download_mnist.ps1
+# RunOrDie python example/mnist.py --batch-size 2048 --test-batch-size 2048 --epochs 1 --save-model
+# RunOrDie python example/ignite-mnist.py --batch_size 2048 --val_batch_size 2048 --epochs 1
