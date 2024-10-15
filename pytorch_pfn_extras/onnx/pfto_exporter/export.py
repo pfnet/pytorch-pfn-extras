@@ -1,4 +1,5 @@
 import dataclasses
+from functools import partial
 import types
 import typing
 import warnings
@@ -115,7 +116,11 @@ _op_normalize_table: Dict[str, str] = {
     "special_gammaln": "lgamma",
 }
 
-if pytorch_pfn_extras.requires("1.13"):
+GraphContext: Any
+if pytorch_pfn_extras.requires("2.4"):
+    from torch.onnx._internal import jit_utils
+    GraphContext = partial(jit_utils.GraphContext, values_in_env=set())
+elif pytorch_pfn_extras.requires("1.13"):
     from torch.onnx._internal import jit_utils
     GraphContext = jit_utils.GraphContext
 else:
