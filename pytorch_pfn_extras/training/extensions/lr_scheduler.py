@@ -1,5 +1,6 @@
 from typing import Any, Dict, Optional
 
+import pytorch_pfn_extras
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import (
@@ -70,10 +71,16 @@ class LRScheduler(extension.Extension):
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         # https://github.com/pytorch/pytorch/blob/v2.0.1/torch/optim/lr_scheduler.py#L137-L138
-        if (
-            self.wait_for_first_optimizer_step
-            and hasattr(self.scheduler.optimizer.step, "_with_counter")
-            and self.scheduler.optimizer._step_count < 1
+        # https://github.com/pytorch/pytorch/blob/v2.4.1/torch/optim/lr_scheduler.py#L215
+        if self.wait_for_first_optimizer_step and (
+            (
+                hasattr(self.scheduler.optimizer.step, "_with_counter")
+                and self.scheduler.optimizer._step_count < 1
+            )
+            or (
+                pytorch_pfn_extras.requires("2.4.0")
+                and not getattr(self.scheduler.optimizer, "_opt_called", False)
+            )
         ):
             return
         self.stepper(manager, self.scheduler)

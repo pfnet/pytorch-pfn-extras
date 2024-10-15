@@ -37,7 +37,13 @@ def _patch_bn_momentum(module: torch.nn.Module) -> None:
         if isinstance(module, torch.nn.modules.batchnorm._BatchNorm):
             # Set momentum so that two forward passes will produce the same
             # EMA as one forward pass.
-            module.momentum = 1 - (1 - module.momentum) ** 0.5
+            if module.momentum is not None:
+                module.momentum = 1 - (1 - module.momentum) ** 0.5
+            else:
+                # NOTE(linsho):
+                # In the case of cumulative moving average mode, the operation is
+                # equivalent to not using checkpoints even if you do nothing.
+                pass
         for _, child in module.named_children():
             _patch_bn_momentum(child)
     module._bn_momentum_patched = True  # type: ignore[assignment]

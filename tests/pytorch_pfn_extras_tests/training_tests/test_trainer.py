@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
+import torch.amp
 import torch.distributed as dist
 from pytorch_pfn_extras import engine, testing, training
 from pytorch_pfn_extras.training import DistributedEvaluator, triggers
@@ -527,8 +528,10 @@ class TestTrainerState:
             pytest.skip()
         snapshot_epoch = 10
         training_epoch = 20
-        grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
-            init_scale=2**48, growth_interval=2
+        grad_scaler = (
+            torch.amp.GradScaler("cuda", init_scale=2**48, growth_interval=2)
+            if ppe.requires("2.3.0")
+            else torch.cuda.amp.GradScaler(init_scale=2**48, growth_interval=2)
         )
         trainer = self._get_trainer(
             training_epoch,
@@ -558,8 +561,10 @@ class TestTrainerState:
 
         trainer.run(data)
 
-        new_grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
-            init_scale=2**48, growth_interval=2
+        new_grad_scaler = (
+            torch.amp.GradScaler("cuda", init_scale=2**48, growth_interval=2)
+            if ppe.requires("2.3.0")
+            else torch.cuda.amp.GradScaler(init_scale=2**48, growth_interval=2)
         )
         new_trainer = self._get_trainer(
             training_epoch,

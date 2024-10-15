@@ -4,6 +4,7 @@ import unittest.mock
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
+import torch.amp
 
 
 def torch_testing_assert_close(*args, **kwargs):
@@ -502,7 +503,11 @@ class TestLogic:
 
     @pytest.mark.gpu
     def test_grad_scaler(self):
-        scaler = torch.cuda.amp.GradScaler()
+        scaler = (
+            torch.amp.GradScaler("cuda")
+            if ppe.requires("2.3.0")
+            else torch.cuda.amp.GradScaler()
+        )
         options = {"grad_scaler": scaler}
         logic = ppe.handler.Logic(options=options)
         models, optimizers, input, out = self._run_step(logic, "cuda")
@@ -526,7 +531,11 @@ class TestLogic:
     )
     def test_train_grad_scaler_with_single_step_backward(self, to_backprop):
         assert len(to_backprop) == 1
-        scaler = torch.cuda.amp.GradScaler()
+        scaler = (
+            torch.amp.GradScaler("cuda")
+            if ppe.requires("2.3.0")
+            else torch.cuda.amp.GradScaler()
+        )
         grad_scale_logic = ppe.handler.Logic(
             options={"grad_scaler": scaler, "backward_outputs": to_backprop}
         )
@@ -605,7 +614,13 @@ class TestLogic:
         old_enable = ppe.runtime._autocast._cuda_amp_available
         try:
             ppe.runtime._autocast._cuda_amp_available = False
-            options = {"grad_scaler": torch.cuda.amp.GradScaler()}
+            options = {
+                "grad_scaler": (
+                    torch.amp.GradScaler("cuda")
+                    if ppe.requires("2.3.0")
+                    else torch.cuda.amp.GradScaler()
+                )
+            }
             with pytest.raises(RuntimeError):
                 ppe.handler.Logic(options=options)
         finally:
@@ -630,6 +645,12 @@ class TestLogic:
 
     @pytest.mark.gpu
     def test_use_grad_scaler_with_clousure(self):
-        options = {"grad_scaler": torch.cuda.amp.GradScaler()}
+        options = {
+            "grad_scaler": (
+                torch.amp.GradScaler("cuda")
+                if ppe.requires("2.3.0")
+                else torch.cuda.amp.GradScaler()
+            )
+        }
         with pytest.raises(RuntimeError):
             ppe.handler.ClousureLogic(options=options)

@@ -15,6 +15,7 @@ from typing import (
 )
 
 import torch
+import torch.amp
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
 from pytorch_pfn_extras.runtime import _autocast
 
@@ -234,7 +235,10 @@ class Logic(BaseLogic):
         )
 
         if self._grad_scaler is not None:
-            if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
+            if not isinstance(
+                self._grad_scaler,
+                (torch.cuda.amp.GradScaler, torch.amp.GradScaler),
+            ):
                 raise RuntimeError(
                     "grad_scaler should be a "
                     "torch.cuda.amp.GradScaler object"
