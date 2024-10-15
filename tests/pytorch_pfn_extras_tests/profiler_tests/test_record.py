@@ -166,8 +166,11 @@ def test_record_iterable_with_threads(device):
     with torch.profiler.profile():
 
         def thread_body(thread_id):
+            stream = torch.cuda.Stream()
             for _ in range(10):
-                with ppe.profiler.record(f"{thread_id}", trace=True):
+                with ppe.profiler.record(
+                    f"{thread_id}", trace=True
+                ), torch.cuda.stream(stream):
                     model(x)
                     # yield
                     time.sleep(0.0001)
