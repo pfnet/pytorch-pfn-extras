@@ -65,6 +65,22 @@ if ($test -eq "torch110") {
     RunOrDieWithRetry 3 python -m pip install torch==2.2.* torchvision==0.17.* -f https://download.pytorch.org/whl/cu121/torch_stable.html
     RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda12x
 
+} elseif ($test -eq "torch203") {
+    # PyTorch 2.3 + Python 3.11
+    ActivateCUDA 12.4
+    ActivatePython 3.11
+    RunOrDie python -m pip install -U pip "setuptools<59.6"
+    RunOrDieWithRetry 3 python -m pip install torch==2.3.* torchvision==0.18.* -f https://download.pytorch.org/whl/cu124/torch_stable.html
+    RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda12x
+
+} elseif ($test -eq "torch204") {
+    # PyTorch 2.4 + Python 3.12
+    ActivateCUDA 12.6
+    ActivatePython 3.12
+    RunOrDie python -m pip install -U pip "setuptools<59.6"
+    RunOrDieWithRetry 3 python -m pip install torch==2.4.* torchvision==0.19.* -f https://download.pytorch.org/whl/cu126/torch_stable.html
+    RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda12x
+
 } else {
     throw "Unsupported test variant: $test"
 }
