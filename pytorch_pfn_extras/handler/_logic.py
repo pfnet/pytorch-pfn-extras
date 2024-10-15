@@ -14,10 +14,13 @@ from typing import (
     Union,
 )
 
+import pytorch_pfn_extras._torch_version
 import torch
-import torch.amp
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
 from pytorch_pfn_extras.runtime import _autocast
+
+if pytorch_pfn_extras._torch_version.requires("1.12.0"):
+    import torch.amp
 
 
 # Deprecated: kept for backward compatibility of user code

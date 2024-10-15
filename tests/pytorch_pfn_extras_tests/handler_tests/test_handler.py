@@ -4,7 +4,9 @@ import unittest.mock
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
-import torch.amp
+
+if ppe.requires("1.12.0"):
+    import torch.amp
 
 
 def torch_testing_assert_close(*args, **kwargs):

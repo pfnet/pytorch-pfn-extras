@@ -6,12 +6,14 @@ from unittest import mock
 import pytest
 import pytorch_pfn_extras as ppe
 import torch
-import torch.amp
 import torch.distributed as dist
 from pytorch_pfn_extras import engine, testing, training
 from pytorch_pfn_extras.training import DistributedEvaluator, triggers
 from torch import nn
 from torch.nn import functional as F
+
+if ppe.requires("1.12.0"):
+    import torch.amp
 
 
 @pytest.fixture(scope="function")
