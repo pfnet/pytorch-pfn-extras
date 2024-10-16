@@ -1,12 +1,18 @@
 from typing import Any, Dict, Optional
 
 import pytorch_pfn_extras
+import pytorch_pfn_extras._torch_version
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import (
     ExtensionsManagerProtocol,
 )
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+
+if pytorch_pfn_extras._torch_version.requires("2.0.0"):
+    from torch.optim.lr_scheduler import LRScheduler as _LRScheduler
+else:
+    from torch.optim.lr_scheduler import _LRScheduler
 
 
 def _get_value_from_log_report(
@@ -64,6 +70,9 @@ class LRScheduler(extension.Extension):
         is_async: bool = True,
     ) -> None:
         self.scheduler = scheduler
+        self.has_opt_called = pytorch_pfn_extras.requires(
+            "2.4.0"
+        ) and isinstance(self.scheduler, _LRScheduler)
         self.trigger = trigger_module.get_trigger(trigger)
         self.stepper = stepper
         self.wait_for_first_optimizer_step = wait_for_first_optimizer_step
@@ -78,7 +87,7 @@ class LRScheduler(extension.Extension):
                 and self.scheduler.optimizer._step_count < 1
             )
             or (
-                pytorch_pfn_extras.requires("2.4.0")
+                self.has_opt_called
                 and not getattr(self.scheduler.optimizer, "_opt_called", False)
             )
         ):
