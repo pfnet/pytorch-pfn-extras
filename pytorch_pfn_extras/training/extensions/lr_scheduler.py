@@ -10,7 +10,9 @@ from pytorch_pfn_extras.training._manager_protocol import (
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 if pytorch_pfn_extras._torch_version.requires("2.0.0"):
-    from torch.optim.lr_scheduler import LRScheduler as _LRScheduler
+    from torch.optim.lr_scheduler import (
+        LRScheduler as _LRScheduler,  # type: ignore[attr-defined]
+    )
 else:
     from torch.optim.lr_scheduler import _LRScheduler
 
