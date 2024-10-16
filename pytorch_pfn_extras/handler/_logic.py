@@ -240,14 +240,7 @@ class Logic(BaseLogic):
         if self._grad_scaler is not None:
             if not isinstance(
                 self._grad_scaler,
-                (
-                    (torch.cuda.amp.GradScaler,)
-                    + (
-                        (torch.amp.GradScaler,)
-                        if pytorch_pfn_extras._torch_version.requires("2.3.0")
-                        else ()
-                    )
-                ),
+                (torch.cuda.amp.GradScaler, torch.amp.GradScaler),  # type: ignore[attr-defined]
             ):
                 raise RuntimeError(
                     "grad_scaler should be a "
