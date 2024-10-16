@@ -161,7 +161,7 @@ def _export(
         **kwargs: Any,
 ) -> Tuple[onnx.ModelProto, Any]:
     model.zero_grad()
-    bytesio = io.BytesIO()
+    bytesio = "out_dir/model.onnx"
     opset_ver = kwargs.get('opset_version', None)
     force_verbose = False
 
@@ -210,7 +210,8 @@ def _export(
             else:
                 outs = _export_util(
                     model, args, bytesio, return_output=return_output, **kwargs)
-        onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
+        # onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
+        onnx_graph = onnx.load(bytesio)
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)
         outputs.add_outputs_to_model(onnx_graph)
@@ -393,8 +394,8 @@ def export_testcase(
     is_on_memory = True
     if model_overwrite or (not os.path.isfile(output_path)):
         is_on_memory = False
-        with open(output_path, 'wb') as fp:
-            fp.write(onnx_graph.SerializeToString())
+        # with open(output_path, 'wb') as fp:
+        #     fp.write(onnx_graph.SerializeToString())
 
     def write_to_pb(f: str, tensor: torch.Tensor, name: Optional[str] = None) -> None:
         array = tensor.detach().cpu().numpy()
