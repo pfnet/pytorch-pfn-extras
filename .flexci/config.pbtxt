@@ -131,7 +131,7 @@ configs {
   value {
     requirement {
       cpu: 4
-      gpu: 2
+      gpu: 1
       memory: 24
       disk: 10
       image: "windows"
@@ -148,7 +148,7 @@ configs {
   value {
     requirement {
       cpu: 4
-      gpu: 2
+      gpu: 1
       memory: 24
       disk: 10
       image: "windows"
@@ -165,7 +165,7 @@ configs {
   value {
     requirement {
       cpu: 4
-      gpu: 2
+      gpu: 1
       memory: 24
       disk: 10
       image: "windows"
@@ -182,7 +182,7 @@ configs {
   value {
     requirement {
       cpu: 4
-      gpu: 2
+      gpu: 1
       memory: 24
       disk: 10
       image: "windows"
@@ -199,7 +199,7 @@ configs {
   value {
     requirement {
       cpu: 4
-      gpu: 2
+      gpu: 1
       memory: 24
       disk: 10
       image: "windows"
@@ -216,7 +216,7 @@ configs {
   value {
     requirement {
       cpu: 4
-      gpu: 2
+      gpu: 1
       memory: 24
       disk: 10
       image: "windows"
@@ -233,7 +233,7 @@ configs {
   value {
     requirement {
       cpu: 4
-      gpu: 2
+      gpu: 1
       memory: 24
       disk: 10
       image: "windows"
