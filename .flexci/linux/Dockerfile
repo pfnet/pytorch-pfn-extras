@@ -34,7 +34,7 @@ COPY ./tests/requirements.txt ./tests/requirements.mpi.txt ./
 ARG pip_install_torch_args
 ARG pip_install_dep_args	
 RUN pip install -U pip && \
-    pip install -U "setuptools<59.6" && \
+    pip install -U setuptools && \
     pip install -r requirements.txt -r requirements.mpi.txt ${pip_install_torch_args} && \
     pip install ${pip_install_dep_args} && \	
     pip list
