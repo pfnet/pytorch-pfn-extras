@@ -12,6 +12,9 @@ from pytorch_pfn_extras.training import DistributedEvaluator, triggers
 from torch import nn
 from torch.nn import functional as F
 
+if ppe.requires("1.12.0"):
+    import torch.amp
+
 
 @pytest.fixture(scope="function")
 def path():
@@ -527,8 +530,10 @@ class TestTrainerState:
             pytest.skip()
         snapshot_epoch = 10
         training_epoch = 20
-        grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
-            init_scale=2**48, growth_interval=2
+        grad_scaler = (
+            torch.amp.GradScaler("cuda", init_scale=2**48, growth_interval=2)
+            if ppe.requires("2.3.0")
+            else torch.cuda.amp.GradScaler(init_scale=2**48, growth_interval=2)
         )
         trainer = self._get_trainer(
             training_epoch,
@@ -558,8 +563,10 @@ class TestTrainerState:
 
         trainer.run(data)
 
-        new_grad_scaler = torch.cuda.amp.grad_scaler.GradScaler(
-            init_scale=2**48, growth_interval=2
+        new_grad_scaler = (
+            torch.amp.GradScaler("cuda", init_scale=2**48, growth_interval=2)
+            if ppe.requires("2.3.0")
+            else torch.cuda.amp.GradScaler(init_scale=2**48, growth_interval=2)
         )
         new_trainer = self._get_trainer(
             training_epoch,

@@ -14,9 +14,13 @@ from typing import (
     Union,
 )
 
+import pytorch_pfn_extras._torch_version
 import torch
 from pytorch_pfn_extras.handler._code_block import forward, update_parameters
 from pytorch_pfn_extras.runtime import _autocast
+
+if pytorch_pfn_extras._torch_version.requires("1.12.0"):
+    import torch.amp
 
 
 # Deprecated: kept for backward compatibility of user code
@@ -234,7 +238,17 @@ class Logic(BaseLogic):
         )
 
         if self._grad_scaler is not None:
-            if not isinstance(self._grad_scaler, torch.cuda.amp.GradScaler):
+            if not isinstance(
+                self._grad_scaler,
+                (
+                    (torch.cuda.amp.GradScaler,)
+                    + (
+                        (torch.amp.GradScaler,)  # type: ignore[attr-defined]
+                        if pytorch_pfn_extras._torch_version.requires("2.3.0")
+                        else ()
+                    )
+                ),
+            ):
                 raise RuntimeError(
                     "grad_scaler should be a "
                     "torch.cuda.amp.GradScaler object"

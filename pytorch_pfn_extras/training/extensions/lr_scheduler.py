@@ -1,11 +1,18 @@
 from typing import Any, Dict, Optional
 
+import pytorch_pfn_extras
+import pytorch_pfn_extras._torch_version
 from pytorch_pfn_extras.training import extension
 from pytorch_pfn_extras.training import trigger as trigger_module
 from pytorch_pfn_extras.training._manager_protocol import (
     ExtensionsManagerProtocol,
 )
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+
+if pytorch_pfn_extras._torch_version.requires("2.0.0"):
+    from torch.optim.lr_scheduler import LRScheduler as _LRScheduler  # type: ignore[attr-defined]  # isort:skip
+else:
+    from torch.optim.lr_scheduler import _LRScheduler
 
 
 def _get_value_from_log_report(
@@ -63,6 +70,9 @@ class LRScheduler(extension.Extension):
         is_async: bool = True,
     ) -> None:
         self.scheduler = scheduler
+        self.has_opt_called = pytorch_pfn_extras.requires(
+            "2.4.0"
+        ) and isinstance(self.scheduler, _LRScheduler)
         self.trigger = trigger_module.get_trigger(trigger)
         self.stepper = stepper
         self.wait_for_first_optimizer_step = wait_for_first_optimizer_step
@@ -70,10 +80,16 @@ class LRScheduler(extension.Extension):
 
     def __call__(self, manager: ExtensionsManagerProtocol) -> None:
         # https://github.com/pytorch/pytorch/blob/v2.0.1/torch/optim/lr_scheduler.py#L137-L138
-        if (
-            self.wait_for_first_optimizer_step
-            and hasattr(self.scheduler.optimizer.step, "_with_counter")
-            and self.scheduler.optimizer._step_count < 1
+        # https://github.com/pytorch/pytorch/blob/v2.4.1/torch/optim/lr_scheduler.py#L215
+        if self.wait_for_first_optimizer_step and (
+            (
+                hasattr(self.scheduler.optimizer.step, "_with_counter")
+                and self.scheduler.optimizer._step_count < 1
+            )
+            or (
+                self.has_opt_called
+                and not getattr(self.scheduler.optimizer, "_opt_called", False)
+            )
         ):
             return
         self.stepper(manager, self.scheduler)
