@@ -113,7 +113,9 @@ def _export_util(
         operator_export_type = OperatorExportTypes.ONNX_ATEN if\
             aten else OperatorExportTypes.RAW  # type: ignore
     elif operator_export_type is None:
-        if pytorch_pfn_extras.requires("1.12.0"):
+        if pytorch_pfn_extras.requires("2.5.0"):
+            use_onnx_aten_fallback = False
+        elif pytorch_pfn_extras.requires("1.12.0"):
             use_onnx_aten_fallback = torch.onnx._CAFFE2_ATEN_FALLBACK  # type: ignore[attr-defined]
         else:
             use_onnx_aten_fallback = torch.onnx.PYTORCH_ONNX_CAFFE2_BUNDLE  # type: ignore[attr-defined]
@@ -131,9 +133,11 @@ def _export_util(
         if pytorch_pfn_extras.requires('1.10.0'):
             checker_error = getattr(torch.onnx, "CheckerError", None)
             if checker_error is None:
-                checker_error = torch.onnx.utils.ONNXCheckerError  # type: ignore[attr-defined]
+                checker_error = getattr(torch.onnx.utils, "ONNXCheckerError", None)  # type: ignore[attr-defined]
             try:
                 enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
+                if pytorch_pfn_extras.requires("2.5.0") and enable_onnx_checker:
+                    warnings.warn("onnx checker not supported from 2.5", UserWarning)
                 return torch_export(  # type: ignore[no-untyped-call]
                     model, args, f, **kwargs)
             except checker_error:
