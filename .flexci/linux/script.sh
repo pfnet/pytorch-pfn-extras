@@ -30,9 +30,11 @@ export PPE_FLEXCI_IMAGE_PUSH="${PPE_FLEXCI_IMAGE_PUSH:-1}"
 ################################################################################
 main() {
   TARGET="$1"
+  TEST_MODE="${2:-}"
   SRC_ROOT="$(cd "$(dirname "${BASH_SOURCE}")/../.."; pwd)"
 
   echo "[PPE CI] TARGET: ${TARGET}"
+  echo "[PPE CI] TEST_MODE: ${TEST_MODE}"
   echo "[PPE CI] SRC_ROOT: ${SRC_ROOT}"
   echo "[PPE CI] PPE_FLEXCI_GCS_BUCKET: ${PPE_FLEXCI_GCS_BUCKET}"
   echo "[PPE CI] PPE_FLEXCI_IMAGE_NAME: ${PPE_FLEXCI_IMAGE_NAME}"
@@ -58,7 +60,7 @@ main() {
   run .flexci/linux/download_mnist.sh
   run "${docker_args[@]}" \
       "${PPE_FLEXCI_IMAGE_NAME}:${TARGET}" \
-      /src/.flexci/linux/unittest.sh "${TARGET}"
+      /src/.flexci/linux/unittest.sh "${TEST_MODE}"
   run gsutil -m -q cp -r /tmp/output/htmlcov gs://${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pytest-cov/${CI_JOB_ID}/htmlcov
   echo "pytest-cov output: https://storage.googleapis.com/${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pytest-cov/${CI_JOB_ID}/htmlcov/index.html"
 }
