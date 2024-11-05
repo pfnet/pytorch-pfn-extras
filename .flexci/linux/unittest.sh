@@ -5,7 +5,7 @@ set -uex
 # Install
 rm -rf dist
 python setup.py sdist
-pip install dist/pytorch-pfn-extras-*.tar.gz
+pip install dist/pytorch_pfn_extras-*.tar.gz
 
 # Show packages
 pip list
