@@ -10,9 +10,9 @@ $ErrorActionPreference = "Stop"
 
 # Setup environment
 if ($test -eq "torch110") {
-    # PyTorch 1.10 + Python 3.8
+    # PyTorch 1.10 + Python 3.9
     ActivateCUDA 11.8
-    ActivatePython 3.8
+    ActivatePython 3.9
     RunOrDie python -m pip install -U pip setuptools
     RunOrDieWithRetry 3 python -m pip install torch==1.10.* torchvision==0.11.* -f https://download.pytorch.org/whl/cu113/torch_stable.html
     # NOTE(linsho):

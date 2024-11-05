@@ -603,7 +603,11 @@ def test_dump_invalid(engine_fn, model_class):
     engine_gpu, loaders_gpu = engine_fn(model_class, "cuda:0", [1.0], loader)
     engine_jit, loaders_jit = engine_fn(model_class, "jit-cpu", [2.0], loader)
     comp = ppe.utils.comparer.Comparer()
-    with tempfile.TemporaryDirectory() as tmpdir1, tempfile.TemporaryDirectory() as tmpdir2, tempfile.TemporaryDirectory() as tmpdir3:
+    with (
+        tempfile.TemporaryDirectory() as tmpdir1,
+        tempfile.TemporaryDirectory() as tmpdir2,
+        tempfile.TemporaryDirectory() as tmpdir3,
+    ):
         comp.dump(engine_cpu, tmpdir1, *loaders_cpu)
         comp.dump(engine_gpu, tmpdir2, *loaders_gpu)
         comp.dump(engine_jit, tmpdir3, *loaders_jit)
