@@ -1,20 +1,4 @@
 configs {
-  key: "pytorch-pfn-extras.prep-linux"
-  value {
-    requirement {
-      cpu: 8
-      memory: 52
-      disk: 20
-    }
-    time_limit: {
-      seconds: 3600
-    }
-    command: "bash .flexci/linux/main-flexci.sh prep"
-  }
-}
-
-
-configs {
   key: "pytorch-pfn-extras.torch110-linux"
   value {
     requirement {
