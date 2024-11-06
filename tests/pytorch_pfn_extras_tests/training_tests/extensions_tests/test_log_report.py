@@ -73,6 +73,9 @@ def test_output(format, append):
 @pytest.mark.filterwarnings(
     "ignore:`np.bool8` is a deprecated alias for `np.bool_`:DeprecationWarning"
 )
+@pytest.mark.filterwarnings(
+    "ignore:distutils Version classes are deprecated. Use packaging.version instead.:DeprecationWarning"
+)
 def test_tensorboard_writer():
     pytest.importorskip("tensorboard")
 
