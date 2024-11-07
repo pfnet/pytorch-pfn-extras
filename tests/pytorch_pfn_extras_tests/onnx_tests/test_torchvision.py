@@ -6,11 +6,7 @@ import pytorch_pfn_extras
 from pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
 
 
-if pytorch_pfn_extras.requires("1.12.0"):
-    resnet18_kwargs = {'weights': None}
-else:
-    resnet18_kwargs = {'pretrained': True}
-
+resnet18_kwargs = {'weights': None}
 
 @pytest.mark.filterwarnings("ignore:Converting a tensor to a Python boolean might cause the trace to be incorrect:torch.jit.TracerWarning")
 def test_eval_resnet18():

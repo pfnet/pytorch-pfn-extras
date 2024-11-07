@@ -5,7 +5,6 @@ import urllib.request
 
 import numpy as np
 import pytest
-import pytorch_pfn_extras
 import torch
 from pytorch_pfn_extras.nn.parallel import DistributedDataParallel
 from torch import distributed as dist
@@ -78,12 +77,8 @@ class MyModuleWithCheckpoint(nn.Module):
 
     def forward(self, x):
         y = self.l0(x)
-        if pytorch_pfn_extras.requires("1.11.0"):
-            y = checkpoint(self.l1, y, use_reentrant=False)
-            y = checkpoint(self.l2, y, use_reentrant=False)
-        else:
-            y = checkpoint(self.l1, y)
-            y = checkpoint(self.l2, y)
+        y = checkpoint(self.l1, y, use_reentrant=False)
+        y = checkpoint(self.l2, y, use_reentrant=False)
         return y
 
 
@@ -269,11 +264,6 @@ class TestDistributedDataParallel:
         assert r1[2]["module.param1"].item() == 0
 
     @pytest.mark.parametrize("device_type", _device_types())
-    @pytest.mark.skipif(
-        not pytorch_pfn_extras.requires("1.6.0"),
-        reason="Variable._execution_engine.queue_callback does not work "
-        "with checkpointing when torch < 1.6.0",
-    )
     def test_checkpoint(self, device_type):
         r0, r1 = _launch(
             inputs=[torch.tensor([[1.0]]), torch.tensor([[2.0]])],
