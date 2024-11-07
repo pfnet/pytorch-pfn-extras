@@ -390,8 +390,6 @@ def test_persistent(persistent):
     assert len(model.graph.input) == (2 if persistent else 1)
 
 def test_script_device():
-    if not ppe.requires("1.12"):
-        pytest.skip("prim::device not supported before torch 1.12")
 
     @torch.jit.script
     def _select_by_mask_values(

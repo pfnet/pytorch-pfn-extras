@@ -32,9 +32,6 @@ def _get_name(onnx_graph: onnx.GraphProto, output_name: str):
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_as_output_no_export():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -55,9 +52,6 @@ def test_as_output_no_export():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_as_output():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -89,9 +83,6 @@ def test_as_output():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_as_output_to_input():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -121,9 +112,6 @@ def test_as_output_to_input():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_as_output_to_output():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -153,9 +141,6 @@ def test_as_output_to_output():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_no_as_output():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
