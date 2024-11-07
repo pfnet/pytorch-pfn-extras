@@ -127,11 +127,7 @@ def test_export_testcase_return_output():
 
     output_dir = _get_output_dir('export_filename')
 
-    if pytorch_pfn_extras.requires("1.6.0") and not pytorch_pfn_extras.requires("1.13"):
-        with pytest.warns(UserWarning):
-            (out,) = export_testcase(model, x, output_dir, return_output=True)
-    else:
-        (out,) = export_testcase(model, x, output_dir, return_output=True)
+    (out,) = export_testcase(model, x, output_dir, return_output=True)
 
     assert os.path.isfile(os.path.join(output_dir, 'model.onnx'))
     expected_out = torch.zeros((2, 10))  # check only shape size
@@ -264,9 +260,6 @@ def test_backward_multiple_input():
 @pytest.mark.filterwarnings(
     "ignore::torch.jit.TracerWarning", "ignore::UserWarning")
 def test_export_testcase_strip_large_tensor_data():
-    if not pytorch_pfn_extras.requires("1.6.0"):
-        pytest.skip('skip for PyTorch 1.5 or earlier')
-
     model = Net().to('cpu')
     x = torch.zeros((1, 1, 28, 28))
 
@@ -396,9 +389,6 @@ class NetWithUnusedInput(nn.Module):
 @pytest.mark.filterwarnings("ignore:Unused input:UserWarning")
 @pytest.mark.parametrize("keep_initializers_as_inputs", [None, True, False])
 def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
-    if not pytorch_pfn_extras.requires("1.7.0"):
-        pytest.skip('skip for PyTorch 1.6 or earlier')
-
     model = NetWithUnusedInput().to('cpu')
     x = torch.zeros((1, 1, 28, 28))
     unused = torch.zeros((1,))
