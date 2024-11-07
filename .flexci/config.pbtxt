@@ -4,7 +4,7 @@ configs {
     requirement {
       cpu: 4
       gpu: 1
-      memory: 26
+      memory: 52
       disk: 20
     }
     time_limit: {
@@ -20,7 +20,7 @@ configs {
     requirement {
       cpu: 4
       gpu: 1
-      memory: 26
+      memory: 52
       disk: 20
     }
     time_limit: {
@@ -36,7 +36,7 @@ configs {
     requirement {
       cpu: 4
       gpu: 1
-      memory: 26
+      memory: 52
       disk: 20
     }
     time_limit: {
@@ -52,7 +52,7 @@ configs {
     requirement {
       cpu: 4
       gpu: 1
-      memory: 26
+      memory: 52
       disk: 20
     }
     time_limit: {
