@@ -61,8 +61,10 @@ main() {
   run "${docker_args[@]}" \
       "${PPE_FLEXCI_IMAGE_NAME}:${TARGET}" \
       /src/.flexci/linux/unittest.sh "${TEST_MODE}"
-  run gsutil -m -q cp -r /tmp/output/htmlcov gs://${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pytest-cov/${CI_JOB_ID}/htmlcov
-  echo "pytest-cov output: https://storage.googleapis.com/${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pytest-cov/${CI_JOB_ID}/htmlcov/index.html"
+  if [ "${TEST_MODE}" == "unittest" ]; then
+    run gsutil -m -q cp -r /tmp/output/htmlcov gs://${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pytest-cov/${CI_JOB_ID}/htmlcov
+    echo "pytest-cov output: https://storage.googleapis.com/${PPE_FLEXCI_GCS_BUCKET}/pytorch-pfn-extras/pytest-cov/${CI_JOB_ID}/htmlcov/index.html"
+  fi
 }
 
 ################################################################################
