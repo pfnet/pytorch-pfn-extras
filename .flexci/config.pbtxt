@@ -2,15 +2,15 @@ configs {
   key: "pytorch-pfn-extras.torch113-linux"
   value {
     requirement {
-      cpu: 8
-      gpu: 2
+      cpu: 4
+      gpu: 1
       memory: 52
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
     }
-    command: "bash .flexci/linux/main-flexci.sh torch113"
+    command: "bash .flexci/linux/main-flexci.sh torch113 unittest"
   }
 }
 
@@ -18,15 +18,15 @@ configs {
   key: "pytorch-pfn-extras.torch200-linux"
   value {
     requirement {
-      cpu: 8
-      gpu: 2
+      cpu: 4
+      gpu: 1
       memory: 52
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
     }
-    command: "bash .flexci/linux/main-flexci.sh torch200"
+    command: "bash .flexci/linux/main-flexci.sh torch200 unittest"
   }
 }
 
@@ -34,15 +34,15 @@ configs {
   key: "pytorch-pfn-extras.torch201-linux"
   value {
     requirement {
-      cpu: 8
-      gpu: 2
+      cpu: 4
+      gpu: 1
       memory: 52
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
     }
-    command: "bash .flexci/linux/main-flexci.sh torch201"
+    command: "bash .flexci/linux/main-flexci.sh torch201 unittest"
   }
 }
 
@@ -50,15 +50,79 @@ configs {
   key: "pytorch-pfn-extras.torch202-linux"
   value {
     requirement {
-      cpu: 8
-      gpu: 2
+      cpu: 4
+      gpu: 1
       memory: 52
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
     }
-    command: "bash .flexci/linux/main-flexci.sh torch202"
+    command: "bash .flexci/linux/main-flexci.sh torch202 unittest"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch113-linux-mpi"
+  value {
+    requirement {
+      cpu: 8
+      gpu: 2
+      memory: 52
+      disk: 20
+    }
+    time_limit: {
+      seconds: 1800
+    }
+    command: "bash .flexci/linux/main-flexci.sh torch113 mpitest"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch200-linux-mpi"
+  value {
+    requirement {
+      cpu: 8
+      gpu: 2
+      memory: 52
+      disk: 20
+    }
+    time_limit: {
+      seconds: 1800
+    }
+    command: "bash .flexci/linux/main-flexci.sh torch200 mpitest"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch201-linux-mpi"
+  value {
+    requirement {
+      cpu: 8
+      gpu: 2
+      memory: 52
+      disk: 20
+    }
+    time_limit: {
+      seconds: 1800
+    }
+    command: "bash .flexci/linux/main-flexci.sh torch201 mpitest"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch202-linux-mpi"
+  value {
+    requirement {
+      cpu: 8
+      gpu: 2
+      memory: 52
+      disk: 20
+    }
+    time_limit: {
+      seconds: 1800
+    }
+    command: "bash .flexci/linux/main-flexci.sh torch202 mpitest"
   }
 }
 
@@ -69,7 +133,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 24
-      disk: 10
+      disk: 20
       image: "windows"
     }
     time_limit: {
@@ -86,7 +150,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 24
-      disk: 10
+      disk: 20
       image: "windows"
     }
     time_limit: {
@@ -103,7 +167,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 24
-      disk: 10
+      disk: 20
       image: "windows"
     }
     time_limit: {
@@ -120,7 +184,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 24
-      disk: 10
+      disk: 20
       image: "windows"
     }
     time_limit: {
