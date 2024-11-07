@@ -5,7 +5,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 26
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
@@ -21,7 +21,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 26
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
@@ -37,7 +37,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 26
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
@@ -53,7 +53,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 26
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
@@ -69,7 +69,7 @@ configs {
       cpu: 8
       gpu: 2
       memory: 52
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
@@ -85,7 +85,7 @@ configs {
       cpu: 8
       gpu: 2
       memory: 52
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
@@ -101,7 +101,7 @@ configs {
       cpu: 8
       gpu: 2
       memory: 52
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
@@ -117,7 +117,7 @@ configs {
       cpu: 8
       gpu: 2
       memory: 52
-      disk: 10
+      disk: 20
     }
     time_limit: {
       seconds: 1800
@@ -133,7 +133,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 24
-      disk: 10
+      disk: 20
       image: "windows"
     }
     time_limit: {
@@ -150,7 +150,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 24
-      disk: 10
+      disk: 20
       image: "windows"
     }
     time_limit: {
@@ -167,7 +167,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 24
-      disk: 10
+      disk: 20
       image: "windows"
     }
     time_limit: {
@@ -184,7 +184,7 @@ configs {
       cpu: 4
       gpu: 1
       memory: 24
-      disk: 10
+      disk: 20
       image: "windows"
     }
     time_limit: {
