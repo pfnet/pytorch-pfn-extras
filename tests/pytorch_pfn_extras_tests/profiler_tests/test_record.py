@@ -213,9 +213,10 @@ def test_record_iterable_with_thread_disabled(device):
                 if thread_id == 0:
                     ppe.profiler.enable_thread_trace(False)
                 for _ in range(10):
-                    with ppe.profiler.record(
-                        f"{thread_id}", trace=True
-                    ), stream:
+                    with (
+                        ppe.profiler.record(f"{thread_id}", trace=True),
+                        stream,
+                    ):
                         model(x)
                         # yield
                         time.sleep(0.0001)

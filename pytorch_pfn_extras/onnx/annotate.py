@@ -31,10 +31,6 @@ class _AnnotationInit(object):
     def setup(self, model: nn.Module, opset_ver: int) -> None:
         self._model: Optional[nn.Module] = model
         # dryrun to register every aten ops
-        if not pytorch_pfn_extras.requires("1.13.0"):
-            import pytorch_pfn_extras.onnx.symbolic_registry as sym_reg
-
-            sym_reg.register_version('', opset_ver)  # type: ignore[no-untyped-call,attr-defined]
         self.opset_ver = opset_ver
 
     @property

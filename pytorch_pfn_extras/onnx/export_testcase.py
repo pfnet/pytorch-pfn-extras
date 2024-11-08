@@ -109,15 +109,9 @@ def _export_util(
     if aten or export_raw_ir:
         assert operator_export_type is None
         assert aten ^ export_raw_ir
-        # Note: OperatorExportTypes.RAW unavailable in PyTorch 1.10+
-        operator_export_type = OperatorExportTypes.ONNX_ATEN if\
-            aten else OperatorExportTypes.RAW  # type: ignore
+        operator_export_type = OperatorExportTypes.ONNX_ATEN
     elif operator_export_type is None:
-        if pytorch_pfn_extras.requires("1.12.0"):
-            use_onnx_aten_fallback = torch.onnx._CAFFE2_ATEN_FALLBACK  # type: ignore[attr-defined]
-        else:
-            use_onnx_aten_fallback = torch.onnx.PYTORCH_ONNX_CAFFE2_BUNDLE  # type: ignore[attr-defined]
-
+        use_onnx_aten_fallback = torch.onnx._CAFFE2_ATEN_FALLBACK  # type: ignore[attr-defined]
         if use_onnx_aten_fallback:
             operator_export_type = OperatorExportTypes.ONNX_ATEN_FALLBACK
         else:
@@ -128,24 +122,19 @@ def _export_util(
     # This is a temporal workaround until a fix is introduced in PyTorch.
     try:
         torch.onnx.utils._model_to_graph = _model_to_graph_with_value_names
-        if pytorch_pfn_extras.requires('1.10.0'):
-            checker_error = getattr(torch.onnx, "CheckerError", None)
-            if checker_error is None:
-                checker_error = torch.onnx.utils.ONNXCheckerError  # type: ignore[attr-defined]
-            try:
-                enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
-                return torch_export(  # type: ignore[no-untyped-call]
-                    model, args, f, **kwargs)
-            except checker_error:
-                if enable_onnx_checker:
-                    raise
-                if return_output:
-                    # Re-run the model to obtain the output.
-                    return model(*args)
-        else:
-            kwargs['_retain_param_name'] = True
+        checker_error = getattr(torch.onnx, "CheckerError", None)
+        if checker_error is None:
+            checker_error = torch.onnx.utils.ONNXCheckerError  # type: ignore[attr-defined]
+        try:
+            enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
             return torch_export(  # type: ignore[no-untyped-call]
                 model, args, f, **kwargs)
+        except checker_error:
+            if enable_onnx_checker:
+                raise
+            if return_output:
+                # Re-run the model to obtain the output.
+                return model(*args)
     finally:
         torch.onnx.utils._model_to_graph = old_model_to_graph
 
@@ -165,32 +154,29 @@ def _export(
     opset_ver = kwargs.get('opset_version', None)
     force_verbose = False
 
-    if pytorch_pfn_extras.requires("1.13.0"):
-        if "training" in kwargs and (isinstance(kwargs["training"], bool) or kwargs['training'] is None):
-            kwargs["training"] = torch.onnx.TrainingMode.TRAINING \
-                if kwargs["training"] \
-                else torch.onnx.TrainingMode.EVAL
+    if "training" in kwargs and (isinstance(kwargs["training"], bool) or kwargs['training'] is None):
+        kwargs["training"] = torch.onnx.TrainingMode.TRAINING \
+            if kwargs["training"] \
+            else torch.onnx.TrainingMode.EVAL
 
-    if pytorch_pfn_extras.requires('1.12.0'):
-        original_log = torch.onnx.log  # type: ignore[attr-defined]
+    original_log = torch.onnx.log  # type: ignore[attr-defined]
     if opset_ver is None:
         opset_ver = pytorch_pfn_extras.onnx._constants.onnx_default_opset
         kwargs['opset_version'] = opset_ver
-    if use_pfto or not pytorch_pfn_extras.requires('1.10.0'):
+    if use_pfto:
         strip_doc_string = kwargs.get('strip_doc_string', True)
         kwargs['strip_doc_string'] = False
     else:
         strip_doc_string = kwargs.pop('strip_doc_string', True)
         if not kwargs.get('verbose', False):
             force_verbose = True
-            if pytorch_pfn_extras.requires('1.12.0'):
-                #  Following line won't work because verbose mode always
-                # enable logging so we are replacing python function instead:
-                # torch.onnx.disable_log()
-                def no_op(*args: Any) -> None:
-                    pass
+            #  Following line won't work because verbose mode always
+            # enable logging so we are replacing python function instead:
+            # torch.onnx.disable_log()
+            def no_op(*args: Any) -> None:
+                pass
 
-                torch.onnx.log = no_op  # type: ignore[attr-defined]
+            torch.onnx.log = no_op  # type: ignore[attr-defined]
         kwargs['verbose'] = True
     # Exted args with kwargs (including default values)
     args = _decide_input_format(model, args)  # type: ignore[no-untyped-call]
@@ -223,9 +209,8 @@ def _export(
         _strip_large_initializer_raw_data(onnx_graph, large_tensor_threshold)
 
     if force_verbose:
-        if pytorch_pfn_extras.requires('1.12.0'):
-            # torch.onnx.enable_log()
-            torch.onnx.log = original_log  # type: ignore[attr-defined]
+        # torch.onnx.enable_log()
+        torch.onnx.log = original_log  # type: ignore[attr-defined]
 
     return onnx_graph, outs
 

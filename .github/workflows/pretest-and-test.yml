@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        torch: ['1.10.*', '1.11.*', '1.12.*', '1.13.*', '2.0.*', '2.1.*', '2.2.*', '2.3.*', '2.4.*']
+        torch: ['1.13.*', '2.0.*', '2.1.*', '2.2.*', '2.3.*', '2.4.*']
 
     steps:
     - name: Checkout
@@ -18,7 +18,7 @@ jobs:
     - name: Setup Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.8'
+        python-version: '3.9'
 
     - uses: actions/cache@v3
       with:
