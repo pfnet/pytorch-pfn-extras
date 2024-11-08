@@ -13,7 +13,7 @@ if ($test -eq "torch113") {
     # PyTorch 1.13 + Python 3.10
     ActivateCUDA 11.7
     ActivatePython 3.10
-    RunOrDie python -m pip install -U pip "setuptools<59.6"
+    RunOrDie python -m pip install -U pip setuptools
     RunOrDieWithRetry 3 python -m pip install torch==1.13.* torchvision==0.14.* -f https://download.pytorch.org/whl/cu117/torch_stable.html
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
@@ -24,7 +24,7 @@ if ($test -eq "torch113") {
     # PyTorch 2.0 + Python 3.10
     ActivateCUDA 11.7
     ActivatePython 3.10
-    RunOrDie python -m pip install -U pip "setuptools<59.6"
+    RunOrDie python -m pip install -U pip setuptools
     RunOrDieWithRetry 3 python -m pip install torch==2.0.* torchvision==0.15.* -f https://download.pytorch.org/whl/cu117/torch_stable.html
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
@@ -35,7 +35,7 @@ if ($test -eq "torch113") {
     # PyTorch 2.1 + Python 3.10
     ActivateCUDA 11.8
     ActivatePython 3.10
-    RunOrDie python -m pip install -U pip "setuptools<59.6"
+    RunOrDie python -m pip install -U pip setuptools
     RunOrDieWithRetry 3 python -m pip install torch==2.1.* torchvision==0.16.* -f https://download.pytorch.org/whl/cu118/torch_stable.html
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
@@ -46,7 +46,7 @@ if ($test -eq "torch113") {
     # PyTorch 2.2 + Python 3.10
     ActivateCUDA 12.1
     ActivatePython 3.10
-    RunOrDie python -m pip install -U pip "setuptools<59.6"
+    RunOrDie python -m pip install -U pip setuptools
     RunOrDieWithRetry 3 python -m pip install torch==2.2.* torchvision==0.17.* -f https://download.pytorch.org/whl/cu121/torch_stable.html
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
