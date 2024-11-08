@@ -60,6 +60,10 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
         assert actuary_io.read() == expected_io.read()
 
 
+# TODO(linsho):
+# This test is a test to check the specification regarding the legacy FSDP state_dict mode:
+# the way state_dict is taken for FSDP has been updated, so the implementation on
+# the pytorch-pfn-extras side also needs to be updated.
 @pytest.mark.mpi
 @pytest.mark.gpu
 @pytest.mark.parametrize(
@@ -116,6 +120,7 @@ def _assert_state_dict_is_eq(actuary_state_dict, expected_state_dict):
     ],
 )
 @pytest.mark.filterwarnings("ignore::UserWarning")
+@pytest.mark.filterwarnings("ignore::FutureWarning")
 def test_sharded_state_dict(
     expected_state_dict_type: Tuple[
         fsdp.StateDictType,
