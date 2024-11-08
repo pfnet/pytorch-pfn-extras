@@ -64,10 +64,10 @@ case "${TARGET}" in
         ;;
 
     torch203 )
-        # PyTorch 2.3 + Python 3.12
+        # PyTorch 2.3 + Python 3.11
         docker_build_and_push \
             --build-arg base_image="nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04" \
-            --build-arg python_version="3.12.7" \
+            --build-arg python_version="3.11.9" \
             --build-arg pip_install_torch_args="torch==2.3.* torchvision==0.18.* -f https://download.pytorch.org/whl/cu122/torch_stable.html" \
             --build-arg pip_install_dep_args="cupy-cuda12x"
         ;;
