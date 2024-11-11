@@ -14,7 +14,7 @@ if ($test -eq "torch113") {
     ActivateCUDA 11.7
     ActivatePython 3.10
     RunOrDie python -m pip install -U pip setuptools
-    RunOrDieWithRetry 3 python -m pip install torch==1.13.* torchvision==0.14.* -f https://download.pytorch.org/whl/cu117/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install torch==1.13.* torchvision==0.14.* -f https://download.pytorch.org/whl/cu117/torch
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
@@ -25,7 +25,7 @@ if ($test -eq "torch113") {
     ActivateCUDA 11.7
     ActivatePython 3.10
     RunOrDie python -m pip install -U pip setuptools
-    RunOrDieWithRetry 3 python -m pip install torch==2.0.* torchvision==0.15.* -f https://download.pytorch.org/whl/cu117/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install torch==2.0.* torchvision==0.15.* -f https://download.pytorch.org/whl/cu117/torch
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
@@ -36,7 +36,7 @@ if ($test -eq "torch113") {
     ActivateCUDA 11.8
     ActivatePython 3.10
     RunOrDie python -m pip install -U pip setuptools
-    RunOrDieWithRetry 3 python -m pip install torch==2.1.* torchvision==0.16.* -f https://download.pytorch.org/whl/cu118/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install torch==2.1.* torchvision==0.16.* -f https://download.pytorch.org/whl/cu118/torch
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
@@ -47,7 +47,7 @@ if ($test -eq "torch113") {
     ActivateCUDA 12.1
     ActivatePython 3.10
     RunOrDie python -m pip install -U pip setuptools
-    RunOrDieWithRetry 3 python -m pip install torch==2.2.* torchvision==0.17.* -f https://download.pytorch.org/whl/cu121/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install torch==2.2.* torchvision==0.17.* -f https://download.pytorch.org/whl/cu121/torch
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
@@ -58,7 +58,7 @@ if ($test -eq "torch113") {
     ActivateCUDA 12.1
     ActivatePython 3.11
     RunOrDie python -m pip install -U pip setuptools
-    RunOrDieWithRetry 3 python -m pip install torch==2.3.* torchvision==0.18.* -f https://download.pytorch.org/whl/cu121/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install torch==2.3.* torchvision==0.18.* -f https://download.pytorch.org/whl/cu121/torch
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
@@ -66,10 +66,10 @@ if ($test -eq "torch113") {
 
 } elseif ($test -eq "torch204") {
     # PyTorch 2.4 + Python 3.12
-    ActivateCUDA 12.1
+    ActivateCUDA 12.4
     ActivatePython 3.12
     RunOrDie python -m pip install -U pip setuptools
-    RunOrDieWithRetry 3 python -m pip install torch==2.4.* torchvision==0.19.* -f https://download.pytorch.org/whl/cu121/torch_stable.html
+    RunOrDieWithRetry 3 python -m pip install torch==2.4.* torchvision==0.19.* -f https://download.pytorch.org/whl/cu124/torch
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
