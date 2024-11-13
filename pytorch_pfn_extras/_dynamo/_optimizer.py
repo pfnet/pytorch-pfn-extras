@@ -45,7 +45,7 @@ def _initialize_optimizer(
     optimizer: torch.optim.Optimizer, module: torch.nn.Module
 ) -> Generator[Dict[torch.Tensor, str], None, None]:
     if isinstance(optimizer, torch.optim.SGD):
-        optimizer._init_group = types.MethodType(_sgd_init_group, optimizer)  # type: ignore[attr-defined]
+        optimizer._init_group = types.MethodType(_sgd_init_group, optimizer)  # type: ignore[attr-defined,method-assign]
 
     # Replace the optimizer parameters with zero tensors so that the step functions
     # will initialize the state but doesn"t modify the module real weights

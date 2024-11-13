@@ -63,6 +63,38 @@ configs {
 }
 
 configs {
+  key: "pytorch-pfn-extras.torch203-linux"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 1
+      memory: 52
+      disk: 20
+    }
+    time_limit: {
+      seconds: 1800
+    }
+    command: "bash .flexci/linux/main-flexci.sh torch203 unittest"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch204-linux"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 1
+      memory: 52
+      disk: 20
+    }
+    time_limit: {
+      seconds: 1800
+    }
+    command: "bash .flexci/linux/main-flexci.sh torch204 unittest"
+  }
+}
+
+configs {
   key: "pytorch-pfn-extras.torch113-linux-mpi"
   value {
     requirement {
@@ -123,6 +155,38 @@ configs {
       seconds: 1800
     }
     command: "bash .flexci/linux/main-flexci.sh torch202 mpitest"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch203-linux-mpi"
+  value {
+    requirement {
+      cpu: 8
+      gpu: 2
+      memory: 52
+      disk: 20
+    }
+    time_limit: {
+      seconds: 1800
+    }
+    command: "bash .flexci/linux/main-flexci.sh torch203 mpitest"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch204-linux-mpi"
+  value {
+    requirement {
+      cpu: 8
+      gpu: 2
+      memory: 52
+      disk: 20
+    }
+    time_limit: {
+      seconds: 1800
+    }
+    command: "bash .flexci/linux/main-flexci.sh torch204 mpitest"
   }
 }
 
@@ -191,5 +255,39 @@ configs {
       seconds: 1200
     }
     command: ".flexci\\windows\\run.bat torch202"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch203-win"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 1
+      memory: 24
+      disk: 20
+      image: "windows"
+    }
+    time_limit: {
+      seconds: 1200
+    }
+    command: ".flexci\\windows\\run.bat torch203"
+  }
+}
+
+configs {
+  key: "pytorch-pfn-extras.torch204-win"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 1
+      memory: 24
+      disk: 20
+      image: "windows"
+    }
+    time_limit: {
+      seconds: 1200
+    }
+    command: ".flexci\\windows\\run.bat torch204"
   }
 }
