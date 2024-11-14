@@ -33,9 +33,6 @@ def _get_name(onnx_graph: onnx.GraphProto, output_name: str):
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad_no_export():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -66,11 +63,8 @@ def test_grad_no_export():
 @pytest.mark.filterwarnings("ignore:Specified output_names .*:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad(use_pfto: bool):
-    if not pytorch_pfn_extras.requires('1.8.0'):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
@@ -104,7 +98,7 @@ def test_grad(use_pfto: bool):
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
+    if not use_pfto:
         assert '/_ppe_as_out_module/conv/Conv' in named_nodes
         assert '/_ppe_as_out_module/Gradient' in named_nodes
         assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
@@ -117,7 +111,7 @@ def test_grad(use_pfto: bool):
         "h", "Gradient_y_0", "Gradient_x_0_0"
     ]
     y_in, _ = _get_name(actual_onnx.graph, "Gradient_y_0")
-    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
+    if not use_pfto:
         assert named_nodes["/_ppe_as_out_module/conv/Conv"].input[0] == "Gradient_x_0_0"
         assert named_nodes["/_ppe_as_out_module/conv/Conv"].output[0] == y_in
     else:
@@ -140,11 +134,8 @@ def test_grad(use_pfto: bool):
 @pytest.mark.filterwarnings("ignore:Specified output_names .*:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad_multiple_times(use_pfto: bool):
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
@@ -187,7 +178,7 @@ def test_grad_multiple_times(use_pfto: bool):
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
+    if not use_pfto:
         assert '/_ppe_as_out_module/conv/Conv' in named_nodes
         assert '/_ppe_as_out_module/conv_1/Conv' in named_nodes
         assert '/_ppe_as_out_module/Gradient' in named_nodes
@@ -205,7 +196,7 @@ def test_grad_multiple_times(use_pfto: bool):
     ]
     y0_in, _ = _get_name(actual_onnx.graph, "Gradient_y_0")
     y1_in, _ = _get_name(actual_onnx.graph, "Gradient_y_1")
-    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
+    if not use_pfto:
         assert named_nodes["/_ppe_as_out_module/conv/Conv"].input[0] == "Gradient_x_0_0"
         assert named_nodes["/_ppe_as_out_module/conv/Conv"].output[0] == y0_in
         assert named_nodes["/_ppe_as_out_module/conv_1/Conv"].input[0] == "Gradient_x_0_1"
@@ -222,11 +213,8 @@ def test_grad_multiple_times(use_pfto: bool):
 @pytest.mark.filterwarnings("ignore:Specified output_names .*:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad_with_multiple_inputs(use_pfto: bool):
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
@@ -262,7 +250,7 @@ def test_grad_with_multiple_inputs(use_pfto: bool):
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
+    if not use_pfto:
         assert '/_ppe_as_out_module/conv/Conv' in named_nodes
         assert '/_ppe_as_out_module/Gradient' in named_nodes
         assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
@@ -275,7 +263,7 @@ def test_grad_with_multiple_inputs(use_pfto: bool):
         "h", "Gradient_y_0", "Gradient_x_0_0", "Gradient_x_1_0"
     ]
     y_in, _ = _get_name(actual_onnx.graph, "Gradient_y_0")
-    if pytorch_pfn_extras.requires("1.13") and not use_pfto:
+    if not use_pfto:
         assert named_nodes["/_ppe_as_out_module/Concat"].input[0] == "Gradient_x_0_0"
         assert named_nodes["/_ppe_as_out_module/Concat"].input[1] == "Gradient_x_1_0"
         assert named_nodes["/_ppe_as_out_module/conv/Conv"].output[0] == y_in

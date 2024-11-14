@@ -8,6 +8,9 @@ import pytorch_pfn_extras as ppe
 @pytest.mark.filterwarnings(
     "ignore:`np.bool8` is a deprecated alias for `np.bool_`:DeprecationWarning"
 )
+@pytest.mark.filterwarnings(
+    "ignore:distutils Version classes are deprecated. Use packaging.version instead.:DeprecationWarning"
+)
 def test_tensorboard_writing():
     pytest.importorskip("tensorboard")
     data = {"a": 1, "iteration": 1}

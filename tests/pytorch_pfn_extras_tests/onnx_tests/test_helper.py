@@ -9,9 +9,6 @@ from pytorch_pfn_extras.onnx import no_grad
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_no_grad_no_export():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -30,9 +27,6 @@ def test_no_grad_no_export():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_no_grad():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -53,9 +47,6 @@ def test_no_grad():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_no_grad_with_list_output():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
@@ -79,9 +70,6 @@ def test_no_grad_with_list_output():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_no_grad_with_dict_output():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()

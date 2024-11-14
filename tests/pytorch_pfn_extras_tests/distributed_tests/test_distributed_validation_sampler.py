@@ -16,9 +16,10 @@ def base_dataset():
 def test_default(base_dataset):
     expected_lengths = [6, 5, 5, 5]
     sample_idxs = []
-    with mock.patch.object(
-        dist, "get_world_size", return_value=_world_size
-    ), mock.patch.object(dist, "is_initialized", return_value=True):
+    with (
+        mock.patch.object(dist, "get_world_size", return_value=_world_size),
+        mock.patch.object(dist, "is_initialized", return_value=True),
+    ):
         for rank in range(_world_size):
             with mock.patch.object(dist, "get_rank", return_value=rank):
                 sampler = DistributedValidationSampler(base_dataset)
@@ -39,9 +40,10 @@ def test_no_shuffle(base_dataset):
         [11, 12, 13, 14, 15],
         [16, 17, 18, 19, 20],
     ]
-    with mock.patch.object(
-        dist, "get_world_size", return_value=_world_size
-    ), mock.patch.object(dist, "is_initialized", return_value=True):
+    with (
+        mock.patch.object(dist, "get_world_size", return_value=_world_size),
+        mock.patch.object(dist, "is_initialized", return_value=True),
+    ):
         for rank in range(_world_size):
             with mock.patch.object(dist, "get_rank", return_value=rank):
                 sampler = DistributedValidationSampler(
@@ -54,12 +56,10 @@ def test_manual_num_replicas_and_ranks(base_dataset):
     # When manually specifying num_replicas and rank,
     # it doesn't rely on these torch.distributed functions.
     expected_lengths = [6, 5, 5, 5]
-    with mock.patch.object(
-        dist, "get_world_size", side_effect=AssertionError()
-    ), mock.patch.object(
-        dist, "is_initialized", side_effect=AssertionError()
-    ), mock.patch.object(
-        dist, "get_rank", side_effect=AssertionError()
+    with (
+        mock.patch.object(dist, "get_world_size", side_effect=AssertionError()),
+        mock.patch.object(dist, "is_initialized", side_effect=AssertionError()),
+        mock.patch.object(dist, "get_rank", side_effect=AssertionError()),
     ):
         for rank in range(_world_size):
             sampler = DistributedValidationSampler(

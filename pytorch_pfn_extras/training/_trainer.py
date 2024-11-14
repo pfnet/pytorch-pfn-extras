@@ -354,13 +354,16 @@ class Trainer:
                         self._inputs.put(x)
                         self._times.put(begin)
                         try:
-                            with record(
-                                "ppe.training.Trainer:run_iteration",
-                                use_cuda=torch.cuda.is_available(),
-                                enable=self._enable_profile,
-                                device=device,
-                                trace=self._enable_trace,
-                            ) as ntf1, self.manager.run_iteration():
+                            with (
+                                record(
+                                    "ppe.training.Trainer:run_iteration",
+                                    use_cuda=torch.cuda.is_available(),
+                                    enable=self._enable_profile,
+                                    device=device,
+                                    trace=self._enable_trace,
+                                ) as ntf1,
+                                self.manager.run_iteration(),
+                            ):
                                 self._observed.put(self.manager.observation)
                                 with record(
                                     "pytorch_pfn_extras.training.Trainer:train_step",

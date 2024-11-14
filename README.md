@@ -27,8 +27,8 @@ pip install cupy  # or cupy-cudaXXX
 
 ## Requirements
 
-* Python 3.8+
-* PyTorch 1.10+
+* Python 3.9+
+* PyTorch 1.13+
 
 Optional dependencies:
 
