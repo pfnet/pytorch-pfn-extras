@@ -8,7 +8,7 @@ import torch.fx
 
 if pytorch_pfn_extras.requires("2.5"):
     unset_fake_temporarily = (
-        torch._subclasses.fake_tensor.unset_fake_temporarily
+        torch._subclasses.fake_tensor.unset_fake_temporarily  # type: ignore[attr-defined]
     )
 else:
     unset_fake_temporarily = (
