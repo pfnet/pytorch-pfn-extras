@@ -5,6 +5,13 @@ from typing import Any, Dict, Generator, List, Tuple
 import torch
 import torch.fx
 
+import pytorch_pfn_extras
+
+
+if pytorch_pfn_extras.requires("2.5"):
+    unset_fake_temporarily = torch._subclasses.fake_tensor.unset_fake_temporarily
+else:
+    unset_fake_temporarily = torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode
 
 # patch the torch.optim.SGD._init_group function to avoid the
 # symbolically traced variables cannot be used as inputs to control flow error
@@ -52,7 +59,7 @@ def _initialize_optimizer(
     # param_to_dummy = {}  # Keeps references so that `state` tensors can be reset
     param_groups: List[List[torch.Tensor]] = []
     param_to_dummy: Dict[torch.Tensor, torch.Tensor] = {}
-    with torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode():  # type: ignore[attr-defined,no-untyped-call]
+    with unset_fake_temporarily():  # type: ignore[attr-defined,no-untyped-call]
         names = _get_parameters_names(module)
 
         for p_group in optimizer.param_groups:
@@ -70,7 +77,7 @@ def _initialize_optimizer(
 
     yield names
 
-    with torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode():  # type: ignore[attr-defined,no-untyped-call]
+    with unset_fake_temporarily():  # type: ignore[attr-defined,no-untyped-call]
         # Reset the optimizer original parameters
         for i, p_group in enumerate(optimizer.param_groups):
             for j, _ in enumerate(p_group["params"]):
@@ -101,7 +108,7 @@ def _get_shape_inference_inputs_and_metadata(
     params_meta = {}
     inputs = []
 
-    with torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode():  # type: ignore[attr-defined,no-untyped-call]
+    with unset_fake_temporarily():  # type: ignore[attr-defined,no-untyped-call]
         for p_group in optimizer.param_groups:
             for param in p_group["params"]:
                 param_tensor = param
@@ -275,7 +282,7 @@ def _compile_optimizer(
         _adjust_inplace_ops(opt_graph, last_inplace)
         opt_graph.output(outputs)
 
-        with torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode():  # type: ignore[attr-defined,no-untyped-call]
+        with unset_fake_temporarily():  # type: ignore[attr-defined,no-untyped-call]
             opt_module = torch.fx.GraphModule(torch.nn.Module(), opt_graph)
             torch.fx.passes.shape_prop.ShapeProp(opt_module).propagate(*inputs)  # type: ignore[attr-defined, no-untyped-call]
 
