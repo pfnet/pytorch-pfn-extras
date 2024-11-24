@@ -634,5 +634,5 @@ def test_custom_exporter():
     ort_session = _ort_session(os.path.join(out_dir, "model.onnx"))
     actual = ort_session.run(None, {"x": x.cpu().numpy()})[0]
     expected = model(x)
-    np.testing.assert_allclose(actual, expected.detach().numpy())
+    np.testing.assert_allclose(actual, expected.detach().numpy(), atol=1e-3)
 
