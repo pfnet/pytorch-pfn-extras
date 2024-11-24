@@ -2,6 +2,7 @@ import os
 import tempfile
 import threading
 import time
+from contextlib import nullcontext
 
 import pytest
 import pytorch_pfn_extras as ppe
@@ -166,8 +167,12 @@ def test_record_iterable_with_threads(device):
     with torch.profiler.profile():
 
         def thread_body(thread_id):
+            if device == "cuda":
+                stream = torch.cuda.stream(torch.cuda.Stream())
+            else:
+                stream = nullcontext()
             for _ in range(10):
-                with ppe.profiler.record(f"{thread_id}", trace=True):
+                with ppe.profiler.record(f"{thread_id}", trace=True), stream:
                     model(x)
                     # yield
                     time.sleep(0.0001)
@@ -200,11 +205,18 @@ def test_record_iterable_with_thread_disabled(device):
     with torch.profiler.profile():
 
         def thread_body(thread_id):
+            if device == "cuda":
+                stream = torch.cuda.stream(torch.cuda.Stream())
+            else:
+                stream = nullcontext()
             try:
                 if thread_id == 0:
                     ppe.profiler.enable_thread_trace(False)
                 for _ in range(10):
-                    with ppe.profiler.record(f"{thread_id}", trace=True):
+                    with (
+                        ppe.profiler.record(f"{thread_id}", trace=True),
+                        stream,
+                    ):
                         model(x)
                         # yield
                         time.sleep(0.0001)
@@ -239,8 +251,12 @@ def test_record_iterable_with_all_thread_disabled(device):
     with torch.profiler.profile():
 
         def thread_body(thread_id):
+            if device == "cuda":
+                stream = torch.cuda.stream(torch.cuda.Stream())
+            else:
+                stream = nullcontext()
             for _ in range(10):
-                with ppe.profiler.record(f"{thread_id}", trace=True):
+                with ppe.profiler.record(f"{thread_id}", trace=True), stream:
                     model(x)
                     # yield
                     time.sleep(0.0001)

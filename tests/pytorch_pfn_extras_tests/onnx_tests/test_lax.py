@@ -14,9 +14,6 @@ from pytorch_pfn_extras_tests.onnx_tests.test_export_testcase import _helper, _o
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_fori_loop_no_export():
-    if not pytorch_pfn_extras.requires("1.8.0"):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
     torch.manual_seed(0)
 
     class Net(nn.Module):
@@ -42,11 +39,8 @@ def test_fori_loop_no_export():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_fori_loop():
-    if not pytorch_pfn_extras.requires('1.8.0'):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
@@ -81,11 +75,8 @@ def test_fori_loop():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_fori_loop_with_tuple_state():
-    if not pytorch_pfn_extras.requires('1.8.0'):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
@@ -124,11 +115,8 @@ def test_fori_loop_with_tuple_state():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_while_loop_no_export():
-    if not pytorch_pfn_extras.requires('1.8.0'):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
@@ -155,11 +143,8 @@ def test_while_loop_no_export():
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.filterwarnings("ignore:Converting a tensor to a Python boolean might cause the trace to be incorrect:torch.jit.TracerWarning")
 def test_while_loop():
-    if not pytorch_pfn_extras.requires('1.8.0'):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
@@ -199,11 +184,8 @@ def test_while_loop():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_cond_no_export():
-    if not pytorch_pfn_extras.requires('1.8.0'):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
@@ -232,11 +214,8 @@ def test_cond_no_export():
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 @pytest.mark.filterwarnings("ignore:Converting a tensor to a Python boolean might cause the trace to be incorrect:torch.jit.TracerWarning")
 def test_cond():
-    if not pytorch_pfn_extras.requires('1.8.0'):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
@@ -278,11 +257,8 @@ def test_cond():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_lax_multiple_times():
-    if not pytorch_pfn_extras.requires('1.8.0'):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
@@ -324,11 +300,8 @@ def test_lax_multiple_times():
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_lax_nested():
-    if not pytorch_pfn_extras.requires('1.8.0'):
-        pytest.skip('skip for PyTorch 1.7 or earlier')
-
-    if pytorch_pfn_extras.requires('1.10.0') and sys.platform == 'win32':
-        pytest.skip('ONNX grad test does not work in windows CI for torch >= 1.10')
+    if sys.platform == 'win32':
+        pytest.skip('ONNX grad test does not work in windows CI.')
 
     class Net(nn.Module):
         def __init__(self):
