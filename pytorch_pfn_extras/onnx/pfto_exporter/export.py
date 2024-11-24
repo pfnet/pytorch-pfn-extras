@@ -585,12 +585,12 @@ class _Exporter(_ExporterOptions):
         is_integer_output: bool = cast(torch._C.TensorType, n.output().type()).getElementType().kind() == "IntType"
         if len(list(n.inputs())) > 0 and is_integer_output:
 
-            def gen_concat(g: GraphContext, *args: Any) -> torch._C.Value:
+            def gen_concat(g: torch._C.Graph, *args: Any) -> torch._C.Value:
                 seq: List[torch._C.Value] = []
                 for i in args:
                     if i.type().kind() == "IntType" or i.type().sizes() is None or len(i.type().sizes()) == 0:
                         seq.append(
-                            sym_hel._unsqueeze_helper(g, i, axes_i=[0])  # type: ignore[no-untyped-call,call-arg]
+                            sym_hel._unsqueeze_helper(g, i, axes_i=[0])  # type: ignore[no-untyped-call,call-arg,arg-type]
                         )
                     else:
                         seq.append(i)
