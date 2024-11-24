@@ -12,7 +12,7 @@ if pytorch_pfn_extras.requires("2.5"):
     )
 else:
     unset_fake_temporarily = (
-        torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode
+        torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode  # type: ignore[attr-defined]
     )
 
 
