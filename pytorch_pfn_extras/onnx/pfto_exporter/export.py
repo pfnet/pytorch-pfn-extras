@@ -585,7 +585,7 @@ class _Exporter(_ExporterOptions):
         is_integer_output: bool = cast(torch._C.TensorType, n.output().type()).getElementType().kind() == "IntType"
         if len(list(n.inputs())) > 0 and is_integer_output:
 
-            def gen_concat(g: torch._C.Graph, *args: Any) -> torch._C.Value:
+            def gen_concat(g: GraphContext, *args: Any) -> torch._C.Value:
                 seq: List[torch._C.Value] = []
                 for i in args:
                     if i.type().kind() == "IntType" or i.type().sizes() is None or len(i.type().sizes()) == 0:
@@ -1128,7 +1128,7 @@ class _Exporter(_ExporterOptions):
         prev_shape_inference = None
         try:
             assert not to_utils.is_in_onnx_export()  # type: ignore[no-untyped-call]
-            with to_utils.select_model_mode_for_export(self.original_model, self.training):
+            with to_utils.select_model_mode_for_export(self.original_model, cast(torch.onnx.TrainingMode, self.training)):
                 prev_opset_version = GLOBALS.export_onnx_opset_version
                 prev_export_type = GLOBALS.operator_export_type
                 prev_shape_inference = GLOBALS.onnx_shape_inference
