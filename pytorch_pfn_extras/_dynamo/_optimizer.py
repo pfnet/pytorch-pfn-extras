@@ -2,16 +2,19 @@ import contextlib
 import types
 from typing import Any, Dict, Generator, List, Tuple
 
+import pytorch_pfn_extras
 import torch
 import torch.fx
 
-import pytorch_pfn_extras
-
-
 if pytorch_pfn_extras.requires("2.5"):
-    unset_fake_temporarily = torch._subclasses.fake_tensor.unset_fake_temporarily
+    unset_fake_temporarily = (
+        torch._subclasses.fake_tensor.unset_fake_temporarily
+    )
 else:
-    unset_fake_temporarily = torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode
+    unset_fake_temporarily = (
+        torch.fx.experimental.proxy_tensor.maybe_disable_fake_tensor_mode
+    )
+
 
 # patch the torch.optim.SGD._init_group function to avoid the
 # symbolically traced variables cannot be used as inputs to control flow error
