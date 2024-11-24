@@ -1,3 +1,4 @@
+from collections.abc import Callable
 import datetime
 import glob
 import io
@@ -96,6 +97,7 @@ def _export_util(
         args: Sequence[Any],
         f: IO,
         return_output: bool = False,
+        custom_exporter: Optional[Callable] = None,
         **kwargs: Any,
 ) -> Any:
     """Wrap operator type to export
@@ -127,8 +129,12 @@ def _export_util(
             checker_error = torch.onnx.utils.ONNXCheckerError  # type: ignore[attr-defined]
         try:
             enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
-            return torch_export(  # type: ignore[no-untyped-call]
-                model, args, f, **kwargs)
+            if custom_exporter is None:
+                return torch_export(  # type: ignore[no-untyped-call]
+                    model, args, f, **kwargs)
+            else:
+                return custom_exporter(  # type: ignore[no-untyped-call]
+                    model, args, f, **kwargs)
         except checker_error:
             if enable_onnx_checker:
                 raise

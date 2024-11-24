@@ -21,3 +21,5 @@ pytorch-ignite
 pytest-cov
 slack_sdk
 numpy<2
+git+https://github.com/open-mmlab/mmdeploy.git@v1.3.1
+mmcv==2.2.0

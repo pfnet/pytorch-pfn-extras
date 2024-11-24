@@ -607,3 +607,32 @@ def test_export_default_kwargs():
     )
 
     check_inputs(output_dir, ["x", "bias"])
+
+
+def test_custom_exporter():
+    import torch.onnx
+    import mmdeploy.apis.onnx.export as mm_export
+    import tempfile
+
+    def custom(model, args, f, **kwargs):
+        if not isinstance(f, str):
+            with tempfile.NamedTemporaryFile() as tmp_f:
+                ret = custom(model, args, tmp_f.name, **kwargs)
+                tmp_f.close()
+                with open(tmp_f.name + ".onnx", "rb") as res:
+                    f.write(res.read())
+                return ret
+        mm_export(model, args, f, **kwargs)
+        return model(*args)
+
+    model = Net().to("cpu")
+    x = torch.zeros((1, 1, 28, 28))
+
+    out_dir = _get_output_dir('mmdeploy')
+    pytorch_pfn_extras.onnx.export_testcase(model, x, out_dir, custom_exporter=custom, input_names=["x"])
+
+    ort_session = _ort_session(os.path.join(out_dir, "model.onnx"))
+    actual = ort_session.run(None, {"x": x.cpu().numpy()})[0]
+    expected = model(x)
+    np.testing.assert_allclose(actual, expected.detach().numpy())
+
