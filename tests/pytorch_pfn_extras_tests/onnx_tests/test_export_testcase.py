@@ -618,6 +618,8 @@ def test_custom_exporter():
         has_mmdeploy = False
     import tempfile
 
+    custom_path = False
+
     if has_mmdeploy:
         # Install with:
         #   pip install \
@@ -634,10 +636,14 @@ def test_custom_exporter():
                         f.write(res.read())
                     return ret
             mm_export(model, args, f, **kwargs)
+            nonlocal custom_path
+            custom_path = True
             return model(*args)
     else:
         def custom(model, args, f, **kwargs):
             torch.onnx.export(model, args, f, **kwargs)
+            nonlocal custom_path
+            custom_path = True
             return model(*args)
 
     model = Net().to("cpu")
@@ -645,6 +651,8 @@ def test_custom_exporter():
 
     out_dir = _get_output_dir('custom_exporter')
     pytorch_pfn_extras.onnx.export_testcase(model, x, out_dir, custom_exporter=custom, input_names=["x"])
+
+    assert custom_path
 
     ort_session = _ort_session(os.path.join(out_dir, "model.onnx"))
     actual = ort_session.run(None, {"x": x.cpu().numpy()})[0]
