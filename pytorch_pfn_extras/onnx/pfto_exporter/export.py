@@ -590,7 +590,7 @@ class _Exporter(_ExporterOptions):
                 for i in args:
                     if i.type().kind() == "IntType" or i.type().sizes() is None or len(i.type().sizes()) == 0:
                         seq.append(
-                            sym_hel._unsqueeze_helper(g, i, axes_i=[0])  # type: ignore[no-untyped-call,call-arg]
+                            sym_hel._unsqueeze_helper(g, i, axes_i=[0])  # type: ignore[no-untyped-call,call-arg,arg-type]
                         )
                     else:
                         seq.append(i)
@@ -1128,7 +1128,7 @@ class _Exporter(_ExporterOptions):
         prev_shape_inference = None
         try:
             assert not to_utils.is_in_onnx_export()  # type: ignore[no-untyped-call]
-            with to_utils.select_model_mode_for_export(self.original_model, self.training):
+            with to_utils.select_model_mode_for_export(self.original_model, cast(torch.onnx.TrainingMode, self.training)):
                 prev_opset_version = GLOBALS.export_onnx_opset_version
                 prev_export_type = GLOBALS.operator_export_type
                 prev_shape_inference = GLOBALS.onnx_shape_inference
