@@ -611,40 +611,15 @@ def test_export_default_kwargs():
 
 def test_custom_exporter():
     import torch.onnx
-    try:
-        import mmdeploy
-        has_mmdeploy = True
-    except ImportError:
-        has_mmdeploy = False
     import tempfile
 
     custom_path = False
 
-    if has_mmdeploy:
-        # Install with:
-        #   pip install \
-        #     git+https://github.com/open-mmlab/mmdeploy.git@v1.3.1 \
-        #     mmcv==2.2.0
-        import mmdeploy.apis.onnx.export as mm_export
-
-        def custom(model, args, f, **kwargs):
-            if not isinstance(f, str):
-                with tempfile.NamedTemporaryFile() as tmp_f:
-                    ret = custom(model, args, tmp_f.name, **kwargs)
-                    tmp_f.close()
-                    with open(tmp_f.name + ".onnx", "rb") as res:
-                        f.write(res.read())
-                    return ret
-            mm_export(model, args, f, **kwargs)
-            nonlocal custom_path
-            custom_path = True
-            return model(*args)
-    else:
-        def custom(model, args, f, **kwargs):
-            torch.onnx.export(model, args, f, **kwargs)
-            nonlocal custom_path
-            custom_path = True
-            return model(*args)
+    def custom(model, args, f, **kwargs):
+        torch.onnx.export(model, args, f, **kwargs)
+        nonlocal custom_path
+        custom_path = True
+        return model(*args)
 
     model = Net().to("cpu")
     x = torch.zeros((1, 1, 28, 28))
