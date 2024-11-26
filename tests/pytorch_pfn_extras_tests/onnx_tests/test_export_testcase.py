@@ -607,3 +607,29 @@ def test_export_default_kwargs():
     )
 
     check_inputs(output_dir, ["x", "bias"])
+
+
+def test_custom_exporter():
+    import torch.onnx
+    import tempfile
+
+    custom_path = False
+
+    def custom(model, args, f, **kwargs):
+        torch.onnx.export(model, args, f, **kwargs)
+        nonlocal custom_path
+        custom_path = True
+        return model(*args)
+
+    model = Net().to("cpu")
+    x = torch.zeros((1, 1, 28, 28))
+
+    out_dir = _get_output_dir('custom_exporter')
+    pytorch_pfn_extras.onnx.export_testcase(model, x, out_dir, custom_exporter=custom, input_names=["x"])
+
+    assert custom_path
+
+    ort_session = _ort_session(os.path.join(out_dir, "model.onnx"))
+    actual = ort_session.run(None, {"x": x.cpu().numpy()})[0]
+    expected = model(x)
+    np.testing.assert_allclose(actual, expected.detach().numpy(), atol=1e-3)
