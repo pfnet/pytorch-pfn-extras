@@ -422,11 +422,8 @@ def export_testcase(
     os.makedirs(data_set_path, exist_ok=True)
     for pb_name in glob.glob(os.path.join(data_set_path, "*.pb")):
         os.remove(pb_name)
-    for i, (arg, name) in enumerate(zip(named_args, input_names)):
-        if isinstance(arg, (list, tuple)):
-            assert len(arg) == 1, \
-                'Models that receive nested lists/tuples are not supported yet'
-            arg = arg[0]
+    flat_inputs = torch._C._jit_flatten(named_args)[0]
+    for i, (arg, name) in enumerate(zip(flat_inputs, input_names)):
         f = os.path.join(data_set_path, 'input_{}.pb'.format(i))
         write_to_pb(f, arg, name)
 
