@@ -633,3 +633,31 @@ def test_custom_exporter():
     actual = ort_session.run(None, {"x": x.cpu().numpy()})[0]
     expected = model(x)
     np.testing.assert_allclose(actual, expected.detach().numpy(), atol=1e-3)
+
+
+def test_export_tuple_input():
+
+    class Net(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = nn.Linear(5, 10, bias=False)
+            self.in_channels = [5, 10]
+
+        def forward(self, inputs):
+            assert isinstance(inputs, tuple), f"{type(inputs)=}"
+            linears = [self.linear(x) for x in inputs]
+            return linears
+
+
+    model = Net()
+    x = torch.rand(2, 5)
+
+    export_testcase(
+        model,
+        ((x,),),
+        output_dir,
+        input_names=["x"],
+        training=model.training,
+        do_constant_folding=False,
+        opset_version=12,
+    )
