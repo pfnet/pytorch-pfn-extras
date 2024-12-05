@@ -56,4 +56,7 @@ class PrintReportNotebook(PrintReport):
         if self._infer_entries:
             # --- update entries ---
             self._update_entries(log_report)
+        for entry in self._entries:
+            if entry not in df.columns:
+                df[entry] = None
         self._widget.value = df[self._entries].to_html(index=False, na_rep="")
