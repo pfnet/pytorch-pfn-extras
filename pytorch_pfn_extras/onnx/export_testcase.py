@@ -130,6 +130,12 @@ def _export_util(
         checker_error = getattr(torch.onnx, "CheckerError", None)
         if checker_error is None:
             checker_error = getattr(torch.onnx.utils, "ONNXCheckerError", None)  # type: ignore[attr-defined]
+        if checker_error is None:
+            # PyTorch 2.6 does not have either of exception classes above.
+            # As check by onnx.checker has been removed we no longer need to
+            # capture the exception.
+            class checker_error(RuntimeError):
+                pass
         try:
             enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
             if pytorch_pfn_extras.requires("2.5.0") and enable_onnx_checker:
