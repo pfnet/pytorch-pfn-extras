@@ -134,7 +134,7 @@ def _export_util(
             # PyTorch 2.6 does not have either of exception classes above.
             # As check by onnx.checker has been removed we no longer need to
             # capture the exception.
-            class checker_error(RuntimeError):
+            class checker_error(RuntimeError):  # type: ignore[no-redef]
                 pass
         try:
             enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
