@@ -130,6 +130,12 @@ def _export_util(
         checker_error = getattr(torch.onnx, "CheckerError", None)
         if checker_error is None:
             checker_error = getattr(torch.onnx.utils, "ONNXCheckerError", None)  # type: ignore[attr-defined]
+        if checker_error is None:
+            # PyTorch 2.6 does not have either of exception classes above.
+            # As check by onnx.checker has been removed we no longer need to
+            # capture the exception.
+            class checker_error(RuntimeError):  # type: ignore[no-redef]
+                pass
         try:
             enable_onnx_checker = kwargs.pop('enable_onnx_checker', None)
             if pytorch_pfn_extras.requires("2.5.0") and enable_onnx_checker:
@@ -170,7 +176,6 @@ def _export(
             if kwargs["training"] \
             else torch.onnx.TrainingMode.EVAL
 
-    original_log = torch.onnx.log  # type: ignore[attr-defined]
     if opset_ver is None:
         opset_ver = pytorch_pfn_extras.onnx._constants.onnx_default_opset
         kwargs['opset_version'] = opset_ver
@@ -179,8 +184,12 @@ def _export(
         kwargs['strip_doc_string'] = False
     else:
         strip_doc_string = kwargs.pop('strip_doc_string', True)
-        if not kwargs.get('verbose', False):
+        if (not kwargs.get('verbose', False) and
+                not pytorch_pfn_extras.requires("2.6.0")):
+            # torch.onnx.log was removed in PyTorch 2.6.0.
+            # https://github.com/pytorch/pytorch/pull/133825
             force_verbose = True
+            original_log = torch.onnx.log  # type: ignore[attr-defined]
             #  Following line won't work because verbose mode always
             # enable logging so we are replacing python function instead:
             # torch.onnx.disable_log()
