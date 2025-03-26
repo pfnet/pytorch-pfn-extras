@@ -83,7 +83,8 @@ def test_metric(evaluator_dummies):
     # 'main' is used by default
     assert "custom-metric" in mean
     numpy.testing.assert_almost_equal(
-        mean["main/loss"].numpy(), expect_mean, decimal=4)
+        mean["main/loss"].numpy(), expect_mean, decimal=4
+    )
 
 
 def test_call(evaluator_dummies):
@@ -92,7 +93,8 @@ def test_call(evaluator_dummies):
     mean = evaluator()
     # 'main' is used by default
     numpy.testing.assert_almost_equal(
-        mean["main/loss"].numpy(), expect_mean, decimal=4)
+        mean["main/loss"].numpy(), expect_mean, decimal=4
+    )
 
 
 def test_evaluator_name(evaluator_dummies):
