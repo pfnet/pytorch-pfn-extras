@@ -477,7 +477,7 @@ def test_dict_summary_serialize_names_with_delimiter(
         assert transfer_protocol == "torch"
         f = io.BytesIO()
         torch.save(summary, f)
-        summary2 = torch.load(io.BytesIO(f.getvalue()))
+        summary2 = torch.load(io.BytesIO(f.getvalue()), weights_only=False)
     summary2.add({key1: 3.0, key2: 5.0, key3: 8.0})
 
     _check_dict_summary(

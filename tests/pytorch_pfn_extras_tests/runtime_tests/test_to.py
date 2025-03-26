@@ -97,7 +97,7 @@ def test_save_module():
     ppe.to(module, "dummy", runtime_class=NonPicklableRuntime)
     bio = io.BytesIO()
     torch.save(module, bio)
-    module2 = torch.load(io.BytesIO(bio.getvalue()))
+    module2 = torch.load(io.BytesIO(bio.getvalue()), weights_only=False)
     assert module.state_dict().keys() == module2.state_dict().keys()
     for k in module.state_dict().keys():
         assert torch.all(module.state_dict()[k] == module2.state_dict()[k])
@@ -106,5 +106,5 @@ def test_save_module():
     ppe.to(module, "dummy", runtime_class=NonPicklableRuntime)
     bio = io.BytesIO()
     torch.save(module, bio)
-    module2 = torch.load(io.BytesIO(bio.getvalue()))
+    module2 = torch.load(io.BytesIO(bio.getvalue()), weights_only=False)
     assert module2.v == 20

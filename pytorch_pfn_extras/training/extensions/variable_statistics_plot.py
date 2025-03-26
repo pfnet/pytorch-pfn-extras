@@ -100,6 +100,8 @@ class Reservoir:
         self.counter = 0
 
     def add(self, x: Any, idx: Any = None) -> None:
+        if isinstance(x, torch.Tensor):
+            x = x.detach().cpu().numpy()
         if self.counter < self.size:
             self.data[self.counter] = x
             self.idxs[self.counter] = idx or self.counter
