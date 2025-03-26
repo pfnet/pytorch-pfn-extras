@@ -72,7 +72,7 @@ def test_evaluate(evaluator_dummies):
         )
 
     numpy.testing.assert_almost_equal(
-        mean["target/loss"], expect_mean, decimal=4
+        mean["target/loss"].numpy(), expect_mean, decimal=4
     )
 
 
@@ -82,7 +82,8 @@ def test_metric(evaluator_dummies):
     mean = evaluator()
     # 'main' is used by default
     assert "custom-metric" in mean
-    numpy.testing.assert_almost_equal(mean["main/loss"], expect_mean, decimal=4)
+    numpy.testing.assert_almost_equal(
+        mean["main/loss"].numpy(), expect_mean, decimal=4)
 
 
 def test_call(evaluator_dummies):
@@ -90,7 +91,8 @@ def test_call(evaluator_dummies):
 
     mean = evaluator()
     # 'main' is used by default
-    numpy.testing.assert_almost_equal(mean["main/loss"], expect_mean, decimal=4)
+    numpy.testing.assert_almost_equal(
+        mean["main/loss"].numpy(), expect_mean, decimal=4)
 
 
 def test_evaluator_name(evaluator_dummies):
@@ -100,7 +102,7 @@ def test_evaluator_name(evaluator_dummies):
     mean = evaluator()
     # name is used as a prefix
     numpy.testing.assert_almost_equal(
-        mean["eval/main/loss"], expect_mean, decimal=4
+        mean["eval/main/loss"].numpy(), expect_mean, decimal=4
     )
 
 
@@ -144,7 +146,7 @@ def test_evaluator_tuple_data():
 
     expect_mean = numpy.mean([numpy.sum(x) for x in data])
     numpy.testing.assert_almost_equal(
-        mean["target/loss"], expect_mean, decimal=4
+        mean["target/loss"].numpy(), expect_mean, decimal=4
     )
 
 
@@ -179,7 +181,7 @@ def test_evaluator_dict_data():
         [numpy.sum(x["x"]) + numpy.sum(x["y"]) for x in data]
     )
     numpy.testing.assert_almost_equal(
-        mean["target/loss"], expect_mean, decimal=4
+        mean["target/loss"].numpy(), expect_mean, decimal=4
     )
 
 

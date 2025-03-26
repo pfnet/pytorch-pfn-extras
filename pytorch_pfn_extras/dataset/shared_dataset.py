@@ -43,6 +43,8 @@ class InfiniteCache(Cache):
         return x
 
     def add_to_cache(self, idx, x):
+        if isinstance(x, torch.Tensor):
+            x = x.detach().cpu().numpy()
         self.storage[idx] = x
         self.cached_ids[idx] = 1
 
