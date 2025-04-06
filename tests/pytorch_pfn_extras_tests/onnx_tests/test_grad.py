@@ -59,7 +59,7 @@ def test_grad_no_export():
 
 
 @pytest.mark.parametrize("use_pfto", [False, True])
-@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
+@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview.training..Gradient type is missing:UserWarning")
 @pytest.mark.filterwarnings("ignore:Specified output_names .*:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad(use_pfto: bool):
@@ -97,6 +97,7 @@ def test_grad(use_pfto: bool):
     )
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
+    print(actual_onnx)
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
     if not use_pfto:
         assert '/_ppe_as_out_module/conv/Conv' in named_nodes
@@ -130,7 +131,7 @@ def test_grad(use_pfto: bool):
 
 
 @pytest.mark.parametrize("use_pfto", [False, True])
-@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
+@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview.training..Gradient type is missing:UserWarning")
 @pytest.mark.filterwarnings("ignore:Specified output_names .*:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad_multiple_times(use_pfto: bool):
@@ -209,7 +210,7 @@ def test_grad_multiple_times(use_pfto: bool):
 
 
 @pytest.mark.parametrize("use_pfto", [False, True])
-@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview..Gradient type is missing:UserWarning")
+@pytest.mark.filterwarnings("ignore:The shape inference of ai.onnx.preview.training..Gradient type is missing:UserWarning")
 @pytest.mark.filterwarnings("ignore:Specified output_names .*:UserWarning")
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_grad_with_multiple_inputs(use_pfto: bool):
