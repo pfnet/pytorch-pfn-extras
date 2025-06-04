@@ -1,5 +1,7 @@
 pytest
-onnxruntime
+# Notes: use `onnxruntime==1.22` in Windows raises the following error during `import onnxruntime`
+# ImportError: DLL load failed while importing onnxruntime_pybind11_state: The specified module could not be found.
+onnxruntime<1.22
 torchvision
 torchaudio
 pysen
