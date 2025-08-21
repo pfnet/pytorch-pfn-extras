@@ -616,7 +616,7 @@ def test_custom_exporter():
     custom_path = False
 
     def custom(model, args, f, **kwargs):
-        torch.onnx.export(model, args, f, **kwargs)
+        torch.onnx.export(model, args, f, dynamo=False, **kwargs)
         nonlocal custom_path
         custom_path = True
         return model(*args)

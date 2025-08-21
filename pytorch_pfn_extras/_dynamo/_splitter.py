@@ -17,6 +17,7 @@ class _Splitter:
         _joint_inputs: Any,
         *,
         num_fwd_outputs: int,
+        static_lifetime_input_indices: List[int],
     ) -> Tuple[torch.fx.GraphModule, torch.fx.GraphModule]:
         raise NotImplementedError("Splitters must override partition")
 
@@ -39,6 +40,7 @@ class JointGraph(_Splitter):
         _joint_inputs: Any,
         *,
         num_fwd_outputs: int,
+        static_lifetime_input_indices: List[int] = [],
     ) -> Tuple[torch.fx.GraphModule, torch.fx.GraphModule]:
         """The calculation graph, traced in an end-to-end manner,
         of the forward-backward computation is divided into the forward graph and
@@ -169,6 +171,7 @@ class ForwardOnly(_Splitter):
         _joint_inputs: Any,
         *,
         num_fwd_outputs: int,
+        static_lifetime_input_indices: List[int] = [],
     ) -> Tuple[torch.fx.GraphModule, torch.fx.GraphModule]:
         fwd_module, _ = default_partition(
             joint_module,

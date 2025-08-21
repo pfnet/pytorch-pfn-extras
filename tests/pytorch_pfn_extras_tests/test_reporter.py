@@ -280,10 +280,11 @@ def _check_summary_serialize(value1, value2, value3):
         )
     summary2.add(value3)
 
-    expected_mean = float((value1 + value2 + value3) / 3.0)
-    expected_std = math.sqrt(
-        (value1**2 + value2**2 + value3**2) / 3.0 - expected_mean**2
-    )
+    with torch.no_grad():
+        expected_mean = float((value1 + value2 + value3) / 3.0)
+        expected_std = math.sqrt(
+            (value1**2 + value2**2 + value3**2) / 3.0 - expected_mean**2
+        )
 
     mean = summary2.compute_mean()
     if isinstance(mean, torch.Tensor):
