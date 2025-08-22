@@ -17,16 +17,8 @@ def from_ndarray(ndarray: _NDArray) -> torch.Tensor:
     supported by PyTorch.
     """
     if isinstance(ndarray, cupy.ndarray):
-        pack = _copy_if_negative_strides(ndarray).toDlpack()
-        try:
-            return torch.utils.dlpack.from_dlpack(pack)
-        except Exception as e:
-            # TODO(kmaehashi): Remove this workaround once PyTorch is fixed.
-            # https://github.com/pytorch/pytorch/pull/56789
-            # This mitigates a bug above by deferring the destruction of the
-            # capsule so that users can see the exception.
-            e._dlpack = pack  # type: ignore
-            raise
+        ndarray = _copy_if_negative_strides(ndarray)
+        return torch.utils.dlpack.from_dlpack(ndarray)
     elif isinstance(ndarray, numpy.ndarray):
         return torch.from_numpy(_copy_if_negative_strides(ndarray))
     raise TypeError(
@@ -56,13 +48,7 @@ def as_ndarray(tensor: torch.Tensor) -> _NDArray:
         return tensor.detach().numpy()
     elif devtype == "cuda":
         ensure_cupy()
-        if hasattr(cupy, "from_dlpack"):
-            # TODO: Avoid using ``torch.utils.dlpack.to_dlpack``.
-            # => return cupy.from_dlpack(tensor)
-            # Blocked by PyTorch 1.10 bug
-            # (https://github.com/pytorch/pytorch/pull/67618)
-            return cupy.from_dlpack(torch.utils.dlpack.to_dlpack(tensor))
-        return cupy.fromDlpack(torch.utils.dlpack.to_dlpack(tensor))
+        return cupy.from_dlpack(tensor)
     raise ValueError(f"Tensor is on unsupported device: {devtype}")
 
 
