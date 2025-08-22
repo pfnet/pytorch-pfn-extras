@@ -21,7 +21,7 @@ import torch
 import torch.jit
 import torch.onnx.symbolic_helper as sym_hel
 import torch.onnx.utils as to_utils
-from torch.onnx import OperatorExportTypes
+from torch.onnx import OperatorExportTypes, is_in_onnx_export
 
 TorchValueID = typing.NewType("TorchValueID", int)
 ONNXValueID = typing.NewType("ONNXValueID", str)
@@ -1127,7 +1127,7 @@ class _Exporter(_ExporterOptions):
         prev_export_type = None
         prev_shape_inference = None
         try:
-            assert not to_utils.is_in_onnx_export()  # type: ignore[no-untyped-call]
+            assert not is_in_onnx_export()  # type: ignore[no-untyped-call]
             with to_utils.select_model_mode_for_export(self.original_model, cast(torch.onnx.TrainingMode, self.training)):
                 prev_opset_version = GLOBALS.export_onnx_opset_version
                 prev_export_type = GLOBALS.operator_export_type
