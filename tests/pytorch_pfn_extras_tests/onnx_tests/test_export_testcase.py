@@ -616,6 +616,9 @@ def test_custom_exporter():
     custom_path = False
 
     def custom(model, args, f, **kwargs):
+        if pytorch_pfn_extras.requires("2.4"):
+            if "dynamo" not in kwargs:
+                kwargs["dynamo"] = False
         torch.onnx.export(model, args, f, **kwargs)
         nonlocal custom_path
         custom_path = True

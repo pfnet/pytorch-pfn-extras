@@ -322,9 +322,10 @@ class Summary:
             self._deferred.append((value, weight))
             return
 
-        self._x += weight * value
-        self._x2 += weight * value * value
-        self._n += weight
+        with torch.no_grad():
+            self._x += weight * value
+            self._x2 += weight * value * value
+            self._n += weight
 
     def compute_mean(self) -> Scalar:
         """Computes the mean."""

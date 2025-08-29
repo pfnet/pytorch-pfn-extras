@@ -36,7 +36,7 @@ def _unstrip_tensor(tensor: onnx.TensorProto) -> None:
     if ppe.requires("1.13", "onnx"):
         np_dtype = onnx.helper.tensor_dtype_to_np_dtype(tensor.data_type)
     else:
-        np_dtype = onnx.mapping.TENSOR_TYPE_TO_NP_TYPE[tensor.data_type]
+        np_dtype = onnx.mapping.TENSOR_TYPE_TO_NP_TYPE[tensor.data_type]  # type: ignore[attr-defined]
     dummy_array = numpy.random.normal(ave, math.sqrt(var), tensor.dims).astype(np_dtype)
     dummy_tensor = onnx.numpy_helper.from_array(dummy_array)
     tensor.data_location = onnx.TensorProto.DEFAULT
