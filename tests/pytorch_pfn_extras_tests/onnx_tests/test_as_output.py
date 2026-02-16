@@ -70,15 +70,15 @@ def test_as_output():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    assert 'Conv_0' in named_nodes
-    assert 'MatMul_4' in named_nodes
+    assert '/_ppe_as_out_module/conv/Conv' in named_nodes
+    assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
 
     outputs = list([v.name for v in actual_onnx.graph.output])
     assert len(outputs) == 2
     assert outputs[1] == "h"
     in_name, out_name = _get_name(actual_onnx.graph, "h")
-    assert named_nodes["Conv_0"].output[0] == in_name
-    assert named_nodes["MatMul_4"].input[0] == out_name
+    assert named_nodes["/_ppe_as_out_module/conv/Conv"].output[0] == in_name
+    assert named_nodes["/_ppe_as_out_module/linear/MatMul"].input[0] == out_name
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -101,13 +101,13 @@ def test_as_output_to_input():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    assert 'Conv_2' in named_nodes
+    assert '/_ppe_as_out_module/conv/Conv' in named_nodes
 
     outputs = list([v.name for v in actual_onnx.graph.output])
     assert len(outputs) == 2
     assert outputs[1] == "x"
     _, out_name = _get_name(actual_onnx.graph, "x")
-    assert named_nodes["Conv_2"].input[0] == out_name
+    assert named_nodes["/_ppe_as_out_module/conv/Conv"].input[0] == out_name
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -130,13 +130,13 @@ def test_as_output_to_output():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    assert 'MatMul_2' in named_nodes
+    assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
 
     outputs = list([v.name for v in actual_onnx.graph.output])
     assert len(outputs) == 2
     assert outputs[1] == "out"
     in_name, _ = _get_name(actual_onnx.graph, "out")
-    assert named_nodes["MatMul_2"].output[0] == in_name
+    assert named_nodes["/_ppe_as_out_module/linear/MatMul"].output[0] == in_name
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
@@ -158,8 +158,8 @@ def test_no_as_output():
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
-    assert 'Conv_0' in named_nodes
-    assert 'MatMul_2' in named_nodes
+    assert '/_ppe_as_out_module/conv/Conv' in named_nodes
+    assert '/_ppe_as_out_module/linear/MatMul' in named_nodes
 
     assert len([v.name for v in actual_onnx.graph.output]) == 1
 
