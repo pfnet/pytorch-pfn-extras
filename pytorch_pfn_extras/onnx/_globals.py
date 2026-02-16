@@ -1,10 +1,10 @@
 import pytorch_pfn_extras
 import torch
 from typing import Optional
+from packaging import version
 
-
-_torch_major, _torch_minor = torch.__version__.split(".")[:2]
-if (int(_torch_major), int(_torch_minor)) >= (2, 9):
+torch_version = version.parse(torch.__version__.split("+")[0])
+if version.parse("2.9.0") <= torch_version:
     from torch.onnx._internal.torchscript_exporter import _globals
 else:
     from torch.onnx import _globals
