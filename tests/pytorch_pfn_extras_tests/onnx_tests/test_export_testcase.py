@@ -65,7 +65,7 @@ def _get_output_dir(d, **kwargs):
     return output_dir
 
 
-def _helper(model, args, d, use_pfto=True, **kwargs):
+def _helper(model, args, d, **kwargs):
     output_dir = _get_output_dir(d, **kwargs)
     if 'training' not in kwargs:
         kwargs['training'] = model.training
@@ -73,7 +73,7 @@ def _helper(model, args, d, use_pfto=True, **kwargs):
         kwargs['do_constant_folding'] = False
     if 'metadata' not in kwargs:
         kwargs["metadata"] = False
-    export_testcase(model, args, output_dir, use_pfto=use_pfto, **kwargs)
+    export_testcase(model, args, output_dir, **kwargs)
     return output_dir
 
 

@@ -29,7 +29,6 @@ from pytorch_pfn_extras.onnx.strip_large_tensor import is_large_tensor
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_raw_data
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
     _strip_large_initializer_raw_data
-from pytorch_pfn_extras.onnx.pfto_exporter.export import export as pfto_export
 
 
 def _model_to_graph_with_value_names(
@@ -161,7 +160,6 @@ def _export(
         args: Sequence[Any],
         strip_large_tensor_data: bool = False,
         large_tensor_threshold: int = LARGE_TENSOR_DATA_THRESHOLD,
-        use_pfto: bool = False,
         return_output: bool = True,
         chrome_tracing: str = "",
         **kwargs: Any,
@@ -179,43 +177,35 @@ def _export(
     if opset_ver is None:
         opset_ver = pytorch_pfn_extras.onnx._constants.onnx_default_opset
         kwargs['opset_version'] = opset_ver
-    if use_pfto:
-        strip_doc_string = kwargs.get('strip_doc_string', True)
-        kwargs['strip_doc_string'] = False
-    else:
-        strip_doc_string = kwargs.pop('strip_doc_string', True)
-        if (not kwargs.get('verbose', False) and
-                not pytorch_pfn_extras.requires("2.6.0")):
-            # torch.onnx.log was removed in PyTorch 2.6.0.
-            # https://github.com/pytorch/pytorch/pull/133825
-            force_verbose = True
-            original_log = torch.onnx.log  # type: ignore[attr-defined]
-            #  Following line won't work because verbose mode always
-            # enable logging so we are replacing python function instead:
-            # torch.onnx.disable_log()
-            def no_op(*args: Any) -> None:
-                pass
+    strip_doc_string = kwargs.pop('strip_doc_string', True)
+    if (not kwargs.get('verbose', False) and
+            not pytorch_pfn_extras.requires("2.6.0")):
+        # torch.onnx.log was removed in PyTorch 2.6.0.
+        # https://github.com/pytorch/pytorch/pull/133825
+        force_verbose = True
+        original_log = torch.onnx.log  # type: ignore[attr-defined]
+        #  Following line won't work because verbose mode always
+        # enable logging so we are replacing python function instead:
+        # torch.onnx.disable_log()
+        def no_op(*args: Any) -> None:
+            pass
 
-            torch.onnx.log = no_op  # type: ignore[attr-defined]
-        kwargs['verbose'] = True
+        torch.onnx.log = no_op  # type: ignore[attr-defined]
+    kwargs['verbose'] = True
     # Exted args with kwargs (including default values)
     args = _decide_input_format(model, args)  # type: ignore[no-untyped-call]
     with init_annotate(model, opset_ver) as ann, \
             as_output.trace(model) as (model, outputs), \
             grad.init_grad_state(), \
             lax.init_lax_state():
-        if use_pfto:
-            outs = pfto_export(
-                model, args, bytesio, chrome_tracing=chrome_tracing, **kwargs)
-        else:
-            if chrome_tracing:
-                with torch.profiler.profile() as prof:
-                    outs = _export_util(
-                        model, args, bytesio, return_output=return_output, **kwargs)
-                prof.export_chrome_trace(chrome_tracing)
-            else:
+        if chrome_tracing:
+            with torch.profiler.profile() as prof:
                 outs = _export_util(
                     model, args, bytesio, return_output=return_output, **kwargs)
+            prof.export_chrome_trace(chrome_tracing)
+        else:
+            outs = _export_util(
+                model, args, bytesio, return_output=return_output, **kwargs)
         onnx_graph = onnx.load(io.BytesIO(bytesio.getvalue()))
         onnx_graph = ann.set_annotate(onnx_graph)
         onnx_graph = ann.reorg_anchor(onnx_graph)

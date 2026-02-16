@@ -247,8 +247,6 @@ def test_complex():
     run_model_test(
         Complex(),
         (x,),
-        check_torch_export=False,
-        onnx_scalar_type_analysis=False,
         skip_oxrt=True,  # Add op in ONNX spec doesn't support complex input
     )
 
