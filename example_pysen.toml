@@ -1,5 +1,5 @@
 [tool.pysen]
-version = "0.10.1"
+version = "0.12.0"
 
 [tool.pysen.lint]
 enable_black = false
@@ -8,7 +8,7 @@ enable_isort = false
 enable_mypy = true
 mypy_preset = "entry"
 line_length = 80
-py_version = "py38"
+py_version = "py310"
 mypy_path = ["./stubs"]
 
 [tool.pysen.lint.mypy_modules."torch.*"]
