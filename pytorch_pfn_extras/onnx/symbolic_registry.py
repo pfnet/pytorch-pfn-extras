@@ -1,8 +1,13 @@
 import pytorch_pfn_extras
+import torch
 from typing import cast, Any, Callable, Tuple, Union
-
-import torch.onnx._internal.registration as reg
 import torch.onnx.utils
+
+_torch_major, _torch_minor = torch.__version__.split(".")[:2]
+if (int(_torch_major), int(_torch_minor)) >= (2, 9):
+    import torch.onnx._internal.torchscript_exporter.registration as reg
+else:
+    import torch.onnx._internal.registration as reg
 
 def is_registered_op(opname: str, domain: str, version: int) -> Any:
     return reg.registry.is_registered_op(f"{domain}::{opname}", version)
