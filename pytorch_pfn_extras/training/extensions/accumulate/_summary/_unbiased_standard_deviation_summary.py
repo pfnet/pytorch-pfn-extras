@@ -5,6 +5,11 @@ from typing import Any, Dict
 
 import numpy
 import torch
+from pytorch_pfn_extras._scalar import (
+    divide_scalar,
+    multiply_scalar,
+    subtract_scalar,
+)
 from pytorch_pfn_extras.reporting import Scalar, Value
 from pytorch_pfn_extras.training.extensions.accumulate._summary._base_summary import (
     SummaryBase,
@@ -53,16 +58,18 @@ class UnbiasedStandardDeviationSummary(SummaryBase):
     def compute_mean(self) -> Scalar:
         self._add_deferred_values()
         x, n = self._x, self._n
-        return x / n
+        return divide_scalar(x, n)
 
     def compute_unbiased_standard_deviation(self) -> Scalar:
         self._add_deferred_values()
         x, n = self._x, self._n
         if n <= 1:
             return float("nan")
-        mean = x / n
-        var = self._x2 / n - mean * mean
-        unbiased_var = var * (n / (n - 1))
+        mean = divide_scalar(x, n)
+        var = subtract_scalar(
+            divide_scalar(self._x2, n), multiply_scalar(mean, mean)
+        )
+        unbiased_var = multiply_scalar(var, divide_scalar(n, n - 1))
         if isinstance(unbiased_var, torch.Tensor):
             return torch.sqrt(unbiased_var)
         else:

@@ -29,7 +29,7 @@ from pytorch_pfn_extras.onnx.strip_large_tensor import is_large_tensor
 from pytorch_pfn_extras.onnx.strip_large_tensor import _strip_raw_data
 from pytorch_pfn_extras.onnx.strip_large_tensor import \
     _strip_large_initializer_raw_data
-from pytorch_pfn_extras.onnx.pfto_exporter.export import export as pfto_export
+from pytorch_pfn_extras.onnx.pfto_exporter.export import export as pfto_export  # type: ignore[attr-defined]
 
 
 def _model_to_graph_with_value_names(

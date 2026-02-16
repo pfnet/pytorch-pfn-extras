@@ -1,3 +1,4 @@
+# type: ignore
 import dataclasses
 from functools import partial
 import types

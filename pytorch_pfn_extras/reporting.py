@@ -20,10 +20,15 @@ from typing import (
 
 import numpy
 import torch
+from pytorch_pfn_extras._scalar import (
+    FloatLikeValue,
+    Scalar,
+    Value,
+    divide_scalar,
+    multiply_scalar,
+    subtract_scalar,
+)
 
-Scalar = Union[torch.Tensor, numpy.ndarray, numpy.floating, float]
-FloatLikeValue = Union[Scalar, float]
-Value = Union[Scalar, Callable[[], float]]
 Observation = Dict[str, Value]
 
 
@@ -299,7 +304,7 @@ class Summary:
         self._x: Scalar = 0.0
         self._x2: Scalar = 0.0
         self._n: Scalar = 0
-        self._deferred: List[Tuple[Callable[[], float], Scalar]] = []
+        self._deferred: List[Tuple[Callable[[], Scalar], Scalar]] = []
 
     def _add_deferred_values(self) -> None:
         for fn, weight in self._deferred:
@@ -332,7 +337,7 @@ class Summary:
         self._add_deferred_values()
 
         x, n = self._x, self._n
-        return x / n
+        return divide_scalar(x, n)
 
     def make_statistics(self) -> Tuple[Scalar, Scalar]:
         """Computes and returns the mean and standard deviation values.
@@ -344,8 +349,10 @@ class Summary:
         self._add_deferred_values()
 
         x, n = self._x, self._n
-        mean = x / n
-        var = self._x2 / n - mean * mean
+        mean = divide_scalar(x, n)
+        var = subtract_scalar(
+            divide_scalar(self._x2, n), multiply_scalar(mean, mean)
+        )
         if isinstance(var, torch.Tensor):
             return mean, torch.sqrt(var)
         else:
