@@ -18,6 +18,9 @@ def matplotlib():
         pytest.skip("matplotlib is not installed")
 
 
+@pytest.mark.filterwarnings(
+    "ignore::pyparsing.warnings.PyparsingDeprecationWarning"
+)
 def test_run_and_save_plot(matplotlib, tmp_path: pathlib.Path):
     filename = "variable_statistics_plot_test.png"
     iterations = 2

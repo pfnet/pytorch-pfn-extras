@@ -21,6 +21,9 @@ def matplotlib(matplotlib_or_none):
     return matplotlib_or_none
 
 
+@pytest.mark.filterwarnings(
+    "ignore::pyparsing.warnings.PyparsingDeprecationWarning"
+)
 def test_available(matplotlib_or_none):
     if matplotlib_or_none is not None:
         assert extensions.PlotReport.available() is True
@@ -31,6 +34,9 @@ def test_available(matplotlib_or_none):
 
 
 # TODO(kataoka): lazy import does not seem to be required with matplotlib v3
+@pytest.mark.filterwarnings(
+    "ignore::pyparsing.warnings.PyparsingDeprecationWarning"
+)
 def test_lazy_import(matplotlib):
     # matplotlib.pyplot should be lazily imported because matplotlib.use
     # has to be called earlier.

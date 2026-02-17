@@ -65,7 +65,7 @@ def _get_output_dir(d, **kwargs):
     return output_dir
 
 
-def _helper(model, args, d, use_pfto=True, **kwargs):
+def _helper(model, args, d, **kwargs):
     output_dir = _get_output_dir(d, **kwargs)
     if 'training' not in kwargs:
         kwargs['training'] = model.training
@@ -73,7 +73,7 @@ def _helper(model, args, d, use_pfto=True, **kwargs):
         kwargs['do_constant_folding'] = False
     if 'metadata' not in kwargs:
         kwargs["metadata"] = False
-    export_testcase(model, args, output_dir, use_pfto=use_pfto, **kwargs)
+    export_testcase(model, args, output_dir, **kwargs)
     return output_dir
 
 
@@ -353,6 +353,7 @@ def test_export_testcase_strip_large_tensor_data():
         assert not metaj['strip_large_tensor_data']
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_export_testcase_options():
     model = Net().to('cpu')
     x = torch.zeros((1, 1, 28, 28))
@@ -387,6 +388,7 @@ class NetWithUnusedInput(nn.Module):
 
 
 @pytest.mark.filterwarnings("ignore:Unused input:UserWarning")
+@pytest.mark.filterwarnings("ignore::UserWarning")
 @pytest.mark.parametrize("keep_initializers_as_inputs", [None, True, False])
 def test_export_testcase_with_unused_input(keep_initializers_as_inputs):
     model = NetWithUnusedInput().to('cpu')

@@ -60,7 +60,7 @@ def test_annotate():
 
     model = Net()
     x = torch.ones((1, 1, 32, 32))
-    output_dir = _helper(model, x, 'annotate', use_pfto=False)
+    output_dir = _helper(model, x, 'annotate')
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
@@ -119,7 +119,7 @@ def test_apply_annotation():
 
     model = Net()
     x = torch.ones((1, 1, 32, 32))
-    output_dir = _helper(model, x, 'apply_annotation', use_pfto=False)
+    output_dir = _helper(model, x, 'apply_annotation')
 
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     named_nodes = {n.name: n for n in actual_onnx.graph.node}
@@ -245,7 +245,7 @@ def test_scoped_anchor():
     dirname = 'scoped_anchor'
     no_attr_dirname = os.path.join(dirname, 'no_attr_graph')
     no_attr_output_dir = _helper(
-        no_param_model, x, no_attr_dirname, opset_version=11, use_pfto=False)
+        no_param_model, x, no_attr_dirname, opset_version=11)
     no_attr_onnx = onnx.load(os.path.join(no_attr_output_dir, 'model.onnx'))
     try:
         onnx.checker.check_model(no_attr_onnx)
@@ -254,13 +254,13 @@ def test_scoped_anchor():
 
     # make full annotated graph
     model = Net()
-    output_dir = _helper(model, x, dirname, opset_version=11, use_pfto=False)
+    output_dir = _helper(model, x, dirname, opset_version=11)
 
     # mak plain graph to compair with anchored graph
     no_anchor_model = Net(anchor_mode='off')
     no_anchor_dirname = os.path.join(dirname, 'no_anchor_graph')
     no_anchor_model_dir = _helper(
-        no_anchor_model, x, no_anchor_dirname, opset_version=11, use_pfto=False)
+        no_anchor_model, x, no_anchor_dirname, opset_version=11)
 
     # anchored model outputs same output value with base model
     def load_tensor(path):
@@ -344,7 +344,7 @@ def test_scoped_anchor_multiple_inout():
     model = Net()
     x = torch.randn((4, 1))
     x = (x, x, x)
-    output_dir = _helper(model, x, 'scoped_anchor_multiple_inout', use_pfto=False)
+    output_dir = _helper(model, x, 'scoped_anchor_multiple_inout')
     actual_onnx = onnx.load(os.path.join(output_dir, 'model.onnx'))
     try:
         onnx.checker.check_model(actual_onnx)
