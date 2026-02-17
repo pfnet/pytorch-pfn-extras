@@ -833,6 +833,7 @@ def test_trainer_profile(tmp_path: pathlib.Path):
         activities=[torch.profiler.ProfilerActivity.CPU],
         on_trace_ready=trace_handler,
         schedule=torch.profiler.schedule(wait=0, warmup=warmup, active=active),
+        acc_events=True,
     )
     trainer = engine.create_trainer(
         model_with_loss,

@@ -20,7 +20,7 @@ def test_record(device):
     model.to(device)
     x = torch.arange(30, dtype=torch.float32).to(device)
 
-    with torch.profiler.profile() as prof:
+    with torch.profiler.profile(acc_events=True) as prof:
         with ppe.profiler.record("my_tag_1"):
             model(x)
 
@@ -38,7 +38,7 @@ def test_record_without_tag(device):
     model.to(device)
     x = torch.arange(30, dtype=torch.float32).to(device)
 
-    with torch.profiler.profile() as prof:
+    with torch.profiler.profile(acc_events=True) as prof:
         with ppe.profiler.record(None):
             model(x)
 
@@ -59,7 +59,7 @@ def test_record_function(device):
     def my_run(x):
         model(x)
 
-    with torch.profiler.profile() as prof:
+    with torch.profiler.profile(acc_events=True) as prof:
         x = torch.arange(30, dtype=torch.float32).to(device)
         my_run(x)
 
@@ -81,7 +81,7 @@ def test_record_function_without_tag(device):
     def my_run(x):
         model(x)
 
-    with torch.profiler.profile() as prof:
+    with torch.profiler.profile(acc_events=True) as prof:
         my_run(x)
 
     keys = [event.key for event in prof.key_averages()]
@@ -100,7 +100,7 @@ def test_record_iterable(device):
     x = torch.arange(30, dtype=torch.float32).to(device)
     iters = [x, x, x]
 
-    with torch.profiler.profile() as prof:
+    with torch.profiler.profile(acc_events=True) as prof:
         for x in ppe.profiler.record_iterable("my_tag_3", iters):
             model(x)
 
@@ -122,7 +122,7 @@ def test_record_iterable_without_tag(device):
     x = torch.arange(30, dtype=torch.float32).to(device)
     iters = [x, x, x]
 
-    with torch.profiler.profile() as prof:
+    with torch.profiler.profile(acc_events=True) as prof:
         for x in ppe.profiler.record_iterable(None, iters):
             model(x)
 
@@ -146,7 +146,7 @@ def test_record_iterable_with_trace(device):
 
     with tempfile.TemporaryDirectory() as t_path:
         w = ppe.writing.SimpleWriter(out_dir=t_path)
-        with torch.profiler.profile():
+        with torch.profiler.profile(acc_events=True):
             with ppe.profiler.record("tag", trace=True):
                 model(x)
         ppe.profiler.get_tracer().flush("trace.json", w)
@@ -164,7 +164,7 @@ def test_record_iterable_with_threads(device):
 
     x = torch.arange(30, dtype=torch.float32).to(device)
 
-    with torch.profiler.profile():
+    with torch.profiler.profile(acc_events=True):
 
         def thread_body(thread_id):
             if device == "cuda":
@@ -202,7 +202,7 @@ def test_record_iterable_with_thread_disabled(device):
 
     x = torch.arange(30, dtype=torch.float32).to(device)
 
-    with torch.profiler.profile():
+    with torch.profiler.profile(acc_events=True):
 
         def thread_body(thread_id):
             if device == "cuda":
@@ -248,7 +248,7 @@ def test_record_iterable_with_all_thread_disabled(device):
 
     x = torch.arange(30, dtype=torch.float32).to(device)
 
-    with torch.profiler.profile():
+    with torch.profiler.profile(acc_events=True):
 
         def thread_body(thread_id):
             if device == "cuda":
@@ -295,7 +295,7 @@ def test_record_iterable_with_multiprocessing(device):
     with tempfile.TemporaryDirectory() as t_path:
         w = ppe.writing.SimpleWriter(out_dir=t_path)
         ppe.profiler.get_tracer().initialize_writer("trace.json", w)
-        with torch.profiler.profile():
+        with torch.profiler.profile(acc_events=True):
             for x in dataloader:
                 model(x.to(device))
         ppe.profiler.get_tracer().flush("trace.json", w)
