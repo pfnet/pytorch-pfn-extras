@@ -118,7 +118,10 @@ _op_normalize_table: Dict[str, str] = {
 }
 
 GraphContext: Any
-if pytorch_pfn_extras.requires("2.4"):
+if pytorch_pfn_extras.requires("2.9"):
+    from torch.onnx._internal.torchscript_exporter import jit_utils
+    GraphContext = partial(jit_utils.GraphContext, values_in_env=set())
+elif pytorch_pfn_extras.requires("2.4"):
     from torch.onnx._internal import jit_utils
     GraphContext = partial(jit_utils.GraphContext, values_in_env=set())
 else:
