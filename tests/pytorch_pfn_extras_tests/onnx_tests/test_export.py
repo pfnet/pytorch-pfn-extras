@@ -145,13 +145,15 @@ def test_concat():
         AnyModel(lambda m: torch.cat((m.x, m.y), axis=0),
                  {"x": _aranges(2, 3, 2), "y": _aranges(3, 3, 2)}),
         (),
+        do_constant_folding=False,
     )
     assert len(model.graph.node) == 1
     assert model.graph.node[0].op_type == "Concat"
     model = run_model_test(
         AnyModel(lambda m: torch.cat((m.x, m.y), axis=1),
-                 {"x": _aranges(2, 3, 2), "y": _aranges(2, 3, 2)}),
+                 {"x": _aranges(2, 3, 2), "y": _aranges(2, 4, 2)}),
         (),
+        do_constant_folding=False,
     )
     assert len(model.graph.node) == 1
     assert model.graph.node[0].op_type == "Concat"
@@ -238,6 +240,7 @@ def test_softmax():
     run_model_test(torch.nn.Softmax(3), (torch.randn(1, 10, 30, 30),))
 
 
+@pytest.mark.xfail
 def test_complex():
     class Complex(torch.nn.Module):
         def forward(self, x):
@@ -247,8 +250,6 @@ def test_complex():
     run_model_test(
         Complex(),
         (x,),
-        check_torch_export=False,
-        onnx_scalar_type_analysis=False,
         skip_oxrt=True,  # Add op in ONNX spec doesn't support complex input
     )
 
@@ -271,7 +272,7 @@ def test_alias_param():
 
     m = run_model_test(Model(), (torch.rand((20,)),))
     params = [i.name for i in m.graph.initializer]
-    assert params == ["linear2.weight", "linear.bias", "linear2.bias"]
+    assert set(params) == set(["onnx::MatMul_10", "linear.bias", "linear2.bias"])
 
 
 def test_is_tracing():

@@ -61,7 +61,6 @@ def test_fori_loop():
         'fori_loop',
         input_names=("x",),
         enable_onnx_checker=False,
-        use_pfto=False,
         do_constant_folding=False,
     )
 
@@ -101,7 +100,6 @@ def test_fori_loop_with_tuple_state():
         'fori_loop_tuple_state',
         input_names=("x",),
         enable_onnx_checker=False,
-        use_pfto=False,
         do_constant_folding=False,
     )
 
@@ -170,7 +168,6 @@ def test_while_loop():
         'while_loop',
         input_names=("x",),
         enable_onnx_checker=False,
-        use_pfto=False,
         do_constant_folding=False,
     )
 
@@ -243,7 +240,6 @@ def test_cond():
         'cond',
         input_names=("x",),
         enable_onnx_checker=False,
-        use_pfto=False,
         do_constant_folding=False,
     )
 
@@ -286,7 +282,6 @@ def test_lax_multiple_times():
         'lax_multiple_times',
         input_names=("x",),
         enable_onnx_checker=False,
-        use_pfto=False,
         do_constant_folding=False,
     )
 
@@ -330,7 +325,6 @@ def test_lax_nested():
         'lax_nested',
         input_names=("x",),
         enable_onnx_checker=False,
-        use_pfto=False,
         do_constant_folding=False,
     )
 
