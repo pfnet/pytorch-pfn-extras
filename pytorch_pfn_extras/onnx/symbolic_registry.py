@@ -1,7 +1,12 @@
+from importlib import import_module
 import pytorch_pfn_extras
 from typing import cast, Any, Callable, Tuple, Union
 
-import torch.onnx._internal.registration as reg
+if pytorch_pfn_extras.requires("2.9"):
+    reg = import_module("torch.onnx._internal.registration")
+else:    
+    reg = import_module("torch.onnx._registration")
+
 import torch.onnx.utils
 
 def is_registered_op(opname: str, domain: str, version: int) -> Any:
