@@ -18,7 +18,7 @@ if ($test -eq "torch113") {
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
-    RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda11x "onnx<=1.16.1"
+    RunOrDie python -m pip install -r tests/requirements.txt "cupy-cuda11x<14" "onnx<=1.16.1"
 
 } elseif ($test -eq "torch200") {
     # PyTorch 2.0 + Python 3.10
@@ -29,7 +29,7 @@ if ($test -eq "torch113") {
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
-    RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda11x "onnx<=1.16.1"
+    RunOrDie python -m pip install -r tests/requirements.txt "cupy-cuda11x<14" "onnx<=1.16.1"
 
 } elseif ($test -eq "torch201") {
     # PyTorch 2.1 + Python 3.10
@@ -40,7 +40,7 @@ if ($test -eq "torch113") {
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
-    RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda11x "onnx<=1.16.1"
+    RunOrDie python -m pip install -r tests/requirements.txt "cupy-cuda11x<14" "onnx<=1.16.1"
 
 } elseif ($test -eq "torch202") {
     # PyTorch 2.2 + Python 3.10
@@ -51,7 +51,7 @@ if ($test -eq "torch113") {
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
-    RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda12x "onnx<=1.16.1"
+    RunOrDie python -m pip install -r tests/requirements.txt "cupy-cuda12x<14" "onnx<=1.16.1"
 
 } elseif ($test -eq "torch203") {
     # PyTorch 2.3 + Python 3.11
@@ -62,7 +62,7 @@ if ($test -eq "torch113") {
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
-    RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda12x "onnx<=1.16.1"
+    RunOrDie python -m pip install -r tests/requirements.txt "cupy-cuda12x<14" "onnx<=1.16.1"
 
 } elseif ($test -eq "torch204") {
     # PyTorch 2.4 + Python 3.12
@@ -73,7 +73,7 @@ if ($test -eq "torch113") {
     # NOTE(linsho):
     # Due to reports of the ONNX build for Windows being broken, we are temporarily limiting the version of ONNX.
     # cf. https://github.com/onnx/onnx/issues/6267
-    RunOrDie python -m pip install -r tests/requirements.txt cupy-cuda12x "onnx<=1.16.1"
+    RunOrDie python -m pip install -r tests/requirements.txt "cupy-cuda12x<14" "onnx<=1.16.1"
 
 } else {
     throw "Unsupported test variant: $test"
