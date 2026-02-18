@@ -270,7 +270,6 @@ def main():
                 wait=0, warmup=0, active=len(train_loader)
             ),
             on_trace_ready=callback,
-            acc_events=True,
         )
 
     model_with_loss = ModelWithLoss(model)

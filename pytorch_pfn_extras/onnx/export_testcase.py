@@ -199,7 +199,7 @@ def _export(
             grad.init_grad_state(), \
             lax.init_lax_state():
         if chrome_tracing:
-            with torch.profiler.profile(acc_events=True) as prof:
+            with torch.profiler.profile() as prof:
                 outs = _export_util(
                     model, args, bytesio, return_output=return_output, **kwargs)
             prof.export_chrome_trace(chrome_tracing)
