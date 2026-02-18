@@ -1,3 +1,4 @@
+from importlib import import_module
 from typing import Protocol, cast
 
 import pytorch_pfn_extras
@@ -44,9 +45,11 @@ class _OnnxGlobalsProtocol(Protocol):
 
 
 if pytorch_pfn_extras.requires("2.9"):
-    import torch.onnx._internal.torchscript_exporter._globals as _torch_onnx_globals
+    _torch_onnx_globals = import_module(
+        "torch.onnx._internal.torchscript_exporter._globals"
+    )
 else:
-    import torch.onnx._globals as _torch_onnx_globals
+    _torch_onnx_globals = import_module("torch.onnx._globals")
 
 
 GLOBALS = cast(_OnnxGlobalsProtocol, _torch_onnx_globals.GLOBALS)
