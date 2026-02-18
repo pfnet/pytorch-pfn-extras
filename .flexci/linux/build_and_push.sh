@@ -33,7 +33,7 @@ case "${TARGET}" in
             --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04" \
             --build-arg python_version="3.10.5" \
             --build-arg pip_install_torch_args="torch==1.13.* torchvision==0.14.* -f https://download.pytorch.org/whl/cu117/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda11x"
+            --build-arg pip_install_dep_args="cupy-cuda11x<14"
         ;;
 
     torch200 )
@@ -42,7 +42,7 @@ case "${TARGET}" in
             --build-arg base_image="nvidia/cuda:11.7.1-cudnn8-devel-ubuntu22.04" \
             --build-arg python_version="3.10.5" \
             --build-arg pip_install_torch_args="torch==2.0.* torchvision==0.15.* -f https://download.pytorch.org/whl/cu117/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda11x"
+            --build-arg pip_install_dep_args="cupy-cuda11x<14"
         ;;
 
     torch201 )
@@ -51,7 +51,7 @@ case "${TARGET}" in
             --build-arg base_image="nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04" \
             --build-arg python_version="3.10.5" \
             --build-arg pip_install_torch_args="torch==2.1.* torchvision==0.16.* -f https://download.pytorch.org/whl/cu118/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda11x"
+            --build-arg pip_install_dep_args="cupy-cuda11x<14"
         ;;
 
     torch202 )
@@ -60,7 +60,7 @@ case "${TARGET}" in
             --build-arg base_image="nvidia/cuda:12.1.0-cudnn8-devel-ubuntu20.04" \
             --build-arg python_version="3.10.5" \
             --build-arg pip_install_torch_args="torch==2.2.* torchvision==0.17.* -f https://download.pytorch.org/whl/cu121/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda12x"
+            --build-arg pip_install_dep_args="cupy-cuda12x<14"
         ;;
 
     torch203 )
@@ -69,7 +69,7 @@ case "${TARGET}" in
             --build-arg base_image="nvidia/cuda:12.2.2-cudnn8-devel-ubuntu22.04" \
             --build-arg python_version="3.11.9" \
             --build-arg pip_install_torch_args="torch==2.3.* torchvision==0.18.* -f https://download.pytorch.org/whl/cu122/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda12x"
+            --build-arg pip_install_dep_args="cupy-cuda12x<14"
         ;;
 
     torch204 )
@@ -78,7 +78,7 @@ case "${TARGET}" in
             --build-arg base_image="nvidia/cuda:12.2.2-cudnn8-devel-ubuntu20.04" \
             --build-arg python_version="3.12.7" \
             --build-arg pip_install_torch_args="torch==2.4.* torchvision==0.19.* -f https://download.pytorch.org/whl/cu122/torch_stable.html" \
-            --build-arg pip_install_dep_args="cupy-cuda12x"
+            --build-arg pip_install_dep_args="cupy-cuda12x<14"
         ;;
 
     * )
