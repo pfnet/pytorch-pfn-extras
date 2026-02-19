@@ -280,10 +280,10 @@ def _check_summary_serialize(value1, value2, value3):
         )
     summary2.add(value3)
 
-    v1 = float(value1)
-    v2 = float(value2)
-    v3 = float(value3)
     with torch.no_grad():
+        v1 = float(value1)
+        v2 = float(value2)
+        v3 = float(value3)
         expected_mean = float((v1 + v2 + v3) / 3.0)
         expected_std = math.sqrt(
             (v1**2 + v2**2 + v3**2) / 3.0 - expected_mean**2
