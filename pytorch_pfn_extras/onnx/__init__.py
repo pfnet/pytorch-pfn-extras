@@ -8,6 +8,7 @@ try:
     from pytorch_pfn_extras.onnx.annotate import annotate  # NOQA
     from pytorch_pfn_extras.onnx.annotate import apply_annotation  # NOQA
     from pytorch_pfn_extras.onnx.annotate import scoped_anchor  # NOQA
+    from pytorch_pfn_extras.onnx._helper import suppress_symbolic_warnings  # NOQA
     from pytorch_pfn_extras.onnx._as_output import as_output  # NOQA
     from pytorch_pfn_extras.onnx._grad import grad  # NOQA
     from pytorch_pfn_extras.onnx.load import load_model  # NOQA

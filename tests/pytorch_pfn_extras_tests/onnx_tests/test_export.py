@@ -4,6 +4,7 @@ import torch
 
 import pytorch_pfn_extras as ppe
 from pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
+from pytorch_pfn_extras.onnx._helper import suppress_symbolic_warnings
 
 
 def test_simple():
@@ -36,6 +37,7 @@ def test_conv():
 
 @pytest.mark.filterwarnings("ignore::torch.jit.TracerWarning")
 def test_symbolic_function():
+    @suppress_symbolic_warnings
     class Func(torch.autograd.Function):
         @staticmethod
         def forward(ctx, a):
@@ -203,6 +205,7 @@ def test_nested():
 
 @pytest.mark.filterwarnings("ignore:The shape inference of org.chainer..Add type is missing:UserWarning")
 def test_custom_opsets():
+    @suppress_symbolic_warnings
     class Func(torch.autograd.Function):
         @staticmethod
         def forward(ctx, a):

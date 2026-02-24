@@ -4,6 +4,7 @@ import torch
 import threading
 from contextlib import contextmanager
 import warnings
+from pytorch_pfn_extras.onnx._helper import suppress_symbolic_warnings
 
 _outputs = threading.local()
 
@@ -103,7 +104,8 @@ def trace(
         _outputs.outputs = None
 
 
-# Add Identity function to prevent constant folding in torch.onnx
+# Add Identity function to cevent constant folding in torch.onnx
+@suppress_symbolic_warnings
 class _ExplicitIdentity(torch.autograd.Function):
     @staticmethod
     def forward(  # type: ignore
