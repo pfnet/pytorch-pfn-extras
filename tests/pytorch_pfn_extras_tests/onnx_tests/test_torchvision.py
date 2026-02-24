@@ -1,6 +1,7 @@
 import pytest
 import torch
 import torchvision
+from contextlib import contextmanager
 
 import pytorch_pfn_extras
 from pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
@@ -8,10 +9,26 @@ from pytorch_pfn_extras_tests.onnx_tests.utils import run_model_test
 
 resnet18_kwargs = {'weights': None}
 
+
+@contextmanager
+def _disable_tp32():
+    if pytorch_pfn_extras.requires("2.9"):
+        old_fp32_prec = torch.backends.cudnn.fp32_precision
+    else:
+        old_allow_tf32 = torch.backends.cudnn.allow_tf32
+    try:
+        yield
+    finally:
+        if pytorch_pfn_extras.requires("2.9"):
+            torch.backends.cudnn.fp32_precision = old_fp32_prec
+        else:
+            torch.backends.cudnn.allow_tf32 = old_allow_tf32
+
+
+@pytest.mark.gpu
 @pytest.mark.filterwarnings("ignore:Converting a tensor to a Python boolean might cause the trace to be incorrect:torch.jit.TracerWarning")
 def test_eval_resnet18():
-    old_allow_tf32 = torch.backends.cudnn.allow_tf32
-    try:
+    with _disable_tp32():
         torch.backends.cudnn.allow_tf32 = False
         run_model_test(
             torchvision.models.resnet.resnet18(**resnet18_kwargs),
@@ -19,8 +36,6 @@ def test_eval_resnet18():
             rtol=1e-03,
             use_gpu=True,
         )
-    finally:
-        torch.backends.cudnn.allow_tf32 = old_allow_tf32
 
 
 @pytest.mark.gpu
