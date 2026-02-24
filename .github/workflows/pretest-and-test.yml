@@ -7,20 +7,38 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        torch: ['2.2.*', '2.3.*', '2.4.*', '2.5.*', '2.6.*', '2.7.*', '2.8.*']
+        include:
+          - torch: '2.2.*'
+            python: '3.9'
+          - torch: '2.3.*'
+            python: '3.9'
+          - torch: '2.4.*'
+            python: '3.9'
+          - torch: '2.5.*'
+            python: '3.9'
+          - torch: '2.6.*'
+            python: '3.9'
+          - torch: '2.7.*'
+            python: '3.9'
+          - torch: '2.8.*'
+            python: '3.9'
+          - torch: '2.9.*'
+            python: '3.10'
+          - torch: '2.10.*'
+            python: '3.10'
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v6
       with:
         submodules: recursive
 
     - name: Setup Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v6
       with:
-        python-version: '3.9'
+        python-version: ${{ matrix.python }}
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v5
       with:
         path: |
           ~/.cache

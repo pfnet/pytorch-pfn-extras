@@ -1,5 +1,5 @@
 import torch
-from pytorch_pfn_extras.reporting import Scalar
+from pytorch_pfn_extras._scalar import Scalar
 
 
 def nograd(value: Scalar) -> Scalar:

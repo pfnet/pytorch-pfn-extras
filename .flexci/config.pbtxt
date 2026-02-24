@@ -95,6 +95,22 @@ configs {
 }
 
 configs {
+  key: "pytorch-pfn-extras.torch209-linux"
+  value {
+    requirement {
+      cpu: 4
+      gpu: 1
+      memory: 52
+      disk: 20
+    }
+    time_limit: {
+      seconds: 1800
+    }
+    command: "bash .flexci/linux/main-flexci.sh torch209 unittest"
+  }
+}
+
+configs {
   key: "pytorch-pfn-extras.torch113-linux-mpi"
   value {
     requirement {

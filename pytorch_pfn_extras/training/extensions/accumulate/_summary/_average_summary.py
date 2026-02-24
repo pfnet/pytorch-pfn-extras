@@ -3,6 +3,7 @@ from __future__ import annotations
 import warnings
 from typing import Any, Dict
 
+from pytorch_pfn_extras._scalar import divide_scalar
 from pytorch_pfn_extras.reporting import Scalar, Value
 from pytorch_pfn_extras.training.extensions.accumulate._summary._base_summary import (
     SummaryBase,
@@ -22,8 +23,8 @@ class AverageSummary(SummaryBase):
         if callable(value):
             self._deferred.append((value, weight))
             return
-        m = self._n / (self._n + weight)
-        self._x = self._x * m + value / weight * (1 - m)
+        m = divide_scalar(self._n, self._n + weight)
+        self._x = self._x * m + divide_scalar(value, weight) * (1 - m)
         self._n += weight
 
     def state_dict(self) -> Dict[str, Any]:
@@ -54,7 +55,7 @@ class AverageSummary(SummaryBase):
 
     def __add__(self, other: AverageSummary) -> AverageSummary:
         s = AverageSummary()
-        m = self._n / (self._n + other._n)
+        m = divide_scalar(self._n, self._n + other._n)
         s._x = self._x * m + other._x * (1 - m)
         s._n = self._n + other._n
         s._deferred = self._deferred + other._deferred

@@ -5,6 +5,11 @@ from typing import Any, Dict
 
 import numpy
 import torch
+from pytorch_pfn_extras._scalar import (
+    divide_scalar,
+    multiply_scalar,
+    subtract_scalar,
+)
 from pytorch_pfn_extras.reporting import Scalar, Value
 from pytorch_pfn_extras.training.extensions.accumulate._summary._base_summary import (
     SummaryBase,
@@ -53,13 +58,15 @@ class StandardDeviationSummary(SummaryBase):
     def compute_mean(self) -> Scalar:
         self._add_deferred_values()
         x, n = self._x, self._n
-        return x / n
+        return divide_scalar(x, n)
 
     def compute_standard_deviation(self) -> Scalar:
         self._add_deferred_values()
         x, n = self._x, self._n
-        mean = x / n
-        var = self._x2 / n - mean * mean
+        mean = divide_scalar(x, n)
+        var = subtract_scalar(
+            divide_scalar(self._x2, n), multiply_scalar(mean, mean)
+        )
         if isinstance(var, torch.Tensor):
             return torch.sqrt(var)
         else:
