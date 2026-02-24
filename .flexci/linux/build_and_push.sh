@@ -81,6 +81,15 @@ case "${TARGET}" in
             --build-arg pip_install_dep_args="cupy-cuda12x<14"
         ;;
 
+    torch209 )
+        # PyTorch 2.9 + Python 3.12
+        docker_build_and_push \
+            --build-arg base_image="nvidia/cuda:12.6.3-cudnn-devel-ubuntu22.04" \
+            --build-arg python_version="3.12.7" \
+            --build-arg pip_install_torch_args="torch==2.9.* torchvision==0.24.* --extra-index-url https://download.pytorch.org/whl/cu129" \
+            --build-arg pip_install_dep_args="cupy-cuda12x"
+        ;;
+
     * )
         echo "${1}: Unknown test name."
         exit 1
