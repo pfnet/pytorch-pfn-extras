@@ -14,6 +14,8 @@ if [[ "${FLEXCI_BRANCH:-}" == refs/pull/* ]]; then
     echo "Testing Pull-Request: #${pull_req}"
 fi
 
+"$(dirname ${0})/update-cuda-driver.sh"
+
 export PPE_FLEXCI_IMAGE_PUSH="0"
 if [[ "${pull_req}" == "" ]]; then
     # Push images when running on branch.
