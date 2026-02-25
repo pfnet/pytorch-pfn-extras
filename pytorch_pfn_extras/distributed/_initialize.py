@@ -64,7 +64,7 @@ def initialize_ompi_environment(
             "Invalid value for init_method, only 'env' and 'tcp' are supported"
         )
 
-    if world_size > 1 and not torch.distributed.is_initialized():  # type: ignore
+    if not torch.distributed.is_initialized():  # type: ignore
         torch.distributed.init_process_group(  # type: ignore
             backend,
             init_method=init_method,
