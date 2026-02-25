@@ -413,3 +413,26 @@ def test_script_device():
         output_names=["out"],
         dynamic_axes={"x": {1: "A"}, "y": {0: "B"}},
     )
+
+
+def test_ppe_map():
+    torch.manual_seed(100)
+
+    class Net(torch.nn.Module):
+        def __init__(self):
+            super(Net, self).__init__()
+            self.conv = torch.nn.Conv2d(1, 1, 3)
+
+        def map_f(self, u):
+            return u + 1
+
+        def forward(self, x):
+            y1 = self.conv(x)
+            y2 = self.conv(x)
+            y = [{"u" : y1}, {"u": y2}]
+            return list(ppe.map(self.map_f, y))[0]
+
+    model = Net()
+    ppe.to(model, device="cpu")
+
+    run_model_test(model, (torch.rand(1, 1, 112, 112),), rtol=1e-03)
