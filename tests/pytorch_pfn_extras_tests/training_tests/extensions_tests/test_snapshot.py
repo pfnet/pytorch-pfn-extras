@@ -149,6 +149,129 @@ def test_multi_target_autoload_not_found(path):
     assert other.state_dict() == {"original": "state"}
 
 
+@pytest.mark.parametrize("target_kind", ["model", "dict", "manager"])
+@pytest.mark.parametrize("buffer_change", ["missing", "unexpected"])
+@pytest.mark.parametrize("strict", [None, False])
+def test_snapshot_autoload_changed_buffers(
+    path, target_kind, buffer_change, strict
+):
+    def make_target(restoring):
+        model = torch.nn.Linear(1, 1)
+        if (buffer_change == "missing") == restoring:
+            model.register_buffer("extra", torch.tensor([7.0]))
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.25)
+        other = _StateDictObj(state_dict={"saved": not restoring})
+        manager = training.ExtensionsManager(
+            model,
+            optimizer,
+            1,
+            iters_per_epoch=1,
+            state_objects={"other": other},
+            out_dir=path,
+        )
+        if target_kind == "model":
+            target = model
+        elif target_kind == "dict":
+            target = {"model": model, "optimizer": optimizer, "other": other}
+        else:
+            target = manager
+        return model, optimizer, manager, target
+
+    model, _, manager, target = make_target(False)
+    with torch.no_grad():
+        model.weight.fill_(3.0)
+        model.bias.fill_(4.0)
+    snapshot = extensions.snapshot_object(target, "changed_buffers")
+    snapshot(manager)
+
+    new_model, new_optimizer, new_manager, new_target = make_target(True)
+    new_optimizer.param_groups[0]["lr"] = 0.5
+    kwargs = {} if strict is None else {"strict": strict}
+    snapshot = extensions.snapshot_object(
+        new_target, "changed_buffers", autoload=True, **kwargs
+    )
+    if strict is None:
+        with pytest.raises(RuntimeError, match="key\\(s\\) in state_dict"):
+            snapshot.initialize(new_manager)
+    else:
+        assert snapshot.initialize(new_manager) == "changed_buffers"
+        torch.testing.assert_close(new_model.weight, model.weight)
+        torch.testing.assert_close(new_model.bias, model.bias)
+        if buffer_change == "missing":
+            torch.testing.assert_close(new_model.extra, torch.tensor([7.0]))
+        if target_kind != "model":
+            assert new_optimizer.param_groups[0]["lr"] == 0.25
+            other = (
+                new_target["other"]
+                if target_kind == "dict"
+                else new_manager._state_objects["other"]
+            )
+            assert other.state_dict() == {"saved": True}
+
+
+def test_snapshot_autoload_non_strict_shape_mismatch(path):
+    manager = get_trainer(out_dir=path)
+    model = torch.nn.Linear(1, 1)
+    snapshot = extensions.snapshot_object(model, "shape_mismatch")
+    snapshot(manager)
+
+    snapshot = extensions.snapshot_object(
+        torch.nn.Linear(2, 1),
+        "shape_mismatch",
+        autoload=True,
+        strict=False,
+    )
+    with pytest.raises(RuntimeError, match="size mismatch"):
+        snapshot.initialize(manager)
+
+
+@pytest.mark.parametrize(
+    "mode",
+    [
+        extensions.SnapshotMode.DEFAULT,
+        extensions.SnapshotMode.DISTRIBUTED,
+        extensions.SnapshotMode.SHARDED,
+    ],
+)
+def test_snapshot_autoload_non_strict_distributed_modes(path, mode):
+    manager = get_trainer(out_dir=path)
+    model = torch.nn.Linear(1, 1)
+    model.register_buffer("extra", torch.tensor([7.0]))
+    new_model = torch.nn.Linear(1, 1)
+
+    def gather(result, value):
+        result[0] = value
+
+    with mock.patch.multiple(
+        torch.distributed,
+        is_initialized=mock.Mock(return_value=True),
+        get_world_size=mock.Mock(return_value=1),
+        get_rank=mock.Mock(return_value=0),
+        all_gather_object=mock.Mock(side_effect=gather),
+    ):
+        snapshot = extensions.snapshot_object(
+            model,
+            "distributed_model",
+            writer=writing.SimpleWriter(out_dir=path),
+            saver_rank=0,
+            snapshot_mode=mode,
+        )
+        snapshot(manager)
+        snapshot = extensions.snapshot_object(
+            new_model,
+            "distributed_model",
+            writer=writing.SimpleWriter(out_dir=path),
+            saver_rank=0,
+            snapshot_mode=mode,
+            autoload=True,
+            strict=False,
+        )
+        assert snapshot.initialize(manager) is not None
+
+    torch.testing.assert_close(new_model.weight, model.weight)
+    torch.testing.assert_close(new_model.bias, model.bias)
+
+
 def test_clean_up_tempdir(path):
     trainer = get_trainer(out_dir=path)
     trainer._done = True

@@ -220,6 +220,40 @@ def test_extensions_manager_state_dict(tmp_path: pathlib.Path):
     assert new_optimizer.called_load_state_dict == 1
 
 
+@pytest.mark.parametrize("use_ignite", [False, True])
+def test_manager_load_state_dict_non_strict(tmp_path: pathlib.Path, use_ignite):
+    def make_manager(model):
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.25)
+        if use_ignite:
+            try:
+                from ignite.engine import Engine
+            except ImportError:
+                pytest.skip("pytorch-ignite not found")
+
+            engine = Engine(lambda engine, batch: None)
+            manager = training.IgniteExtensionsManager(
+                engine, model, optimizer, 1, out_dir=str(tmp_path)
+            )
+            engine.run([None])
+            return manager
+        return training.ExtensionsManager(
+            model, optimizer, 1, iters_per_epoch=1, out_dir=str(tmp_path)
+        )
+
+    model = nn.Linear(1, 1)
+    model.register_buffer("extra", torch.tensor([7.0]))
+    state = make_manager(model).state_dict()
+    new_model = nn.Linear(1, 1)
+    manager = make_manager(new_model)
+
+    with pytest.raises(RuntimeError, match="Unexpected key"):
+        manager.load_state_dict(state)
+    manager.load_state_dict(state, strict=False)
+
+    torch.testing.assert_close(new_model.weight, model.weight)
+    torch.testing.assert_close(new_model.bias, model.bias)
+
+
 def test_extensions_manager_state_dict_old_ppe_no_version(
     tmp_path: pathlib.Path,
 ):
