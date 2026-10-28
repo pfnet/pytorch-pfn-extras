@@ -5,6 +5,8 @@ onnxruntime<1.22
 torchvision
 torchaudio
 pysen
+# Notes: pysen fails with `tomlkit>=0.15.1` ("Comment cannot contain line breaks").
+tomlkit<0.15.1
 black==24.3.0
 flake8==7.3.0
 isort==5.10.1
