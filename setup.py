@@ -11,8 +11,8 @@ long_description = open(os.path.join(here, "README.md")).read()
 setuptools.setup(
     name="pytorch-pfn-extras",
     version=__version__,  # NOQA
-    description="Supplementary components to accelerate research and "
-    "development in PyTorch.",
+    description="A PFN™ library providing supplementary components to "
+    "accelerate research and development in PyTorch.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Preferred Networks, Inc.",
