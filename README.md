@@ -4,7 +4,7 @@
 [![Docs](https://img.shields.io/readthedocs/pytorch-pfn-extras)](https://pytorch-pfn-extras.readthedocs.io/)
 [![License](https://img.shields.io/github/license/pfnet/pytorch-pfn-extras)](https://github.com/pfnet/pytorch-pfn-extras/blob/master/LICENSE)
 
-Supplementary components to accelerate research and development in PyTorch.
+A PFN™ library providing supplementary components to accelerate research and development in PyTorch.
 
 ## Installation
 
@@ -67,3 +67,7 @@ Before making a contribution, please confirm that:
 ## License
 
 MIT License
+
+## Credits
+
+pytorch-pfn-extras is being developed and maintained by Preferred Networks™ (PFN™) and community contributors.
