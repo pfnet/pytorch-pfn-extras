@@ -537,7 +537,15 @@ class _BaseExtensionsManager:
     def load_state_dict(
         self,
         to_load: Dict[str, Any],
+        *,
+        strict: bool = True,
     ) -> None:
+        """Restores training state, optionally allowing model key changes.
+
+        With ``strict=False``, missing or unexpected model state keys are
+        ignored. Custom model loaders must accept the ``strict`` keyword.
+        Optimizers, extensions and other state objects are loaded as usual.
+        """
         self._check_snapshot_version(to_load.get("ppe_version", None))
         self._start_iteration = to_load["_start_iteration"]
         self.iteration = self._start_iteration
@@ -546,7 +554,12 @@ class _BaseExtensionsManager:
         for name in self.models:
             # TODO(ecastill) map_loc when loading the model and DDP check
             # Use self.models to apply transform_model
-            self.models[name].load_state_dict(to_load["models"][name])
+            if strict:
+                self.models[name].load_state_dict(to_load["models"][name])
+            else:
+                self.models[name].load_state_dict(
+                    to_load["models"][name], strict=False
+                )
 
         for name in self._optimizers:
             self._optimizers[name].load_state_dict(to_load["optimizers"][name])
@@ -790,6 +803,8 @@ class IgniteExtensionsManager(_BaseExtensionsManager):
     def load_state_dict(
         self,
         to_load: Dict[str, Any],
+        *,
+        strict: bool = True,
     ) -> None:
-        super().load_state_dict(to_load)
+        super().load_state_dict(to_load, strict=strict)
         self._start_epoch = self._start_iteration // to_load["_epoch_length"]

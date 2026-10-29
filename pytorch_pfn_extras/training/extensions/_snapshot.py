@@ -111,7 +111,7 @@ def snapshot_object(
 ) -> "_Snapshot":
     """snapshot_object(target, filename, savefun=None, \
 *, condition=None, writer=None, snapshot_on_error=False, \
-n_retains=-1, autoload=False)
+n_retains=-1, autoload=False, strict=True)
 
     Returns an extension to take snapshots of a given object.
 
@@ -157,6 +157,11 @@ n_retains=-1, autoload=False)
         autoload (bool): With this enabled, the extension automatically
             finds the latest snapshot and loads the data to the target.
             Automatic loading only works when the filename is a string.
+        strict (bool): Whether model state keys must match when autoloading.
+            Set to ``False`` to allow missing or unexpected keys in
+            :class:`torch.nn.Module` targets or models in an extensions
+            manager. Other stateful targets are loaded as usual. Custom
+            model loaders must accept the ``strict`` keyword to opt out.
         saver_rank (int): If defined, the snapshot will be taken by only one
             rank when running in distributed mode and restored by all.
 
@@ -189,6 +194,7 @@ def snapshot(
     autoload: bool = False,
     saver_rank: Optional[int] = None,
     snapshot_mode: SnapshotMode = SnapshotMode.DEFAULT,
+    strict: bool = True,
 ) -> "_Snapshot":
     """
     Returns a trainer extension to take snapshots of the trainer.
@@ -239,6 +245,11 @@ def snapshot(
             to the target.  Automatic loading only works when the
             filename is a string. It is assumed that snapshots are generated
             by :func:`torch.save` .
+        strict (bool): Whether model state keys must match when autoloading.
+            Set to ``False`` to allow missing or unexpected keys in
+            :class:`torch.nn.Module` targets or models in an extensions
+            manager. Other stateful targets are loaded as usual. Custom
+            model loaders must accept the ``strict`` keyword to opt out.
         saver_rank (int): If defined, the snapshot will be taken by only one
             rank when running in distributed mode and restored by all.
         snapshot_mode (SnapshotMode): If SnapshotModel.DEFAULT is specified, it provides
@@ -318,6 +329,7 @@ trigger=(1, 'epoch'))
                 n_retains=n_retains,
                 autoload=autoload,
                 savefun=savefun,
+                strict=strict,
             )
         else:
             # To maintain backward compatibility.
@@ -331,6 +343,7 @@ trigger=(1, 'epoch'))
                 autoload=autoload,
                 saver_rank=saver_rank,
                 savefun=savefun,
+                strict=strict,
             )
 
     elif snapshot_mode == SnapshotMode.DISTRIBUTED:
@@ -345,6 +358,7 @@ trigger=(1, 'epoch'))
             autoload=autoload,
             saver_rank=saver_rank,
             savefun=savefun,
+            strict=strict,
         )
 
     elif snapshot_mode == SnapshotMode.SHARDED:
@@ -359,6 +373,7 @@ trigger=(1, 'epoch'))
             autoload=autoload,
             saver_rank=saver_rank,
             savefun=savefun,
+            strict=strict,
         )
     else:
         raise RuntimeError("`snapshot_mode` is unexpected.")
@@ -397,6 +412,7 @@ class _Snapshot(extension.Extension):
         n_retains: int = -1,
         autoload: bool = False,
         savefun: Any = None,
+        strict: bool = True,
     ) -> None:
         if condition is None:
             condition = _always_true
@@ -408,6 +424,18 @@ class _Snapshot(extension.Extension):
         self.n_retains = n_retains
         self.autoload = autoload
         self._savefun = savefun
+        self.strict = strict
+
+    def _load_state_dict(self, target: Any, state: Any) -> None:
+        # Import lazily because training imports extensions before managers.
+        from pytorch_pfn_extras.training.manager import _BaseExtensionsManager
+
+        if not self.strict and isinstance(
+            target, (torch.nn.Module, _BaseExtensionsManager)
+        ):
+            target.load_state_dict(state, strict=False)
+        else:
+            target.load_state_dict(state)
 
     def _autoload(
         self, manager: ExtensionsManagerProtocol, loaded_fn: Optional[str]
@@ -417,24 +445,18 @@ class _Snapshot(extension.Extension):
             writer = self.writer
             assert writer is not None
 
-            snapshot_file = writer.fs.open(
+            with writer.fs.open(
                 os.path.join(writer.out_dir, loaded_fn), "rb"
-            )
-            # As described above (at ``autoload`` option),
-            # snapshot files to be autoloaded must be saved by
-            # ``save_npz`` . In order to support general format,
-            # we nned to first reconstruct the design of savefun
-            # and loadfun.
-            state = torch.load(
-                snapshot_file,  # type: ignore[no-untyped-call]
-                map_location=torch.device("cpu"),
-            )
-            if type(target) is dict:
-                for k in target:
-                    target[k].load_state_dict(state[k])
-            else:
-                target.load_state_dict(state)
-            snapshot_file.close()
+            ) as snapshot_file:
+                state = torch.load(
+                    snapshot_file,  # type: ignore[no-untyped-call]
+                    map_location=torch.device("cpu"),
+                )
+                if type(target) is dict:
+                    for k in target:
+                        self._load_state_dict(target[k], state[k])
+                else:
+                    self._load_state_dict(target, state)
 
     def initialize(  # type: ignore[override]
         self, manager: ExtensionsManagerProtocol
@@ -548,6 +570,7 @@ class _DistributedSnapshot(_Snapshot):
         autoload: bool = False,
         saver_rank: int = 0,
         savefun: Any = None,
+        strict: bool = True,
     ):
         super().__init__(
             target,
@@ -558,6 +581,7 @@ class _DistributedSnapshot(_Snapshot):
             n_retains,
             autoload,
             savefun,
+            strict,
         )
         # To support distributed snapshots
         if not torch.distributed.is_initialized():  # type: ignore[no-untyped-call]
@@ -608,6 +632,7 @@ class _ShardedSnapshot(_Snapshot):
         autoload: bool = False,
         savefun: Any = None,
         saver_rank: int = 0,
+        strict: bool = True,
     ) -> None:
         self._rank = torch.distributed.get_rank()  # type: ignore[no-untyped-call]
         self._snapshot_dir = filename
@@ -622,6 +647,7 @@ class _ShardedSnapshot(_Snapshot):
             n_retains,
             autoload,
             savefun,
+            strict,
         )
         if not torch.distributed.is_initialized():  # type: ignore[no-untyped-call]
             raise RuntimeError(
